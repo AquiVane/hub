@@ -2,9 +2,9 @@ import { requireAuth, logoutUser } from './auth.js';
 import {
   getClientData, getContenidos, saveContenido, deleteContenido,
   getTareas, saveTarea, deleteTarea,
-  getCampanas, saveCampana,
-  getMetricas, getHomeData, saveHomeData,
-  getIdeas, saveIdea
+  getCampanas, saveCampana, deleteCampana,
+  getMetricas, saveMetricasData, getHomeData, saveHomeData,
+  getIdeas, saveIdea, deleteIdea
 } from './data.js';
 
 // ── Bootstrap ──────────────────────────────────────────
@@ -32,6 +32,7 @@ async function init() {
   await loadAllData();
   setupNav();
   renderSection('home');
+  setTimeout(() => refreshIcons(), 100);
 }
 
 async function loadAllData() {
@@ -66,8 +67,8 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
-  const titles = { home: 'Home', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital' };
-  const subs = { home: 'Resumen y prioridades del mes', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital' };
+  const titles = { home: 'Inicio', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -76,7 +77,7 @@ function renderSection(sec) {
 
   const content = document.getElementById('main-content');
 
-  if (sec === 'home') { renderHome(content); }
+  if (sec === 'home') { renderHome(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
@@ -84,6 +85,7 @@ function renderSection(sec) {
     btn.onclick = () => openContenidoModal(null);
     actions.appendChild(btn);
     renderContenidos(content);
+    setTimeout(refreshIcons, 50);
   }
   else if (sec === 'tareas') {
     const btn = document.createElement('button');
@@ -92,6 +94,7 @@ function renderSection(sec) {
     btn.onclick = () => openTareaModal(null);
     actions.appendChild(btn);
     renderTareas(content);
+    setTimeout(refreshIcons, 50);
   }
   else if (sec === 'pauta') {
     const btn = document.createElement('button');
@@ -100,6 +103,11 @@ function renderSection(sec) {
     btn.onclick = () => openCampanaModal(null);
     actions.appendChild(btn);
     renderPauta(content);
+    setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'instrucciones') {
+    renderInstrucciones(content);
+    setTimeout(refreshIcons, 50);
   }
 }
 
@@ -162,13 +170,28 @@ function renderHome(container) {
         </div>
         <div class="card-body">
           <div id="todo-list">
-            ${todos.length ? todos.map(t => `
-              <div class="todo-item ${t.done ? 'done' : ''}" data-id="${t.id}">
-                <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${t.id})">
-                <label onclick="toggleTodo(${t.id})">${t.text}</label>
-                <button onclick="removeTodo(${t.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 4px;" title="Eliminar">×</button>
-              </div>
-            `).join('') : `<p class="text-muted text-sm">Sin tareas para hoy.</p>`}
+            ${(() => {
+              const tareasPend = STATE.tareas.filter(t => t.estado === 'Sin empezar' && !t.archivado);
+              const allItems = [
+                ...todos.map(t => ({ type:'todo', ...t })),
+                ...tareasPend.map(t => ({ type:'tarea', id: t.id, text: t.titulo, done: false, tarea: t }))
+              ];
+              if (!allItems.length) return `<p class="text-muted text-sm">Sin tareas pendientes.</p>`;
+              return allItems.map(item => {
+                if (item.type === 'tarea') return `
+                  <div class="todo-item" style="border-left:3px solid #3b82f6;padding-left:8px;">
+                    <span style="font-size:10px;color:#3b82f6;font-weight:700;margin-right:4px;">TAREA</span>
+                    <label style="flex:1;cursor:pointer;" onclick="openTareaModal('${item.id}')">${item.text}</label>
+                    ${item.tarea.vencimiento ? `<span style="font-size:10px;color:${new Date(item.tarea.vencimiento+'T00:00:00')<new Date()?'#dc2626':'var(--text-muted)'};">📅${item.tarea.vencimiento}</span>` : ''}
+                  </div>`;
+                return `
+                  <div class="todo-item ${item.done ? 'done' : ''}" data-id="${item.id}">
+                    <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                    <label onclick="toggleTodo(${item.id})">${item.text}</label>
+                    <button onclick="removeTodo(${item.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 4px;" title="Eliminar">×</button>
+                  </div>`;
+              }).join('');
+            })()}
           </div>
         </div>
       </div>
@@ -205,11 +228,36 @@ function renderHome(container) {
 
 window.editPrioridades = function() {
   const { prioridades = [] } = STATE.home || {};
-  const val = prompt('Ingresá las prioridades separadas por Enter (una por línea):', prioridades.join('\n'));
-  if (val === null) return;
-  STATE.home.prioridades = val.split('\n').map(s => s.trim()).filter(Boolean);
-  saveHomeData(clientId, STATE.home);
-  renderSection('home');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h3>⭐ Editar prioridades</h3>
+        <button class="modal-close" id="_closePrioModal">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Una prioridad por línea. Enter agrega una nueva línea.</p>
+        <textarea id="_prioTextarea" class="form-control" rows="6" style="resize:vertical;">${prioridades.join('\n')}</textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="_cancelPrioBtn">Cancelar</button>
+        <button class="btn btn-primary" id="_savePrioBtn">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const ta = document.getElementById('_prioTextarea');
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  const close = () => overlay.remove();
+  document.getElementById('_closePrioModal').addEventListener('click', close);
+  document.getElementById('_cancelPrioBtn').addEventListener('click', close);
+  document.getElementById('_savePrioBtn').addEventListener('click', () => {
+    STATE.home.prioridades = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+    saveHomeData(clientId, STATE.home);
+    close();
+    renderSection('home');
+  });
 };
 
 window.toggleTodo = async function(id) {
@@ -436,14 +484,14 @@ function renderKanbanContenidos(container) {
 // ─ Feed IG ─
 function renderFeedIG(container) {
   const feedItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Instagram') && c.ubicacion !== 'Story')
+    .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story'))
     .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1)
     .slice(0, 9);
 
   const client = STATE.client;
   container.innerHTML = `
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
-      <div class="phone-device" style="width:300px;">
+      <div class="phone-device" style="width:360px;">
         <div class="phone-screen">
           <!-- Header de perfil -->
           <div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
@@ -498,7 +546,7 @@ function renderFeedIG(container) {
 // ─ Muro FB ─
 function renderMuroFB(container) {
   const fbItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Facebook') && c.ubicacion !== 'Story')
+    .filter(c => (c.plataformas||[]).includes('Facebook') && !normUbicacion(c.ubicacion).includes('Story'))
     .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1);
 
   container.innerHTML = `
@@ -545,7 +593,7 @@ function renderMuroFB(container) {
 // ─ Stories ─
 function renderStories(container) {
   const stories = STATE.contenidos.filter(c =>
-    (c.plataformas||[]).includes('Instagram') && c.ubicacion === 'Story'
+    (c.plataformas||[]).includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')
   );
 
   container.innerHTML = `
@@ -602,6 +650,7 @@ function renderIdeas(container) {
             <div style="display:flex;gap:6px;margin-top:10px;">
               <button class="btn btn-primary btn-sm" onclick="promoverIdea('${i.id}')">→ Contenido</button>
               <button class="btn btn-secondary btn-sm" onclick="openIdeaModal('${i.id}')">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarIdea('${i.id}')" title="Eliminar">🗑</button>
             </div>
           </div>
         `).join('')}
@@ -610,17 +659,25 @@ function renderIdeas(container) {
   `;
 }
 
+let _editingIdea = null;
 window.openIdeaModal = function(id) {
-  const idea = id ? STATE.ideas.find(i => i.id === id) : null;
-  const titulo = prompt('Título de la idea:', idea?.titulo || '');
-  if (!titulo) return;
-  const notas = prompt('Notas (opcional):', idea?.notas || '');
-  const obj = idea ? { ...idea, titulo, notas: notas||'' } : { titulo, notas: notas||'', plataformas: ['Instagram','Facebook'], formato: 'Imagen' };
-  saveIdea(clientId, obj).then(saved => {
-    if (!idea) STATE.ideas.push(saved);
-    else { const i = STATE.ideas.findIndex(x => x.id === saved.id); STATE.ideas[i] = saved; }
-    renderContTab('ideas');
+  _editingIdea = id ? STATE.ideas.find(i => i.id === id) : null;
+  const i = _editingIdea || {};
+  document.getElementById('idea-modal-title').textContent = _editingIdea ? 'Editar idea' : 'Nueva idea';
+  document.getElementById('if-titulo').value = i.titulo || '';
+  document.getElementById('if-notas').value = i.notas || '';
+  document.getElementById('if-formato').value = i.formato || 'Imagen';
+  document.querySelectorAll('.idea-plat-check').forEach(cb => {
+    cb.checked = (i.plataformas || ['Instagram','Facebook']).includes(cb.value);
   });
+  document.getElementById('ideaModal').classList.remove('hidden');
+};
+
+window.eliminarIdea = async function(id) {
+  if (!confirm('¿Eliminar esta idea?')) return;
+  await deleteIdea(clientId, id);
+  STATE.ideas = STATE.ideas.filter(i => i.id !== id);
+  renderContTab('ideas');
 };
 
 window.promoverIdea = async function(id) {
@@ -703,14 +760,7 @@ function renderMetricasContenidos(container) {
 
 window.updateMetrica = function(key, val) { STATE.metricas[key] = val; };
 window.saveMetricas = async function() {
-  const { setDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  const { db, DEMO_MODE } = await import('./firebase.js');
-  if (!DEMO_MODE) await setDoc(doc(db, 'clients', clientId, 'metricas', 'resumen'), STATE.metricas);
-  else {
-    const data = JSON.parse(localStorage.getItem(`mh_data_${clientId}`)||'{}');
-    data.metricas = STATE.metricas;
-    localStorage.setItem(`mh_data_${clientId}`, JSON.stringify(data));
-  }
+  await saveMetricasData(clientId, STATE.metricas);
   alert('Métricas guardadas.');
 };
 
@@ -733,7 +783,7 @@ window.openPreview = function(id) {
 
   const previews = [];
 
-  if (plats.includes('Instagram') && c.ubicacion !== 'Story') previews.push(`
+  if (plats.includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story')) previews.push(`
     <div>
       <div class="phone-device" style="width:260px;">
         <div class="phone-screen">
@@ -757,7 +807,7 @@ window.openPreview = function(id) {
     </div>
   `);
 
-  if (plats.includes('Instagram') && c.ubicacion === 'Story') previews.push(`
+  if (plats.includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')) previews.push(`
     <div>
       <div class="phone-device" style="width:200px;">
         <div class="phone-screen">
@@ -857,6 +907,7 @@ document.getElementById('closePreviewModal').addEventListener('click', closePrev
 // MODAL CONTENIDO
 // ──────────────────────────────────────────────────────
 window.openContenidoModal = function(defaults = {}) {
+  defaults = defaults || {};
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
   const c = editingContenido || {};
   document.getElementById('modal-cont-title').textContent = editingContenido ? 'Editar contenido' : 'Nuevo contenido';
@@ -864,13 +915,15 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
   document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
   document.getElementById('cf-cuenta').value = c.cuenta || STATE.client.instagram || '';
-  document.getElementById('cf-ubicacion').value = c.ubicacion || 'Feed';
+  const ubicArr = normUbicacion(c.ubicacion || defaults.ubicacion || ['Feed']);
+  document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
   document.getElementById('cf-formato').value = c.formato || 'Imagen';
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-drive').value = c.linkDrive || '';
+  document.getElementById('cf-drive-ref').value = c.linkDriveRef || '';
   document.getElementById('cf-notas').value = c.notas || '';
   document.querySelectorAll('.plat-check').forEach(cb => {
     cb.checked = (c.plataformas || defaults.plataformas || []).includes(cb.value);
@@ -891,6 +944,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async () =
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
   const plats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
+  const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
   const obj = {
     ...(editingContenido || {}),
     titulo,
@@ -898,13 +952,14 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async () =
     estado: document.getElementById('cf-estado').value,
     cuenta: document.getElementById('cf-cuenta').value,
     plataformas: plats,
-    ubicacion: document.getElementById('cf-ubicacion').value,
+    ubicacion: ubicacion.length ? ubicacion : ['Feed'],
     eje: document.getElementById('cf-eje').value,
     tipo: document.getElementById('cf-tipo').value,
     formato: document.getElementById('cf-formato').value,
     objetivo: document.getElementById('cf-objetivo').value,
     copy: document.getElementById('cf-copy').value,
     linkDrive: document.getElementById('cf-drive').value,
+    linkDriveRef: document.getElementById('cf-drive-ref').value,
     notas: document.getElementById('cf-notas').value,
   };
   const saved = await saveContenido(clientId, obj);
@@ -936,9 +991,10 @@ function renderTareas(container) {
     { key: 'En progreso', label: '🔵 En progreso', color: '#3b82f6' },
     { key: 'Listo', label: '✅ Listo', color: '#10b981' },
   ];
+  const archivadas = STATE.tareas.filter(t => t.archivado);
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
-    const items = STATE.tareas.filter(t => t.estado === col.key);
+    const items = STATE.tareas.filter(t => t.estado === col.key && !t.archivado);
     return `
       <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
         <div class="kanban-col-header">
@@ -951,17 +1007,46 @@ function renderTareas(container) {
             <div class="kanban-card" draggable="true" data-id="${t.id}">
               <div class="kanban-card-title">${t.titulo}</div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
+              ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
               ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
-              <button class="btn btn-secondary btn-sm" onclick="openTareaModal('${t.id}')" style="margin-top:8px;">Editar</button>
+              ${t.subtareas?.length ? (() => {
+                const done = t.subtareas.filter(s=>s.done).length;
+                const total = t.subtareas.length;
+                const pct = Math.round(done/total*100);
+                return `<div style="margin-top:6px;">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
+                  <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:#10b981;border-radius:2px;width:${pct}%;"></div></div>
+                </div>`;
+              })() : ''}
+              <div style="display:flex;gap:4px;margin-top:8px;">
+                <button class="btn btn-secondary btn-sm" onclick="openTareaModal('${t.id}')">Editar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
+              </div>
             </div>
           `).join('')}
         </div>
         <button class="kanban-add-btn" onclick="openTareaModal(null,'${col.key}')">+ Agregar</button>
       </div>
     `;
-  }).join('')}</div>`;
+  }).join('')}</div>
+  ${archivadas.length ? `
+    <div style="margin-top:24px;">
+      <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivadas':'▼ Ver archivadas (${archivadas.length})'">▼ Ver archivadas (${archivadas.length})</button>
+      <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+        ${archivadas.map(t => `
+          <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+            <div style="display:flex;gap:4px;margin-top:6px;">
+              <button class="btn btn-secondary btn-sm" onclick="desarchivarTarea('${t.id}')">Restaurar</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')">🗑</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : ''}`;
 
-  initKanbanDrag('#kanban-tareas', STATE.tareas, async (id, newCol) => {
+  initKanbanDrag('#kanban-tareas', STATE.tareas.filter(t => !t.archivado), async (id, newCol) => {
     const t = STATE.tareas.find(x => x.id === id);
     if (!t) return;
     t.estado = newCol;
@@ -978,10 +1063,52 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-titulo').value = t.titulo || '';
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
+  document.getElementById('tf-vencimiento').value = t.vencimiento || '';
   document.getElementById('tf-notas').value = t.notas || '';
   document.getElementById('deleteTareaBtn').style.display = editingTarea ? '' : 'none';
+  document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
+
+  // Subtareas — solo visible al editar
+  const stSection = document.getElementById('subtareas-section');
+  stSection.style.display = editingTarea ? '' : 'none';
+  if (editingTarea) renderSubtareas(t.subtareas || []);
+
   document.getElementById('tareaModal').classList.remove('hidden');
 };
+
+function renderSubtareas(subtareas) {
+  const list = document.getElementById('subtareas-list');
+  list.innerHTML = subtareas.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${s.done?'#bbf7d0':'var(--border)'};">
+      <input type="checkbox" ${s.done?'checked':''} onchange="toggleSubtarea(${i})" style="flex-shrink:0;">
+      <span style="flex:1;font-size:13px;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">${s.titulo}</span>
+      ${s.vencimiento ? `<span style="font-size:10px;color:${new Date(s.vencimiento+'T00:00:00')<new Date()&&!s.done?'#dc2626':'var(--text-muted)'};">📅 ${s.vencimiento}</span>` : ''}
+      <button onclick="deleteSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;" title="Eliminar">×</button>
+    </div>
+  `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+}
+
+window.toggleSubtarea = function(idx) {
+  if (!editingTarea) return;
+  editingTarea.subtareas = editingTarea.subtareas || [];
+  editingTarea.subtareas[idx].done = !editingTarea.subtareas[idx].done;
+  renderSubtareas(editingTarea.subtareas);
+};
+
+window.deleteSubtarea = function(idx) {
+  if (!editingTarea) return;
+  editingTarea.subtareas.splice(idx, 1);
+  renderSubtareas(editingTarea.subtareas);
+};
+
+document.getElementById('addSubtareaBtn').addEventListener('click', () => {
+  const titulo = prompt('Título de la subtarea:');
+  if (!titulo || !titulo.trim()) return;
+  const venc = prompt('Fecha de vencimiento (AAAA-MM-DD, opcional):') || null;
+  editingTarea.subtareas = editingTarea.subtareas || [];
+  editingTarea.subtareas.push({ titulo: titulo.trim(), done: false, vencimiento: venc || null });
+  renderSubtareas(editingTarea.subtareas);
+});
 
 function closeTareaModal() { document.getElementById('tareaModal').classList.add('hidden'); }
 document.getElementById('closeTareaModal').addEventListener('click', closeTareaModal);
@@ -990,7 +1117,7 @@ document.getElementById('closeTareaModal2').addEventListener('click', closeTarea
 document.getElementById('saveTareaBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
-  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, notas: document.getElementById('tf-notas').value };
+  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').value, subtareas: editingTarea?.subtareas || [] };
   const saved = await saveTarea(clientId, obj);
   if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
   else STATE.tareas.push(saved);
@@ -1008,29 +1135,63 @@ document.getElementById('deleteTareaBtn').addEventListener('click', async () => 
   renderTareas(document.getElementById('main-content'));
 });
 
+document.getElementById('archiveTareaBtn').addEventListener('click', async () => {
+  if (!editingTarea) return;
+  editingTarea.archivado = true;
+  await saveTarea(clientId, editingTarea);
+  const i = STATE.tareas.findIndex(t => t.id === editingTarea.id);
+  STATE.tareas[i] = editingTarea;
+  closeTareaModal();
+  updateBadges();
+  renderTareas(document.getElementById('main-content'));
+});
+
+window.eliminarTareaDirecta = async function(id) {
+  if (!confirm('¿Eliminar esta tarea?')) return;
+  await deleteTarea(clientId, id);
+  STATE.tareas = STATE.tareas.filter(t => t.id !== id);
+  updateBadges();
+  renderTareas(document.getElementById('main-content'));
+};
+
+window.desarchivarTarea = async function(id) {
+  const t = STATE.tareas.find(x => x.id === id);
+  if (!t) return;
+  t.archivado = false;
+  await saveTarea(clientId, t);
+  updateBadges();
+  renderTareas(document.getElementById('main-content'));
+};
+
 // ──────────────────────────────────────────────────────
 // PAUTA
 // ──────────────────────────────────────────────────────
+let activePautaTab = 'todas';
+
 function renderPauta(container) {
-  const total = STATE.campanas.reduce((s,c) => s + (c.presupuesto||0), 0);
-  const gastado = STATE.campanas.reduce((s,c) => s + (c.gastado||0), 0);
-  const activas = STATE.campanas.filter(c => c.estado === 'Activa').length;
+  const plats = ['Todas', 'Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
+  const filtered = activePautaTab === 'todas' ? STATE.campanas
+    : STATE.campanas.filter(c => c.plataforma === activePautaTab);
+  const total = filtered.reduce((s,c) => s + (c.presupuesto||0), 0);
+  const gastado = filtered.reduce((s,c) => s + (c.gastado||0), 0);
+  const activas = filtered.filter(c => c.estado === 'Activa').length;
+  const roasTotal = gastado ? filtered.reduce((s,c)=>s+(c.ingresos||0),0) / gastado : 0;
 
   container.innerHTML = `
+    <div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
+      ${plats.map(p => `<button class="tab-btn ${activePautaTab===(p==='Todas'?'todas':p)?'active':''}" data-tab="${p==='Todas'?'todas':p}">${p}</button>`).join('')}
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
-        { label: 'Campañas activas', val: activas, icon: '🟢' },
-        { label: 'Presupuesto total', val: '$'+fmtNum(total), icon: '💰' },
-        { label: 'Gastado', val: '$'+fmtNum(gastado), icon: '💸' },
-        { label: '% ejecutado', val: total ? Math.round(gastado/total*100)+'%' : '—', icon: '📊' },
-      ].map(m => `<div class="card" style="padding:16px;"><div style="font-size:22px;margin-bottom:6px;">${m.icon}</div><div style="font-size:22px;font-weight:800;">${m.val}</div><div style="font-size:12px;color:var(--text-muted);">${m.label}</div></div>`).join('')}
+        { label: 'Campañas activas', val: activas, icon: 'activity' },
+        { label: 'Presupuesto total', val: '$'+fmtNum(total), icon: 'dollar-sign' },
+        { label: 'Gastado', val: '$'+fmtNum(gastado), icon: 'credit-card' },
+        { label: 'ROAS promedio', val: roasTotal ? roasTotal.toFixed(2)+'x' : '—', icon: 'trending-up' },
+      ].map(m => `<div class="card" style="padding:16px;"><i data-lucide="${m.icon}" style="width:20px;height:20px;color:var(--accent);stroke-width:1.5;margin-bottom:8px;"></i><div style="font-size:22px;font-weight:800;">${m.val}</div><div style="font-size:12px;color:var(--text-muted);">${m.label}</div></div>`).join('')}
     </div>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <h3 style="font-size:15px;font-weight:600;">Campañas</h3>
-    </div>
-
-    ${STATE.campanas.length ? STATE.campanas.map(c => {
+    ${filtered.length ? filtered.map(c => {
       const pct = c.presupuesto ? Math.round((c.gastado||0)/c.presupuesto*100) : 0;
       const statusCol = c.estado==='Activa'?'#10b981':c.estado==='Pausada'?'#f59e0b':'#94a3b8';
       return `
@@ -1045,12 +1206,17 @@ function renderPauta(container) {
             ${[
               { label:'Presupuesto', val: '$'+fmtNum(c.presupuesto) },
               { label:'Gastado', val: '$'+fmtNum(c.gastado) },
+              { label:'ROAS', val: c.roas ? `<span style="color:${c.roas>=(c.roasEq||1.5)?'#10b981':'#ef4444'};font-weight:800;">${c.roas}x</span>` : '—' },
+              { label:'ROAS equilibrio', val: c.roasEq ? c.roasEq+'x' : '—' },
               { label:'Impresiones', val: fmtNum(c.impresiones) },
               { label:'Alcance', val: fmtNum(c.alcance) },
               { label:'Clics', val: fmtNum(c.clics) },
+              { label:'CPC', val: c.cpc ? '$'+c.cpc : '—' },
               { label:'CPM', val: c.cpm ? '$'+c.cpm : '—' },
               { label:'CTR', val: c.ctr ? c.ctr+'%' : '—' },
-              { label:'Período', val: `${fmtDate(c.fechaInicio)}→${fmtDate(c.fechaFin)}` },
+              { label:'Visitas destino', val: fmtNum(c.visitas) },
+              { label:'Conversiones', val: fmtNum(c.conversiones) },
+              { label:'Período', val: `${fmtDate(c.fechaInicio)} → ${fmtDate(c.fechaFin)}` },
             ].map(s => `<div><div class="campaign-stat-label">${s.label}</div><div class="campaign-stat-val">${s.val||'—'}</div></div>`).join('')}
           </div>
           <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;"></div></div>
@@ -1058,13 +1224,85 @@ function renderPauta(container) {
         </div>
       `;
     }).join('')
-    : `<div class="empty-state"><div class="empty-state-icon">📊</div><h3>Sin campañas</h3><p>Agregá tu primera campaña de pauta digital.</p></div>`}
+    : `<div class="empty-state"><i data-lucide="trending-up" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i><h3>Sin campañas</h3><p>${activePautaTab==='todas'?'Agregá tu primera campaña.':'Sin campañas de '+activePautaTab+'.'}</p></div>`}
 
-    <div class="card" style="margin-top:16px;padding:16px;">
-      <div style="font-size:13px;color:var(--text-muted);">
-        💡 <strong>Conectar Meta Ads:</strong> Para importar resultados automáticamente desde Meta Ads Manager,
-        necesitás configurar el token de acceso de la API de Marketing de Meta.
-        Seguí las instrucciones en <code>SETUP.md</code>.
+    <div class="card" style="margin-top:16px;padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;">
+      <div style="font-size:12px;color:#166534;line-height:1.6;">
+        <strong>Conectar automáticamente:</strong> Próximamente podrás sincronizar Meta Ads, Google Ads y TikTok Ads directamente desde el hub, sin cargar datos manualmente.
+        Por ahora cargá los datos de tu reporte de Ads Manager — el equipo COSMART puede ayudarte con esto.
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll('#pauta-tabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePautaTab = btn.dataset.tab;
+      renderPauta(document.getElementById('main-content'));
+      setTimeout(refreshIcons, 50);
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────────
+// INSTRUCCIONES
+// ──────────────────────────────────────────────────────
+function renderInstrucciones(container) {
+  container.innerHTML = `
+    <div style="max-width:780px;">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Bienvenido al Marketing Hub de COSMART</h2></div>
+        <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
+          <p>Este es tu panel de control digital. Desde acá podés gestionar todos los aspectos de tu estrategia de marketing en un solo lugar.</p>
+        </div>
+      </div>
+
+      ${[
+        { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
+          '<strong>Banco de contenidos:</strong> Tabla completa con todos tus posts programados.',
+          '<strong>Calendario:</strong> Vista mensual de las publicaciones.',
+          '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
+          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa de cómo se ve tu perfil.',
+          '<strong>Banco de ideas:</strong> Guardá ideas para trabajarlas después.',
+          '<strong>+ Nuevo contenido:</strong> Completá título, fecha, plataforma, copy y el link de Google Drive de la pieza terminada.',
+        ]},
+        { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
+          'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
+          'Podés arrastrar tareas entre columnas.',
+          'Cada tarea puede tener <strong>subtareas</strong> con su propio avance.',
+          'Las tareas de "Sin empezar" también aparecen en el <strong>To-do del Home</strong>.',
+          'Si una tarea tiene fecha de vencimiento, recibís un email ese día.',
+          'Podés <strong>archivar</strong> tareas completadas para mantener el tablero limpio.',
+        ]},
+        { icon:'trending-up', title:'Pauta Digital', color:'#f59e0b', items:[
+          'Registrá tus campañas de Meta Ads, Google Ads, TikTok Ads o LinkedIn Ads.',
+          'El <strong>ROAS</strong> se calcula automáticamente (Ingresos ÷ Gastado).',
+          'Definí tu <strong>ROAS de equilibrio</strong> para saber si la campaña es rentable.',
+          'La barra de progreso muestra el % del presupuesto ejecutado.',
+        ]},
+        { icon:'map-pin', title:'Google Drive', color:'#ec4899', items:[
+          'Usamos Google Drive para almacenar las piezas gráficas y videos.',
+          '<strong>Pieza terminada:</strong> el archivo listo para publicar.',
+          '<strong>Material de referencia:</strong> fotos brutas, referencias, brief visual.',
+          'Para linkear: abrí el archivo en Drive → botón derecho → "Copiar link" → pegalo en el campo.',
+        ]},
+      ].map(s => `
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-header">
+            <i data-lucide="${s.icon}" style="width:16px;height:16px;color:${s.color};stroke-width:1.75;flex-shrink:0;"></i>
+            <h2 style="font-family:'Playfair Display',serif;">${s.title}</h2>
+          </div>
+          <div class="card-body">
+            <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+              ${s.items.map(item=>`<li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:${s.color};">›</span>${item}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      `).join('')}
+
+      <div class="card" style="border:1px solid #bfdbfe;background:#eff6ff;">
+        <div class="card-body" style="font-size:13px;color:#1d4ed8;line-height:1.7;">
+          <strong>¿Tenés dudas?</strong> Contactá a tu equipo COSMART en <a href="mailto:info@cosmart.com.ar" style="color:#1d4ed8;">info@cosmart.com.ar</a> o por WhatsApp al equipo de COMUNICOS.
+        </div>
       </div>
     </div>
   `;
@@ -1085,6 +1323,14 @@ window.openCampanaModal = function(id) {
   document.getElementById('pf-alcance').value = c.alcance||'';
   document.getElementById('pf-clics').value = c.clics||'';
   document.getElementById('pf-cpm').value = c.cpm||'';
+  document.getElementById('pf-cpc').value = c.cpc||'';
+  document.getElementById('pf-ctr').value = c.ctr||'';
+  document.getElementById('pf-visitas').value = c.visitas||'';
+  document.getElementById('pf-conversiones').value = c.conversiones||'';
+  document.getElementById('pf-ingresos').value = c.ingresos||'';
+  document.getElementById('pf-roas-eq').value = c.roasEq||'';
+  const roas = c.gastado ? ((c.ingresos||0) / c.gastado).toFixed(2) : '';
+  document.getElementById('pf-roas').value = roas;
   document.getElementById('deleteCampanaBtn').style.display = editingCampana ? '' : 'none';
   document.getElementById('campanaModal').classList.remove('hidden');
 };
@@ -1093,10 +1339,38 @@ function closeCampanaModal() { document.getElementById('campanaModal').classList
 document.getElementById('closeCampanaModal').addEventListener('click', closeCampanaModal);
 document.getElementById('closeCampanaModal2').addEventListener('click', closeCampanaModal);
 
+function recalcRoas() {
+  const gastado = +document.getElementById('pf-gastado').value||0;
+  const ingresos = +document.getElementById('pf-ingresos').value||0;
+  document.getElementById('pf-roas').value = gastado ? (ingresos/gastado).toFixed(2) : '';
+}
+document.getElementById('pf-gastado').addEventListener('input', recalcRoas);
+document.getElementById('pf-ingresos').addEventListener('input', recalcRoas);
+
 document.getElementById('saveCampanaBtn').addEventListener('click', async () => {
   const nombre = document.getElementById('pf-nombre').value.trim();
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
-  const obj = { ...(editingCampana||{}), nombre, plataforma: document.getElementById('pf-plataforma').value, estado: document.getElementById('pf-estado').value, presupuesto: +document.getElementById('pf-presupuesto').value||0, gastado: +document.getElementById('pf-gastado').value||0, fechaInicio: document.getElementById('pf-inicio').value, fechaFin: document.getElementById('pf-fin').value, impresiones: +document.getElementById('pf-impresiones').value||0, alcance: +document.getElementById('pf-alcance').value||0, clics: +document.getElementById('pf-clics').value||0, cpm: +document.getElementById('pf-cpm').value||0 };
+  const gastado = +document.getElementById('pf-gastado').value||0;
+  const ingresos = +document.getElementById('pf-ingresos').value||0;
+  const obj = {
+    ...(editingCampana||{}), nombre,
+    plataforma: document.getElementById('pf-plataforma').value,
+    estado: document.getElementById('pf-estado').value,
+    presupuesto: +document.getElementById('pf-presupuesto').value||0,
+    gastado, fechaInicio: document.getElementById('pf-inicio').value,
+    fechaFin: document.getElementById('pf-fin').value,
+    impresiones: +document.getElementById('pf-impresiones').value||0,
+    alcance: +document.getElementById('pf-alcance').value||0,
+    clics: +document.getElementById('pf-clics').value||0,
+    cpm: +document.getElementById('pf-cpm').value||0,
+    cpc: +document.getElementById('pf-cpc').value||0,
+    ctr: +document.getElementById('pf-ctr').value||0,
+    visitas: +document.getElementById('pf-visitas').value||0,
+    conversiones: +document.getElementById('pf-conversiones').value||0,
+    ingresos,
+    roas: gastado ? +(ingresos/gastado).toFixed(2) : 0,
+    roasEq: +document.getElementById('pf-roas-eq').value||0,
+  };
   const saved = await saveCampana(clientId, obj);
   if (editingCampana) { const i = STATE.campanas.findIndex(c => c.id === saved.id); STATE.campanas[i] = saved; }
   else STATE.campanas.push(saved);
@@ -1106,14 +1380,7 @@ document.getElementById('saveCampanaBtn').addEventListener('click', async () => 
 
 document.getElementById('deleteCampanaBtn').addEventListener('click', async () => {
   if (!editingCampana || !confirm('¿Eliminar esta campaña?')) return;
-  const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  const { db, DEMO_MODE } = await import('./firebase.js');
-  if (!DEMO_MODE) await deleteDoc(doc(db, 'clients', clientId, 'campanas', editingCampana.id));
-  else {
-    const data = JSON.parse(localStorage.getItem(`mh_data_${clientId}`)||'{}');
-    data.campanas = (data.campanas||[]).filter(c => c.id !== editingCampana.id);
-    localStorage.setItem(`mh_data_${clientId}`, JSON.stringify(data));
-  }
+  await deleteCampana(clientId, editingCampana.id);
   STATE.campanas = STATE.campanas.filter(c => c.id !== editingCampana.id);
   closeCampanaModal();
   renderPauta(document.getElementById('main-content'));
@@ -1185,10 +1452,41 @@ function driveThumb(url) {
   return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400` : '';
 }
 
+function normUbicacion(u) {
+  if (!u) return [];
+  return Array.isArray(u) ? u : [u];
+}
+
+// ── Idea modal wiring ──────────────────────────────────
+function closeIdeaModal() { document.getElementById('ideaModal').classList.add('hidden'); }
+document.getElementById('closeIdeaModal').addEventListener('click', closeIdeaModal);
+document.getElementById('closeIdeaModal2').addEventListener('click', closeIdeaModal);
+document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
+  const titulo = document.getElementById('if-titulo').value.trim();
+  if (!titulo) { alert('El título es obligatorio.'); return; }
+  const plats = Array.from(document.querySelectorAll('.idea-plat-check:checked')).map(cb => cb.value);
+  const obj = {
+    ...(_editingIdea || {}),
+    titulo,
+    notas: document.getElementById('if-notas').value,
+    formato: document.getElementById('if-formato').value,
+    plataformas: plats,
+  };
+  const saved = await saveIdea(clientId, obj);
+  if (_editingIdea) { const i = STATE.ideas.findIndex(x => x.id === saved.id); STATE.ideas[i] = saved; }
+  else STATE.ideas.push(saved);
+  closeIdeaModal();
+  renderContTab('ideas');
+});
+
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
 
 // ── Start ──────────────────────────────────────────────
+function refreshIcons() {
+  if (window.lucide) window.lucide.createIcons();
+}
+
 init();
