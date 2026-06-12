@@ -7,14 +7,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <div class="layout">
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-name">COSMART</div>
-      <div class="logo-tagline">Marketing Hub</div>
+      <div class="logo-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:#3A8FC7;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        <div>
+          <div class="logo-name">COSMART</div>
+          <div class="logo-tagline">Marketing Hub</div>
+        </div>
+      </div>
       <span id="sb-client-sub"></span>
     </div>
     <div class="sidebar-client">
@@ -22,21 +28,61 @@
       <span id="sb-client-ig"></span>
     </div>
     <nav class="nav-section">
-      <div class="nav-section-label">Panel</div>
+      <div class="nav-section-label">Navegación</div>
       <button class="nav-item active" data-section="home">
-        <span class="icon">🏠</span><span>Home</span>
+        <i data-lucide="compass" class="nav-icon"></i><span>Inicio</span>
       </button>
       <button class="nav-item" data-section="contenidos">
-        <span class="icon">📅</span><span>Contenidos</span>
+        <i data-lucide="pen-line" class="nav-icon"></i><span>Contenidos</span>
       </button>
       <button class="nav-item" data-section="tareas">
-        <span class="icon">✅</span><span>Tareas</span>
+        <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
         <span class="badge" id="badge-tareas">0</span>
       </button>
       <button class="nav-item" data-section="pauta">
-        <span class="icon">📊</span><span>Pauta Digital</span>
+        <i data-lucide="trending-up" class="nav-icon"></i><span>Pauta Digital</span>
+      </button>
+      <button class="nav-item" data-section="instrucciones">
+        <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
       </button>
     </nav>
+    <!-- COSMART Puertos -->
+    <div class="sidebar-cosmart">
+      <div class="sidebar-cosmart-label">Puertos COSMART</div>
+      <div class="sidebar-puertos">
+        <a href="https://cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto COSMART — Estrategia y consultoría">
+          <i data-lucide="anchor" class="puerto-icon"></i><span>COSMART</span>
+        </a>
+        <a href="https://comunicos.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto COMUNICOS — Community Management">
+          <i data-lucide="radio" class="puerto-icon"></i><span>COMUNICOS</span>
+        </a>
+        <a href="https://desin.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto DESIN — Diseño y Branding">
+          <i data-lucide="pen-tool" class="puerto-icon"></i><span>DESIN</span>
+        </a>
+        <a href="https://rumbovoz.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto RUMBO VORAZ — Pauta y Performance">
+          <i data-lucide="target" class="puerto-icon"></i><span>RUMBO VORAZ</span>
+        </a>
+        <a href="https://euforia.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto EUFORIA — UGC e Influencers">
+          <i data-lucide="star" class="puerto-icon"></i><span>EUFORIA</span>
+        </a>
+        <a href="https://talent.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto TALENT — Personal Branding">
+          <i data-lucide="user-check" class="puerto-icon"></i><span>TALENT</span>
+        </a>
+        <a href="https://shows.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto SHOWS — Eventos">
+          <i data-lucide="music" class="puerto-icon"></i><span>SHOWS</span>
+        </a>
+        <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto MPG — Chatbots y automatización">
+          <i data-lucide="message-circle" class="puerto-icon"></i><span>MPG</span>
+        </a>
+      </div>
+      <a href="https://cosmart.com.ar/curso-ecommerce" target="_blank" class="sidebar-course-card">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <i data-lucide="package-search" style="width:14px;height:14px;stroke-width:1.75;"></i>
+          <span style="font-weight:700;font-size:11px;">Productos Ganadores</span>
+        </div>
+        <div style="font-size:10px;opacity:0.75;line-height:1.4;">Curso ecommerce — ver →</div>
+      </a>
+    </div>
     <div class="sidebar-footer">
       <button class="btn-logout" id="logoutBtn">Cerrar sesión</button>
     </div>
@@ -102,13 +148,13 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Ubicación</label>
-          <select id="cf-ubicacion" class="form-control">
-            <option>Feed</option>
-            <option>Story</option>
-            <option>Reel</option>
-            <option>Carrusel</option>
-          </select>
+          <label>Ubicación (múltiple)</label>
+          <div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Feed" class="ubic-check"> Feed</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Story" class="ubic-check"> Story</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Reel" class="ubic-check"> Reel</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Carrusel" class="ubic-check"> Carrusel</label>
+          </div>
         </div>
         <div class="form-group">
           <label>Formato</label>
@@ -162,9 +208,14 @@
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>Link de imagen/video en Google Drive</label>
+          <label>🎨 Pieza terminada / entrega final</label>
           <input type="url" id="cf-drive" class="form-control" placeholder="https://drive.google.com/file/d/...">
-          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Pegá el link de Drive del archivo (imagen, video, diseño)</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Link de Drive de la pieza o video terminado, listo para publicar</span>
+        </div>
+        <div class="form-group" style="grid-column:span 3;">
+          <label>📁 Material de referencia / bruto</label>
+          <input type="url" id="cf-drive-ref" class="form-control" placeholder="https://drive.google.com/file/d/...">
+          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Fotos originales, material bruto o referencias de diseño para trabajar</span>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
@@ -222,16 +273,74 @@
             <option>Baja</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Fecha de vencimiento</label>
+          <input type="date" id="tf-vencimiento" class="form-control">
+        </div>
         <div class="form-group span-2">
           <label>Notas</label>
           <textarea id="tf-notas" class="form-control" rows="2"></textarea>
+        </div>
+        <!-- Subtareas -->
+        <div class="form-group span-2" id="subtareas-section" style="display:none;">
+          <label style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Subtareas</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="addSubtareaBtn">+ Agregar</button>
+          </label>
+          <div id="subtareas-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;"></div>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="deleteTareaBtn" style="margin-right:auto;">Eliminar</button>
+      <button class="btn btn-secondary btn-sm" id="archiveTareaBtn" style="margin-right:8px;">Archivar</button>
       <button class="btn btn-secondary" id="closeTareaModal2">Cancelar</button>
       <button class="btn btn-primary" id="saveTareaBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Idea -->
+<div id="ideaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 id="idea-modal-title">Nueva idea</h3>
+      <button class="modal-close" id="closeIdeaModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label>Título *</label>
+          <input type="text" id="if-titulo" class="form-control" placeholder="¿De qué trata la idea?">
+        </div>
+        <div class="form-group">
+          <label>Formato</label>
+          <select id="if-formato" class="form-control">
+            <option>Imagen</option>
+            <option>Video</option>
+            <option>Reel</option>
+            <option>Carrusel</option>
+            <option>Story</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Plataformas</label>
+          <div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Instagram" class="idea-plat-check"> Instagram</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Facebook" class="idea-plat-check"> Facebook</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="LinkedIn" class="idea-plat-check"> LinkedIn</label>
+            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="TikTok" class="idea-plat-check"> TikTok</label>
+          </div>
+        </div>
+        <div class="form-group span-2">
+          <label>Notas / descripción</label>
+          <textarea id="if-notas" class="form-control" rows="3" placeholder="Describí la idea, referencia, inspiración..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeIdeaModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveIdeaBtn">Guardar idea</button>
     </div>
   </div>
 </div>
@@ -299,6 +408,36 @@
           <label>CPM ($)</label>
           <input type="number" id="pf-cpm" class="form-control" step="0.01" placeholder="0.00">
         </div>
+        <div class="form-group">
+          <label>CPC ($) — costo por clic</label>
+          <input type="number" id="pf-cpc" class="form-control" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>CTR (%) — tasa de clics</label>
+          <input type="number" id="pf-ctr" class="form-control" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Visitas en página de destino</label>
+          <input type="number" id="pf-visitas" class="form-control" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Conversiones</label>
+          <input type="number" id="pf-conversiones" class="form-control" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Ingresos generados ($)</label>
+          <input type="number" id="pf-ingresos" class="form-control" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>ROAS — retorno sobre inversión</label>
+          <input type="number" id="pf-roas" class="form-control" step="0.01" placeholder="0.00" readonly style="background:#f8fafc;">
+          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Se calcula automáticamente: Ingresos ÷ Gastado</span>
+        </div>
+        <div class="form-group">
+          <label>ROAS de equilibrio (break-even)</label>
+          <input type="number" id="pf-roas-eq" class="form-control" step="0.01" placeholder="Ej: 2.5">
+          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">¿A partir de qué ROAS la campaña es rentable?</span>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -310,5 +449,11 @@
 </div>
 
 <script type="module" src="../js/app.js"></script>
+<script>
+  // Inicializar iconos Lucide después de que cargue el módulo
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
 </body>
 </html>
