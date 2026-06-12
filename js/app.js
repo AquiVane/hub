@@ -15,7 +15,7 @@ const params = new URLSearchParams(window.location.search);
 const clientId = params.get('client') || user.clientId;
 if (!clientId) { window.location.href = '../admin/index.html'; }
 
-let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {} };
+let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
 let editingContenido = null;
 let editingTarea = null;
@@ -46,6 +46,7 @@ async function loadAllData() {
   STATE.metricas = metricas;
   STATE.home = home;
   STATE.ideas = ideas;
+  STATE.links = home.links || [];
   updateBadges();
 }
 
@@ -67,8 +68,8 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
-  const titles = { home: 'Inicio', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -78,7 +79,13 @@ function renderSection(sec) {
   const content = document.getElementById('main-content');
 
   if (sec === 'home') { renderHome(content); setTimeout(refreshIcons, 50); }
+  else if (sec === 'dashboard') { renderDashboard(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
+    const rptBtn = document.createElement('button');
+    rptBtn.className = 'btn btn-secondary';
+    rptBtn.textContent = '📊 Reporte';
+    rptBtn.onclick = () => openReporteModal();
+    actions.appendChild(rptBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nuevo contenido';
@@ -105,11 +112,183 @@ function renderSection(sec) {
     renderPauta(content);
     setTimeout(refreshIcons, 50);
   }
+  else if (sec === 'links') {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Nuevo link';
+    btn.onclick = () => openLinkModal(null);
+    actions.appendChild(btn);
+    renderLinks(content);
+    setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'web') {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Nueva tarea web';
+    btn.onclick = () => openWebTaskModal(null);
+    actions.appendChild(btn);
+    renderWeb(content);
+    setTimeout(refreshIcons, 50);
+  }
   else if (sec === 'instrucciones') {
     renderInstrucciones(content);
     setTimeout(refreshIcons, 50);
   }
 }
+
+// ──────────────────────────────────────────────────────
+// DASHBOARD EDITORIAL
+// ──────────────────────────────────────────────────────
+let dashYear = new Date().getFullYear();
+let dashMonth = new Date().getMonth(); // 0-based
+
+function renderDashboard(container) {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DIAS = ['L','M','Mi','J','V','S','D'];
+  const yearStr = dashYear;
+  const monthStr = String(dashMonth + 1).padStart(2, '0');
+  const prefix = `${yearStr}-${monthStr}`;
+
+  const conts = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(prefix));
+
+  // ── STAT PILLS ──
+  const total = conts.length;
+  const publicados = conts.filter(c => c.estado === 'Publicado').length;
+  const programados = conts.filter(c => c.estado === 'Programado').length;
+  const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
+
+  // ── FORMATO breakdown ──
+  const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
+  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f => { formatos[f] = (formatos[f]||0)+1; }); });
+  const maxFormato = Math.max(1, ...Object.values(formatos));
+
+  // ── TIPO breakdown ──
+  const tipos = {};
+  conts.forEach(c => { const t = c.tipo || 'Sin tipo'; tipos[t] = (tipos[t]||0)+1; });
+  const maxTipo = Math.max(1, ...Object.values(tipos));
+
+  // ── EJE breakdown ──
+  const ejes = {};
+  conts.forEach(c => { const e = c.eje || 'Sin eje'; ejes[e] = (ejes[e]||0)+1; });
+  const maxEje = Math.max(1, ...Object.values(ejes));
+
+  // ── FRECUENCIA SEMANAL ──
+  // Build weeks: group days of month into S1..S4 by week-of-month
+  const daysInMonth = new Date(dashYear, dashMonth + 1, 0).getDate();
+  // For each week (S1-S4), collect Mon-Sun buckets
+  const weeks = [[], [], [], []]; // each: [L,M,Mi,J,V,S,D] count
+  for (let w = 0; w < 4; w++) weeks[w] = [0,0,0,0,0,0,0];
+  // day 1..daysInMonth
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(dashYear, dashMonth, d);
+    const dow = (date.getDay() + 6) % 7; // 0=Mon..6=Sun
+    const weekIdx = Math.min(3, Math.floor((d - 1) / 7));
+    const dateStr = `${yearStr}-${monthStr}-${String(d).padStart(2,'0')}`;
+    const count = conts.filter(c => c.fechaPub === dateStr).length;
+    weeks[weekIdx][dow] += count;
+  }
+
+  // ── BAR CHART helper ──
+  const COLORS = ['#3A8FC7','#1A4DAA','#10b981','#f59e0b','#ec4899','#8b5cf6','#e02020'];
+  function barRows(data, maxVal) {
+    return Object.entries(data).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([label, val], i) =>
+      `<div class="dash-bar-row">
+        <div class="dash-bar-label">${label}</div>
+        <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${Math.round(val/maxVal*100)}%;background:${COLORS[i%COLORS.length]}"></div></div>
+        <div class="dash-bar-val">${val}</div>
+      </div>`
+    ).join('');
+  }
+
+  function freqCell(n) {
+    if (n === 0) return `<td><span class="freq-cell-0">·</span></td>`;
+    const cls = n === 1 ? 'freq-cell-1' : n === 2 ? 'freq-cell-2' : n === 3 ? 'freq-cell-3' : 'freq-cell-many';
+    return `<td><span class="${cls}">${n}</span></td>`;
+  }
+
+  const freqRows = weeks.map((week, wi) => {
+    const weekTotal = week.reduce((s,v) => s+v, 0);
+    if (wi > 0 && weeks.slice(0,wi).every(w => w.reduce((s,v)=>s+v,0) === 0) && weekTotal === 0) return '';
+    return `
+      <tr>
+        <td class="cat-label week-sep" style="color:var(--primary);font-weight:700;">S${wi+1}</td>
+        ${week.map(n => `<td class="week-sep">${n > 0 ? `<span class="${n===1?'freq-cell-1':n===2?'freq-cell-2':n===3?'freq-cell-3':'freq-cell-many'}">${n}</span>` : '<span class="freq-cell-0">·</span>'}</td>`).join('')}
+        <td class="week-sep" style="font-weight:700;color:var(--primary);font-size:11px;">${weekTotal}</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">Dashboard Calendario Editorial</div>
+        <div class="dash-meta">Cliente: <strong>${STATE.client.nombre || STATE.client.name || clientId}</strong></div>
+      </div>
+      <div class="dash-month-nav">
+        <button onclick="dashNavMonth(-1)">‹</button>
+        <div class="dash-month-label">${MESES[dashMonth]} ${dashYear}</div>
+        <button onclick="dashNavMonth(1)">›</button>
+      </div>
+    </div>
+
+    <div class="dash-stat-row">
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val">${total}</div><div class="dash-stat-pill-label">Total del mes</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#22c55e">${publicados}</div><div class="dash-stat-pill-label">Publicados</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3b82f6">${programados}</div><div class="dash-stat-pill-label">Programados</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
+    </div>
+
+    <div class="dash-layout">
+      <div>
+        <div class="dash-card">
+          <div class="dash-card-title">Frecuencia de contenidos</div>
+          <table class="freq-grid">
+            <thead>
+              <tr>
+                <th class="week-header">Semana</th>
+                ${DIAS.map(d => `<th>${d}</th>`).join('')}
+                <th>Tot.</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${freqRows || `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">Sin contenidos este mes</td></tr>`}
+              <tr style="border-top:2px solid var(--border);">
+                <td class="cat-label" style="font-weight:700;color:var(--text-muted);">Total</td>
+                ${[0,1,2,3,4,5,6].map(d => {
+                  const tot = weeks.reduce((s,w) => s+w[d], 0);
+                  return `<td style="font-weight:${tot?'700':'400'};color:${tot?'var(--primary)':'#cbd5e1'};font-size:11px;">${tot||'·'}</td>`;
+                }).join('')}
+                <td style="font-weight:700;color:var(--primary);font-size:12px;">${total}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div class="dash-card">
+          <div class="dash-card-title">Formato de contenidos</div>
+          ${Object.values(formatos).some(v=>v>0) ? barRows(formatos, maxFormato) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title">Eje de comunicación</div>
+          ${Object.keys(ejes).length ? barRows(ejes, maxEje) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title">Tipo de contenido</div>
+          ${Object.keys(tipos).length ? barRows(tipos, maxTipo) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.dashNavMonth = function(dir) {
+  dashMonth += dir;
+  if (dashMonth < 0) { dashMonth = 11; dashYear--; }
+  if (dashMonth > 11) { dashMonth = 0; dashYear++; }
+  const content = document.getElementById('main-content');
+  renderDashboard(content);
+};
 
 // ──────────────────────────────────────────────────────
 // HOME
@@ -128,13 +307,13 @@ function renderHome(container) {
   container.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
-        { label: 'Contenidos este mes', val: pubMes, icon: '📅' },
-        { label: 'En proceso', val: enProceso, icon: '✏️' },
-        { label: 'Aprobados', val: aprobados, icon: '✅' },
-        { label: 'Publicados', val: publicados, icon: '🚀' },
+        { label: 'Contenidos este mes', val: pubMes, icon: 'calendar' },
+        { label: 'En proceso', val: enProceso, icon: 'pen-line' },
+        { label: 'Aprobados', val: aprobados, icon: 'check-circle' },
+        { label: 'Publicados', val: publicados, icon: 'send' },
       ].map(m => `
         <div class="card" style="padding:16px;">
-          <div style="font-size:22px;margin-bottom:6px;">${m.icon}</div>
+          <i data-lucide="${m.icon}" class="stat-icon"></i>
           <div style="font-size:24px;font-weight:800;">${m.val}</div>
           <div style="font-size:12px;color:var(--text-muted);">${m.label}</div>
         </div>
@@ -145,7 +324,8 @@ function renderHome(container) {
       <!-- Prioridades del mes -->
       <div class="card">
         <div class="card-header">
-          <h2>⭐ Prioridades de ${mesStr}</h2>
+          <i data-lucide="star" style="width:15px;height:15px;color:#f59e0b;stroke-width:1.75;"></i>
+          <h2>Prioridades de ${mesStr}</h2>
           <button class="btn btn-secondary btn-sm" onclick="editPrioridades()" style="margin-left:auto;">Editar</button>
         </div>
         <div class="card-body">
@@ -165,7 +345,8 @@ function renderHome(container) {
       <!-- To-do del día -->
       <div class="card">
         <div class="card-header">
-          <h2>📋 To-do — ${diaStr}</h2>
+          <i data-lucide="check-square" style="width:15px;height:15px;color:var(--accent);stroke-width:1.75;"></i>
+          <h2>To-do — ${diaStr}</h2>
           <button class="btn btn-secondary btn-sm" onclick="addTodoItem()" style="margin-left:auto;">+ Agregar</button>
         </div>
         <div class="card-body">
@@ -199,7 +380,10 @@ function renderHome(container) {
 
     <!-- Contenidos próximos -->
     <div class="card">
-      <div class="card-header"><h2>📅 Próximas publicaciones</h2></div>
+      <div class="card-header">
+        <i data-lucide="calendar" style="width:15px;height:15px;color:var(--accent);stroke-width:1.75;"></i>
+        <h2>Próximas publicaciones</h2>
+      </div>
       <div class="card-body" style="padding:0;">
         ${(() => {
           const hoyStr = hoy.toISOString().split('T')[0];
@@ -223,6 +407,56 @@ function renderHome(container) {
         })()}
       </div>
     </div>
+    ${(() => {
+      const archivadas = STATE.tareas.filter(t => t.archivado);
+      return archivadas.length ? `
+        <div style="text-align:right;margin-top:12px;">
+          <button class="btn btn-secondary btn-sm" onclick="renderSection('tareas');document.querySelector('[data-section=tareas]').click();" style="font-size:11px;color:var(--text-muted);">
+            📦 Ver tareas archivadas (${archivadas.length})
+          </button>
+        </div>
+      ` : '';
+    })()}
+
+    <!-- Sitio Web widget -->
+    ${(() => {
+      const wt = STATE.home.webTareas || [];
+      const pend = wt.filter(t => t.estado !== 'Listo');
+      if (!wt.length) return `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <i data-lucide="globe" style="width:15px;height:15px;color:#64748b;stroke-width:1.75;"></i>
+            <h2>Sitio Web</h2>
+            <button class="btn btn-secondary btn-sm" onclick="renderSection('web');document.querySelector('[data-section=web]').click();" style="margin-left:auto;">Ver todo</button>
+          </div>
+          <div class="card-body" style="padding:12px 20px;">
+            <button class="btn btn-primary btn-sm" onclick="openWebTaskModal(null)">+ Cargar primera tarea web</button>
+          </div>
+        </div>`;
+      return `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <i data-lucide="globe" style="width:15px;height:15px;color:#64748b;stroke-width:1.75;"></i>
+            <h2>Sitio Web <span style="font-size:12px;font-weight:400;color:var(--text-muted);">${pend.length} pendiente${pend.length!==1?'s':''}</span></h2>
+            <button class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-section=web]').click();" style="margin-left:auto;">Ver todo</button>
+            <button class="btn btn-primary btn-sm" onclick="openWebTaskModal(null)">+</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead><tr><th>Tarea</th><th>Categoría</th><th>Estado</th><th>Vence</th><th></th></tr></thead>
+              <tbody>${pend.slice(0,5).map(t => `
+                <tr>
+                  <td style="font-weight:500;">${t.titulo}</td>
+                  <td><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);">${t.categoria||'Otro'}</span></td>
+                  <td>${t.estado}</td>
+                  <td style="font-size:12px;color:var(--text-muted);">${t.vencimiento ? fmtDate(t.vencimiento) : '—'}</td>
+                  <td><button class="btn btn-secondary btn-sm" onclick="openWebTaskModal('${t.id}')">✏️</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    })()}
   `;
 }
 
@@ -274,13 +508,8 @@ window.removeTodo = async function(id) {
   renderSection('home');
 };
 
-window.addTodoItem = async function() {
-  const text = prompt('Nueva tarea para hoy:');
-  if (!text || !text.trim()) return;
-  STATE.home.todos = STATE.home.todos || [];
-  STATE.home.todos.push({ id: Date.now(), text: text.trim(), done: false });
-  await saveHomeData(clientId, STATE.home);
-  renderSection('home');
+window.addTodoItem = function() {
+  openTareaModal(null);
 };
 
 // ──────────────────────────────────────────────────────
@@ -358,9 +587,9 @@ function renderBancoContenidos(container) {
               <td>${c.tipo||''}</td>
               <td>${statusBadge(c.estado)}</td>
               <td class="text-sm text-muted">${c.cuenta||''}</td>
-              <td>${c.formato||''}</td>
+              <td>${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
               <td>${c.objetivo||''}</td>
-              <td>${c.linkDrive ? `<a class="drive-link" href="${c.linkDrive}" target="_blank" title="${c.linkDrive}">📎 Drive</a>` : ''}</td>
+              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" title="${firstLink(c.linkDrive)}">📎 Drive</a>` : ''}</td>
               <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
               <td>
                 <div style="display:flex;gap:4px;">
@@ -403,7 +632,10 @@ function renderCalendario(container) {
       const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr);
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
-        <div class="cal-day-num">${cellDate.getDate()}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="cal-day-num">${cellDate.getDate()}</div>
+          ${!isOther ? `<button onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;border-radius:3px;" title="Agregar contenido" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
+        </div>
         ${dayConts.map(c => `
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
                onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
@@ -437,12 +669,12 @@ function renderCalendario(container) {
 // ─ Kanban Estados ─
 function renderKanbanContenidos(container) {
   const cols = [
-    { key: 'Idea', label: '💡 Idea', cls: 's-idea' },
-    { key: 'En proceso', label: '✏️ En proceso', cls: 's-proceso' },
-    { key: 'En revisión', label: '👁 En revisión', cls: 's-revision' },
-    { key: 'Aprobado', label: '✅ Aprobado', cls: 's-aprobado' },
-    { key: 'Programado', label: '📅 Programado', cls: 's-programado' },
-    { key: 'Publicado', label: '🚀 Publicado', cls: 's-publicado' },
+    { key: 'Idea', label: 'Idea', cls: 's-idea' },
+    { key: 'En proceso', label: 'En proceso', cls: 's-proceso' },
+    { key: 'En revisión', label: 'En revisión', cls: 's-revision' },
+    { key: 'Aprobado', label: 'Aprobado', cls: 's-aprobado' },
+    { key: 'Programado', label: 'Programado', cls: 's-programado' },
+    { key: 'Publicado', label: 'Publicado', cls: 's-publicado' },
   ];
 
   container.innerHTML = `<div class="kanban-board" id="kanban-cont">${cols.map(col => {
@@ -482,74 +714,107 @@ function renderKanbanContenidos(container) {
 }
 
 // ─ Feed IG ─
+let _igFilter = 'Aprobado';
+const FEED_FILTERS = [
+  { val: 'todas', label: 'Todas' },
+  { val: 'Sin empezar', label: 'Sin empezar' },
+  { val: 'En proceso', label: 'En proceso' },
+  { val: 'En revisión', label: 'En revisión' },
+  { val: 'Aprobado', label: 'Aprobadas' },
+  { val: 'Publicado', label: 'Publicadas' },
+];
+
+window.setIgFilter = function(val) { _igFilter = val; renderContTab('feed-ig'); };
+
 function renderFeedIG(container) {
-  const feedItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story'))
-    .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1)
-    .slice(0, 9);
+  const all = STATE.contenidos
+    .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion||[]).includes('Story'))
+    .sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1); // ASC: próximos primero
+
+  const filtered = _igFilter === 'todas' ? all : all.filter(c => c.estado === _igFilter);
+  const feedItems = filtered.slice(0, 9);
 
   const client = STATE.client;
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setIgFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_igFilter===f.val?'var(--primary)':'var(--border)'};background:${_igFilter===f.val?'var(--primary)':'transparent'};color:${_igFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;font-weight:${_igFilter===f.val?'600':'400'}">${f.label}</button>`
+  ).join('');
+
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
+      ${filterBtns}
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">${filtered.length} contenido${filtered.length!==1?'s':''}</span>
+    </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
-      <div class="phone-device" style="width:360px;">
+      <div class="phone-device">
         <div class="phone-screen">
-          <!-- Header de perfil -->
           <div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
             <div class="ig-avatar"></div>
             <div>
               <div style="font-weight:700;font-size:13px;">${client.instagram||'@cuenta'}</div>
-              <div style="font-size:10px;color:#666;">${feedItems.length} publicaciones</div>
+              <div style="font-size:10px;color:#666;">${all.filter(c=>c.estado==='Publicado').length} publicaciones</div>
             </div>
           </div>
-          <!-- Grid feed -->
           <div class="feed-grid">
-            ${feedItems.map(c => `
-              <div class="feed-cell" onclick="openPreview('${c.id}')">
-                ${c.linkDrive
-                  ? `<img src="${driveThumb(c.linkDrive)}" onerror="this.parentElement.querySelector('.feed-cell-empty').style.display='flex';this.style.display='none';">`
-                  : ''
-                }
-                <div class="feed-cell-empty" style="${c.linkDrive ? 'display:none' : ''}">${platIcon('Instagram')}</div>
+            ${feedItems.map(c => {
+              const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+              const imgTag = thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : '';
+              return `
+              <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
+                ${imgTag}
+                <div class="feed-cell-empty" style="${thumb?'display:none':''};">${platIcon('Instagram')}</div>
                 <div class="feed-cell-overlay">
-                  <div style="font-size:10px;font-weight:600;">${c.titulo}</div>
-                  <div style="margin-top:4px;">${statusBadge(c.estado)}</div>
+                  <div style="font-size:9px;font-weight:600;line-height:1.2;">${c.titulo}</div>
+                  <div style="margin-top:3px;">${statusDot(c.estado)}</div>
                 </div>
-                <div class="feed-cell-status">${statusDot(c.estado)}</div>
-              </div>
-            `).join('')}
+              </div>`;
+            }).join('')}
             ${Array(Math.max(0, 9 - feedItems.length)).fill(0).map(() =>
-              `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;">+</div></div>`
+              `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;font-size:20px;">+</div></div>`
             ).join('')}
           </div>
         </div>
         <div class="phone-label">Feed Instagram</div>
       </div>
 
-      <!-- Lista lateral -->
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Instagram (Feed)</h3>
-        ${feedItems.length ? feedItems.map(c => `
-          <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;">${c.titulo}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)} · ${c.formato||''}</div>
+        ${filtered.length ? filtered.map(c => {
+          const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+          return `
+          <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">${platIcon('Instagram')}</div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
-            <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁 Preview</button>
-          </div>
-        `).join('') : `<div class="empty-state"><p>No hay posts de Instagram Feed.</p></div>`}
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No hay contenidos con ese filtro.</p></div>`}
       </div>
     </div>
   `;
 }
 
 // ─ Muro FB ─
+let _fbFilter = 'Aprobado';
+window.setFbFilter = function(val) { _fbFilter = val; renderContTab('muro-fb'); };
+
 function renderMuroFB(container) {
-  const fbItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Facebook') && !normUbicacion(c.ubicacion).includes('Story'))
-    .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1);
+  const all = STATE.contenidos
+    .filter(c => (c.plataformas||[]).includes('Facebook') && !normUbicacion(c.ubicacion||[]).includes('Story'))
+    .sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1);
+  const fbItems = _fbFilter === 'todas' ? all : all.filter(c => c.estado === _fbFilter);
+
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setFbFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_fbFilter===f.val?'var(--primary)':'var(--border)'};background:${_fbFilter===f.val?'var(--primary)':'transparent'};color:${_fbFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;">${f.label}</button>`
+  ).join('');
 
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>${filterBtns}
+    </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
       <div class="phone-device" style="width:300px;">
         <div class="phone-screen" style="background:#f0f2f5;">
@@ -566,7 +831,7 @@ function renderMuroFB(container) {
                 </div>
               </div>
               <div class="fb-text">${(c.copy||c.titulo||'').slice(0,80)}${(c.copy||'').length>80?'...':''}</div>
-              <div class="fb-image">${c.linkDrive?`<img src="${driveThumb(c.linkDrive)}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
+              <div class="fb-image">${firstLink(c.linkDrive)?`<img src="${driveThumb(firstLink(c.linkDrive))}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
             </div>
           `).join('')}
         </div>
@@ -575,59 +840,67 @@ function renderMuroFB(container) {
 
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Facebook</h3>
-        ${fbItems.length ? fbItems.map(c => `
-          <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;">${c.titulo}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)} · ${c.formato||''}</div>
+        ${fbItems.length ? fbItems.map(c => {
+          const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+          return `
+          <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;">📘</div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
-            <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁 Preview</button>
-          </div>
-        `).join('') : `<div class="empty-state"><p>No hay posts de Facebook.</p></div>`}
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No hay posts con ese filtro.</p></div>`}
       </div>
     </div>
   `;
 }
 
 // ─ Stories ─
+let _storiesFilter = 'todas';
+window.setStoriesFilter = function(val) { _storiesFilter = val; renderContTab('stories-ig'); };
+
 function renderStories(container) {
-  const stories = STATE.contenidos.filter(c =>
-    (c.plataformas||[]).includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')
-  );
+  const all = STATE.contenidos.filter(c =>
+    (c.plataformas||[]).includes('Instagram') && normUbicacion(c.ubicacion||[]).includes('Story')
+  ).sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1);
+
+  const stories = _storiesFilter === 'todas' ? all : all.filter(c => c.estado === _storiesFilter);
+
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setStoriesFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_storiesFilter===f.val?'var(--primary)':'var(--border)'};background:${_storiesFilter===f.val?'var(--primary)':'transparent'};color:${_storiesFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;">${f.label}</button>`
+  ).join('');
 
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>${filterBtns}
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">${stories.length} story${stories.length!==1?'s':''}</span>
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
-      ${stories.length ? stories.slice(0,4).map(c => `
+      ${stories.length ? stories.map(c => {
+        const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+        return `
         <div>
-          <div class="phone-device" style="width:180px;">
-            <div class="phone-screen">
+          <div class="phone-device" style="width:170px;">
+            <div class="phone-screen" style="min-height:300px;">
               <div class="story-preview">
-                ${c.linkDrive
-                  ? `<img src="${driveThumb(c.linkDrive)}" onerror="this.style.display='none'">`
-                  : '<div class="story-preview-empty">▯</div>'
-                }
-                <div class="story-bar">
-                  <div class="story-bar-seg active"></div>
-                  <div class="story-bar-seg"></div>
-                  <div class="story-bar-seg"></div>
-                </div>
-                <div class="story-user">
-                  <div class="story-avatar"></div>
-                  <span class="story-uname">${STATE.client.instagram||'@cuenta'}</span>
-                </div>
+                ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display='none'">` : '<div class="story-preview-empty">▯</div>'}
+                <div class="story-bar"><div class="story-bar-seg active"></div><div class="story-bar-seg"></div><div class="story-bar-seg"></div></div>
+                <div class="story-user"><div class="story-avatar"></div><span class="story-uname">${STATE.client.instagram||'@cuenta'}</span></div>
                 <div class="story-caption">${(c.copy||c.titulo||'').slice(0,60)}</div>
               </div>
             </div>
           </div>
-          <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,20)}</div>
+          <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,22)}</div>
           <div style="text-align:center;margin-top:4px;">${statusBadge(c.estado)}</div>
           <div style="text-align:center;margin-top:6px;">
-            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button>
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️ Editar</button>
           </div>
-        </div>
-      `).join('')
-      : `<div class="empty-state w-full"><div class="empty-state-icon">▯</div><h3>Sin stories</h3><p>Agregá contenidos con ubicación "Story" e Instagram como plataforma.</p></div>`}
+        </div>`;
+      }).join('')
+      : `<div class="empty-state"><div class="empty-state-icon">▯</div><h3>Sin stories</h3><p>Agregá contenidos con ubicación "Story" e Instagram.</p></div>`}
     </div>
   `;
 }
@@ -687,7 +960,7 @@ window.promoverIdea = async function(id) {
   const saved = await saveContenido(clientId, nuevo);
   STATE.contenidos.push(saved);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
-  await (async() => { const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"); })().catch(()=>{});
+  await deleteIdea(clientId, id).catch(() => {});
   renderContTab('banco');
   activeContTab = 'banco';
   document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab==='banco'));
@@ -773,8 +1046,8 @@ window.openPreview = function(id) {
   const client = STATE.client;
   const ig = client.instagram || '@cuenta';
   const fbName = client.facebook || client.nombre || 'Página';
-  const imgHtml = c.linkDrive
-    ? `<img src="${driveThumb(c.linkDrive)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+  const imgHtml = firstLink(c.linkDrive)
+    ? `<img src="${driveThumb(firstLink(c.linkDrive))}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
     : '';
   const copy = c.copy || c.titulo || '';
   const plats = c.plataformas || [];
@@ -906,62 +1179,293 @@ document.getElementById('closePreviewModal').addEventListener('click', closePrev
 // ──────────────────────────────────────────────────────
 // MODAL CONTENIDO
 // ──────────────────────────────────────────────────────
+
+// Platform → allowed ubicaciones
+const PLAT_UBIC = {
+  Instagram: ['Feed', 'Story', 'Reel', 'Carrusel'],
+  Facebook: ['Feed', 'Story', 'Reel'],
+  LinkedIn: ['Feed'],
+  'Twitter / X': ['Feed'],
+  TikTok: ['Feed', 'Story'],
+  YouTube: ['Feed', 'Shorts'],
+  'Sitio Web': ['Página', 'Banner'],
+  Blog: ['Artículo', 'Banner'],
+};
+
+// Platform → allowed formatos
+const PLAT_FORMAT = {
+  Instagram: ['Imagen', 'Video', 'Reel', 'Carrusel', 'Story', 'GIF'],
+  Facebook: ['Imagen', 'Video', 'Carrusel', 'Story', 'GIF'],
+  LinkedIn: ['Imagen', 'Video', 'Carrusel', 'Documento'],
+  'Twitter / X': ['Imagen', 'Video', 'GIF'],
+  TikTok: ['Video'],
+  YouTube: ['Video'],
+  'Sitio Web': ['Imagen', 'Video', 'GIF', 'Documento'],
+  Blog: ['Imagen', 'Video', 'GIF', 'Documento'],
+};
+
+function updatePlatFilters() {
+  const selectedPlats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
+
+  // Compute union of allowed ubicaciones/formatos
+  const ubicSet = new Set();
+  const fmtSet = new Set();
+  selectedPlats.forEach(p => {
+    (PLAT_UBIC[p] || []).forEach(u => ubicSet.add(u));
+    (PLAT_FORMAT[p] || []).forEach(f => fmtSet.add(f));
+  });
+
+  const prevUbic = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  const prevFmt = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+
+  const ubicDiv = document.getElementById('ubic-dynamic');
+  const fmtDiv = document.getElementById('formato-dynamic');
+
+  if (ubicSet.size === 0) {
+    ubicDiv.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>';
+    fmtDiv.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>';
+    return;
+  }
+
+  ubicDiv.innerHTML = [...ubicSet].map(u =>
+    `<label class="check-label"><input type="checkbox" value="${u}" class="ubic-check"${prevUbic.includes(u) ? ' checked' : ''}> ${u}</label>`
+  ).join('');
+
+  fmtDiv.innerHTML = [...fmtSet].map(f =>
+    `<label class="check-label"><input type="checkbox" value="${f}" class="fmt-check"${prevFmt.includes(f) ? ' checked' : ''}> ${f}</label>`
+  ).join('');
+}
+
+// Multiple drive links
+let _driveLinks = [];
+let _refLinks = [];
+
+function renderDriveLinks(type) {
+  const arr = type === 'drive' ? _driveLinks : _refLinks;
+  const container = document.getElementById(type === 'drive' ? 'drive-links-list' : 'ref-links-list');
+  container.innerHTML = arr.map((url, i) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+      <input type="url" class="form-control" value="${url}" placeholder="https://drive.google.com/..." oninput="updateDriveLink('${type}',${i},this.value)" style="flex:1;">
+      ${url ? `<a href="${url}" target="_blank" style="font-size:12px;color:var(--accent);white-space:nowrap;text-decoration:none;" title="Abrir">↗</a>` : ''}
+      <button type="button" onclick="removeDriveLink('${type}',${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;" title="Quitar">×</button>
+    </div>
+  `).join('');
+}
+
+window.addDriveLink = function(type) {
+  if (type === 'drive') _driveLinks.push('');
+  else _refLinks.push('');
+  renderDriveLinks(type);
+};
+window.updateDriveLink = function(type, idx, val) {
+  if (type === 'drive') _driveLinks[idx] = val;
+  else _refLinks[idx] = val;
+  renderDriveLinks(type);
+};
+window.removeDriveLink = function(type, idx) {
+  if (type === 'drive') _driveLinks.splice(idx, 1);
+  else _refLinks.splice(idx, 1);
+  renderDriveLinks(type);
+};
+
+// Image paste/upload
+let _imgList = [];
+
+function renderImgThumbs() {
+  const wrap = document.getElementById('img-thumbnails');
+  if (!wrap) return;
+  wrap.innerHTML = _imgList.map((src, i) => `
+    <div style="position:relative;">
+      <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+      <button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+  `).join('');
+  const ph = document.querySelector('.img-paste-placeholder');
+  if (ph) ph.style.display = _imgList.length ? 'none' : '';
+}
+
+window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
+
+function addImgFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => { _imgList.push(e.target.result); renderImgThumbs(); };
+  reader.readAsDataURL(file);
+}
+
+// Populate cuenta select from client data
+function populateCuentaSelect(selected) {
+  const sel = document.getElementById('cf-cuenta');
+  sel.innerHTML = '<option value="">Seleccionar cuenta...</option>';
+  const accounts = [];
+  if (STATE.client.instagram) accounts.push({ label: `Instagram: @${STATE.client.instagram}`, val: STATE.client.instagram });
+  if (STATE.client.facebook) accounts.push({ label: `Facebook: ${STATE.client.facebook}`, val: STATE.client.facebook });
+  if (STATE.client.youtube) accounts.push({ label: `YouTube: ${STATE.client.youtube}`, val: STATE.client.youtube });
+  if (STATE.client.tiktok) accounts.push({ label: `TikTok: @${STATE.client.tiktok}`, val: STATE.client.tiktok });
+  if (!accounts.length) accounts.push({ label: STATE.client.nombre || STATE.client.name || clientId, val: STATE.client.nombre || clientId });
+  accounts.push({ label: 'Multicuenta', val: 'multicuenta' });
+  accounts.push({ label: 'Otra / personalizar...', val: '__custom__' });
+  accounts.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.val; opt.textContent = a.label;
+    sel.appendChild(opt);
+  });
+  if (selected) sel.value = selected;
+  const customInput = document.getElementById('cf-cuenta-custom');
+  sel.onchange = () => {
+    customInput.style.display = sel.value === '__custom__' ? '' : 'none';
+    if (sel.value === '__custom__') customInput.focus();
+  };
+  customInput.style.display = (selected && !accounts.find(a => a.val === selected)) ? '' : 'none';
+}
+
 window.openContenidoModal = function(defaults = {}) {
   defaults = defaults || {};
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
   const c = editingContenido || {};
+
   document.getElementById('modal-cont-title').textContent = editingContenido ? 'Editar contenido' : 'Nuevo contenido';
   document.getElementById('cf-titulo').value = c.titulo || '';
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
   document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
-  document.getElementById('cf-cuenta').value = c.cuenta || STATE.client.instagram || '';
-  const ubicArr = normUbicacion(c.ubicacion || defaults.ubicacion || ['Feed']);
-  document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
-  document.getElementById('cf-formato').value = c.formato || 'Imagen';
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
-  document.getElementById('cf-drive').value = c.linkDrive || '';
-  document.getElementById('cf-drive-ref').value = c.linkDriveRef || '';
   document.getElementById('cf-notas').value = c.notas || '';
+
+  // Cuenta
+  populateCuentaSelect(c.cuenta || STATE.client.instagram || '');
+
+  // Plataformas
   document.querySelectorAll('.plat-check').forEach(cb => {
     cb.checked = (c.plataformas || defaults.plataformas || []).includes(cb.value);
   });
+  updatePlatFilters();
+
+  // Ubicacion & Formato — set after filters rendered
+  const ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion : (c.ubicacion ? [c.ubicacion] : defaults.ubicacion || []);
+  const fmtArr = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+  setTimeout(() => {
+    document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
+    document.querySelectorAll('.fmt-check').forEach(cb => cb.checked = fmtArr.includes(cb.value));
+  }, 30);
+
+  // Dimensiones
+  const dimArr = Array.isArray(c.dimensiones) ? c.dimensiones : [];
+  document.querySelectorAll('.dim-check').forEach(cb => cb.checked = dimArr.includes(cb.value));
+
+  // Pauta
+  const pautaVal = c.pauta || 'organico';
+  const pautaRadio = document.querySelector(`input[name="cf-pauta"][value="${pautaVal}"]`);
+  if (pautaRadio) pautaRadio.checked = true;
+  document.getElementById('pauta-hint').style.display = pautaVal !== 'organico' ? '' : 'none';
+
+  // Multiple links
+  _driveLinks = Array.isArray(c.linkDrive) ? [...c.linkDrive] : (c.linkDrive ? [c.linkDrive] : []);
+  _refLinks = Array.isArray(c.linkDriveRef) ? [...c.linkDriveRef] : (c.linkDriveRef ? [c.linkDriveRef] : []);
+  renderDriveLinks('drive');
+  renderDriveLinks('ref');
+
+  // Images
+  _imgList = Array.isArray(c.imagenes) ? [...c.imagenes] : [];
+  renderImgThumbs();
+
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
   document.getElementById('contenidoModal').classList.remove('hidden');
 };
 
-window.openContenidoModalById = function(id) {
-  openContenidoModal({ id });
-};
+window.openContenidoModalById = function(id) { openContenidoModal({ id }); };
 
 function closeContenidoModal() { document.getElementById('contenidoModal').classList.add('hidden'); }
 document.getElementById('closeContenidoModal').addEventListener('click', closeContenidoModal);
 document.getElementById('closeContenidoModal2').addEventListener('click', closeContenidoModal);
 
+// Platform checkboxes → update formats
+document.getElementById('plat-checks').addEventListener('change', updatePlatFilters);
+
+// Pauta radios → show/hide hint
+document.querySelectorAll('input[name="cf-pauta"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('pauta-hint').style.display = r.value !== 'organico' ? '' : 'none';
+  });
+});
+
+// Image paste & file pick
+document.getElementById('img-paste-area').addEventListener('click', () => {
+  document.getElementById('img-file-input').click();
+});
+document.getElementById('img-file-input').addEventListener('change', e => {
+  [...e.target.files].forEach(addImgFromFile);
+  e.target.value = '';
+});
+document.addEventListener('paste', e => {
+  const contenidoOpen = !document.getElementById('contenidoModal').classList.contains('hidden');
+  const tareaOpen = !document.getElementById('tareaModal').classList.contains('hidden');
+  if (!contenidoOpen && !tareaOpen) return;
+  // Si el foco está en el editor RTE de tarea, dejar que el navegador maneje el paste de texto
+  if (tareaOpen && document.activeElement && document.activeElement.id === 'tf-notas') {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        addTareaImgFromFile(item.getAsFile());
+        return;
+      }
+    }
+    return; // texto normal: el browser lo inserta solo
+  }
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      if (contenidoOpen) addImgFromFile(item.getAsFile());
+      else addTareaImgFromFile(item.getAsFile());
+      return;
+    }
+  }
+});
+
 document.getElementById('saveContenidoBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('cf-titulo').value.trim();
-  if (!titulo) { alert('El título es obligatorio.'); return; }
+  if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
+
+  const cuentaSel = document.getElementById('cf-cuenta');
+  const cuentaCustom = document.getElementById('cf-cuenta-custom');
+  const cuenta = cuentaSel.value === '__custom__' ? cuentaCustom.value.trim() : cuentaSel.value;
+  if (!cuenta) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
+
   const plats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
+  if (!plats.length) { alert('Seleccioná al menos una plataforma.'); return; }
+
+  const formatos = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+  if (!formatos.length) { alert('Seleccioná al menos un formato.'); return; }
+
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  const dimensiones = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
+  const pauta = document.querySelector('input[name="cf-pauta"]:checked')?.value || 'organico';
+
   const obj = {
     ...(editingContenido || {}),
     titulo,
     fechaPub: document.getElementById('cf-fecha').value,
     estado: document.getElementById('cf-estado').value,
-    cuenta: document.getElementById('cf-cuenta').value,
+    cuenta,
     plataformas: plats,
-    ubicacion: ubicacion.length ? ubicacion : ['Feed'],
+    ubicacion,
+    formato: formatos,
+    dimensiones,
     eje: document.getElementById('cf-eje').value,
     tipo: document.getElementById('cf-tipo').value,
-    formato: document.getElementById('cf-formato').value,
     objetivo: document.getElementById('cf-objetivo').value,
     copy: document.getElementById('cf-copy').value,
-    linkDrive: document.getElementById('cf-drive').value,
-    linkDriveRef: document.getElementById('cf-drive-ref').value,
+    pauta,
+    linkDrive: _driveLinks.filter(Boolean),
+    linkDriveRef: _refLinks.filter(Boolean),
+    imagenes: _imgList,
     notas: document.getElementById('cf-notas').value,
   };
+
   const saved = await saveContenido(clientId, obj);
   if (editingContenido) {
     const i = STATE.contenidos.findIndex(c => c.id === saved.id);
@@ -987,9 +1491,9 @@ document.getElementById('deleteContenidoBtn').addEventListener('click', async ()
 // ──────────────────────────────────────────────────────
 function renderTareas(container) {
   const cols = [
-    { key: 'Sin empezar', label: '⬜ Sin empezar', color: '#94a3b8' },
-    { key: 'En progreso', label: '🔵 En progreso', color: '#3b82f6' },
-    { key: 'Listo', label: '✅ Listo', color: '#10b981' },
+    { key: 'Sin empezar', label: 'Sin empezar', color: '#94a3b8' },
+    { key: 'En progreso', label: 'En progreso', color: '#3b82f6' },
+    { key: 'Listo', label: 'Listo', color: '#10b981' },
   ];
   const archivadas = STATE.tareas.filter(t => t.archivado);
 
@@ -1009,6 +1513,8 @@ function renderTareas(container) {
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
               ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+              ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#eff6ff;color:#3b82f6;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
+              ${t.linkRef ? `<a href="${t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
                 const done = t.subtareas.filter(s=>s.done).length;
                 const total = t.subtareas.length;
@@ -1056,6 +1562,42 @@ function renderTareas(container) {
   });
 }
 
+// ── Rich Text Editor helpers ──
+let _tareaImgList = [];
+
+window.rteCmd = function(cmd) {
+  document.getElementById('tf-notas').focus();
+  document.execCommand(cmd, false, null);
+};
+
+window.rteColor = function(color) {
+  document.getElementById('tf-notas').focus();
+  document.execCommand('foreColor', false, color);
+};
+
+function renderTareaImgThumbs() {
+  const container = document.getElementById('tarea-img-thumbs');
+  if (!container) return;
+  container.innerHTML = _tareaImgList.map((src, i) => `
+    <div style="position:relative;display:inline-block;">
+      <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+      <button onclick="removeTareaImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
+    </div>
+  `).join('');
+}
+
+window.removeTareaImg = function(i) {
+  _tareaImgList.splice(i, 1);
+  renderTareaImgThumbs();
+};
+
+function addTareaImgFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => { _tareaImgList.push(e.target.result); renderTareaImgThumbs(); };
+  reader.readAsDataURL(file);
+}
+
 window.openTareaModal = function(id, defaultEstado) {
   editingTarea = id ? STATE.tareas.find(t => t.id === id) : null;
   const t = editingTarea || {};
@@ -1064,9 +1606,21 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
-  document.getElementById('tf-notas').value = t.notas || '';
+  document.getElementById('tf-notas').innerHTML = t.notas || '';
+  document.getElementById('tf-recurrencia').value = t.recurrencia || '';
+  document.getElementById('tf-link').value = t.linkRef || '';
+  // Imágenes
+  _tareaImgList = t.imagenes ? [...t.imagenes] : [];
+  renderTareaImgThumbs();
   document.getElementById('deleteTareaBtn').style.display = editingTarea ? '' : 'none';
   document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
+
+  // dias-semana
+  const diasGroup = document.getElementById('dias-semana-group');
+  diasGroup.style.display = (t.recurrencia === 'dias-semana') ? '' : 'none';
+  document.querySelectorAll('.dia-check').forEach(cb => {
+    cb.checked = (t.diasSemana || []).includes(cb.value);
+  });
 
   // Subtareas — solo visible al editar
   const stSection = document.getElementById('subtareas-section');
@@ -1102,22 +1656,38 @@ window.deleteSubtarea = function(idx) {
 };
 
 document.getElementById('addSubtareaBtn').addEventListener('click', () => {
-  const titulo = prompt('Título de la subtarea:');
-  if (!titulo || !titulo.trim()) return;
-  const venc = prompt('Fecha de vencimiento (AAAA-MM-DD, opcional):') || null;
-  editingTarea.subtareas = editingTarea.subtareas || [];
-  editingTarea.subtareas.push({ titulo: titulo.trim(), done: false, vencimiento: venc || null });
-  renderSubtareas(editingTarea.subtareas);
+  document.getElementById('st-titulo').value = '';
+  document.getElementById('st-vencimiento').value = '';
+  document.getElementById('subtareaModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('st-titulo').focus(), 50);
 });
 
 function closeTareaModal() { document.getElementById('tareaModal').classList.add('hidden'); }
 document.getElementById('closeTareaModal').addEventListener('click', closeTareaModal);
 document.getElementById('closeTareaModal2').addEventListener('click', closeTareaModal);
 
+// Área de imágenes en tarea
+const tareaImgArea = document.getElementById('tarea-img-area');
+const tareaImgInput = document.getElementById('tarea-img-input');
+if (tareaImgArea) {
+  tareaImgArea.addEventListener('click', () => tareaImgInput.click());
+  tareaImgArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') tareaImgInput.click(); });
+}
+if (tareaImgInput) {
+  tareaImgInput.addEventListener('change', e => {
+    [...e.target.files].forEach(addTareaImgFromFile);
+    e.target.value = '';
+  });
+}
+
 document.getElementById('saveTareaBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
-  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').value, subtareas: editingTarea?.subtareas || [] };
+  const recurrencia = document.getElementById('tf-recurrencia').value;
+  const diasSemana = recurrencia === 'dias-semana'
+    ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
+    : [];
+  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList] };
   const saved = await saveTarea(clientId, obj);
   if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
   else STATE.tareas.push(saved);
@@ -1244,6 +1814,116 @@ function renderPauta(container) {
 }
 
 // ──────────────────────────────────────────────────────
+// LINKS
+// ──────────────────────────────────────────────────────
+function renderLinks(container) {
+  const links = STATE.links || [];
+  container.innerHTML = `
+    ${links.length ? `
+      <div class="links-grid">
+        ${links.map(l => `
+          <div class="link-card" onclick="window.open('${l.url}','_blank')" style="cursor:pointer;">
+            <div class="link-card-icon">
+              <i data-lucide="link" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.titulo}</div>
+              ${l.desc ? `<div class="link-card-desc">${l.desc}</div>` : ''}
+              <div style="font-size:10px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.url}</div>
+            </div>
+            <button class="link-card-edit" onclick="event.stopPropagation();openLinkModal('${l.id}')" title="Editar">✏️</button>
+          </div>
+        `).join('')}
+        <div class="link-card" onclick="openLinkModal(null)" style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
+          <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
+          <span style="font-size:13px;color:var(--text-muted);">Agregar link</span>
+        </div>
+      </div>
+    ` : `
+      <div class="empty-state">
+        <i data-lucide="link" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
+        <h3>Sin links guardados</h3>
+        <p>Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes...</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="openLinkModal(null)">+ Agregar primer link</button>
+      </div>
+    `}
+  `;
+}
+
+let _editingLink = null;
+window.openLinkModal = function(id) {
+  _editingLink = id ? STATE.links.find(l => l.id === id) : null;
+  const l = _editingLink || {};
+  document.getElementById('link-modal-title').textContent = _editingLink ? 'Editar link' : 'Nuevo link';
+  document.getElementById('lf-titulo').value = l.titulo || '';
+  document.getElementById('lf-url').value = l.url || '';
+  document.getElementById('lf-desc').value = l.desc || '';
+  document.getElementById('deleteLinkBtn').style.display = _editingLink ? '' : 'none';
+  document.getElementById('linkModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('lf-titulo').focus(), 50);
+};
+
+// ──────────────────────────────────────────────────────
+// SITIO WEB
+// ──────────────────────────────────────────────────────
+const WEB_CATS = ['Contenido', 'Arreglo / Bug', 'Funcionalidad nueva', 'SEO / Métricas', 'Diseño', 'Otro'];
+const WEB_ESTADOS = ['Pendiente', 'En proceso', 'En revisión', 'Listo'];
+
+function renderWeb(container) {
+  const tasks = (STATE.home.webTareas || []);
+  const byEstado = WEB_ESTADOS.reduce((acc, e) => { acc[e] = tasks.filter(t => t.estado === e); return acc; }, {});
+  const colors = { 'Pendiente': '#94a3b8', 'En proceso': '#f59e0b', 'En revisión': '#ec4899', 'Listo': '#22c55e' };
+
+  container.innerHTML = `
+    <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <div style="font-size:13px;color:var(--text-muted);">${tasks.length} tareas · ${byEstado['Listo'].length} completadas</div>
+    </div>
+    <div class="kanban-board">
+      ${WEB_ESTADOS.map(estado => {
+        const items = byEstado[estado];
+        return `
+        <div class="kanban-col" style="flex:1;max-width:none;">
+          <div class="kanban-col-header">
+            <span class="kanban-col-dot" style="background:${colors[estado]};"></span>
+            <span class="col-title">${estado}</span>
+            <span class="col-count">${items.length}</span>
+          </div>
+          <div class="kanban-cards">
+            ${items.map(t => `
+              <div class="kanban-card" onclick="openWebTaskModal('${t.id}')">
+                <div style="display:flex;align-items:flex-start;gap:6px;">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
+                </div>
+                <div class="kanban-card-title" style="margin-top:6px;">${t.titulo}</div>
+                ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+                ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
+                ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
+              </div>
+            `).join('')}
+            <button class="kanban-add-btn" onclick="openWebTaskModal(null,'${estado}')">+ Agregar</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+let _editingWebTask = null;
+window.openWebTaskModal = function(id, defaultEstado) {
+  _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => t.id === id) : null;
+  const t = _editingWebTask || {};
+  document.getElementById('wt-titulo').value = t.titulo || '';
+  document.getElementById('wt-categoria').value = t.categoria || 'Contenido';
+  document.getElementById('wt-estado').value = t.estado || defaultEstado || 'Pendiente';
+  document.getElementById('wt-vencimiento').value = t.vencimiento || '';
+  document.getElementById('wt-url').value = t.url || '';
+  document.getElementById('wt-notas').value = t.notas || '';
+  document.getElementById('deleteWebTaskBtn').style.display = _editingWebTask ? '' : 'none';
+  document.getElementById('webTaskModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('wt-titulo').focus(), 50);
+};
+
+// ──────────────────────────────────────────────────────
 // INSTRUCCIONES
 // ──────────────────────────────────────────────────────
 function renderInstrucciones(container) {
@@ -1257,20 +1937,25 @@ function renderInstrucciones(container) {
       </div>
 
       ${[
+        { icon:'bar-chart-2', title:'Dashboard Editorial', color:'#8b5cf6', items:[
+          'Mostrá el resumen mensual: frecuencia por semana, formatos, ejes y tipos de contenido.',
+          'Navegá entre meses con las flechas. Se actualiza solo con los contenidos cargados.',
+          'Usalo para presentar avances a clientes o gerencia.',
+        ]},
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
-          '<strong>Banco de contenidos:</strong> Tabla completa con todos tus posts programados.',
-          '<strong>Calendario:</strong> Vista mensual de las publicaciones.',
+          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá.',
+          '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
           '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
-          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa de cómo se ve tu perfil.',
-          '<strong>Banco de ideas:</strong> Guardá ideas para trabajarlas después.',
-          '<strong>+ Nuevo contenido:</strong> Completá título, fecha, plataforma, copy y el link de Google Drive de la pieza terminada.',
+          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
+          '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
+          '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
+          '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
           'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
-          'Podés arrastrar tareas entre columnas.',
-          'Cada tarea puede tener <strong>subtareas</strong> con su propio avance.',
-          'Las tareas de "Sin empezar" también aparecen en el <strong>To-do del Home</strong>.',
-          'Si una tarea tiene fecha de vencimiento, recibís un email ese día.',
+          'El <strong>To-do del Home</strong> y las Tareas están sincronizados: lo que agregás en uno aparece en el otro.',
+          'Cada tarea puede tener <strong>subtareas</strong>, fecha de vencimiento, prioridad y enlace.',
+          'Podés agregar <strong>recurrencia</strong>: diaria, semanal, quincenal, mensual o días específicos.',
           'Podés <strong>archivar</strong> tareas completadas para mantener el tablero limpio.',
         ]},
         { icon:'trending-up', title:'Pauta Digital', color:'#f59e0b', items:[
@@ -1279,9 +1964,24 @@ function renderInstrucciones(container) {
           'Definí tu <strong>ROAS de equilibrio</strong> para saber si la campaña es rentable.',
           'La barra de progreso muestra el % del presupuesto ejecutado.',
         ]},
+        { icon:'file-text', title:'Reporte Ejecutivo', color:'#e02020', items:[
+          'Generá un reporte mensual para presentar a gerencia: contenidos publicados, métricas, campañas e insights.',
+          'Accedé desde el botón "📊 Reporte" en la sección Contenidos.',
+          'Podés imprimir o guardar como PDF con Ctrl+P.',
+        ]},
+        { icon:'link', title:'Links', color:'#0d9488', items:[
+          'Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes, portales.',
+          'Tocá "+ Nuevo link" o el botón "+" en la grilla para agregar uno.',
+          'Tocá el ✏️ sobre un link para editarlo o eliminarlo.',
+        ]},
+        { icon:'globe', title:'Sitio Web', color:'#64748b', items:[
+          'Gestioná tareas y mejoras del sitio web del cliente.',
+          'Podés cargar tareas del tipo: contenidos, arreglos, agregados o análisis.',
+          'Las tareas del sitio web están separadas de las tareas de marketing pero usan la misma interfaz.',
+        ]},
         { icon:'map-pin', title:'Google Drive', color:'#ec4899', items:[
           'Usamos Google Drive para almacenar las piezas gráficas y videos.',
-          '<strong>Pieza terminada:</strong> el archivo listo para publicar.',
+          '<strong>Pieza terminada:</strong> el archivo listo para publicar (podés agregar múltiples links).',
           '<strong>Material de referencia:</strong> fotos brutas, referencias, brief visual.',
           'Para linkear: abrí el archivo en Drive → botón derecho → "Copiar link" → pegalo en el campo.',
         ]},
@@ -1301,12 +2001,164 @@ function renderInstrucciones(container) {
 
       <div class="card" style="border:1px solid #bfdbfe;background:#eff6ff;">
         <div class="card-body" style="font-size:13px;color:#1d4ed8;line-height:1.7;">
-          <strong>¿Tenés dudas?</strong> Contactá a tu equipo COSMART en <a href="mailto:info@cosmart.com.ar" style="color:#1d4ed8;">info@cosmart.com.ar</a> o por WhatsApp al equipo de COMUNICOS.
+          <strong>¿Tenés dudas?</strong> Contactá a tu equipo COSMART en <a href="mailto:info@cosmart.com.ar" style="color:#1d4ed8;">info@cosmart.com.ar</a>.
         </div>
       </div>
     </div>
   `;
 }
+
+// ──────────────────────────────────────────────────────
+// REPORTE EJECUTIVO
+// ──────────────────────────────────────────────────────
+window.openReporteModal = function() {
+  const hoy = new Date();
+  const mesActual = hoy.toISOString().slice(0, 7);
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesLabel = `${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`;
+  const cliente = STATE.client.nombre || STATE.client.name || clientId;
+
+  const conts = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(mesActual));
+  const publicados = conts.filter(c => c.estado === 'Publicado');
+  const aprobados = conts.filter(c => c.estado === 'Aprobado');
+  const campanas = STATE.campanas || [];
+  const activas = campanas.filter(c => c.estado === 'Activa');
+  const finalizadas = campanas.filter(c => c.estado === 'Finalizada');
+
+  // Formato breakdown
+  const fmtCount = {};
+  conts.forEach(c => {
+    const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+    fmts.forEach(f => { fmtCount[f] = (fmtCount[f]||0)+1; });
+  });
+
+  // Eje breakdown
+  const ejeCount = {};
+  conts.forEach(c => { if(c.eje) ejeCount[c.eje] = (ejeCount[c.eje]||0)+1; });
+
+  // Métricas pauta
+  const totalPresup = campanas.reduce((s,c)=>s+(c.presupuesto||0),0);
+  const totalGastado = campanas.reduce((s,c)=>s+(c.gastado||0),0);
+  const totalIngresos = campanas.reduce((s,c)=>s+(c.ingresos||0),0);
+  const roasTotal = totalGastado ? (totalIngresos/totalGastado).toFixed(2) : '—';
+
+  // Tareas del mes
+  const tareasPend = STATE.tareas.filter(t => !t.archivado && t.estado !== 'Listo').length;
+  const tareasOk = STATE.tareas.filter(t => t.estado === 'Listo').length;
+
+  // Insights automáticos
+  const insights = [];
+  if (publicados.length < 8) insights.push('📉 Menos de 8 contenidos publicados este mes. Considerá aumentar la frecuencia.');
+  if (conts.filter(c=>c.eje==='Comercial').length === 0) insights.push('💡 No hay contenido comercial este mes. Incluir al menos 1-2 posts de conversión.');
+  if (conts.filter(c=>(c.plataformas||[]).includes('TikTok')).length === 0) insights.push('📱 Sin contenido para TikTok este mes.');
+  if (activas.length && totalGastado && parseFloat(roasTotal) < 2) insights.push(`⚠️ ROAS de ${roasTotal} por debajo del umbral recomendado (2x). Revisar segmentación.`);
+  if (tareasPend > 5) insights.push(`📋 Hay ${tareasPend} tareas pendientes. Priorizar para no acumular deuda operativa.`);
+  if (!insights.length) insights.push('✅ Todo en orden. Excelente desempeño este mes.');
+
+  const body = document.getElementById('reporte-body');
+  body.innerHTML = `
+    <div style="font-family:'DM Sans',sans-serif;" id="reporte-print-content">
+      <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--primary);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase;">Reporte Ejecutivo</div>
+        <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--primary-dark);margin:4px 0;">${cliente}</div>
+        <div style="font-size:13px;color:var(--text-muted);">${mesLabel} · Generado el ${hoy.toLocaleDateString('es-AR')}</div>
+      </div>
+
+      <!-- Stats resumen -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+        ${[
+          {label:'Contenidos del mes', val:conts.length, color:'var(--primary)'},
+          {label:'Publicados', val:publicados.length, color:'#22c55e'},
+          {label:'Aprobados / listos', val:aprobados.length, color:'#3b82f6'},
+          {label:'Campañas activas', val:activas.length, color:'#f59e0b'},
+        ].map(s=>`
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:26px;font-weight:700;color:${s.color};">${s.val}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${s.label}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Contenidos -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Contenidos del mes</div>
+        ${conts.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">${['Título','Fecha','Plataformas','Formato','Estado'].map(h=>`<th style="text-align:left;padding:6px 8px;font-weight:600;border-bottom:1px solid var(--border);">${h}</th>`).join('')}</tr></thead>
+          <tbody>${conts.map(c=>`
+            <tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:6px 8px;font-weight:500;">${c.titulo}</td>
+              <td style="padding:6px 8px;color:var(--text-muted);">${fmtDate(c.fechaPub)||'—'}</td>
+              <td style="padding:6px 8px;">${(c.plataformas||[]).join(', ')||'—'}</td>
+              <td style="padding:6px 8px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</td>
+              <td style="padding:6px 8px;">${c.estado||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<p style="color:var(--text-muted);font-size:13px;">Sin contenidos este mes.</p>'}
+      </div>
+
+      <!-- Distribución -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">Por Formato</div>
+          ${Object.entries(fmtCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;font-size:12px;">${k}</div>
+              <div style="width:80px;background:#f1f5f9;border-radius:20px;height:6px;overflow:hidden;"><div style="width:${Math.round(v/conts.length*100)}%;background:var(--accent);height:6px;border-radius:20px;"></div></div>
+              <div style="font-size:12px;font-weight:700;color:var(--primary);min-width:20px;">${v}</div>
+            </div>`).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin datos</p>'}
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">Por Eje de Comunicación</div>
+          ${Object.entries(ejeCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;font-size:12px;">${k}</div>
+              <div style="width:80px;background:#f1f5f9;border-radius:20px;height:6px;overflow:hidden;"><div style="width:${Math.round(v/conts.length*100)}%;background:var(--primary);height:6px;border-radius:20px;"></div></div>
+              <div style="font-size:12px;font-weight:700;color:var(--primary);min-width:20px;">${v}</div>
+            </div>`).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin datos</p>'}
+        </div>
+      </div>
+
+      <!-- Campañas -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Campañas de Pauta</div>
+        ${campanas.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">${['Campaña','Plataforma','Estado','Presup.','Gastado','ROAS'].map(h=>`<th style="text-align:left;padding:6px 8px;font-weight:600;border-bottom:1px solid var(--border);">${h}</th>`).join('')}</tr></thead>
+          <tbody>${campanas.map(c=>{
+            const roas = c.gastado ? (c.ingresos/c.gastado).toFixed(2) : '—';
+            return `<tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:6px 8px;font-weight:500;">${c.nombre}</td>
+              <td style="padding:6px 8px;color:var(--text-muted);">${c.plataforma||'—'}</td>
+              <td style="padding:6px 8px;"><span style="padding:2px 8px;border-radius:10px;background:${c.estado==='Activa'?'#dcfce7':'#f1f5f9'};color:${c.estado==='Activa'?'#16a34a':'#64748b'};font-size:11px;font-weight:600;">${c.estado||'—'}</span></td>
+              <td style="padding:6px 8px;">$${fmtNum(c.presupuesto)}</td>
+              <td style="padding:6px 8px;">$${fmtNum(c.gastado)}</td>
+              <td style="padding:6px 8px;font-weight:700;color:${parseFloat(roas)>=2?'#16a34a':'#dc2626'}">${roas}x</td>
+            </tr>`;}).join('')}
+            <tr style="background:#f8fafc;font-weight:700;">
+              <td colspan="3" style="padding:6px 8px;">TOTALES</td>
+              <td style="padding:6px 8px;">$${fmtNum(totalPresup)}</td>
+              <td style="padding:6px 8px;">$${fmtNum(totalGastado)}</td>
+              <td style="padding:6px 8px;color:${parseFloat(roasTotal)>=2?'#16a34a':'#dc2626'}">${roasTotal}x</td>
+            </tr>
+          </tbody>
+        </table>` : '<p style="color:var(--text-muted);font-size:13px;">Sin campañas registradas.</p>'}
+      </div>
+
+      <!-- Insights -->
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#b45309;margin-bottom:10px;">💡 Insights y Sugerencias</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+          ${insights.map(i=>`<li style="font-size:13px;color:#78350f;line-height:1.5;">${i}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('reporteModal').classList.remove('hidden');
+};
+
+document.getElementById('closeReporteModal').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteModal2').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
 
 window.openCampanaModal = function(id) {
   editingCampana = id ? STATE.campanas.find(c => c.id === id) : null;
@@ -1413,6 +2265,12 @@ function initKanbanDrag(boardSelector, items, onDrop) {
 // ──────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────
+// Normalize linkDrive/linkDriveRef — supports old string or new array
+function firstLink(val) {
+  if (!val) return '';
+  return Array.isArray(val) ? (val[0] || '') : val;
+}
+
 function fmtDate(d) {
   if (!d) return '';
   try { return new Date(d + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch { return d; }
@@ -1457,6 +2315,75 @@ function normUbicacion(u) {
   return Array.isArray(u) ? u : [u];
 }
 
+// ── Recurrencia → show/hide dias-semana ───────────────
+document.getElementById('tf-recurrencia').addEventListener('change', function() {
+  document.getElementById('dias-semana-group').style.display = this.value === 'dias-semana' ? '' : 'none';
+});
+
+// ── Todo modal wiring ──────────────────────────────────
+function closeTodoModal() { document.getElementById('todoModal').classList.add('hidden'); }
+document.getElementById('closeTodoModal').addEventListener('click', closeTodoModal);
+document.getElementById('closeTodoModal2').addEventListener('click', closeTodoModal);
+document.getElementById('saveTodoBtn').addEventListener('click', async () => {
+  const text = document.getElementById('todo-text').value.trim();
+  if (!text) { alert('El título es obligatorio.'); return; }
+  const vencimiento = document.getElementById('todo-vencimiento').value || null;
+  const prioridad = document.getElementById('todo-prioridad').value;
+  // Create as a real tarea so it appears in the Kanban too
+  const obj = { titulo: text, estado: 'Sin empezar', prioridad, vencimiento, notas: '', subtareas: [] };
+  const saved = await saveTarea(clientId, obj);
+  STATE.tareas.push(saved);
+  closeTodoModal();
+  updateBadges();
+  if (currentSection === 'home') renderSection('home');
+  else if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
+});
+
+// ── Subtarea modal wiring ──────────────────────────────
+function closeSubtareaModal() { document.getElementById('subtareaModal').classList.add('hidden'); }
+document.getElementById('closeSubtareaModal').addEventListener('click', closeSubtareaModal);
+document.getElementById('closeSubtareaModal2').addEventListener('click', closeSubtareaModal);
+document.getElementById('saveSubtareaBtn').addEventListener('click', () => {
+  const titulo = document.getElementById('st-titulo').value.trim();
+  if (!titulo) { alert('El título es obligatorio.'); return; }
+  const vencimiento = document.getElementById('st-vencimiento').value || null;
+  editingTarea.subtareas = editingTarea.subtareas || [];
+  editingTarea.subtareas.push({ titulo, done: false, vencimiento });
+  renderSubtareas(editingTarea.subtareas);
+  closeSubtareaModal();
+});
+
+// ── Link modal wiring ──────────────────────────────────
+function closeLinkModal() { document.getElementById('linkModal').classList.add('hidden'); }
+document.getElementById('closeLinkModal').addEventListener('click', closeLinkModal);
+document.getElementById('closeLinkModal2').addEventListener('click', closeLinkModal);
+document.getElementById('saveLinkBtn').addEventListener('click', async () => {
+  const titulo = document.getElementById('lf-titulo').value.trim();
+  const url = document.getElementById('lf-url').value.trim();
+  if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
+  const obj = { ...(_editingLink || {}), id: _editingLink?.id || Date.now(), titulo, url, desc: document.getElementById('lf-desc').value.trim() };
+  if (_editingLink) {
+    const i = STATE.links.findIndex(l => l.id === obj.id);
+    STATE.links[i] = obj;
+  } else {
+    STATE.links.push(obj);
+  }
+  STATE.home.links = STATE.links;
+  await saveHomeData(clientId, STATE.home);
+  closeLinkModal();
+  renderLinks(document.getElementById('main-content'));
+  setTimeout(refreshIcons, 50);
+});
+document.getElementById('deleteLinkBtn').addEventListener('click', async () => {
+  if (!_editingLink || !confirm('¿Eliminar este link?')) return;
+  STATE.links = STATE.links.filter(l => l.id !== _editingLink.id);
+  STATE.home.links = STATE.links;
+  await saveHomeData(clientId, STATE.home);
+  closeLinkModal();
+  renderLinks(document.getElementById('main-content'));
+  setTimeout(refreshIcons, 50);
+});
+
 // ── Idea modal wiring ──────────────────────────────────
 function closeIdeaModal() { document.getElementById('ideaModal').classList.add('hidden'); }
 document.getElementById('closeIdeaModal').addEventListener('click', closeIdeaModal);
@@ -1477,6 +2404,44 @@ document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
   else STATE.ideas.push(saved);
   closeIdeaModal();
   renderContTab('ideas');
+});
+
+// ── Sitio Web modal wiring ─────────────────────────────
+function closeWebTaskModal() { document.getElementById('webTaskModal').classList.add('hidden'); }
+document.getElementById('closeWebTaskModal').addEventListener('click', closeWebTaskModal);
+document.getElementById('closeWebTaskModal2').addEventListener('click', closeWebTaskModal);
+
+document.getElementById('saveWebTaskBtn').addEventListener('click', async () => {
+  const titulo = document.getElementById('wt-titulo').value.trim();
+  if (!titulo) { alert('La descripción es obligatoria.'); return; }
+  if (!STATE.home.webTareas) STATE.home.webTareas = [];
+  const obj = {
+    ...(_editingWebTask || {}),
+    id: _editingWebTask?.id || Date.now(),
+    titulo,
+    categoria: document.getElementById('wt-categoria').value,
+    estado: document.getElementById('wt-estado').value,
+    vencimiento: document.getElementById('wt-vencimiento').value || null,
+    url: document.getElementById('wt-url').value.trim() || null,
+    notas: document.getElementById('wt-notas').value.trim(),
+  };
+  if (_editingWebTask) {
+    const i = STATE.home.webTareas.findIndex(t => t.id === obj.id);
+    STATE.home.webTareas[i] = obj;
+  } else {
+    STATE.home.webTareas.push(obj);
+  }
+  await saveHomeData(clientId, STATE.home);
+  closeWebTaskModal();
+  renderWeb(document.getElementById('main-content'));
+});
+
+document.getElementById('deleteWebTaskBtn').addEventListener('click', async () => {
+  if (!_editingWebTask || !confirm('¿Eliminar esta tarea?')) return;
+  STATE.home.webTareas = (STATE.home.webTareas||[]).filter(t => t.id !== _editingWebTask.id);
+  await saveHomeData(clientId, STATE.home);
+  closeWebTaskModal();
+  renderWeb(document.getElementById('main-content'));
 });
 
 // Close modals on overlay click
