@@ -204,21 +204,29 @@ export async function getMetricas(clientId) {
 export async function getHomeData(clientId) {
   if (DEMO_MODE) {
     const d = getDemoData(clientId);
-    return { prioridades: d.prioridades, todos: d.todos };
+    return { prioridades: d.prioridades||[], todos: d.todos||[], links: d.links||[], webTareas: d.webTareas||[] };
   }
-  const home = await api('GET', `/data/${clientId}/home`);
-  return { prioridades: home.prioridades || [], todos: home.todos || [] };
+  const home = (await api('GET', `/data/${clientId}/home`)) || {};
+  return {
+    prioridades: home.prioridades || [],
+    todos: home.todos || [],
+    links: home.links || [],
+    webTareas: home.webTareas || []
+  };
 }
 
-export async function saveHomeData(clientId, { prioridades, todos }) {
+export async function saveHomeData(clientId, homeObj) {
+  const { prioridades=[], todos=[], links=[], webTareas=[] } = homeObj || {};
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.prioridades = prioridades;
     data.todos = todos;
+    data.links = links;
+    data.webTareas = webTareas;
     saveDemoData(clientId, data);
     return;
   }
-  await api('POST', `/data/${clientId}/home`, { prioridades, todos });
+  await api('POST', `/data/${clientId}/home`, { prioridades, todos, links, webTareas });
 }
 
 // ── Ideas ─────────────────────────────────────────────────────
