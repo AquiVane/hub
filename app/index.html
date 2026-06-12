@@ -32,6 +32,9 @@
       <button class="nav-item active" data-section="home">
         <i data-lucide="compass" class="nav-icon"></i><span>Inicio</span>
       </button>
+      <button class="nav-item" data-section="dashboard">
+        <i data-lucide="bar-chart-2" class="nav-icon"></i><span>Dashboard</span>
+      </button>
       <button class="nav-item" data-section="contenidos">
         <i data-lucide="pen-line" class="nav-icon"></i><span>Contenidos</span>
       </button>
@@ -44,6 +47,9 @@
       </button>
       <button class="nav-item" data-section="links">
         <i data-lucide="link" class="nav-icon"></i><span>Links</span>
+      </button>
+      <button class="nav-item" data-section="web">
+        <i data-lucide="globe" class="nav-icon"></i><span>Sitio Web</span>
       </button>
       <button class="nav-item" data-section="instrucciones">
         <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
@@ -61,11 +67,11 @@
           <i data-lucide="radio" class="puerto-icon"></i>
           <div><div class="puerto-name">COMUNICOS</div><div class="puerto-desc">Community management</div></div>
         </a>
-        <a href="https://desin.cosmart.com.ar" target="_blank" class="puerto-item">
+        <a href="https://desing.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="pen-tool" class="puerto-icon"></i>
-          <div><div class="puerto-name">DESIN</div><div class="puerto-desc">Diseño y branding</div></div>
+          <div><div class="puerto-name">DESING</div><div class="puerto-desc">Diseño y branding</div></div>
         </a>
-        <a href="https://rumbovoz.cosmart.com.ar" target="_blank" class="puerto-item">
+        <a href="https://rumbovoraz.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="target" class="puerto-icon"></i>
           <div><div class="puerto-name">RUMBO VORAZ</div><div class="puerto-desc">Pauta y performance</div></div>
         </a>
@@ -117,7 +123,7 @@
 
 <!-- Modal: Contenido (nuevo / editar) -->
 <div id="contenidoModal" class="modal-overlay hidden">
-  <div class="modal">
+  <div class="modal" style="max-width:720px;">
     <div class="modal-header">
       <h3 id="modal-cont-title">Nuevo contenido</h3>
       <button class="modal-close" id="closeContenidoModal">×</button>
@@ -125,8 +131,8 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
 
-        <div class="form-group span-3" style="grid-column:span 3;">
-          <label>Título del contenido *</label>
+        <div class="form-group" style="grid-column:span 3;">
+          <label>Título del contenido <span class="req-star">*</span></label>
           <input type="text" id="cf-titulo" class="form-control" placeholder="Ej: Story 1 – Show La Rosalía">
         </div>
 
@@ -135,7 +141,7 @@
           <input type="date" id="cf-fecha" class="form-control">
         </div>
         <div class="form-group">
-          <label>Estado</label>
+          <label>Estado <span class="req-star">*</span></label>
           <select id="cf-estado" class="form-control">
             <option value="Idea">💡 Idea</option>
             <option value="En proceso">✏️ En proceso</option>
@@ -146,38 +152,48 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Cuenta</label>
-          <input type="text" id="cf-cuenta" class="form-control" placeholder="@cuenta">
+          <label>Cuenta <span class="req-star">*</span></label>
+          <select id="cf-cuenta" class="form-control">
+            <option value="">Seleccionar cuenta...</option>
+          </select>
+          <input type="text" id="cf-cuenta-custom" class="form-control" style="margin-top:5px;display:none;" placeholder="@cuenta">
         </div>
 
         <div class="form-group">
-          <label>Plataformas</label>
-          <div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Instagram" class="plat-check"> Instagram</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Facebook" class="plat-check"> Facebook</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="LinkedIn" class="plat-check"> LinkedIn</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Twitter" class="plat-check"> Twitter / X</label>
+          <label>Plataformas <span class="req-star">*</span></label>
+          <div class="check-group" id="plat-checks">
+            <label class="check-label"><input type="checkbox" value="Instagram" class="plat-check"> Instagram</label>
+            <label class="check-label"><input type="checkbox" value="Facebook" class="plat-check"> Facebook</label>
+            <label class="check-label"><input type="checkbox" value="LinkedIn" class="plat-check"> LinkedIn</label>
+            <label class="check-label"><input type="checkbox" value="Twitter / X" class="plat-check"> Twitter / X</label>
+            <label class="check-label"><input type="checkbox" value="TikTok" class="plat-check"> TikTok</label>
+            <label class="check-label"><input type="checkbox" value="YouTube" class="plat-check"> YouTube</label>
+            <label class="check-label"><input type="checkbox" value="Sitio Web" class="plat-check"> Sitio Web</label>
+            <label class="check-label"><input type="checkbox" value="Blog" class="plat-check"> Blog</label>
           </div>
         </div>
         <div class="form-group">
-          <label>Ubicación (múltiple)</label>
-          <div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Feed" class="ubic-check"> Feed</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Story" class="ubic-check"> Story</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Reel" class="ubic-check"> Reel</label>
-            <label style="font-weight:400;font-size:13px;display:flex;gap:8px;align-items:center;"><input type="checkbox" value="Carrusel" class="ubic-check"> Carrusel</label>
+          <label>Ubicación</label>
+          <div class="check-group" id="ubic-dynamic">
+            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
           </div>
         </div>
         <div class="form-group">
-          <label>Formato</label>
-          <select id="cf-formato" class="form-control">
-            <option>Imagen</option>
-            <option>Video</option>
-            <option>Reel</option>
-            <option>Carrusel</option>
-            <option>Story</option>
-            <option>GIF</option>
-          </select>
+          <label>Formato <span class="req-star">*</span></label>
+          <div class="check-group" id="formato-dynamic">
+            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="grid-column:span 3;">
+          <label>Dimensión / Relación de aspecto</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+            <label class="check-label"><input type="checkbox" value="1:1" class="dim-check"> 1:1 – Cuadrado</label>
+            <label class="check-label"><input type="checkbox" value="4:5" class="dim-check"> 4:5 – Vertical</label>
+            <label class="check-label"><input type="checkbox" value="9:16" class="dim-check"> 9:16 – Stories / Reels</label>
+            <label class="check-label"><input type="checkbox" value="16:9" class="dim-check"> 16:9 – Horizontal / YouTube</label>
+            <label class="check-label"><input type="checkbox" value="1.91:1" class="dim-check"> 1.91:1 – Landscape Feed</label>
+          </div>
         </div>
 
         <div class="form-group">
@@ -220,14 +236,41 @@
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>🎨 Pieza terminada / entrega final</label>
-          <input type="url" id="cf-drive" class="form-control" placeholder="https://drive.google.com/file/d/...">
-          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Link de Drive de la pieza o video terminado, listo para publicar</span>
+          <label>¿Es contenido para pauta?</label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;padding:8px 0;">
+            <label class="check-label"><input type="radio" name="cf-pauta" value="organico" checked> Solo orgánico</label>
+            <label class="check-label"><input type="radio" name="cf-pauta" value="dark"> Sí – Dark post</label>
+            <label class="check-label"><input type="radio" name="cf-pauta" value="dark-organico"> Sí – Dark + orgánico</label>
+          </div>
+          <div id="pauta-hint" style="display:none;padding:8px 12px;background:#eff6ff;border-radius:6px;font-size:12px;color:var(--primary);margin-top:4px;">
+            💡 Este contenido va a pauta. <button type="button" onclick="document.getElementById('contenidoModal').classList.add('hidden');renderSection('pauta');" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:12px;">Ir a campañas →</button>
+          </div>
         </div>
+
+        <div class="form-group" style="grid-column:span 3;">
+          <label>🎨 Pieza terminada / entrega final</label>
+          <div id="drive-links-list"></div>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="addDriveLink('drive')">+ Agregar link</button>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Link de Drive, Dropbox, etc. del archivo listo para publicar</span>
+        </div>
+
         <div class="form-group" style="grid-column:span 3;">
           <label>📁 Material de referencia / bruto</label>
-          <input type="url" id="cf-drive-ref" class="form-control" placeholder="https://drive.google.com/file/d/...">
-          <span style="font-size:11px;color:var(--text-muted);margin-top:3px;">Fotos originales, material bruto o referencias de diseño para trabajar</span>
+          <div id="ref-links-list"></div>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="addDriveLink('ref')">+ Agregar link</button>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Fotos originales, material bruto o referencias de diseño</span>
+        </div>
+
+        <div class="form-group" style="grid-column:span 3;">
+          <label>🖼 Imágenes adjuntas</label>
+          <div id="img-paste-area" class="img-paste-area" tabindex="0" title="Pegá una imagen con Ctrl+V o hacé clic para subir">
+            <div class="img-paste-placeholder">
+              <i data-lucide="image" style="width:20px;height:20px;opacity:.4;"></i>
+              <span>Pegá con Ctrl+V o tocá para agregar imágenes</span>
+            </div>
+            <div id="img-thumbnails" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+            <input type="file" id="img-file-input" accept="image/*" multiple style="display:none;">
+          </div>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
@@ -245,6 +288,76 @@
   </div>
 </div>
 
+<!-- Modal: Tarea Sitio Web -->
+<div id="webTaskModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Tarea de Sitio Web</h3>
+      <button class="modal-close" id="closeWebTaskModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Descripción <span class="req-star">*</span></label>
+          <input type="text" id="wt-titulo" class="form-control" placeholder="Ej: Actualizar banner de home, arreglar formulario de contacto...">
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="wt-categoria" class="form-control">
+            <option>Contenido</option>
+            <option>Arreglo / Bug</option>
+            <option>Funcionalidad nueva</option>
+            <option>SEO / Métricas</option>
+            <option>Diseño</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="wt-estado" class="form-control">
+            <option>Pendiente</option>
+            <option>En proceso</option>
+            <option>En revisión</option>
+            <option>Listo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha límite</label>
+          <input type="date" id="wt-vencimiento" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>URL de referencia</label>
+          <input type="url" id="wt-url" class="form-control" placeholder="https://...">
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Notas</label>
+          <textarea id="wt-notas" class="form-control" rows="2" placeholder="Detalles, contexto, pantalla afectada..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deleteWebTaskBtn" style="margin-right:auto;display:none;">Eliminar</button>
+      <button class="btn btn-secondary" id="closeWebTaskModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveWebTaskBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Reporte Ejecutivo -->
+<div id="reporteModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <h3>📊 Reporte Ejecutivo</h3>
+      <button class="modal-close" id="closeReporteModal">×</button>
+    </div>
+    <div class="modal-body" id="reporte-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeReporteModal2">Cerrar</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Vista previa social -->
 <div id="previewModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:960px;">
@@ -258,17 +371,21 @@
 
 <!-- Modal: Tarea -->
 <div id="tareaModal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:600px;">
     <div class="modal-header">
       <h3 id="tarea-modal-title">Nueva tarea</h3>
       <button class="modal-close" id="closeTareaModal">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group span-2">
-          <label>Título *</label>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+
+        <!-- Título -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Título <span class="req-star">*</span></label>
           <input type="text" id="tf-titulo" class="form-control" placeholder="¿Qué hay que hacer?">
         </div>
+
+        <!-- Estado + Prioridad -->
         <div class="form-group">
           <label>Estado</label>
           <select id="tf-estado" class="form-control">
@@ -285,50 +402,94 @@
             <option>Baja</option>
           </select>
         </div>
+
+        <!-- Vencimiento + Recurrencia -->
         <div class="form-group">
           <label>Fecha de vencimiento</label>
           <input type="date" id="tf-vencimiento" class="form-control">
         </div>
         <div class="form-group">
-          <label>Recurrencia</label>
+          <label>🔁 Recurrencia</label>
           <select id="tf-recurrencia" class="form-control">
-            <option value="">Ninguna</option>
-            <option value="diaria">Diaria</option>
-            <option value="semanal">Semanal</option>
-            <option value="quincenal">Cada 15 días</option>
-            <option value="mensual">Mensual</option>
-            <option value="anual">Anual</option>
-            <option value="dias-semana">Días específicos</option>
+            <option value="">Sin repetición</option>
+            <option value="diaria">↻ Todos los días</option>
+            <option value="semanal">↻ Semanal</option>
+            <option value="quincenal">↻ Cada 15 días</option>
+            <option value="mensual">↻ Mensual</option>
+            <option value="anual">↻ Anual</option>
+            <option value="dias-semana">↻ Días específicos…</option>
           </select>
         </div>
-        <div class="form-group" id="dias-semana-group" style="display:none;">
-          <label>Días de la semana</label>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="1" class="dia-check">Lun</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="2" class="dia-check">Mar</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="3" class="dia-check">Mié</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="4" class="dia-check">Jue</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="5" class="dia-check">Vie</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="6" class="dia-check">Sáb</label>
-            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="0" class="dia-check">Dom</label>
+
+        <!-- Días de la semana (mostrar solo si días-semana) -->
+        <div class="form-group" id="dias-semana-group" style="grid-column:span 2;display:none;">
+          <label>¿Qué días se repite?</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+            <label class="check-label"><input type="checkbox" value="1" class="dia-check"> Lunes</label>
+            <label class="check-label"><input type="checkbox" value="2" class="dia-check"> Martes</label>
+            <label class="check-label"><input type="checkbox" value="3" class="dia-check"> Miércoles</label>
+            <label class="check-label"><input type="checkbox" value="4" class="dia-check"> Jueves</label>
+            <label class="check-label"><input type="checkbox" value="5" class="dia-check"> Viernes</label>
+            <label class="check-label"><input type="checkbox" value="6" class="dia-check"> Sábado</label>
+            <label class="check-label"><input type="checkbox" value="0" class="dia-check"> Domingo</label>
           </div>
         </div>
-        <div class="form-group span-2">
-          <label>Notas</label>
-          <textarea id="tf-notas" class="form-control" rows="2"></textarea>
-        </div>
-        <div class="form-group span-2">
-          <label>Link de referencia (opcional)</label>
+
+        <!-- Link de referencia -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>🔗 Link de referencia</label>
           <input type="url" id="tf-link" class="form-control" placeholder="https://drive.google.com/... o cualquier URL">
         </div>
+
+        <!-- Descripción / Notas con editor enriquecido -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Descripción / Notas</label>
+          <div class="rte-toolbar" id="tf-notas-toolbar">
+            <button type="button" class="rte-btn" onclick="rteCmd('bold')" title="Negrita (Ctrl+B)"><b>B</b></button>
+            <button type="button" class="rte-btn" onclick="rteCmd('italic')" title="Cursiva (Ctrl+I)"><i>I</i></button>
+            <button type="button" class="rte-btn" onclick="rteCmd('underline')" title="Subrayado"><u>U</u></button>
+            <span class="rte-sep"></span>
+            <button type="button" class="rte-btn" onclick="rteCmd('insertUnorderedList')" title="Lista con viñetas">• Lista</button>
+            <button type="button" class="rte-btn" onclick="rteCmd('insertOrderedList')" title="Lista numerada">1. Lista</button>
+            <span class="rte-sep"></span>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#E02020;" onclick="rteColor('#E02020')" title="Rojo"></button>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#1A4DAA;" onclick="rteColor('#1A4DAA')" title="Azul"></button>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#10b981;" onclick="rteColor('#10b981')" title="Verde"></button>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#f59e0b;" onclick="rteColor('#f59e0b')" title="Naranja"></button>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#0D2B6B;" onclick="rteColor('#0D2B6B')" title="Azul oscuro"></button>
+            <button type="button" class="rte-btn rte-color-btn" style="background:#64748b;" onclick="rteColor('#64748b')" title="Gris"></button>
+            <span class="rte-sep"></span>
+            <button type="button" class="rte-btn" onclick="rteCmd('removeFormat')" title="Limpiar formato" style="font-size:10px;">✕ fmt</button>
+          </div>
+          <div id="tf-notas"
+               class="form-control rte-editor"
+               contenteditable="true"
+               spellcheck="true"
+               data-placeholder="Describí la tarea, agregá bullets, colores, links..."></div>
+        </div>
+
+        <!-- Imágenes adjuntas -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>🖼 Imágenes adjuntas</label>
+          <div id="tarea-img-area" class="img-paste-area" tabindex="0" title="Pegá con Ctrl+V o tocá para subir imagen">
+            <div class="img-paste-placeholder">
+              <i data-lucide="image" style="width:18px;height:18px;opacity:.4;"></i>
+              <span>Ctrl+V para pegar o tocá para subir imagen</span>
+            </div>
+            <div id="tarea-img-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+            <input type="file" id="tarea-img-input" accept="image/*" multiple style="display:none;">
+          </div>
+        </div>
+
         <!-- Subtareas -->
-        <div class="form-group span-2" id="subtareas-section" style="display:none;">
+        <div class="form-group" style="grid-column:span 2;" id="subtareas-section" style="display:none;">
           <label style="display:flex;align-items:center;justify-content:space-between;">
             <span>Subtareas</span>
             <button type="button" class="btn btn-secondary btn-sm" id="addSubtareaBtn">+ Agregar</button>
           </label>
           <div id="subtareas-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;"></div>
         </div>
+
       </div>
     </div>
     <div class="modal-footer">
