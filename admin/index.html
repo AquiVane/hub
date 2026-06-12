@@ -1,1 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMART Marketing Hub — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-name">COSMART</div>
+      <div class="logo-tagline">Marketing Hub</div>
+      <span>Panel administrador</span>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-section-label">Menú</div>
+      <button class="nav-item active" onclick="showSection('clientes')">
+        <span class="icon">👥</span><span>Clientes</span>
+      </button>
+      <button class="nav-item" onclick="showSection('config')">
+        <span class="icon">⚙️</span><span>Configuración</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </aside>
 
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Panel Admin</div>
+        <div class="topbar-sub" id="adminName"></div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" onclick="openNewClientModal()">+ Nuevo cliente</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Clientes -->
+      <div id="sec-clientes">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Clientes</h2>
+          <span id="clientCount" class="text-muted text-sm"></span>
+        </div>
+        <div class="admin-grid" id="clientGrid">
+          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div id="sec-config" class="hidden">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Configuración</h2>
+        <div class="card" style="max-width:600px;">
+          <div class="card-header"><h2>Firebase</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+              Para conectar Firebase real, editá el archivo <code>js/firebase.js</code> con tus credenciales.<br>
+              Seguí las instrucciones del archivo <code>SETUP.md</code>.
+            </p>
+            <div id="firebase-status" style="padding:10px 12px;border-radius:6px;font-size:13px;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo cliente -->
+<div id="newClientModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Nuevo cliente</h3>
+      <button class="modal-close" onclick="closeNewClientModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="nc-nombre" class="form-control" placeholder="Ej: Slots!">
+        </div>
+        <div class="form-group">
+          <label>ID único *</label>
+          <input type="text" id="nc-id" class="form-control" placeholder="ej: slots (sin espacios)">
+        </div>
+        <div class="form-group">
+          <label>Email de acceso *</label>
+          <input type="email" id="nc-email" class="form-control" placeholder="cliente@email.com">
+        </div>
+        <div class="form-group">
+          <label>Contraseña inicial *</label>
+          <input type="text" id="nc-pass" class="form-control" placeholder="min. 6 caracteres">
+        </div>
+        <div class="form-group">
+          <label>Instagram</label>
+          <input type="text" id="nc-ig" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>Facebook</label>
+          <input type="text" id="nc-fb" class="form-control" placeholder="Nombre de página">
+        </div>
+        <div class="form-group span-2">
+          <label>Notas internas</label>
+          <textarea id="nc-notas" class="form-control" placeholder="Notas sobre el cliente..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewClientModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="createNewClient()">Crear cliente</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireAuth, logoutUser } from '../js/auth.js';
+  import { getAllClients, createClient } from '../js/data.js';
+  import { DEMO_MODE } from '../js/firebase.js';
+
+  const user = requireAuth('admin');
+  if (!user) throw new Error('No auth');
+  document.getElementById('adminName').textContent = user.name || user.email;
+
+  document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+
+  // Worker status
+  const fsEl = document.getElementById('firebase-status');
+  if (DEMO_MODE) {
+    fsEl.style.background = '#fffbeb'; fsEl.style.color = '#b45309'; fsEl.style.border = '1px solid #fde68a';
+    fsEl.innerHTML = '⚠️ <strong>Modo demo activo.</strong> Editá <code>js/firebase.js</code> con la URL de tu Cloudflare Worker para activar el backend real.';
+  } else {
+    fsEl.style.background = '#ecfdf5'; fsEl.style.color = '#059669'; fsEl.style.border = '1px solid #a7f3d0';
+    fsEl.innerHTML = '✅ <strong>Worker conectado.</strong> Datos guardados en Cloudflare KV.';
+  }
+
+  window.showSection = function(sec) {
+    ['clientes','config'].forEach(s => {
+      document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+  };
+
+  async function loadClients() {
+    const clients = await getAllClients();
+    document.getElementById('clientCount').textContent = `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
+    const grid = document.getElementById('clientGrid');
+    if (!clients.length) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Sin clientes</h3><p>Creá tu primer cliente.</p></div>`;
+      return;
+    }
+    grid.innerHTML = clients.map(c => `
+      <div class="client-card">
+        <div>
+          <div class="client-card-name">${c.nombre || c.name || c.id}</div>
+          <div class="client-card-meta">${c.email || ''}</div>
+          <div class="client-card-meta" style="margin-top:4px;">${c.instagram ? '📸 ' + c.instagram : ''}${c.facebook ? ' · 📘 ' + c.facebook : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
+          <span style="font-size:11px;color:var(--text-muted);">${c.activo !== false ? 'Activo' : 'Inactivo'}</span>
+        </div>
+        <div class="client-card-actions">
+          <a href="../app/index.html?client=${c.id}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
+          <button class="btn btn-secondary btn-sm" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.openNewClientModal = () => document.getElementById('newClientModal').classList.remove('hidden');
+  window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
+
+  window.copyLogin = (email) => {
+    navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
+  };
+
+  window.createNewClient = async function() {
+    const nombre = document.getElementById('nc-nombre').value.trim();
+    const id = document.getElementById('nc-id').value.trim().toLowerCase().replace(/\s+/g,'');
+    const email = document.getElementById('nc-email').value.trim();
+    const pass = document.getElementById('nc-pass').value.trim();
+    const ig = document.getElementById('nc-ig').value.trim();
+    const fb = document.getElementById('nc-fb').value.trim();
+    const notas = document.getElementById('nc-notas').value.trim();
+
+    if (!nombre || !id || !email || !pass) { alert('Completá los campos obligatorios.'); return; }
+    if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+
+    await createClient({ id, nombre, email, password: pass, instagram: ig, facebook: fb, notas, activo: true });
+    closeNewClientModal();
+    loadClients();
+  };
+
+  loadClients();
+</script>
+</body>
+</html>
