@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMART — Marketing Hub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .login-form { display: flex; flex-direction: column; gap: 14px; }
+
+    .forgot-link {
+      font-size: 12px; color: var(--accent); text-decoration: none;
+      text-align: right; display: block; margin-top: -8px;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .divider span { font-size: 11px; color: var(--text-muted); }
+
+    /* Panel de recuperar contraseña */
+    #resetPanel { display: none; }
+    #loginPanel, #resetPanel { flex-direction: column; gap: 14px; }
+
+    .back-link {
+      font-size: 12px; color: var(--text-muted); background: none; border: none;
+      cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px;
+      margin-bottom: 4px;
+    }
+    .back-link:hover { color: var(--primary); }
+
+    .demo-note {
+      margin-top: 16px; padding: 10px 12px; background: #eff6ff; border-radius: 8px;
+      font-size: 12px; color: #1d4ed8; border: 1px solid #bfdbfe; line-height: 1.5;
+    }
+
+    .login-footer {
+      margin-top: 20px; text-align: center; font-size: 11px; color: var(--text-muted);
+    }
+    .login-footer strong { color: var(--primary-dark); }
+  </style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+
+    <!-- Logo -->
+    <div class="login-logo">COSMART</div>
+    <div class="login-tagline">Tu Brújula Digital</div>
+    <div class="login-subtitle">Marketing Hub — Panel de control</div>
+
+    <!-- Mensajes -->
+    <div id="login-error" class="login-error hidden"></div>
+    <div id="login-success" class="login-success hidden"></div>
+
+    <!-- Panel Login -->
+    <div id="loginPanel" style="display:flex;">
+      <form class="login-form" id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" class="form-control" placeholder="tu@email.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <a href="#" class="forgot-link" id="showReset">¿Olvidaste tu contraseña?</a>
+        <button type="submit" class="btn btn-primary w-full" id="loginBtn"
+          style="justify-content:center; padding:11px; font-size:14px; font-weight:600; background:var(--primary-dark); margin-top:4px;">
+          Ingresar
+        </button>
+      </form>
+    </div>
+
+    <!-- Panel Recuperar contraseña -->
+    <div id="resetPanel">
+      <button class="back-link" id="showLogin">← Volver al login</button>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>Email de tu cuenta</label>
+        <input type="email" id="resetEmail" class="form-control" placeholder="tu@email.com">
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+        Te vamos a mandar un link para restablecer tu contraseña.
+      </p>
+      <button class="btn btn-primary w-full" id="resetBtn"
+        style="justify-content:center; padding:11px; font-size:14px; font-weight:600; background:var(--primary-dark);">
+        Enviar link de recuperación
+      </button>
+    </div>
+
+    <!-- Nota demo -->
+    <div class="demo-note" id="demoNote">
+      🔧 <strong>Modo demo:</strong> Worker no configurado aún.<br>
+      Admin: <strong>admin@demo.com</strong> / <strong>admin123</strong><br>
+      Cliente: <strong>slots@demo.com</strong> / <strong>slots123</strong>
+    </div>
+
+    <div class="login-footer">
+      <strong>COSMART</strong> · Marketing Hub
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { DEMO_MODE } from './js/firebase.js';
+  import { loginUser } from './js/auth.js';
+
+  if (!DEMO_MODE) {
+    document.getElementById('demoNote').classList.add('hidden');
+  }
+
+  // Toggle panels
+  document.getElementById('showReset').addEventListener('click', e => {
+    e.preventDefault();
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('resetPanel').style.display = 'flex';
+    document.getElementById('login-error').classList.add('hidden');
+    document.getElementById('login-success').classList.add('hidden');
+  });
+
+  document.getElementById('showLogin').addEventListener('click', () => {
+    document.getElementById('resetPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'flex';
+    document.getElementById('login-error').classList.add('hidden');
+    document.getElementById('login-success').classList.add('hidden');
+  });
+
+  // Login
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('loginBtn');
+    const errEl = document.getElementById('login-error');
+
+    btn.disabled = true;
+    btn.textContent = 'Ingresando...';
+    errEl.classList.add('hidden');
+
+    try {
+      const result = await loginUser(email, password);
+      if (result.role === 'admin') {
+        window.location.href = 'admin/index.html';
+      } else {
+        window.location.href = `app/index.html?client=${result.clientId}`;
+      }
+    } catch (err) {
+      errEl.textContent = err.message || 'Email o contraseña incorrectos.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Ingresar';
+    }
+  });
+
+  // Reset password
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const email = document.getElementById('resetEmail').value.trim();
+    const errEl = document.getElementById('login-error');
+    const sucEl = document.getElementById('login-success');
+    const btn = document.getElementById('resetBtn');
+
+    if (!email) {
+      errEl.textContent = 'Ingresá tu email.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    errEl.classList.add('hidden');
+
+    if (DEMO_MODE) {
+      sucEl.textContent = '🔧 En modo demo no se envían emails. Configurá el worker para activar esta función.';
+      sucEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const { WORKER_URL } = await import('./js/firebase.js');
+      const res = await fetch(WORKER_URL + '/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      // Siempre mostrar éxito (no revelar si el email existe)
+      sucEl.textContent = `✅ Si el email existe, te mandamos un link a ${email}. Revisá tu casilla (y el spam).`;
+      sucEl.classList.remove('hidden');
+    } catch (e) {
+      errEl.textContent = 'No se pudo enviar el email. Intentá de nuevo.';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar link de recuperación';
+    }
+  });
+</script>
+</body>
+</html>

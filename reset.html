@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMART — Restablecer contraseña</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .login-form { display: flex; flex-direction: column; gap: 14px; }
+    .back-link {
+      font-size:12px; color:var(--text-muted); background:none; border:none;
+      cursor:pointer; padding:0; display:flex; align-items:center; gap:4px;
+      text-decoration:none; margin-bottom:4px;
+    }
+    .back-link:hover { color:var(--primary); }
+    .login-footer { margin-top:20px; text-align:center; font-size:11px; color:var(--text-muted); }
+    .login-footer strong { color:var(--primary-dark); }
+  </style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+
+    <div class="login-logo">COSMART</div>
+    <div class="login-tagline">Tu Brújula Digital</div>
+    <div class="login-subtitle">Restablecer contraseña</div>
+
+    <div id="login-error"   class="login-error   hidden"></div>
+    <div id="login-success" class="login-success hidden"></div>
+
+    <!-- Formulario de nueva contraseña -->
+    <div id="resetForm">
+      <div class="login-form">
+        <div class="form-group">
+          <label for="newPassword">Nueva contraseña</label>
+          <input type="password" id="newPassword" class="form-control"
+            placeholder="Mínimo 6 caracteres" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirmar contraseña</label>
+          <input type="password" id="confirmPassword" class="form-control"
+            placeholder="Repetí la contraseña" required>
+        </div>
+        <button id="resetBtn" class="btn btn-primary w-full"
+          style="justify-content:center; padding:11px; font-size:14px; font-weight:600; background:var(--primary-dark); margin-top:4px;">
+          Guardar nueva contraseña
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado: token inválido -->
+    <div id="invalidToken" class="hidden" style="text-align:center;padding:16px 0;">
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        ❌ Este link ya no es válido o expiró.<br>
+        Pedí uno nuevo desde la pantalla de login.
+      </p>
+      <a href="index.html" class="btn btn-primary" style="justify-content:center;">Volver al login</a>
+    </div>
+
+    <!-- Estado: éxito -->
+    <div id="successState" class="hidden" style="text-align:center;padding:16px 0;">
+      <p style="color:#059669;font-size:14px;margin-bottom:16px;">
+        ✅ ¡Contraseña actualizada!<br>
+        Ya podés iniciar sesión con tu nueva contraseña.
+      </p>
+      <a href="index.html" class="btn btn-primary" style="justify-content:center;">Ir al login</a>
+    </div>
+
+    <div class="login-footer"><strong>COSMART</strong> · Marketing Hub</div>
+  </div>
+</div>
+
+<script type="module">
+  import { WORKER_URL, DEMO_MODE } from './js/firebase.js';
+
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+  const errEl  = document.getElementById('login-error');
+  const sucEl  = document.getElementById('login-success');
+
+  // Sin token o en modo demo → mostrar inválido
+  if (!token || DEMO_MODE) {
+    document.getElementById('resetForm').classList.add('hidden');
+    document.getElementById('invalidToken').classList.remove('hidden');
+  }
+
+  document.getElementById('resetBtn')?.addEventListener('click', async () => {
+    const pass    = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    const btn     = document.getElementById('resetBtn');
+
+    errEl.classList.add('hidden');
+
+    if (!pass || pass.length < 6) {
+      errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (pass !== confirm) {
+      errEl.textContent = 'Las contraseñas no coinciden.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch(WORKER_URL + '/auth/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: pass }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cambiar la contraseña.');
+
+      document.getElementById('resetForm').classList.add('hidden');
+      document.getElementById('successState').classList.remove('hidden');
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Guardar nueva contraseña';
+    }
+  });
+</script>
+</body>
+</html>
