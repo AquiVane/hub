@@ -42,6 +42,9 @@
       <button class="nav-item" data-section="pauta">
         <i data-lucide="trending-up" class="nav-icon"></i><span>Pauta Digital</span>
       </button>
+      <button class="nav-item" data-section="links">
+        <i data-lucide="link" class="nav-icon"></i><span>Links</span>
+      </button>
       <button class="nav-item" data-section="instrucciones">
         <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
       </button>
@@ -50,37 +53,46 @@
     <div class="sidebar-cosmart">
       <div class="sidebar-cosmart-label">Puertos COSMART</div>
       <div class="sidebar-puertos">
-        <a href="https://cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto COSMART — Estrategia y consultoría">
-          <i data-lucide="anchor" class="puerto-icon"></i><span>COSMART</span>
+        <a href="https://cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="anchor" class="puerto-icon"></i>
+          <div><div class="puerto-name">COSMART</div><div class="puerto-desc">Estrategia y consultoría</div></div>
         </a>
-        <a href="https://comunicos.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto COMUNICOS — Community Management">
-          <i data-lucide="radio" class="puerto-icon"></i><span>COMUNICOS</span>
+        <a href="https://comunicos.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="radio" class="puerto-icon"></i>
+          <div><div class="puerto-name">COMUNICOS</div><div class="puerto-desc">Community management</div></div>
         </a>
-        <a href="https://desin.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto DESIN — Diseño y Branding">
-          <i data-lucide="pen-tool" class="puerto-icon"></i><span>DESIN</span>
+        <a href="https://desin.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="pen-tool" class="puerto-icon"></i>
+          <div><div class="puerto-name">DESIN</div><div class="puerto-desc">Diseño y branding</div></div>
         </a>
-        <a href="https://rumbovoz.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto RUMBO VORAZ — Pauta y Performance">
-          <i data-lucide="target" class="puerto-icon"></i><span>RUMBO VORAZ</span>
+        <a href="https://rumbovoz.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="target" class="puerto-icon"></i>
+          <div><div class="puerto-name">RUMBO VORAZ</div><div class="puerto-desc">Pauta y performance</div></div>
         </a>
-        <a href="https://euforia.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto EUFORIA — UGC e Influencers">
-          <i data-lucide="star" class="puerto-icon"></i><span>EUFORIA</span>
+        <a href="https://euforia.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="star" class="puerto-icon"></i>
+          <div><div class="puerto-name">EUFORIA</div><div class="puerto-desc">UGC e influencers</div></div>
         </a>
-        <a href="https://talent.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto TALENT — Personal Branding">
-          <i data-lucide="user-check" class="puerto-icon"></i><span>TALENT</span>
+        <a href="https://talent.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="user-check" class="puerto-icon"></i>
+          <div><div class="puerto-name">TALENT</div><div class="puerto-desc">Personal branding</div></div>
         </a>
-        <a href="https://shows.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto SHOWS — Eventos">
-          <i data-lucide="music" class="puerto-icon"></i><span>SHOWS</span>
+        <a href="https://shows.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="music" class="puerto-icon"></i>
+          <div><div class="puerto-name">SHOWS</div><div class="puerto-desc">Eventos y entretenimiento</div></div>
         </a>
-        <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item" title="Puerto MPG — Chatbots y automatización">
-          <i data-lucide="message-circle" class="puerto-icon"></i><span>MPG</span>
+        <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="message-circle" class="puerto-icon"></i>
+          <div><div class="puerto-name">MPG</div><div class="puerto-desc">Chatbots y automatización</div></div>
         </a>
       </div>
-      <a href="https://cosmart.com.ar/curso-ecommerce" target="_blank" class="sidebar-course-card">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-          <i data-lucide="package-search" style="width:14px;height:14px;stroke-width:1.75;"></i>
+      <a href="https://www.cosmart.com.ar/productos-ganadores" target="_blank" class="sidebar-course-card">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <i data-lucide="shopping-bag" style="width:13px;height:13px;stroke-width:1.75;color:#93c5fd;"></i>
           <span style="font-weight:700;font-size:11px;">Productos Ganadores</span>
         </div>
-        <div style="font-size:10px;opacity:0.75;line-height:1.4;">Curso ecommerce — ver →</div>
+        <div style="font-size:9.5px;opacity:0.65;line-height:1.4;">Encontrá productos ganadores para vender online</div>
+        <div class="sidebar-course-btn">Ver curso →</div>
       </a>
     </div>
     <div class="sidebar-footer">
@@ -277,9 +289,37 @@
           <label>Fecha de vencimiento</label>
           <input type="date" id="tf-vencimiento" class="form-control">
         </div>
+        <div class="form-group">
+          <label>Recurrencia</label>
+          <select id="tf-recurrencia" class="form-control">
+            <option value="">Ninguna</option>
+            <option value="diaria">Diaria</option>
+            <option value="semanal">Semanal</option>
+            <option value="quincenal">Cada 15 días</option>
+            <option value="mensual">Mensual</option>
+            <option value="anual">Anual</option>
+            <option value="dias-semana">Días específicos</option>
+          </select>
+        </div>
+        <div class="form-group" id="dias-semana-group" style="display:none;">
+          <label>Días de la semana</label>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="1" class="dia-check">Lun</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="2" class="dia-check">Mar</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="3" class="dia-check">Mié</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="4" class="dia-check">Jue</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="5" class="dia-check">Vie</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="6" class="dia-check">Sáb</label>
+            <label style="font-weight:400;font-size:12px;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="0" class="dia-check">Dom</label>
+          </div>
+        </div>
         <div class="form-group span-2">
           <label>Notas</label>
           <textarea id="tf-notas" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-group span-2">
+          <label>Link de referencia (opcional)</label>
+          <input type="url" id="tf-link" class="form-control" placeholder="https://drive.google.com/... o cualquier URL">
         </div>
         <!-- Subtareas -->
         <div class="form-group span-2" id="subtareas-section" style="display:none;">
@@ -444,6 +484,90 @@
       <button class="btn btn-danger btn-sm" id="deleteCampanaBtn" style="margin-right:auto;">Eliminar</button>
       <button class="btn btn-secondary" id="closeCampanaModal2">Cancelar</button>
       <button class="btn btn-primary" id="saveCampanaBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agregar To-do -->
+<div id="todoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>+ Agregar tarea al día</h3>
+      <button class="modal-close" id="closeTodoModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Tarea *</label>
+        <input type="text" id="todo-text" class="form-control" placeholder="¿Qué hay que hacer?">
+      </div>
+      <div class="form-group">
+        <label>Fecha de vencimiento (opcional)</label>
+        <input type="date" id="todo-vencimiento" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Prioridad</label>
+        <select id="todo-prioridad" class="form-control">
+          <option>Media</option><option>Alta</option><option>Baja</option>
+        </select>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Esta tarea también aparecerá en el tablero Kanban de Tareas.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeTodoModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveTodoBtn">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agregar Subtarea -->
+<div id="subtareaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <h3>+ Agregar subtarea</h3>
+      <button class="modal-close" id="closeSubtareaModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="st-titulo" class="form-control" placeholder="¿Qué hay que hacer?">
+      </div>
+      <div class="form-group">
+        <label>Fecha de vencimiento (opcional)</label>
+        <input type="date" id="st-vencimiento" class="form-control">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeSubtareaModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveSubtareaBtn">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Link -->
+<div id="linkModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 id="link-modal-title">Nuevo link</h3>
+      <button class="modal-close" id="closeLinkModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="lf-titulo" class="form-control" placeholder="Ej: Drive compartido, Canva, Notion...">
+      </div>
+      <div class="form-group">
+        <label>URL *</label>
+        <input type="url" id="lf-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Descripción (opcional)</label>
+        <input type="text" id="lf-desc" class="form-control" placeholder="Ej: Carpeta de assets del cliente">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deleteLinkBtn" style="margin-right:auto;display:none;">Eliminar</button>
+      <button class="btn btn-secondary" id="closeLinkModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveLinkBtn">Guardar</button>
     </div>
   </div>
 </div>
