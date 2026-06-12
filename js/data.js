@@ -245,6 +245,38 @@ export async function saveIdea(clientId, idea) {
   return idea;
 }
 
+export async function deleteIdea(clientId, id) {
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.ideas = data.ideas.filter(i => i.id !== id);
+    saveDemoData(clientId, data);
+    return;
+  }
+  const list = await api('GET', `/data/${clientId}/ideas`);
+  await api('POST', `/data/${clientId}/ideas`, list.filter(i => i.id !== id));
+}
+
+export async function deleteCampana(clientId, id) {
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.campanas = data.campanas.filter(c => c.id !== id);
+    saveDemoData(clientId, data);
+    return;
+  }
+  const list = await api('GET', `/data/${clientId}/campanas`);
+  await api('POST', `/data/${clientId}/campanas`, list.filter(c => c.id !== id));
+}
+
+export async function saveMetricasData(clientId, metricas) {
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.metricas = metricas;
+    saveDemoData(clientId, data);
+    return;
+  }
+  await api('POST', `/data/${clientId}/metricas`, metricas);
+}
+
 // ── Admin ─────────────────────────────────────────────────────
 
 export async function getAllClients() {
