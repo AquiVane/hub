@@ -33,6 +33,9 @@
         <strong id="sb-client-name">Cargando...</strong>
         <span id="sb-client-ig"></span>
       </div>
+      <button onclick="openEquipoModal()" title="Gestionar equipo" style="background:none;border:none;cursor:pointer;padding:4px;color:rgba(255,255,255,.45);flex-shrink:0;line-height:1;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.45)'">
+        <i data-lucide="users" style="width:15px;height:15px;stroke-width:1.75;"></i>
+      </button>
     </div>
     <nav class="nav-section">
       <div class="nav-section-label">Navegación</div>
@@ -294,15 +297,15 @@
         </div>
 
       </div>
-    </div>
       <!-- Comentarios contenido -->
-      <div class="form-group" style="grid-column:span 3;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
-        <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
+      <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:4px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
         <div id="cont-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
         <div style="display:flex;gap:8px;">
-          <input type="text" id="cont-comment-input" class="form-control" placeholder="Escribí un comentario..." style="flex:1;">
+          <input type="text" id="cont-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addContenidoComment()">Comentar</button>
         </div>
+        <div id="cont-mention-list" class="mention-dropdown hidden"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -522,10 +525,11 @@
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
           <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
           <div id="tarea-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:140px;overflow-y:auto;"></div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="tarea-comment-input" class="form-control" placeholder="Escribí un comentario..." style="flex:1;">
+          <div style="display:flex;gap:8px;position:relative;">
+            <input type="text" id="tarea-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="addTareaComment()">Comentar</button>
           </div>
+          <div id="tarea-mention-list" class="mention-dropdown hidden"></div>
         </div>
 
       </div>
@@ -772,6 +776,52 @@
 </div>
 
 <script type="module" src="../js/app.js"></script>
+<!-- Modal: Gestión de equipo -->
+<div id="equipoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>👥 Equipo del cliente</h3>
+      <button class="modal-close" onclick="document.getElementById('equipoModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+        Estos usuarios pueden ser mencionados con <strong>@nombre</strong> en comentarios de tareas y contenidos.
+        Al mencionarlos, recibirán una notificación por email.
+      </p>
+      <div id="equipo-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+      <div style="border-top:1px solid var(--border-strong);padding-top:14px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:10px;">Agregar usuario</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Nombre *</label>
+            <input type="text" id="eq-nombre" class="form-control" placeholder="Ej: Vaneh">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Email *</label>
+            <input type="email" id="eq-email" class="form-control" placeholder="usuario@email.com">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Rol</label>
+            <select id="eq-rol" class="form-control">
+              <option>Responsable COSMART</option>
+              <option>Cliente</option>
+              <option>Diseñador/a</option>
+              <option>Community Manager</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-primary" style="width:100%;" onclick="agregarUsuarioEquipo()">+ Agregar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('equipoModal').classList.add('hidden')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Inicializar iconos Lucide después de que cargue el módulo
   document.addEventListener('DOMContentLoaded', () => {
