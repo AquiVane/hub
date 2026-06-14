@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>COSMART Marketing Hub</title>
-  <link rel="icon" type="image/png" href="cosmart-logo.png">
+  <link rel="icon" type="image/png" href="favicon-cosmart.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
@@ -17,17 +17,17 @@
     <div class="sidebar-logo">
       <div class="logo-icon-wrap">
         <img src="cosmart-logo.png" alt="COSMART" class="cosmart-logo-img">
-        <div class="logo-tagline-only">Marketing Hub</div>
       </div>
+      <div class="logo-tagline-only">Marketing Hub</div>
       <span id="sb-client-sub"></span>
     </div>
     <div class="sidebar-client">
       <div class="client-logo-wrap" onclick="document.getElementById('client-logo-input').click()" title="Clic para subir el logo de tu empresa">
-        <img id="sb-client-logo" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:6px;">
+        <img id="sb-client-logo" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;">
         <div id="sb-client-logo-placeholder" class="client-logo-placeholder">
-          <i data-lucide="building-2" style="width:20px;height:20px;color:#94a3b8;stroke-width:1.5;"></i>
+          <span style="font-size:22px;line-height:1;color:rgba(255,255,255,.5);">+</span>
         </div>
-        <div class="client-logo-upload-hint">📷</div>
+        <div class="client-logo-upload-hint" style="font-size:11px;line-height:1;">+</div>
       </div>
       <input type="file" id="client-logo-input" accept="image/*" style="display:none;">
       <div style="flex:1;min-width:0;">
@@ -84,8 +84,12 @@
           <div><div class="puerto-name">DESIGN</div><div class="puerto-desc">Diseño y branding</div></div>
         </a>
         <a href="https://euforia.cosmart.com.ar" target="_blank" class="puerto-item">
-          <i data-lucide="star" class="puerto-icon"></i>
+          <i data-lucide="link" class="puerto-icon"></i>
           <div><div class="puerto-name">EUFORIA</div><div class="puerto-desc">UGC e influencers</div></div>
+        </a>
+        <a href="https://comunicos.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="megaphone" class="puerto-icon"></i>
+          <div><div class="puerto-name">COMUNICOS</div><div class="puerto-desc">Comunicación estratégica</div></div>
         </a>
         <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="message-circle" class="puerto-icon"></i>
@@ -270,17 +274,18 @@
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>🖼 Imágenes adjuntas</label>
+          <label>📎 Archivos adjuntos</label>
           <div id="img-paste-area" class="img-paste-area" style="cursor:default;">
             <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
               <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
                 <i data-lucide="clipboard" style="width:15px;height:15px;opacity:.5;"></i>
-                Presioná <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:3px;padding:1px 5px;font-size:11px;">Ctrl+V</kbd> para pegar una imagen
+                <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:3px;padding:1px 5px;font-size:11px;">Ctrl+V</kbd> para pegar imagen · Imágenes, videos, PDF
               </span>
               <button type="button" onclick="document.getElementById('img-file-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
+            <p style="font-size:10px;color:#94a3b8;margin-top:4px;">Videos o archivos pesados → subí a Drive y pegá el link arriba. Límite sugerido: 50 MB.</p>
             <div id="img-thumbnails" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
-            <input type="file" id="img-file-input" accept="image/*" multiple style="display:none;">
+            <input type="file" id="img-file-input" accept="image/*,video/*,.pdf,.doc,.docx" multiple style="display:none;">
           </div>
         </div>
 
