@@ -93,6 +93,10 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
+  // Sincronizar nav activo (necesario al llamar programáticamente)
+  document.querySelectorAll('.nav-item[data-section]').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sec);
+  });
   const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', instrucciones: 'Instrucciones' };
   const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
@@ -103,7 +107,19 @@ function renderSection(sec) {
 
   const content = document.getElementById('main-content');
 
-  if (sec === 'home') { renderHome(content); setTimeout(refreshIcons, 50); }
+  if (sec === 'home') {
+    const rptBtn = document.createElement('button');
+    rptBtn.className = 'btn btn-secondary';
+    rptBtn.textContent = '📊 Reporte';
+    rptBtn.onclick = () => openReporteModal();
+    actions.appendChild(rptBtn);
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn btn-primary';
+    newBtn.textContent = '+ Nuevo contenido';
+    newBtn.onclick = () => openContenidoModal(null);
+    actions.appendChild(newBtn);
+    renderHome(content); setTimeout(refreshIcons, 50);
+  }
   else if (sec === 'dashboard') { renderDashboard(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
     const rptBtn = document.createElement('button');
@@ -147,6 +163,15 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'web') {
+    const siteUrl = STATE.client.website || STATE.client.sitioWeb;
+    if (siteUrl) {
+      const verBtn = document.createElement('a');
+      verBtn.className = 'btn btn-secondary';
+      verBtn.textContent = '🌐 Ver sitio web';
+      verBtn.href = siteUrl.startsWith('http') ? siteUrl : 'https://' + siteUrl;
+      verBtn.target = '_blank';
+      actions.appendChild(verBtn);
+    }
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nueva tarea web';
@@ -600,7 +625,7 @@ function renderBancoContenidos(container) {
           <tr>
             <th>Fecha pub.</th><th>Título</th><th>Plataforma</th>
             <th>Estado</th><th>Formato</th><th>Eje</th>
-            <th>Drive</th><th>Notas</th>
+            <th>Drive</th><th>Notas</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -619,6 +644,12 @@ function renderBancoContenidos(container) {
               <td style="font-size:12px;">${c.eje||''}</td>
               <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">📎</a>` : ''}</td>
               <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+              <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+                ${c.estado === 'En revisión' ? `
+                  <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
+                  <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
+                ` : ''}
+              </td>
             </tr>
           `).join('')}
           <tr onclick="openContenidoModal(null)" style="cursor:pointer;opacity:.55;" class="banco-row">
@@ -728,9 +759,13 @@ function renderKanbanContenidos(container) {
               <div class="kanban-card-title">${c.titulo}</div>
               <div class="kanban-card-meta">${(c.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
               ${c.fechaPub ? `<div class="kanban-card-date">📅 ${fmtDate(c.fechaPub)}</div>` : ''}
-              <div style="display:flex;gap:4px;margin-top:6px;">
+              <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button>
                 <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁</button>
+                ${col.key === 'En revisión' ? `
+                  <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;" onclick="aprobarContenido('${c.id}')">✓ Aprobar</button>
+                  <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="rechazarContenido('${c.id}')">✗ Rechazar</button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -1330,12 +1365,13 @@ let _imgList = [];
 function renderImgThumbs() {
   const wrap = document.getElementById('img-thumbnails');
   if (!wrap) return;
-  wrap.innerHTML = _imgList.map((src, i) => `
-    <div style="position:relative;">
-      <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
-      <button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button>
-    </div>
-  `).join('');
+  wrap.innerHTML = _imgList.map((item, i) => {
+    const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
+    const preview = f.isImage
+      ? `<img src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;">`
+      : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
+    return `<div style="position:relative;">${preview}<button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+  }).join('');
   const ph = document.querySelector('.img-paste-placeholder');
   if (ph) ph.style.display = _imgList.length ? 'none' : '';
 }
@@ -1343,9 +1379,18 @@ function renderImgThumbs() {
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
 function addImgFromFile(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+  if (!file) return;
+  const MAX = 50 * 1024 * 1024; // 50 MB
+  if (file.size > MAX) {
+    alert(`"${file.name}" pesa más de 50 MB. Subilo a Google Drive y pegá el link en el campo de Drive.`);
+    return;
+  }
   const reader = new FileReader();
-  reader.onload = e => { _imgList.push(e.target.result); renderImgThumbs(); };
+  const isImage = file.type.startsWith('image/');
+  reader.onload = e => {
+    _imgList.push({ src: e.target.result, name: file.name, isImage });
+    renderImgThumbs();
+  };
   reader.readAsDataURL(file);
 }
 
@@ -1757,7 +1802,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     closeTareaModal();
     updateBadges();
     if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
-    else if (currentSection === 'home') renderSection('home');
+    else renderSection('home'); // desde cualquier otra vista (home, web, etc.) queda en inicio
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar';
   }
@@ -2518,6 +2563,28 @@ document.getElementById('deleteWebTaskBtn').addEventListener('click', async () =
   closeWebTaskModal();
   renderWeb(document.getElementById('main-content'));
 });
+
+// ── Aprobación de contenido ────────────────────────────
+window.aprobarContenido = async function(id) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.estado = 'Aprobado';
+  await saveContenido(clientId, c);
+  STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
+  renderContTab(activeContTab);
+};
+
+window.rechazarContenido = async function(id) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  const motivo = prompt('Motivo del rechazo (opcional):');
+  if (motivo === null) return;
+  c.estado = 'En proceso';
+  if (motivo) c.notas = `[Rechazado: ${motivo}]${c.notas ? ' — ' + c.notas : ''}`;
+  await saveContenido(clientId, c);
+  STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
+  renderContTab(activeContTab);
+};
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
