@@ -153,6 +153,21 @@
           <input type="text" id="nc-notas" class="form-control" placeholder="Notas sobre el cliente...">
         </div>
       </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo inicial</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Usuarios que pueden recibir @ menciones en comentarios. Podés agregar más después desde el hub.</p>
+      <div id="nc-usuarios-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Nombre</label>
+          <input type="text" id="nc-eq-nombre" class="form-control" placeholder="Ej: Vaneh">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Email</label>
+          <input type="email" id="nc-eq-email" class="form-control" placeholder="usuario@email.com">
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="agregarEquipoNuevoCliente()" style="height:38px;">+ Agregar</button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeNewClientModal()">Cancelar</button>
@@ -217,8 +232,33 @@
     `).join('');
   }
 
-  window.openNewClientModal = () => document.getElementById('newClientModal').classList.remove('hidden');
+  window.openNewClientModal = () => {
+    document.getElementById('newClientModal').classList.remove('hidden');
+    _ncUsuarios = [];
+    renderNcUsuarios();
+  };
   window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
+
+  let _ncUsuarios = [];
+  function renderNcUsuarios() {
+    const list = document.getElementById('nc-usuarios-list');
+    if (!list) return;
+    list.innerHTML = _ncUsuarios.length ? _ncUsuarios.map((u,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f1f5f9;border-radius:6px;font-size:12px;">
+        <span style="flex:1;font-weight:600;">${u.nombre}</span>
+        <span style="color:var(--text-muted);">${u.email}</span>
+        <button onclick="_ncUsuarios.splice(${i},1);renderNcUsuarios();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:0 4px;">×</button>
+      </div>`).join('') : '';
+  }
+  window.agregarEquipoNuevoCliente = function() {
+    const nombre = document.getElementById('nc-eq-nombre').value.trim();
+    const email = document.getElementById('nc-eq-email').value.trim();
+    if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+    _ncUsuarios.push({ nombre, email, rol: 'Usuario' });
+    document.getElementById('nc-eq-nombre').value = '';
+    document.getElementById('nc-eq-email').value = '';
+    renderNcUsuarios();
+  };
 
   window.copyLogin = (email) => {
     navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
@@ -249,6 +289,7 @@
       website: document.getElementById('nc-website').value.trim(),
       website2: document.getElementById('nc-website2').value.trim(),
       metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
+      usuarios: _ncUsuarios,
     });
     closeNewClientModal();
     loadClients();
