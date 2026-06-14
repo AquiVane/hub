@@ -61,6 +61,12 @@ input, select, textarea { font-family: inherit; }
 .sidebar-logo .logo-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; letter-spacing: .5px; color: #fff; line-height: 1.1; }
 .sidebar-logo .logo-tagline { font-size: 9px; font-weight: 500; color: #7dd3fc; text-transform: uppercase; letter-spacing: 1.5px; }
 .sidebar-logo span { font-size: 11px; font-weight: 400; color: rgba(255,255,255,.45); display: block; margin-top: 6px; }
+.sidebar-hub-label {
+  padding: 6px 16px 8px;
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,.6);
+  text-transform: uppercase; letter-spacing: 2.5px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
 .sidebar-client {
   padding: 10px 16px;
   border-bottom: 1px solid rgba(255,255,255,.1);
