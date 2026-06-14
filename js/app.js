@@ -2614,6 +2614,23 @@ window.aprobarContenido = async function(id) {
   await saveContenido(clientId, c);
   STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
   renderContTab(activeContTab);
+  // Notificar al cliente por email
+  if (STATE.client.email) {
+    const { WORKER_URL } = await import('./firebase.js');
+    const { getSessionToken } = await import('./auth.js');
+    fetch(WORKER_URL + '/email/aprobado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+      body: JSON.stringify({
+        toEmail: STATE.client.email,
+        toName: STATE.client.nombre || STATE.client.name || '',
+        titulo: c.titulo || '',
+        tipo: c.tipo || '',
+        cuenta: c.cuenta || c.red || '',
+        fechaPub: c.fechaPub || '',
+      }),
+    }).catch(() => {});
+  }
 };
 
 window.rechazarContenido = async function(id) {
@@ -2716,12 +2733,23 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
   // Notificar por email a los usuarios mencionados con @
   const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
   const allUsers = getMentionUsers();
+  const { WORKER_URL } = await import('./firebase.js');
+  const { getSessionToken } = await import('./auth.js');
   mencionados.forEach(nombre => {
     const u = allUsers.find(u => u.nombre.toLowerCase() === nombre.toLowerCase());
     if (u && u.email && u.email !== user.email) {
-      const asunto = encodeURIComponent(`Nuevo comentario — ${editingObj.titulo || ''}`);
-      const cuerpo = encodeURIComponent(`Hola ${u.nombre},\n\n${autorNombre} te mencionó:\n"${texto}"\n\n— COSMART Marketing Hub`);
-      window.open(`mailto:${u.email}?subject=${asunto}&body=${cuerpo}`, '_blank');
+      fetch(WORKER_URL + '/email/mencion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: u.email,
+          toName: u.nombre,
+          mencionador: autorNombre,
+          contexto: editingObj.titulo || '',
+          tipo: ctx === 'cont' ? 'contenido' : 'tarea',
+          clientId,
+        }),
+      }).catch(() => {});
     }
   });
 }
