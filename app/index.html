@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>COSMART Marketing Hub</title>
+  <link rel="icon" type="image/png" href="cosmart-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
@@ -15,17 +16,24 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon-wrap">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:#3A8FC7;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-        <div>
-          <div class="logo-name">COSMART</div>
-          <div class="logo-tagline">Marketing Hub</div>
-        </div>
+        <img src="cosmart-logo.png" alt="COSMART" class="cosmart-logo-img">
+        <div class="logo-tagline-only">Marketing Hub</div>
       </div>
       <span id="sb-client-sub"></span>
     </div>
     <div class="sidebar-client">
-      <strong id="sb-client-name">Cargando...</strong>
-      <span id="sb-client-ig"></span>
+      <div class="client-logo-wrap" onclick="document.getElementById('client-logo-input').click()" title="Clic para subir el logo de tu empresa">
+        <img id="sb-client-logo" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:6px;">
+        <div id="sb-client-logo-placeholder" class="client-logo-placeholder">
+          <i data-lucide="building-2" style="width:20px;height:20px;color:#94a3b8;stroke-width:1.5;"></i>
+        </div>
+        <div class="client-logo-upload-hint">📷</div>
+      </div>
+      <input type="file" id="client-logo-input" accept="image/*" style="display:none;">
+      <div style="flex:1;min-width:0;">
+        <strong id="sb-client-name">Cargando...</strong>
+        <span id="sb-client-ig"></span>
+      </div>
     </div>
     <nav class="nav-section">
       <div class="nav-section-label">Navegación</div>
@@ -63,21 +71,25 @@
           <i data-lucide="anchor" class="puerto-icon"></i>
           <div><div class="puerto-name">COSMART</div><div class="puerto-desc">Estrategia y consultoría</div></div>
         </a>
-        <a href="https://comunicos.cosmart.com.ar" target="_blank" class="puerto-item">
-          <i data-lucide="radio" class="puerto-icon"></i>
-          <div><div class="puerto-name">COMUNICOS</div><div class="puerto-desc">Community management</div></div>
-        </a>
-        <a href="https://desing.cosmart.com.ar" target="_blank" class="puerto-item">
-          <i data-lucide="pen-tool" class="puerto-icon"></i>
-          <div><div class="puerto-name">DESING</div><div class="puerto-desc">Diseño y branding</div></div>
+        <a href="https://cosmart.com.ar/brujula" target="_blank" class="puerto-item">
+          <i data-lucide="compass" class="puerto-icon"></i>
+          <div><div class="puerto-name">BRÚJULA</div><div class="puerto-desc">Dirección estratégica</div></div>
         </a>
         <a href="https://rumbovoraz.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="target" class="puerto-icon"></i>
           <div><div class="puerto-name">RUMBO VORAZ</div><div class="puerto-desc">Pauta y performance</div></div>
         </a>
+        <a href="https://design.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="pen-tool" class="puerto-icon"></i>
+          <div><div class="puerto-name">DESIGN</div><div class="puerto-desc">Diseño y branding</div></div>
+        </a>
         <a href="https://euforia.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="star" class="puerto-icon"></i>
           <div><div class="puerto-name">EUFORIA</div><div class="puerto-desc">UGC e influencers</div></div>
+        </a>
+        <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item">
+          <i data-lucide="message-circle" class="puerto-icon"></i>
+          <div><div class="puerto-name">MPG</div><div class="puerto-desc">Chatbots y automatización</div></div>
         </a>
         <a href="https://talent.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="user-check" class="puerto-icon"></i>
@@ -85,11 +97,7 @@
         </a>
         <a href="https://shows.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="music" class="puerto-icon"></i>
-          <div><div class="puerto-name">SHOWS</div><div class="puerto-desc">Eventos y entretenimiento</div></div>
-        </a>
-        <a href="https://mpg.cosmart.com.ar" target="_blank" class="puerto-item">
-          <i data-lucide="message-circle" class="puerto-icon"></i>
-          <div><div class="puerto-name">MPG</div><div class="puerto-desc">Chatbots y automatización</div></div>
+          <div><div class="puerto-name">PRODUCCIÓN DE SHOWS</div><div class="puerto-desc">Eventos y entretenimiento</div></div>
         </a>
       </div>
       <a href="https://www.cosmart.com.ar/productos-ganadores" target="_blank" class="sidebar-course-card">
@@ -263,10 +271,13 @@
 
         <div class="form-group" style="grid-column:span 3;">
           <label>🖼 Imágenes adjuntas</label>
-          <div id="img-paste-area" class="img-paste-area" tabindex="0" title="Pegá una imagen con Ctrl+V o hacé clic para subir">
-            <div class="img-paste-placeholder">
-              <i data-lucide="image" style="width:20px;height:20px;opacity:.4;"></i>
-              <span>Pegá con Ctrl+V o tocá para agregar imágenes</span>
+          <div id="img-paste-area" class="img-paste-area" style="cursor:default;">
+            <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
+                <i data-lucide="clipboard" style="width:15px;height:15px;opacity:.5;"></i>
+                Presioná <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:3px;padding:1px 5px;font-size:11px;">Ctrl+V</kbd> para pegar una imagen
+              </span>
+              <button type="button" onclick="document.getElementById('img-file-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
             <div id="img-thumbnails" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             <input type="file" id="img-file-input" accept="image/*" multiple style="display:none;">
@@ -471,10 +482,13 @@
         <!-- Imágenes adjuntas -->
         <div class="form-group" style="grid-column:span 2;">
           <label>🖼 Imágenes adjuntas</label>
-          <div id="tarea-img-area" class="img-paste-area" tabindex="0" title="Pegá con Ctrl+V o tocá para subir imagen">
-            <div class="img-paste-placeholder">
-              <i data-lucide="image" style="width:18px;height:18px;opacity:.4;"></i>
-              <span>Ctrl+V para pegar o tocá para subir imagen</span>
+          <div id="tarea-img-area" class="img-paste-area" style="cursor:default;">
+            <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
+                <i data-lucide="clipboard" style="width:15px;height:15px;opacity:.5;"></i>
+                Presioná <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:3px;padding:1px 5px;font-size:11px;">Ctrl+V</kbd> para pegar una imagen
+              </span>
+              <button type="button" onclick="document.getElementById('tarea-img-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
             <div id="tarea-img-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             <input type="file" id="tarea-img-input" accept="image/*" multiple style="display:none;">
