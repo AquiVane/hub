@@ -204,29 +204,31 @@ export async function getMetricas(clientId) {
 export async function getHomeData(clientId) {
   if (DEMO_MODE) {
     const d = getDemoData(clientId);
-    return { prioridades: d.prioridades||[], todos: d.todos||[], links: d.links||[], webTareas: d.webTareas||[] };
+    return { prioridades: d.prioridades||[], todos: d.todos||[], links: d.links||[], webTareas: d.webTareas||[], logoEmpresa: d.logoEmpresa||'' };
   }
   const home = (await api('GET', `/data/${clientId}/home`)) || {};
   return {
     prioridades: home.prioridades || [],
     todos: home.todos || [],
     links: home.links || [],
-    webTareas: home.webTareas || []
+    webTareas: home.webTareas || [],
+    logoEmpresa: home.logoEmpresa || ''
   };
 }
 
 export async function saveHomeData(clientId, homeObj) {
-  const { prioridades=[], todos=[], links=[], webTareas=[] } = homeObj || {};
+  const { prioridades=[], todos=[], links=[], webTareas=[], logoEmpresa='' } = homeObj || {};
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.prioridades = prioridades;
     data.todos = todos;
     data.links = links;
     data.webTareas = webTareas;
+    data.logoEmpresa = logoEmpresa;
     saveDemoData(clientId, data);
     return;
   }
-  await api('POST', `/data/${clientId}/home`, { prioridades, todos, links, webTareas });
+  await api('POST', `/data/${clientId}/home`, { prioridades, todos, links, webTareas, logoEmpresa });
 }
 
 // ── Ideas ─────────────────────────────────────────────────────
@@ -303,4 +305,14 @@ export async function createClient(clientData) {
     return;
   }
   return api('POST', '/admin/clients', clientData);
+}
+
+export async function saveClientData(clientId, data) {
+  if (DEMO_MODE) {
+    const demo = getDemoData(clientId);
+    demo.client = { ...demo.client, ...data };
+    saveDemoData(clientId, demo);
+    return demo.client;
+  }
+  return api('POST', `/admin/clients/${clientId}`, data);
 }
