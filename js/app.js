@@ -36,6 +36,7 @@ async function init() {
     const reader = new FileReader();
     reader.onload = async ev => {
       const logo = ev.target.result;
+      if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [] };
       STATE.home.logoEmpresa = logo;
       applyClientLogo(logo);
       await saveHomeData(clientId, STATE.home);
@@ -70,9 +71,11 @@ async function loadAllData() {
 function applyClientLogo(src) {
   const img = document.getElementById('sb-client-logo');
   const placeholder = document.getElementById('sb-client-logo-placeholder');
+  const hint = document.querySelector('.client-logo-upload-hint');
   img.src = src;
-  img.style.display = 'block';
+  img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;';
   if (placeholder) placeholder.style.display = 'none';
+  if (hint) hint.style.display = 'none';
 }
 
 function updateBadges() {
@@ -312,6 +315,35 @@ function renderDashboard(container) {
             </tbody>
           </table>
         </div>
+        <!-- Gráfico de torta por tipo -->
+        ${Object.keys(tipos).length ? `
+        <div class="dash-card" style="margin-top:14px;">
+          <div class="dash-card-title">Distribución por tipo</div>
+          ${(() => {
+            const entries = Object.entries(tipos).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+            const totalT = entries.reduce((s,[,v])=>s+v, 0);
+            let angle = -Math.PI/2;
+            const CX=90, CY=90, R=70;
+            let paths = '', labels = '', legendHtml = '';
+            entries.forEach(([label, val], i) => {
+              const slice = (val/totalT) * Math.PI * 2;
+              const x1 = CX + R*Math.cos(angle), y1 = CY + R*Math.sin(angle);
+              const x2 = CX + R*Math.cos(angle+slice), y2 = CY + R*Math.sin(angle+slice);
+              const large = slice > Math.PI ? 1 : 0;
+              const midA = angle + slice/2;
+              const lx = CX + (R*0.65)*Math.cos(midA), ly = CY + (R*0.65)*Math.sin(midA);
+              const pct = Math.round(val/totalT*100);
+              paths += `<path d="M${CX},${CY} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} Z" fill="${COLORS[i%COLORS.length]}" stroke="#fff" stroke-width="1.5"/>`;
+              if (pct >= 8) labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#fff" font-weight="700">${pct}%</text>`;
+              legendHtml += `<div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${COLORS[i%COLORS.length]};"></span>${label} (${val})</div>`;
+              angle += slice;
+            });
+            return `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+              <svg viewBox="0 0 180 180" width="130" height="130" style="flex-shrink:0;">${paths}${labels}</svg>
+              <div style="display:flex;flex-direction:column;gap:4px;">${legendHtml}</div>
+            </div>`;
+          })()}
+        </div>` : ''}
       </div>
 
       <div>
@@ -1473,6 +1505,8 @@ window.openContenidoModal = function(defaults = {}) {
   renderImgThumbs();
 
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
+  renderComments('cont', c.comentarios || []);
+  document.getElementById('cont-comment-input').value = '';
   document.getElementById('contenidoModal').classList.remove('hidden');
 };
 
@@ -1565,6 +1599,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     linkDriveRef: _refLinks.filter(Boolean),
     imagenes: _imgList,
     notas: document.getElementById('cf-notas').value,
+    comentarios: editingContenido?.comentarios || [],
   };
 
   try {
@@ -1733,6 +1768,8 @@ window.openTareaModal = function(id, defaultEstado) {
   stSection.style.display = editingTarea ? '' : 'none';
   if (editingTarea) renderSubtareas(t.subtareas || []);
 
+  renderComments('tarea', t.comentarios || []);
+  document.getElementById('tarea-comment-input').value = '';
   document.getElementById('tareaModal').classList.remove('hidden');
 };
 
@@ -1795,7 +1832,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const diasSemana = recurrencia === 'dias-semana'
       ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
       : [];
-    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList] };
+    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [] };
     const saved = await saveTarea(clientId, obj);
     if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
     else STATE.tareas.push(saved);
@@ -2549,8 +2586,7 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
     }
     await saveHomeData(clientId, STATE.home);
     closeWebTaskModal();
-    if (currentSection === 'web') renderWeb(document.getElementById('main-content'));
-    else if (currentSection === 'home') renderSection('home');
+    renderSection(currentSection);
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar';
   }
@@ -2561,7 +2597,7 @@ document.getElementById('deleteWebTaskBtn').addEventListener('click', async () =
   STATE.home.webTareas = (STATE.home.webTareas||[]).filter(t => t.id !== _editingWebTask.id);
   await saveHomeData(clientId, STATE.home);
   closeWebTaskModal();
-  renderWeb(document.getElementById('main-content'));
+  renderSection(currentSection);
 });
 
 // ── Aprobación de contenido ────────────────────────────
@@ -2585,6 +2621,66 @@ window.rechazarContenido = async function(id) {
   STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
   renderContTab(activeContTab);
 };
+
+// ── Comentarios ────────────────────────────────────────
+function renderComments(ctx, comments) {
+  const listEl = document.getElementById(`${ctx === 'cont' ? 'cont' : 'tarea'}-comments-list`);
+  if (!listEl) return;
+  if (!comments.length) {
+    listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
+    return;
+  }
+  listEl.innerHTML = comments.map(c => `
+    <div style="background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+        <span style="font-size:11px;font-weight:600;color:var(--text);">${c.autor}</span>
+        <span style="font-size:10px;color:var(--text-muted);">${c.fecha}</span>
+      </div>
+      <p style="font-size:13px;margin:0;color:var(--text);">${c.texto}</p>
+    </div>
+  `).join('');
+  listEl.scrollTop = listEl.scrollHeight;
+}
+
+window.addContenidoComment = async function() {
+  const input = document.getElementById('cont-comment-input');
+  const texto = input.value.trim();
+  if (!texto) return;
+  if (!editingContenido) { alert('Guardá el contenido primero antes de comentar.'); return; }
+  const comment = { autor: user.name || user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
+  if (!editingContenido.comentarios) editingContenido.comentarios = [];
+  editingContenido.comentarios.push(comment);
+  await saveContenido(clientId, editingContenido);
+  const i = STATE.contenidos.findIndex(c => c.id === editingContenido.id);
+  if (i >= 0) STATE.contenidos[i] = editingContenido;
+  input.value = '';
+  renderComments('cont', editingContenido.comentarios);
+  notifyByEmail(comment, `Contenido: ${editingContenido.titulo}`);
+};
+
+window.addTareaComment = async function() {
+  const input = document.getElementById('tarea-comment-input');
+  const texto = input.value.trim();
+  if (!texto) return;
+  if (!editingTarea) { alert('Guardá la tarea primero antes de comentar.'); return; }
+  const comment = { autor: user.name || user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
+  if (!editingTarea.comentarios) editingTarea.comentarios = [];
+  editingTarea.comentarios.push(comment);
+  await saveTarea(clientId, editingTarea);
+  const i = STATE.tareas.findIndex(t => t.id === editingTarea.id);
+  if (i >= 0) STATE.tareas[i] = editingTarea;
+  input.value = '';
+  renderComments('tarea', editingTarea.comentarios);
+  notifyByEmail(comment, `Tarea: ${editingTarea.titulo}`);
+};
+
+function notifyByEmail(comment, contexto) {
+  const clientEmail = STATE.client.email;
+  if (!clientEmail) return;
+  const asunto = encodeURIComponent(`Nuevo comentario en tu Marketing Hub — ${contexto}`);
+  const cuerpo = encodeURIComponent(`Hola,\n\n${comment.autor} comentó en "${contexto}":\n\n"${comment.texto}"\n\n— COSMART Marketing Hub`);
+  window.open(`mailto:${clientEmail}?subject=${asunto}&body=${cuerpo}`, '_blank');
+}
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
