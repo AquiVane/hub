@@ -29,7 +29,24 @@ async function init() {
   document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
   document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
 
+  // Logo upload
+  document.getElementById('client-logo-input').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const logo = ev.target.result;
+      STATE.home.logoEmpresa = logo;
+      applyClientLogo(logo);
+      await saveHomeData(clientId, STATE.home);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
   await loadAllData();
+  window.STATE = STATE; // necesario para inline handlers en módulos ES
+  if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
   setupNav();
   renderSection('home');
   setTimeout(() => refreshIcons(), 100);
@@ -44,10 +61,18 @@ async function loadAllData() {
   STATE.tareas = tareas;
   STATE.campanas = campanas;
   STATE.metricas = metricas;
-  STATE.home = home;
+  STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [] };
   STATE.ideas = ideas;
-  STATE.links = home.links || [];
+  STATE.links = STATE.home.links || [];
   updateBadges();
+}
+
+function applyClientLogo(src) {
+  const img = document.getElementById('sb-client-logo');
+  const placeholder = document.getElementById('sb-client-logo-placeholder');
+  img.src = src;
+  img.style.display = 'block';
+  if (placeholder) placeholder.style.display = 'none';
 }
 
 function updateBadges() {
@@ -564,46 +589,57 @@ function renderContTab(tab) {
 
 // ─ Banco de contenidos (tabla editable) ─
 function renderBancoContenidos(container) {
-  const all = [...STATE.contenidos].sort((a,b) => (a.fechaPub||'') > (b.fechaPub||'') ? 1 : -1);
+  const all = [...STATE.contenidos].sort((a,b) => (a.fechaPub||'zzz') > (b.fechaPub||'zzz') ? 1 : -1);
   container.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button class="btn btn-primary btn-sm" onclick="openContenidoModal(null)">+ Nuevo contenido</button>
+    </div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
           <tr>
             <th>Fecha pub.</th><th>Título</th><th>Plataforma</th>
-            <th>Ubicación</th><th>Eje</th><th>Tipo</th>
-            <th>Estado</th><th>Cuenta</th><th>Formato</th>
-            <th>Objetivo</th><th>Drive</th><th>Notas</th><th></th>
+            <th>Estado</th><th>Formato</th><th>Eje</th>
+            <th>Drive</th><th>Notas</th>
           </tr>
         </thead>
         <tbody>
           ${all.map(c => `
-            <tr data-id="${c.id}">
-              <td>${fmtDate(c.fechaPub)}</td>
+            <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
+              <td>
+                <input type="date" value="${c.fechaPub||''}" class="banco-date-input"
+                  onclick="event.stopPropagation()"
+                  onchange="bancoUpdateFecha('${c.id}', this.value)"
+                  style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;">
+              </td>
               <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
               <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-              <td>${c.ubicacion||''}</td>
-              <td>${c.eje||''}</td>
-              <td>${c.tipo||''}</td>
               <td>${statusBadge(c.estado)}</td>
-              <td class="text-sm text-muted">${c.cuenta||''}</td>
-              <td>${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
-              <td>${c.objetivo||''}</td>
-              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" title="${firstLink(c.linkDrive)}">📎 Drive</a>` : ''}</td>
+              <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
+              <td style="font-size:12px;">${c.eje||''}</td>
+              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">📎</a>` : ''}</td>
               <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
-              <td>
-                <div style="display:flex;gap:4px;">
-                  <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
-                  <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁</button>
-                </div>
-              </td>
             </tr>
           `).join('')}
+          <tr onclick="openContenidoModal(null)" style="cursor:pointer;opacity:.55;" class="banco-row">
+            <td colspan="8" style="text-align:center;padding:10px;font-size:12px;border-style:dashed;">
+              ＋ Agregar nuevo contenido
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
   `;
 }
+
+window.bancoUpdateFecha = async function(id, fecha) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.fechaPub = fecha || null;
+  await saveContenido(clientId, c);
+  const i = STATE.contenidos.findIndex(x => x.id === id);
+  STATE.contenidos[i] = c;
+};
 
 // ─ Calendario ─
 function renderCalendario(container) {
@@ -633,8 +669,8 @@ function renderCalendario(container) {
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div class="cal-day-num">${cellDate.getDate()}</div>
-          ${!isOther ? `<button onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;border-radius:3px;" title="Agregar contenido" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
+          <div class="cal-day-num" ${!isOther ? `onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="cursor:pointer;" title="Agregar contenido"` : ''}>${cellDate.getDate()}</div>
+          ${!isOther ? `<button onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;border-radius:3px;" title="Agregar contenido" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
         </div>
         ${dayConts.map(c => `
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
@@ -992,49 +1028,69 @@ function renderEnProceso(container) {
 }
 
 // ─ Métricas ─
+const METRICAS_FIELDS = [
+  { key:'seguidores_ig',   label:'Seguidores IG',      icon:'📸', type:'number' },
+  { key:'crecimiento_ig',  label:'Crecimiento IG',     icon:'📈', type:'text', placeholder:'+150' },
+  { key:'seguidores_fb',   label:'Seguidores FB',      icon:'📘', type:'number' },
+  { key:'crecimiento_fb',  label:'Crecimiento FB',     icon:'📈', type:'text', placeholder:'+40' },
+  { key:'alcance_mensual', label:'Alcance mensual',    icon:'📡', type:'number' },
+  { key:'impresiones',     label:'Impresiones',        icon:'👁', type:'number' },
+  { key:'tasa_engagement', label:'Engagement rate',    icon:'❤️', type:'text', placeholder:'3.2%' },
+  { key:'publicaciones',   label:'Publicaciones',      icon:'📋', type:'number' },
+  { key:'visitas_perfil',  label:'Visitas al perfil',  icon:'🧑', type:'number' },
+  { key:'clics_link',      label:'Clics en link bio',  icon:'🔗', type:'number' },
+  { key:'historias_views', label:'Vistas historias',   icon:'🎞', type:'number' },
+  { key:'guardados',       label:'Guardados',          icon:'🔖', type:'number' },
+];
+
 function renderMetricasContenidos(container) {
   const m = STATE.metricas || {};
+  const cards = METRICAS_FIELDS.filter(f => m[f.key]);
   container.innerHTML = `
-    <div class="metrics-grid">
-      ${[
-        { label: 'Seguidores IG', val: fmtNum(m.seguidores_ig), delta: m.crecimiento_ig, icon:'📸' },
-        { label: 'Seguidores FB', val: fmtNum(m.seguidores_fb), delta: m.crecimiento_fb, icon:'📘' },
-        { label: 'Alcance mensual', val: fmtNum(m.alcance_mensual), delta: '', icon:'📡' },
-        { label: 'Engagement', val: m.tasa_engagement||'—', delta: '', icon:'❤️' },
-        { label: 'Publicaciones', val: m.publicaciones||'—', delta: '', icon:'📋' },
-        { label: 'Impresiones', val: fmtNum(m.impresiones), delta: '', icon:'👁' },
-      ].map(x => `
+    ${cards.length ? `
+    <div class="metrics-grid" style="margin-bottom:24px;">
+      ${cards.map(f => `
         <div class="metric-card">
-          <div style="font-size:20px;margin-bottom:4px;">${x.icon}</div>
-          <div class="metric-label">${x.label}</div>
-          <div class="metric-value">${x.val||'—'}</div>
-          ${x.delta ? `<div class="metric-delta up">${x.delta}</div>` : ''}
+          <div style="font-size:20px;margin-bottom:4px;">${f.icon}</div>
+          <div class="metric-label">${f.label}</div>
+          <div class="metric-value">${fmtNum(m[f.key])}</div>
         </div>
       `).join('')}
-    </div>
+    </div>` : ''}
     <div class="card">
-      <div class="card-header"><h2>Editar métricas del mes</h2></div>
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2>📊 Métricas del mes</h2>
+        <button class="btn btn-primary btn-sm" onclick="saveMetricas(this)">Guardar métricas</button>
+      </div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-          ${Object.entries(m).map(([k,v]) => `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+          ${METRICAS_FIELDS.map(f => `
             <div class="form-group">
-              <label>${k.replace(/_/g,' ')}</label>
-              <input type="text" class="form-control form-control-sm" value="${v||''}" data-key="${k}" onchange="updateMetrica('${k}',this.value)">
+              <label style="font-size:12px;">${f.icon} ${f.label}</label>
+              <input type="${f.type}" class="form-control form-control-sm"
+                     value="${m[f.key]||''}"
+                     placeholder="${f.placeholder||'0'}"
+                     oninput="STATE.metricas['${f.key}']=this.value"
+                     style="font-size:13px;">
             </div>
           `).join('')}
-          <div class="form-group" style="align-self:end;">
-            <button class="btn btn-primary btn-sm" onclick="saveMetricas()">Guardar métricas</button>
-          </div>
+        </div>
+        <div style="margin-top:16px;text-align:right;">
+          <button class="btn btn-primary" onclick="saveMetricas(this)">💾 Guardar métricas</button>
         </div>
       </div>
     </div>
   `;
 }
 
-window.updateMetrica = function(key, val) { STATE.metricas[key] = val; };
-window.saveMetricas = async function() {
-  await saveMetricasData(clientId, STATE.metricas);
-  alert('Métricas guardadas.');
+window.saveMetricas = async function(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  try {
+    await saveMetricasData(clientId, STATE.metricas);
+    renderContTab('metricas');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar métricas'; }
+  }
 };
 
 // ──────────────────────────────────────────────────────
@@ -1391,10 +1447,7 @@ document.querySelectorAll('input[name="cf-pauta"]').forEach(r => {
   });
 });
 
-// Image paste & file pick
-document.getElementById('img-paste-area').addEventListener('click', () => {
-  document.getElementById('img-file-input').click();
-});
+// Image paste & file pick — upload via button onclick in HTML, paste via Ctrl+V listener below
 document.getElementById('img-file-input').addEventListener('change', e => {
   [...e.target.files].forEach(addImgFromFile);
   e.target.value = '';
@@ -1426,7 +1479,9 @@ document.addEventListener('paste', e => {
   }
 });
 
-document.getElementById('saveContenidoBtn').addEventListener('click', async () => {
+document.getElementById('saveContenidoBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
 
@@ -1440,6 +1495,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async () =
 
   const formatos = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
   if (!formatos.length) { alert('Seleccioná al menos un formato.'); return; }
+  btn.disabled = true; btn.textContent = 'Guardando…';
 
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
   const dimensiones = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
@@ -1466,16 +1522,21 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async () =
     notas: document.getElementById('cf-notas').value,
   };
 
-  const saved = await saveContenido(clientId, obj);
-  if (editingContenido) {
-    const i = STATE.contenidos.findIndex(c => c.id === saved.id);
-    STATE.contenidos[i] = saved;
-  } else {
-    STATE.contenidos.push(saved);
+  try {
+    const saved = await saveContenido(clientId, obj);
+    if (editingContenido) {
+      const i = STATE.contenidos.findIndex(c => c.id === saved.id);
+      STATE.contenidos[i] = saved;
+    } else {
+      STATE.contenidos.push(saved);
+    }
+    closeContenidoModal();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+  } finally {
+    const b = document.getElementById('saveContenidoBtn');
+    if (b) { b.disabled = false; b.textContent = 'Guardar'; }
   }
-  closeContenidoModal();
-  renderContTab(activeContTab);
-  if (currentSection === 'home') renderSection('home');
 });
 
 document.getElementById('deleteContenidoBtn').addEventListener('click', async () => {
@@ -1669,10 +1730,8 @@ document.getElementById('closeTareaModal2').addEventListener('click', closeTarea
 // Área de imágenes en tarea
 const tareaImgArea = document.getElementById('tarea-img-area');
 const tareaImgInput = document.getElementById('tarea-img-input');
-if (tareaImgArea) {
-  tareaImgArea.addEventListener('click', () => tareaImgInput.click());
-  tareaImgArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') tareaImgInput.click(); });
-}
+// click en el área no abre el explorador — el botón "📎 Subir archivo" lo maneja
+// Ctrl+V se captura en el listener global de paste
 if (tareaImgInput) {
   tareaImgInput.addEventListener('change', e => {
     [...e.target.files].forEach(addTareaImgFromFile);
@@ -1680,20 +1739,28 @@ if (tareaImgInput) {
   });
 }
 
-document.getElementById('saveTareaBtn').addEventListener('click', async () => {
+document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
-  const recurrencia = document.getElementById('tf-recurrencia').value;
-  const diasSemana = recurrencia === 'dias-semana'
-    ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
-    : [];
-  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList] };
-  const saved = await saveTarea(clientId, obj);
-  if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
-  else STATE.tareas.push(saved);
-  closeTareaModal();
-  updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    const recurrencia = document.getElementById('tf-recurrencia').value;
+    const diasSemana = recurrencia === 'dias-semana'
+      ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
+      : [];
+    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList] };
+    const saved = await saveTarea(clientId, obj);
+    if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
+    else STATE.tareas.push(saved);
+    closeTareaModal();
+    updateBadges();
+    if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
+    else if (currentSection === 'home') renderSection('home');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
 });
 
 document.getElementById('deleteTareaBtn').addEventListener('click', async () => {
@@ -2411,29 +2478,37 @@ function closeWebTaskModal() { document.getElementById('webTaskModal').classList
 document.getElementById('closeWebTaskModal').addEventListener('click', closeWebTaskModal);
 document.getElementById('closeWebTaskModal2').addEventListener('click', closeWebTaskModal);
 
-document.getElementById('saveWebTaskBtn').addEventListener('click', async () => {
+document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
   const titulo = document.getElementById('wt-titulo').value.trim();
   if (!titulo) { alert('La descripción es obligatoria.'); return; }
-  if (!STATE.home.webTareas) STATE.home.webTareas = [];
-  const obj = {
-    ...(_editingWebTask || {}),
-    id: _editingWebTask?.id || Date.now(),
-    titulo,
-    categoria: document.getElementById('wt-categoria').value,
-    estado: document.getElementById('wt-estado').value,
-    vencimiento: document.getElementById('wt-vencimiento').value || null,
-    url: document.getElementById('wt-url').value.trim() || null,
-    notas: document.getElementById('wt-notas').value.trim(),
-  };
-  if (_editingWebTask) {
-    const i = STATE.home.webTareas.findIndex(t => t.id === obj.id);
-    STATE.home.webTareas[i] = obj;
-  } else {
-    STATE.home.webTareas.push(obj);
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    if (!STATE.home.webTareas) STATE.home.webTareas = [];
+    const obj = {
+      ...(_editingWebTask || {}),
+      id: _editingWebTask?.id || Date.now(),
+      titulo,
+      categoria: document.getElementById('wt-categoria').value,
+      estado: document.getElementById('wt-estado').value,
+      vencimiento: document.getElementById('wt-vencimiento').value || null,
+      url: document.getElementById('wt-url').value.trim() || null,
+      notas: document.getElementById('wt-notas').value.trim(),
+    };
+    if (_editingWebTask) {
+      const i = STATE.home.webTareas.findIndex(t => t.id === obj.id);
+      STATE.home.webTareas[i] = obj;
+    } else {
+      STATE.home.webTareas.push(obj);
+    }
+    await saveHomeData(clientId, STATE.home);
+    closeWebTaskModal();
+    if (currentSection === 'web') renderWeb(document.getElementById('main-content'));
+    else if (currentSection === 'home') renderSection('home');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
   }
-  await saveHomeData(clientId, STATE.home);
-  closeWebTaskModal();
-  renderWeb(document.getElementById('main-content'));
 });
 
 document.getElementById('deleteWebTaskBtn').addEventListener('click', async () => {
