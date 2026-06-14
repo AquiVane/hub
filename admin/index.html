@@ -100,17 +100,57 @@
           <label>Contraseña inicial *</label>
           <input type="text" id="nc-pass" class="form-control" placeholder="min. 6 caracteres">
         </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Redes sociales</p>
+      <div class="form-grid form-grid-3">
         <div class="form-group">
-          <label>Instagram</label>
-          <input type="text" id="nc-ig" class="form-control" placeholder="@cuenta">
+          <label>Instagram 1</label>
+          <input type="text" id="nc-ig1" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>Instagram 2</label>
+          <input type="text" id="nc-ig2" class="form-control" placeholder="@cuenta2">
+        </div>
+        <div class="form-group">
+          <label>Instagram 3</label>
+          <input type="text" id="nc-ig3" class="form-control" placeholder="@cuenta3">
         </div>
         <div class="form-group">
           <label>Facebook</label>
           <input type="text" id="nc-fb" class="form-control" placeholder="Nombre de página">
         </div>
-        <div class="form-group span-2">
+        <div class="form-group">
+          <label>TikTok</label>
+          <input type="text" id="nc-tiktok" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>YouTube</label>
+          <input type="text" id="nc-youtube" class="form-control" placeholder="Canal">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Sitio web principal</label>
+          <input type="url" id="nc-website" class="form-control" placeholder="https://misitioweb.com">
+        </div>
+        <div class="form-group">
+          <label>Sitio web 2 (opcional)</label>
+          <input type="url" id="nc-website2" class="form-control" placeholder="https://otro.com">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Meta & Publicidad</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Meta Business Manager ID <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+          <input type="text" id="nc-meta-bm" class="form-control" placeholder="Ej: 123456789012345">
+        </div>
+        <div class="form-group">
           <label>Notas internas</label>
-          <textarea id="nc-notas" class="form-control" placeholder="Notas sobre el cliente..."></textarea>
+          <input type="text" id="nc-notas" class="form-control" placeholder="Notas sobre el cliente...">
         </div>
       </div>
     </div>
@@ -189,14 +229,27 @@
     const id = document.getElementById('nc-id').value.trim().toLowerCase().replace(/\s+/g,'');
     const email = document.getElementById('nc-email').value.trim();
     const pass = document.getElementById('nc-pass').value.trim();
-    const ig = document.getElementById('nc-ig').value.trim();
-    const fb = document.getElementById('nc-fb').value.trim();
     const notas = document.getElementById('nc-notas').value.trim();
 
     if (!nombre || !id || !email || !pass) { alert('Completá los campos obligatorios.'); return; }
     if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
 
-    await createClient({ id, nombre, email, password: pass, instagram: ig, facebook: fb, notas, activo: true });
+    const ig1 = document.getElementById('nc-ig1').value.trim();
+    const ig2 = document.getElementById('nc-ig2').value.trim();
+    const ig3 = document.getElementById('nc-ig3').value.trim();
+    const instagrams = [ig1, ig2, ig3].filter(Boolean);
+
+    await createClient({
+      id, nombre, email, password: pass, notas, activo: true,
+      instagram: ig1, // backwards compat
+      instagrams,
+      facebook: document.getElementById('nc-fb').value.trim(),
+      tiktok: document.getElementById('nc-tiktok').value.trim(),
+      youtube: document.getElementById('nc-youtube').value.trim(),
+      website: document.getElementById('nc-website').value.trim(),
+      website2: document.getElementById('nc-website2').value.trim(),
+      metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
+    });
     closeNewClientModal();
     loadClients();
   };
