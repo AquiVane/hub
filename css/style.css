@@ -63,10 +63,19 @@ input, select, textarea { font-family: inherit; }
 .sidebar-logo span { font-size: 11px; font-weight: 400; color: rgba(255,255,255,.45); display: block; margin-top: 6px; }
 .sidebar-hub-label {
   padding: 6px 16px 8px;
-  font-size: 9px; font-weight: 700; color: rgba(255,255,255,.6);
+  font-size: 9px; font-weight: 700; color: #fff;
   text-transform: uppercase; letter-spacing: 2.5px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
+.mention-dropdown {
+  position:absolute; z-index:9999; background:#fff; border:1px solid var(--border-strong);
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:200px;
+  max-height:160px; overflow-y:auto; margin-top:4px;
+}
+.mention-dropdown.hidden { display:none; }
+.mention-item { padding:8px 12px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; }
+.mention-item:hover { background:#f1f5f9; }
+.mention-avatar { width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
 .sidebar-client {
   padding: 10px 16px;
   border-bottom: 1px solid rgba(255,255,255,.1);
@@ -265,6 +274,8 @@ input, select, textarea { font-family: inherit; }
 .data-table td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .data-table tr:hover td { background: #f5f8ff; }
 .banco-row:hover td { background: #eff6ff !important; }
+.banco-add-row td { color: var(--text-muted); border-bottom: none; }
+.banco-add-row:hover td { background: #f1f5f9 !important; color: var(--accent) !important; }
 .banco-date-input:hover, .banco-date-input:focus { background: #fff !important; border: 1px solid var(--accent) !important; border-radius: 4px; padding: 2px 4px; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table .edit-cell { cursor: pointer; }
