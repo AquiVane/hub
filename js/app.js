@@ -1,6 +1,6 @@
 import { requireAuth, logoutUser } from './auth.js';
 import {
-  getClientData, getContenidos, saveContenido, deleteContenido,
+  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido,
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
@@ -195,6 +195,37 @@ function renderSection(sec) {
 let dashYear = new Date().getFullYear();
 let dashMonth = new Date().getMonth(); // 0-based
 
+function buildPieChart(tipos, COLORS) {
+  const entries = Object.entries(tipos).filter(function(e){ return e[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; });
+  if (!entries.length) return '';
+  var totalT = entries.reduce(function(s,e){ return s+e[1]; }, 0);
+  var angle = -Math.PI/2;
+  var CX=90, CY=90, R=70;
+  var paths='', labels='', legend='';
+  entries.forEach(function(entry, i) {
+    var lbl = entry[0], val = entry[1];
+    var slice = (val/totalT)*Math.PI*2;
+    var x1 = CX + R*Math.cos(angle), y1 = CY + R*Math.sin(angle);
+    var x2 = CX + R*Math.cos(angle+slice), y2 = CY + R*Math.sin(angle+slice);
+    var large = slice > Math.PI ? 1 : 0;
+    var midA = angle + slice/2;
+    var lx = +(CX + R*0.65*Math.cos(midA)).toFixed(1);
+    var ly = +(CY + R*0.65*Math.sin(midA)).toFixed(1);
+    var pct = Math.round(val/totalT*100);
+    var col = COLORS[i % COLORS.length];
+    paths += '<path d="M'+CX+','+CY+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+R+','+R+' 0 '+large+',1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+col+'" stroke="#fff" stroke-width="1.5"/>';
+    if (pct >= 8) labels += '<text x="'+lx+'" y="'+ly+'" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#fff" font-weight="700">'+pct+'%</text>';
+    legend += '<div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:'+col+';display:inline-block;"></span>'+lbl+' ('+val+')</div>';
+    angle += slice;
+  });
+  return '<div class="dash-card" style="margin-top:14px;">'
+    + '<div class="dash-card-title">Distribución por tipo</div>'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<svg viewBox="0 0 180 180" width="130" height="130" style="flex-shrink:0;">'+paths+labels+'</svg>'
+    + '<div style="display:flex;flex-direction:column;gap:4px;">'+legend+'</div>'
+    + '</div></div>';
+}
+
 function renderDashboard(container) {
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DIAS = ['L','M','Mi','J','V','S','D'];
@@ -316,34 +347,7 @@ function renderDashboard(container) {
           </table>
         </div>
         <!-- Gráfico de torta por tipo -->
-        ${Object.keys(tipos).length ? `
-        <div class="dash-card" style="margin-top:14px;">
-          <div class="dash-card-title">Distribución por tipo</div>
-          ${(() => {
-            const entries = Object.entries(tipos).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-            const totalT = entries.reduce((s,[,v])=>s+v, 0);
-            let angle = -Math.PI/2;
-            const CX=90, CY=90, R=70;
-            let paths = '', labels = '', legendHtml = '';
-            entries.forEach(([label, val], i) => {
-              const slice = (val/totalT) * Math.PI * 2;
-              const x1 = CX + R*Math.cos(angle), y1 = CY + R*Math.sin(angle);
-              const x2 = CX + R*Math.cos(angle+slice), y2 = CY + R*Math.sin(angle+slice);
-              const large = slice > Math.PI ? 1 : 0;
-              const midA = angle + slice/2;
-              const lx = CX + (R*0.65)*Math.cos(midA), ly = CY + (R*0.65)*Math.sin(midA);
-              const pct = Math.round(val/totalT*100);
-              paths += `<path d="M${CX},${CY} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} Z" fill="${COLORS[i%COLORS.length]}" stroke="#fff" stroke-width="1.5"/>`;
-              if (pct >= 8) labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#fff" font-weight="700">${pct}%</text>`;
-              legendHtml += `<div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${COLORS[i%COLORS.length]};"></span>${label} (${val})</div>`;
-              angle += slice;
-            });
-            return `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-              <svg viewBox="0 0 180 180" width="130" height="130" style="flex-shrink:0;">${paths}${labels}</svg>
-              <div style="display:flex;flex-direction:column;gap:4px;">${legendHtml}</div>
-            </div>`;
-          })()}
-        </div>` : ''}
+        ${buildPieChart(tipos, COLORS)}
       </div>
 
       <div>
@@ -684,9 +688,11 @@ function renderBancoContenidos(container) {
               </td>
             </tr>
           `).join('')}
-          <tr onclick="openContenidoModal(null)" style="cursor:pointer;opacity:.55;" class="banco-row">
-            <td colspan="8" style="text-align:center;padding:10px;font-size:12px;border-style:dashed;">
-              ＋ Agregar nuevo contenido
+          <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
+            <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
+              <span style="display:inline-flex;align-items:center;gap:5px;">
+                <span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido
+              </span>
             </td>
           </tr>
         </tbody>
@@ -2624,63 +2630,160 @@ window.rechazarContenido = async function(id) {
 
 // ── Comentarios ────────────────────────────────────────
 function renderComments(ctx, comments) {
-  const listEl = document.getElementById(`${ctx === 'cont' ? 'cont' : 'tarea'}-comments-list`);
+  const prefix = ctx === 'cont' ? 'cont' : 'tarea';
+  const listEl = document.getElementById(`${prefix}-comments-list`);
   if (!listEl) return;
-  if (!comments.length) {
+  if (!comments || !comments.length) {
     listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
     return;
   }
-  listEl.innerHTML = comments.map(c => `
-    <div style="background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-        <span style="font-size:11px;font-weight:600;color:var(--text);">${c.autor}</span>
-        <span style="font-size:10px;color:var(--text-muted);">${c.fecha}</span>
+  listEl.innerHTML = comments.map(c => {
+    const inicial = (c.autor || '?')[0].toUpperCase();
+    const textoHtml = (c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+    return `
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
+      <div style="flex:1;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:700;color:var(--text);">${c.autor || 'Anónimo'}</span>
+          <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
+        </div>
+        <p style="font-size:13px;margin:0;color:var(--text);">${textoHtml}</p>
       </div>
-      <p style="font-size:13px;margin:0;color:var(--text);">${c.texto}</p>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   listEl.scrollTop = listEl.scrollHeight;
 }
 
-window.addContenidoComment = async function() {
-  const input = document.getElementById('cont-comment-input');
-  const texto = input.value.trim();
-  if (!texto) return;
-  if (!editingContenido) { alert('Guardá el contenido primero antes de comentar.'); return; }
-  const comment = { autor: user.name || user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
-  if (!editingContenido.comentarios) editingContenido.comentarios = [];
-  editingContenido.comentarios.push(comment);
-  await saveContenido(clientId, editingContenido);
-  const i = STATE.contenidos.findIndex(c => c.id === editingContenido.id);
-  if (i >= 0) STATE.contenidos[i] = editingContenido;
-  input.value = '';
-  renderComments('cont', editingContenido.comentarios);
-  notifyByEmail(comment, `Contenido: ${editingContenido.titulo}`);
-};
-
-window.addTareaComment = async function() {
-  const input = document.getElementById('tarea-comment-input');
-  const texto = input.value.trim();
-  if (!texto) return;
-  if (!editingTarea) { alert('Guardá la tarea primero antes de comentar.'); return; }
-  const comment = { autor: user.name || user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
-  if (!editingTarea.comentarios) editingTarea.comentarios = [];
-  editingTarea.comentarios.push(comment);
-  await saveTarea(clientId, editingTarea);
-  const i = STATE.tareas.findIndex(t => t.id === editingTarea.id);
-  if (i >= 0) STATE.tareas[i] = editingTarea;
-  input.value = '';
-  renderComments('tarea', editingTarea.comentarios);
-  notifyByEmail(comment, `Tarea: ${editingTarea.titulo}`);
-};
-
-function notifyByEmail(comment, contexto) {
-  const clientEmail = STATE.client.email;
-  if (!clientEmail) return;
-  const asunto = encodeURIComponent(`Nuevo comentario en tu Marketing Hub — ${contexto}`);
-  const cuerpo = encodeURIComponent(`Hola,\n\n${comment.autor} comentó en "${contexto}":\n\n"${comment.texto}"\n\n— COSMART Marketing Hub`);
-  window.open(`mailto:${clientEmail}?subject=${asunto}&body=${cuerpo}`, '_blank');
+function getMentionUsers() {
+  const usuarios = STATE.client.usuarios || [];
+  return [
+    { nombre: user.name || user.email.split('@')[0], email: user.email },
+    ...usuarios
+  ];
 }
+
+function setupMentionAutocomplete(inputId, dropdownId) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
+  input.addEventListener('input', () => {
+    const val = input.value;
+    const atIdx = val.lastIndexOf('@');
+    if (atIdx === -1) { dropdown.classList.add('hidden'); return; }
+    const query = val.slice(atIdx + 1).toLowerCase();
+    const users = getMentionUsers().filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+    if (!users.length) { dropdown.classList.add('hidden'); return; }
+    dropdown.innerHTML = users.map(u => `
+      <div class="mention-item" data-nombre="${u.nombre}">
+        <div class="mention-avatar">${u.nombre[0].toUpperCase()}</div>
+        <div><div style="font-weight:600;font-size:12px;">${u.nombre}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
+      </div>`).join('');
+    dropdown.classList.remove('hidden');
+    dropdown.querySelectorAll('.mention-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const nombre = item.dataset.nombre;
+        const atIdx2 = input.value.lastIndexOf('@');
+        input.value = input.value.slice(0, atIdx2) + '@' + nombre + ' ';
+        dropdown.classList.add('hidden');
+        input.focus();
+      });
+    });
+  });
+  input.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 150));
+}
+
+async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
+  const prefix = ctx === 'cont' ? 'cont' : 'tarea';
+  const input = document.getElementById(`${prefix}-comment-input`);
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto) return;
+  if (!editingObj) {
+    input.placeholder = '⚠ Guardá primero para comentar';
+    setTimeout(() => { input.placeholder = '@usuario — escribí un comentario...'; }, 2000);
+    return;
+  }
+  const autorNombre = user.name || user.email.split('@')[0];
+  const comment = { autor: autorNombre, email: user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
+  if (!editingObj.comentarios) editingObj.comentarios = [];
+  editingObj.comentarios.push(comment);
+  await saveFn(clientId, editingObj);
+  const i = stateArr.findIndex(x => x.id === editingObj.id);
+  if (i >= 0) stateArr[i] = editingObj;
+  input.value = '';
+  renderComments(ctx, editingObj.comentarios);
+  // Notificar por email a los usuarios mencionados con @
+  const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
+  const allUsers = getMentionUsers();
+  mencionados.forEach(nombre => {
+    const u = allUsers.find(u => u.nombre.toLowerCase() === nombre.toLowerCase());
+    if (u && u.email && u.email !== user.email) {
+      const asunto = encodeURIComponent(`Nuevo comentario — ${editingObj.titulo || ''}`);
+      const cuerpo = encodeURIComponent(`Hola ${u.nombre},\n\n${autorNombre} te mencionó:\n"${texto}"\n\n— COSMART Marketing Hub`);
+      window.open(`mailto:${u.email}?subject=${asunto}&body=${cuerpo}`, '_blank');
+    }
+  });
+}
+
+window.addContenidoComment = () => doAddComment('cont', editingContenido, saveContenido, STATE.contenidos);
+window.addTareaComment = () => doAddComment('tarea', editingTarea, saveTarea, STATE.tareas);
+
+// Inicializar autocomplete de mentions al cargar
+setTimeout(() => {
+  setupMentionAutocomplete('cont-comment-input', 'cont-mention-list');
+  setupMentionAutocomplete('tarea-comment-input', 'tarea-mention-list');
+}, 200);
+
+// ── Gestión de equipo ──────────────────────────────────
+window.openEquipoModal = function() {
+  renderEquipoList();
+  document.getElementById('eq-nombre').value = '';
+  document.getElementById('eq-email').value = '';
+  document.getElementById('eq-rol').value = 'Responsable COSMART';
+  document.getElementById('equipoModal').classList.remove('hidden');
+};
+
+function renderEquipoList() {
+  const usuarios = STATE.client.usuarios || [];
+  const list = document.getElementById('equipo-list');
+  if (!list) return;
+  if (!usuarios.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Sin usuarios agregados todavía.</p>';
+    return;
+  }
+  list.innerHTML = usuarios.map((u, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${u.nombre}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${u.email} · <span style="color:var(--accent);">${u.rol||'Usuario'}</span></div>
+      </div>
+      <button onclick="eliminarUsuarioEquipo(${i})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:2px 6px;" title="Eliminar">×</button>
+    </div>
+  `).join('');
+}
+
+window.agregarUsuarioEquipo = async function() {
+  const nombre = document.getElementById('eq-nombre').value.trim();
+  const email = document.getElementById('eq-email').value.trim();
+  const rol = document.getElementById('eq-rol').value;
+  if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+  if (!STATE.client.usuarios) STATE.client.usuarios = [];
+  if (STATE.client.usuarios.find(u => u.email === email)) { alert('Ya existe un usuario con ese email.'); return; }
+  STATE.client.usuarios.push({ nombre, email, rol });
+  await saveClientData(clientId, { usuarios: STATE.client.usuarios });
+  document.getElementById('eq-nombre').value = '';
+  document.getElementById('eq-email').value = '';
+  renderEquipoList();
+};
+
+window.eliminarUsuarioEquipo = async function(idx) {
+  if (!confirm('¿Eliminar este usuario del equipo?')) return;
+  STATE.client.usuarios.splice(idx, 1);
+  await saveClientData(clientId, { usuarios: STATE.client.usuarios });
+  renderEquipoList();
+};
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
