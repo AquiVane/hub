@@ -1389,7 +1389,6 @@ window.addDriveLink = function(type) {
 window.updateDriveLink = function(type, idx, val) {
   if (type === 'drive') _driveLinks[idx] = val;
   else _refLinks[idx] = val;
-  renderDriveLinks(type);
 };
 window.removeDriveLink = function(type, idx) {
   if (type === 'drive') _driveLinks.splice(idx, 1);
@@ -1839,13 +1838,18 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
       ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
       : [];
     const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [] };
-    const saved = await saveTarea(clientId, obj);
+    const saved = await Promise.race([
+      saveTarea(clientId, obj),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
+    ]);
     if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
     else STATE.tareas.push(saved);
     closeTareaModal();
     updateBadges();
     if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
-    else renderSection('home'); // desde cualquier otra vista (home, web, etc.) queda en inicio
+    else renderSection('home');
+  } catch (err) {
+    alert('Error al guardar: ' + err.message);
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar';
   }
@@ -2817,6 +2821,30 @@ window.eliminarUsuarioEquipo = async function(idx) {
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+});
+
+// ── Mobile sidebar toggle ──────────────────────────────
+const _sidebar = document.querySelector('.sidebar');
+const _sidebarOverlay = document.getElementById('sidebar-overlay');
+const _sidebarToggle = document.getElementById('sidebar-toggle');
+
+function openMobileSidebar() {
+  _sidebar.classList.add('open');
+  _sidebarOverlay.classList.add('active');
+}
+function closeMobileSidebar() {
+  _sidebar.classList.remove('open');
+  _sidebarOverlay.classList.remove('active');
+}
+
+_sidebarToggle?.addEventListener('click', () => {
+  _sidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+});
+_sidebarOverlay?.addEventListener('click', closeMobileSidebar);
+
+// Cerrar al navegar en mobile
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
 });
 
 // ── Start ──────────────────────────────────────────────
