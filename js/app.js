@@ -2798,6 +2798,7 @@ window.agregarUsuarioEquipo = async function() {
   const rol = document.getElementById('eq-rol').value;
   if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
   if (!STATE.client.usuarios) STATE.client.usuarios = [];
+  if (STATE.client.usuarios.length >= 5) { alert('Límite alcanzado: podés tener hasta 5 miembros en tu equipo.'); return; }
   if (STATE.client.usuarios.find(u => u.email === email)) { alert('Ya existe un usuario con ese email.'); return; }
   STATE.client.usuarios.push({ nombre, email, rol });
   await saveClientData(clientId, { usuarios: STATE.client.usuarios });
