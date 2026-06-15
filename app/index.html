@@ -301,11 +301,13 @@
       <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:4px;">
         <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
         <div id="cont-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="cont-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="addContenidoComment()">Comentar</button>
+        <div style="position:relative;">
+          <div id="cont-mention-list" class="mention-dropdown hidden" style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="cont-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addContenidoComment()">Comentar</button>
+          </div>
         </div>
-        <div id="cont-mention-list" class="mention-dropdown hidden"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -525,11 +527,13 @@
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
           <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
           <div id="tarea-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:140px;overflow-y:auto;"></div>
-          <div style="display:flex;gap:8px;position:relative;">
-            <input type="text" id="tarea-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addTareaComment()">Comentar</button>
+          <div style="position:relative;">
+            <div id="tarea-mention-list" class="mention-dropdown hidden" style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;"></div>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="tarea-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addTareaComment()">Comentar</button>
+            </div>
           </div>
-          <div id="tarea-mention-list" class="mention-dropdown hidden"></div>
         </div>
 
       </div>
@@ -785,8 +789,7 @@
     </div>
     <div class="modal-body">
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
-        Estos usuarios pueden ser mencionados con <strong>@nombre</strong> en comentarios de tareas y contenidos.
-        Al mencionarlos, recibirán una notificación por email.
+        Agregá hasta <strong>5 miembros</strong> a tu equipo. Pueden ser mencionados con <strong>@nombre</strong> en comentarios y recibirán una notificación por email.
       </p>
       <div id="equipo-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
       <div style="border-top:1px solid var(--border-strong);padding-top:14px;">
