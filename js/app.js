@@ -23,34 +23,40 @@ let editingCampana = null;
 
 // ── Init ───────────────────────────────────────────────
 async function init() {
-  document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+  try {
+    document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
-  STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
-  document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
-  document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
+    STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
+    document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
+    document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
 
-  // Logo upload
-  document.getElementById('client-logo-input').addEventListener('change', async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      const logo = ev.target.result;
-      if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [] };
-      STATE.home.logoEmpresa = logo;
-      applyClientLogo(logo);
-      await saveHomeData(clientId, STATE.home);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  });
+    // Logo upload
+    document.getElementById('client-logo-input').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const logo = ev.target.result;
+        if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [] };
+        STATE.home.logoEmpresa = logo;
+        applyClientLogo(logo);
+        await saveHomeData(clientId, STATE.home);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
 
-  await loadAllData();
-  window.STATE = STATE; // necesario para inline handlers en módulos ES
-  if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
-  setupNav();
-  renderSection('home');
-  setTimeout(() => refreshIcons(), 100);
+    await loadAllData();
+    window.STATE = STATE; // necesario para inline handlers en módulos ES
+    if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
+    setupNav();
+    renderSection('home');
+    setTimeout(() => refreshIcons(), 100);
+  } catch (err) {
+    const content = document.getElementById('main-content');
+    if (content) content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p style="max-width:340px;">${err.message || 'Error desconocido. Revisá la consola del navegador.'}</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:16px;">Reintentar</button></div>`;
+    console.error('[init] Error:', err);
+  }
 }
 
 async function loadAllData() {
@@ -2459,12 +2465,14 @@ function statusDot(estado) {
 }
 
 function platBadge(plat) {
+  if (!plat) return '';
   const map = { Instagram:'plat-ig', Facebook:'plat-fb', LinkedIn:'plat-li', Twitter:'plat-tw' };
   const abbr = { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' };
-  return `<span class="plat-badge ${map[plat]||''}">${abbr[plat]||plat.slice(0,2).toUpperCase()} · ${plat}</span>`;
+  return `<span class="plat-badge ${map[plat]||''}">${abbr[plat]||(plat.slice(0,2).toUpperCase())} · ${plat}</span>`;
 }
 
 function platIcon(plat) {
+  if (!plat) return '';
   return { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' }[plat] || plat.slice(0,2).toUpperCase();
 }
 
