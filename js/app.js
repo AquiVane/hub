@@ -81,6 +81,7 @@ function applyClientLogo(src) {
 function updateBadges() {
   const pending = STATE.tareas.filter(t => t.estado !== 'Listo').length;
   document.getElementById('badge-tareas').textContent = pending;
+  if (typeof updateBnavBadge === 'function') updateBnavBadge();
 }
 
 // ── Nav ────────────────────────────────────────────────
@@ -96,10 +97,12 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
-  // Sincronizar nav activo (necesario al llamar programáticamente)
   document.querySelectorAll('.nav-item[data-section]').forEach(b => {
     b.classList.toggle('active', b.dataset.section === sec);
   });
+  // Sincronizar bottom nav y FAB en mobile
+  if (typeof updateBottomNav === 'function') updateBottomNav(sec);
+  if (typeof updateFab === 'function') updateFab(sec);
   const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', instrucciones: 'Instrucciones' };
   const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
@@ -607,15 +610,15 @@ function renderContenidos(container) {
   container.innerHTML = `
     <div class="mb-16">
       <div class="tabs" id="cont-tabs">
-        <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">📋 Banco de contenidos</button>
-        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">📅 Calendario</button>
-        <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">🗂 Estados (Kanban)</button>
-        <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">📸 Feed IG</button>
-        <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">📘 Muro FB</button>
-        <button class="tab-btn ${activeContTab==='stories'?'active':''}" data-tab="stories">▯ Stories IG</button>
-        <button class="tab-btn ${activeContTab==='ideas'?'active':''}" data-tab="ideas">💡 Banco de ideas</button>
-        <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">✏️ En proceso</button>
-        <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">📈 Métricas</button>
+        <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
+        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario</button>
+        <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">Kanban</button>
+        <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">Feed IG</button>
+        <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">Muro FB</button>
+        <button class="tab-btn ${activeContTab==='stories'?'active':''}" data-tab="stories">Stories IG</button>
+        <button class="tab-btn ${activeContTab==='ideas'?'active':''}" data-tab="ideas">Banco de ideas</button>
+        <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">En proceso</button>
+        <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">Métricas</button>
       </div>
     </div>
     <div id="cont-tab-body"></div>
@@ -655,7 +658,8 @@ function renderBancoContenidos(container) {
     <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
       <button class="btn btn-primary btn-sm" onclick="openContenidoModal(null)">+ Nuevo contenido</button>
     </div>
-    <div class="table-wrapper">
+    <p class="table-scroll-hint">← deslizá para ver más →</p>
+    <div class="table-wrapper table-scroll-wrap">
       <table class="data-table">
         <thead>
           <tr>
@@ -678,7 +682,7 @@ function renderBancoContenidos(container) {
               <td>${statusBadge(c.estado)}</td>
               <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
               <td style="font-size:12px;">${c.eje||''}</td>
-              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">📎</a>` : ''}</td>
+              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
               <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
               <td onclick="event.stopPropagation()" style="white-space:nowrap;">
                 ${c.estado === 'En revisión' ? `
@@ -796,10 +800,10 @@ function renderKanbanContenidos(container) {
             <div class="kanban-card" draggable="true" data-id="${c.id}">
               <div class="kanban-card-title">${c.titulo}</div>
               <div class="kanban-card-meta">${(c.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
-              ${c.fechaPub ? `<div class="kanban-card-date">📅 ${fmtDate(c.fechaPub)}</div>` : ''}
+              ${c.fechaPub ? `<div class="kanban-card-date">${fmtDate(c.fechaPub)}</div>` : ''}
               <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button>
-                <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁</button>
+                <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">Preview</button>
                 ${col.key === 'En revisión' ? `
                   <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;" onclick="aprobarContenido('${c.id}')">✓ Aprobar</button>
                   <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="rechazarContenido('${c.id}')">✗ Rechazar</button>
@@ -1025,7 +1029,7 @@ function renderIdeas(container) {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
         ${STATE.ideas.map(i => `
           <div class="card" style="padding:14px;">
-            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">💡 ${i.titulo}</div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${i.titulo}</div>
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
             ${i.formato ? `<div style="font-size:12px;color:var(--text-muted);">Formato: ${i.formato}</div>` : ''}
             ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${i.notas}</div>` : ''}
@@ -2456,12 +2460,12 @@ function statusDot(estado) {
 
 function platBadge(plat) {
   const map = { Instagram:'plat-ig', Facebook:'plat-fb', LinkedIn:'plat-li', Twitter:'plat-tw' };
-  const icons = { Instagram:'📸', Facebook:'📘', LinkedIn:'💼', Twitter:'🐦' };
-  return `<span class="plat-badge ${map[plat]||''}">${icons[plat]||''} ${plat}</span>`;
+  const abbr = { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' };
+  return `<span class="plat-badge ${map[plat]||''}">${abbr[plat]||plat.slice(0,2).toUpperCase()} · ${plat}</span>`;
 }
 
 function platIcon(plat) {
-  return { Instagram:'📸', Facebook:'📘', LinkedIn:'💼', Twitter:'🐦' }[plat] || '';
+  return { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' }[plat] || plat.slice(0,2).toUpperCase();
 }
 
 function driveThumb(url) {
@@ -2846,6 +2850,118 @@ _sidebarOverlay?.addEventListener('click', closeMobileSidebar);
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
 });
+
+// ── Bottom nav mobile ──────────────────────────────────
+const _bottomNav = document.getElementById('mobile-bottom-nav');
+
+function updateBottomNav(sec) {
+  if (!_bottomNav) return;
+  _bottomNav.querySelectorAll('.bnav-btn[data-section]').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sec);
+  });
+}
+
+function updateFab(sec) {
+  const fab = document.getElementById('fab-btn');
+  if (!fab) return;
+  const fabSections = { home: () => openTareaModal(null), contenidos: () => openContenidoModal(null), tareas: () => openTareaModal(null) };
+  if (fabSections[sec] && window.innerWidth <= 768) {
+    fab.style.display = 'flex';
+    fab.onclick = fabSections[sec];
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+// Bottom nav clicks
+_bottomNav?.querySelectorAll('.bnav-btn[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => renderSection(btn.dataset.section));
+});
+
+// Botón "Más" → abre sidebar
+document.getElementById('bnav-more')?.addEventListener('click', openMobileSidebar);
+
+// Badge tareas en bottom nav
+function updateBnavBadge() {
+  const badge = document.getElementById('bnav-badge-tareas');
+  if (!badge) return;
+  const vencidas = (STATE.tareas || []).filter(t => !t.archivado && t.vencimiento && t.vencimiento < new Date().toISOString().split('T')[0]).length;
+  badge.textContent = vencidas || '';
+  badge.classList.toggle('visible', vencidas > 0);
+}
+
+// ── Banco de contenidos — cards mobile ────────────────
+const _origRenderBanco = renderBancoContenidos;
+function renderBancoContenidos(container) {
+  const all = [...STATE.contenidos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+
+  // Inyectar cards mobile + tabla desktop en el mismo contenedor
+  const cardsHtml = all.length ? all.map(c => `
+    <div class="content-card" onclick="openContenidoModalById('${c.id}')">
+      <div class="content-card-top">
+        <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
+        ${statusBadge(c.estado)}
+      </div>
+      <div class="content-card-titulo">${c.titulo}</div>
+      <div class="content-card-meta">
+        ${(c.plataformas || []).map(p => platBadge(p)).join('')}
+        ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
+        ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`;
+
+  container.innerHTML = `
+    <div class="banco-cards-mobile">${cardsHtml}</div>
+    <div class="banco-table-desktop">
+      <p class="table-scroll-hint">← deslizá para ver más →</p>
+      <div class="table-wrapper table-scroll-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${all.map(c => `
+              <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
+                <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
+                <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
+                <td>${statusBadge(c.estado)}</td>
+                <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
+                <td style="font-size:12px;">${c.eje||''}</td>
+                <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">📎<\/a>` : ''}</td>
+                <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+                  ${c.estado === 'En revisión' ? `
+                    <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
+                    <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
+                  ` : ''}
+                </td>
+              </tr>
+            `).join('')}
+            <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
+              <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ── Collapsible avanzado en modal contenido ────────────
+window.toggleContAdvanced = function() {
+  const section = document.getElementById('cont-advanced');
+  const btn = document.getElementById('cont-advanced-toggle');
+  if (!section || !btn) return;
+  const isOpen = section.classList.contains('open');
+  section.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  btn.innerHTML = `<i data-lucide="${isOpen ? 'chevron-down' : 'chevron-up'}" style="width:14px;height:14px;stroke-width:2;"></i> ${isOpen ? 'Ver más opciones' : 'Ocultar opciones avanzadas'}`;
+  refreshIcons();
+};
 
 // ── Start ──────────────────────────────────────────────
 function refreshIcons() {
