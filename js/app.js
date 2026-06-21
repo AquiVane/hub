@@ -657,56 +657,61 @@ function renderContTab(tab) {
   else if (tab === 'metricas') renderMetricasContenidos(body);
 }
 
-// ─ Banco de contenidos (tabla editable) ─
+// ─ Banco de contenidos (tabla desktop + cards mobile) ─
 function renderBancoContenidos(container) {
-  const all = [...STATE.contenidos].sort((a,b) => (a.fechaPub||'zzz') > (b.fechaPub||'zzz') ? 1 : -1);
-  container.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-      <button class="btn btn-primary btn-sm" onclick="openContenidoModal(null)">+ Nuevo contenido</button>
+  const all = [...STATE.contenidos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+
+  const cardsHtml = all.length ? all.map(c => `
+    <div class="content-card" onclick="openContenidoModalById('${c.id}')">
+      <div class="content-card-top">
+        <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
+        ${statusBadge(c.estado)}
+      </div>
+      <div class="content-card-titulo">${c.titulo}</div>
+      <div class="content-card-meta">
+        ${(c.plataformas || []).map(p => platBadge(p)).join('')}
+        ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
+        ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
+      </div>
     </div>
-    <p class="table-scroll-hint">← deslizá para ver más →</p>
-    <div class="table-wrapper table-scroll-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Fecha pub.</th><th>Título</th><th>Plataforma</th>
-            <th>Estado</th><th>Formato</th><th>Eje</th>
-            <th>Drive</th><th>Notas</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${all.map(c => `
-            <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
-              <td>
-                <input type="date" value="${c.fechaPub||''}" class="banco-date-input"
-                  onclick="event.stopPropagation()"
-                  onchange="bancoUpdateFecha('${c.id}', this.value)"
-                  style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;">
-              </td>
-              <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
-              <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-              <td>${statusBadge(c.estado)}</td>
-              <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
-              <td style="font-size:12px;">${c.eje||''}</td>
-              <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
-              <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
-              <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-                ${c.estado === 'En revisión' ? `
-                  <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
-                  <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
-                ` : ''}
+  `).join('') : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`;
+
+  container.innerHTML = `
+    <div class="banco-cards-mobile">${cardsHtml}</div>
+    <div class="banco-table-desktop">
+      <p class="table-scroll-hint">← deslizá para ver más →</p>
+      <div class="table-wrapper table-scroll-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${all.map(c => `
+              <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
+                <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
+                <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
+                <td>${statusBadge(c.estado)}</td>
+                <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
+                <td style="font-size:12px;">${c.eje||''}</td>
+                <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
+                <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+                  ${c.estado === 'En revisión' ? `
+                    <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
+                    <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
+                  ` : ''}
+                </td>
+              </tr>
+            `).join('')}
+            <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
+              <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido</span>
               </td>
             </tr>
-          `).join('')}
-          <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
-            <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
-              <span style="display:inline-flex;align-items:center;gap:5px;">
-                <span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
@@ -2898,66 +2903,6 @@ function updateBnavBadge() {
   badge.classList.toggle('visible', vencidas > 0);
 }
 
-// ── Banco de contenidos — cards mobile ────────────────
-const _origRenderBanco = renderBancoContenidos;
-function renderBancoContenidos(container) {
-  const all = [...STATE.contenidos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
-
-  // Inyectar cards mobile + tabla desktop en el mismo contenedor
-  const cardsHtml = all.length ? all.map(c => `
-    <div class="content-card" onclick="openContenidoModalById('${c.id}')">
-      <div class="content-card-top">
-        <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
-        ${statusBadge(c.estado)}
-      </div>
-      <div class="content-card-titulo">${c.titulo}</div>
-      <div class="content-card-meta">
-        ${(c.plataformas || []).map(p => platBadge(p)).join('')}
-        ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
-        ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
-      </div>
-    </div>
-  `).join('') : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`;
-
-  container.innerHTML = `
-    <div class="banco-cards-mobile">${cardsHtml}</div>
-    <div class="banco-table-desktop">
-      <p class="table-scroll-hint">← deslizá para ver más →</p>
-      <div class="table-wrapper table-scroll-wrap">
-        <table class="data-table">
-          <thead>
-            <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
-          </thead>
-          <tbody>
-            ${all.map(c => `
-              <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
-                <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
-                <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
-                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-                <td>${statusBadge(c.estado)}</td>
-                <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
-                <td style="font-size:12px;">${c.eje||''}</td>
-                <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">📎<\/a>` : ''}</td>
-                <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
-                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-                  ${c.estado === 'En revisión' ? `
-                    <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
-                    <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
-                  ` : ''}
-                </td>
-              </tr>
-            `).join('')}
-            <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
-              <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
-                <span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
 
 // ── Collapsible avanzado en modal contenido ────────────
 window.toggleContAdvanced = function() {
