@@ -220,6 +220,89 @@
   </div>
 </div>
 
+<!-- Modal editar cliente -->
+<div id="editClientModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Editar cliente</h3>
+      <button class="modal-close" onclick="closeEditClientModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="ec-nombre" class="form-control" placeholder="Ej: Slots!">
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="ec-activo" class="form-control">
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Redes sociales</p>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label>Instagram 1</label>
+          <input type="text" id="ec-ig1" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>Instagram 2</label>
+          <input type="text" id="ec-ig2" class="form-control" placeholder="@cuenta2">
+        </div>
+        <div class="form-group">
+          <label>Instagram 3</label>
+          <input type="text" id="ec-ig3" class="form-control" placeholder="@cuenta3">
+        </div>
+        <div class="form-group">
+          <label>Facebook</label>
+          <input type="text" id="ec-fb" class="form-control" placeholder="Nombre de página">
+        </div>
+        <div class="form-group">
+          <label>TikTok</label>
+          <input type="text" id="ec-tiktok" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>YouTube</label>
+          <input type="text" id="ec-youtube" class="form-control" placeholder="Canal">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Sitio web principal</label>
+          <input type="url" id="ec-website" class="form-control" placeholder="https://misitioweb.com">
+        </div>
+        <div class="form-group">
+          <label>Sitio web 2 (opcional)</label>
+          <input type="url" id="ec-website2" class="form-control" placeholder="https://otro.com">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Meta & Publicidad</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Meta Business Manager ID <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+          <input type="text" id="ec-meta-bm" class="form-control" placeholder="Ej: 123456789012345">
+        </div>
+        <div class="form-group">
+          <label>Notas internas</label>
+          <input type="text" id="ec-notas" class="form-control" placeholder="Notas sobre el cliente...">
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">Para cambiar el email de acceso o la contraseña, pedile a COSMART (dev) que lo actualice desde el backend — por ahora esto edita solo los datos del negocio.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditClientModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditClient()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { requireAuth, logoutUser } from '../js/auth.js';
   import { getAllClients, createClient, getClientData, saveClientData } from '../js/data.js';
@@ -270,6 +353,7 @@
         </div>
         <div class="client-card-actions">
           <a href="../app/index.html?client=${c.id}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
+          <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
           <button class="btn btn-secondary btn-sm" onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
           <button class="btn btn-secondary btn-sm" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
         </div>
@@ -307,6 +391,66 @@
 
   window.copyLogin = (email) => {
     navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
+  };
+
+  // ── Editar cliente existente ────────────────────────
+  let _editClientId = null;
+
+  window.openEditClientModal = async function(clientId) {
+    _editClientId = clientId;
+    const client = await getClientData(clientId);
+    if (!client) { alert('No se pudo cargar el cliente.'); return; }
+
+    document.getElementById('ec-nombre').value = client.nombre || client.name || '';
+    document.getElementById('ec-activo').value = client.activo === false ? 'false' : 'true';
+
+    const igs = client.instagrams && client.instagrams.length ? client.instagrams : [client.instagram || ''];
+    document.getElementById('ec-ig1').value = igs[0] || '';
+    document.getElementById('ec-ig2').value = igs[1] || '';
+    document.getElementById('ec-ig3').value = igs[2] || '';
+
+    document.getElementById('ec-fb').value = client.facebook || '';
+    document.getElementById('ec-tiktok').value = client.tiktok || '';
+    document.getElementById('ec-youtube').value = client.youtube || '';
+    document.getElementById('ec-website').value = client.website || '';
+    document.getElementById('ec-website2').value = client.website2 || '';
+    document.getElementById('ec-meta-bm').value = client.metaBusinessId || '';
+    document.getElementById('ec-notas').value = client.notas || '';
+
+    document.getElementById('editClientModal').classList.remove('hidden');
+  };
+
+  window.closeEditClientModal = () => document.getElementById('editClientModal').classList.add('hidden');
+
+  window.saveEditClient = async function() {
+    if (!_editClientId) return;
+    const nombre = document.getElementById('ec-nombre').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+    const ig1 = document.getElementById('ec-ig1').value.trim();
+    const ig2 = document.getElementById('ec-ig2').value.trim();
+    const ig3 = document.getElementById('ec-ig3').value.trim();
+    const instagrams = [ig1, ig2, ig3].filter(Boolean);
+
+    try {
+      await saveClientData(_editClientId, {
+        nombre,
+        activo: document.getElementById('ec-activo').value === 'true',
+        instagram: ig1,
+        instagrams,
+        facebook: document.getElementById('ec-fb').value.trim(),
+        tiktok: document.getElementById('ec-tiktok').value.trim(),
+        youtube: document.getElementById('ec-youtube').value.trim(),
+        website: document.getElementById('ec-website').value.trim(),
+        website2: document.getElementById('ec-website2').value.trim(),
+        metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
+        notas: document.getElementById('ec-notas').value.trim(),
+      });
+      closeEditClientModal();
+      loadClients();
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
   };
 
   window.createNewClient = async function() {
