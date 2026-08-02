@@ -141,6 +141,36 @@
   </div>
 </div>
 
+<!-- FAB -->
+<button id="fab-btn" class="fab-btn" style="display:none;" aria-label="Nuevo">
+  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- Bottom nav mobile -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  <button class="bnav-btn active" data-section="home">
+    <i data-lucide="compass" style="width:20px;height:20px;stroke-width:1.75;"></i>
+    <span>Inicio</span>
+  </button>
+  <button class="bnav-btn" data-section="contenidos">
+    <i data-lucide="pen-line" style="width:20px;height:20px;stroke-width:1.75;"></i>
+    <span>Contenidos</span>
+  </button>
+  <button class="bnav-btn" data-section="tareas">
+    <i data-lucide="list-checks" style="width:20px;height:20px;stroke-width:1.75;"></i>
+    <span>Tareas</span>
+    <span class="bnav-badge" id="bnav-badge-tareas"></span>
+  </button>
+  <button class="bnav-btn" data-section="dashboard">
+    <i data-lucide="bar-chart-2" style="width:20px;height:20px;stroke-width:1.75;"></i>
+    <span>Dashboard</span>
+  </button>
+  <button class="bnav-btn" id="bnav-more">
+    <i data-lucide="menu" style="width:20px;height:20px;stroke-width:1.75;"></i>
+    <span>Más</span>
+  </button>
+</nav>
+
 <!-- Modal: Contenido (nuevo / editar) -->
 <div id="contenidoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:720px;">
@@ -204,6 +234,16 @@
             <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
           </div>
         </div>
+
+      </div><!-- /form-grid essential -->
+
+      <!-- Toggle opciones avanzadas (solo mobile) -->
+      <button type="button" id="cont-advanced-toggle" class="advanced-toggle-btn" onclick="toggleContAdvanced()">
+        <i data-lucide="chevron-down" style="width:14px;height:14px;stroke-width:2;transition:transform .2s;"></i>
+        Ver más opciones
+      </button>
+
+      <div id="cont-advanced" class="form-grid advanced-section" style="grid-template-columns:1fr 1fr 1fr;">
 
         <div class="form-group" style="grid-column:span 3;">
           <label>Dimensión / Relación de aspecto</label>
@@ -302,7 +342,7 @@
           <input type="text" id="cf-notas" class="form-control" placeholder="Ej: Subir en hora pico, esperar confirmación cliente...">
         </div>
 
-      </div>
+      </div><!-- /cont-advanced -->
       <!-- Comentarios contenido -->
       <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:4px;">
         <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
