@@ -69,12 +69,13 @@ export function getCurrentUser() {
 export function requireAuth(requiredRole) {
   const user = getCurrentUser();
   if (!user) {
-    const depth = window.location.pathname.split('/').filter(Boolean).length;
-    window.location.href = depth >= 2 ? '../index.html' : 'index.html';
+    if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
+      window.location.href = '/index.html';
+    }
     return null;
   }
   if (requiredRole && user.role !== requiredRole) {
-    window.location.href = '../index.html';
+    window.location.href = '/index.html';
     return null;
   }
   return user;
