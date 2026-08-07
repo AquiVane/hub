@@ -1486,6 +1486,11 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-notas').value = c.notas || '';
+  setTimeout(() => {
+    const df = document.getElementById('cf-duracion');
+    if (df) df.value = c.duracion || '';
+    updateDuracionVisibility();
+  }, 80);
 
   // Cuenta
   populateCuentaSelect(c.cuenta || STATE.client.instagram || '');
@@ -1537,7 +1542,16 @@ document.getElementById('closeContenidoModal').addEventListener('click', closeCo
 document.getElementById('closeContenidoModal2').addEventListener('click', closeContenidoModal);
 
 // Platform checkboxes → update formats
-document.getElementById('plat-checks').addEventListener('change', updatePlatFilters);
+document.getElementById('plat-checks').addEventListener('change', () => { updatePlatFilters(); updateDuracionVisibility(); });
+
+function updateDuracionVisibility() {
+  setTimeout(() => {
+    const videoFormats = ['Reel','Video','TikTok','Story','YouTube','Short'];
+    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => videoFormats.some(v => cb.value.includes(v)));
+    const g = document.getElementById('cf-duracion-group');
+    if (g) g.style.display = hasVideo ? '' : 'none';
+  }, 60);
+}
 
 // Pauta radios → show/hide hint
 document.querySelectorAll('input[name="cf-pauta"]').forEach(r => {
@@ -1669,7 +1683,7 @@ function renderTareas(container) {
         </div>
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(t => `
-            <div class="kanban-card" draggable="true" data-id="${t.id}">
+            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)">
               <div class="kanban-card-title">${t.titulo}</div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
@@ -1715,11 +1729,11 @@ function renderTareas(container) {
 
   initKanbanDrag('#kanban-tareas', STATE.tareas.filter(t => !t.archivado), async (id, newCol) => {
     const t = STATE.tareas.find(x => x.id === id);
-    if (!t) return;
+    if (!t || t.estado === newCol) return;
     t.estado = newCol;
-    await saveTarea(clientId, t);
     updateBadges();
     renderTareas(document.getElementById('main-content'));
+    saveTarea(clientId, t).catch(() => {});
   });
 }
 
@@ -1727,6 +1741,11 @@ function renderTareas(container) {
 let _tareaImgList = [];
 
 window.rteCmd = function(cmd) {
+  if (/^h[1-3]$/.test(cmd)) {
+    document.getElementById('tf-notas').focus();
+    document.execCommand('formatBlock', false, cmd);
+    return;
+  }
   document.getElementById('tf-notas').focus();
   document.execCommand(cmd, false, null);
 };
@@ -1754,6 +1773,8 @@ window.removeTareaImg = function(i) {
 
 function addTareaImgFromFile(file) {
   if (!file || !file.type.startsWith('image/')) return;
+  if (_tareaImgList.length >= 3) { alert('M\u00e1ximo 3 im\u00e1genes por tarea.'); return; }
+  if (file.size > 4 * 1024 * 1024) { alert('La imagen supera 4 MB. Sub\u00edla a Drive y peg\u00e1 el link.'); return; }
   const reader = new FileReader();
   reader.onload = e => { _tareaImgList.push(e.target.result); renderTareaImgThumbs(); };
   reader.readAsDataURL(file);
@@ -1790,6 +1811,8 @@ window.openTareaModal = function(id, defaultEstado) {
 
   renderComments('tarea', t.comentarios || []);
   document.getElementById('tarea-comment-input').value = '';
+  const _tnote = document.getElementById('tarea-new-note');
+  if (_tnote) _tnote.style.display = editingTarea ? 'none' : '';
   document.getElementById('tareaModal').classList.remove('hidden');
 };
 
@@ -1992,23 +2015,48 @@ function renderPauta(container) {
 // ──────────────────────────────────────────────────────
 function renderLinks(container) {
   const links = STATE.links || [];
+  const cats = ['Todas', ...new Set(links.map(l => l.categoria).filter(Boolean))];
+  if (!window._linkCatFilter) window._linkCatFilter = 'Todas';
+  const filter = window._linkCatFilter;
+  const visible = filter === 'Todas' ? links : links.filter(l => l.categoria === filter);
+
   container.innerHTML = `
-    ${links.length ? `
-      <div class="links-grid">
-        ${links.map(l => `
-          <div class="link-card" onclick="window.open('${l.url}','_blank')" style="cursor:pointer;">
+    ${cats.length > 1 ? `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+      ${cats.map(c => `
+        <button onclick="window._linkCatFilter='${c.replace(/'/g,"\\'")}';renderSection('links');"
+          style="padding:4px 12px;border-radius:999px;border:1.5px solid ${c===filter?'var(--primary)':'var(--border)'};
+          background:${c===filter?'var(--primary)':'transparent'};color:${c===filter?'#fff':'var(--text-muted)'};
+          font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;">${c}</button>
+      `).join('')}
+    </div>` : ''}
+    ${visible.length ? `
+      <div class="links-grid" id="links-sortable">
+        ${visible.map(l => `
+          <div class="link-card" draggable="true" data-link-id="${l.id}"
+            style="cursor:grab;user-select:none;"
+            onclick="if(!this._ldrag)window.open('${l.url.replace(/'/g,"\\'")}','_blank')"
+            ondragstart="this._ldrag=false;window._linkDragId='${l.id}';this.style.opacity='.4';"
+            ondragend="this._ldrag=true;this.style.opacity='1';setTimeout(()=>{this._ldrag=false},200);"
+            ondragover="event.preventDefault();this.style.outline='2px solid var(--primary)';"
+            ondragleave="this.style.outline='';"
+            ondrop="event.preventDefault();this.style.outline='';dropLinkOn('${l.id}');">
             <div class="link-card-icon">
               <i data-lucide="link" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
             </div>
             <div style="flex:1;min-width:0;">
               <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.titulo}</div>
+              ${l.categoria ? `<div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${l.categoria}</div>` : ''}
               ${l.desc ? `<div class="link-card-desc">${l.desc}</div>` : ''}
               <div style="font-size:10px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.url}</div>
             </div>
-            <button class="link-card-edit" onclick="event.stopPropagation();openLinkModal('${l.id}')" title="Editar">✏️</button>
+            <button class="link-card-edit" onclick="event.stopPropagation();openLinkModal('${l.id}')" title="Editar">
+              <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
+            </button>
           </div>
         `).join('')}
-        <div class="link-card" onclick="openLinkModal(null)" style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
+        <div class="link-card" onclick="openLinkModal(null)"
+          style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
           <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
           <span style="font-size:13px;color:var(--text-muted);">Agregar link</span>
         </div>
@@ -2016,13 +2064,28 @@ function renderLinks(container) {
     ` : `
       <div class="empty-state">
         <i data-lucide="link" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
-        <h3>Sin links guardados</h3>
+        <h3>Sin links${filter!=='Todas'?' en esta categoría':' guardados'}</h3>
         <p>Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes...</p>
         <button class="btn btn-primary" style="margin-top:12px;" onclick="openLinkModal(null)">+ Agregar primer link</button>
       </div>
     `}
   `;
+  setTimeout(refreshIcons, 30);
 }
+
+window.dropLinkOn = async function(targetId) {
+  const dragId = window._linkDragId;
+  if (!dragId || dragId === targetId) return;
+  const links = STATE.links;
+  const fromIdx = links.findIndex(l => String(l.id) === String(dragId));
+  const toIdx   = links.findIndex(l => String(l.id) === String(targetId));
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = links.splice(fromIdx, 1);
+  links.splice(toIdx, 0, moved);
+  STATE.home.links = links;
+  renderSection('links');
+  saveHomeData(clientId, STATE.home).catch(() => {});
+};
 
 let _editingLink = null;
 window.openLinkModal = function(id) {
@@ -2032,6 +2095,10 @@ window.openLinkModal = function(id) {
   document.getElementById('lf-titulo').value = l.titulo || '';
   document.getElementById('lf-url').value = l.url || '';
   document.getElementById('lf-desc').value = l.desc || '';
+  document.getElementById('lf-categoria').value = l.categoria || '';
+  const cats = [...new Set((STATE.links || []).map(x => x.categoria).filter(Boolean))];
+  const dl = document.getElementById('lf-cat-list');
+  if (dl) dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
   document.getElementById('deleteLinkBtn').style.display = _editingLink ? '' : 'none';
   document.getElementById('linkModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('lf-titulo').focus(), 50);
@@ -2537,7 +2604,7 @@ document.getElementById('saveLinkBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('lf-titulo').value.trim();
   const url = document.getElementById('lf-url').value.trim();
   if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
-  const obj = { ...(_editingLink || {}), id: _editingLink?.id || Date.now(), titulo, url, desc: document.getElementById('lf-desc').value.trim() };
+  const obj = { ...(_editingLink || {}), id: _editingLink?.id || Date.now(), titulo, url, desc: document.getElementById('lf-desc').value.trim(), categoria: (document.getElementById('lf-categoria')?.value || '').trim() };
   if (_editingLink) {
     const i = STATE.links.findIndex(l => l.id === obj.id);
     STATE.links[i] = obj;

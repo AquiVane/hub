@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMART Marketing Hub — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon-wrap">
+        <img src="../app/cosmart-logo.png" alt="COSMART" class="cosmart-logo-img">
+      </div>
+    </div>
+    <div class="sidebar-hub-label">Marketing Hub</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.5px;padding:0 16px 12px;margin-top:-8px;">Panel administrador</div>
+    <nav class="nav-section">
+      <div class="nav-section-label">Menú</div>
+      <button class="nav-item active" onclick="showSection('clientes')">
+        <span class="icon">👥</span><span>Clientes</span>
+      </button>
+      <button class="nav-item" onclick="showSection('config')">
+        <span class="icon">⚙️</span><span>Configuración</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Panel Admin</div>
+        <div class="topbar-sub" id="adminName"></div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" onclick="openNewClientModal()">+ Nuevo cliente</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Clientes -->
+      <div id="sec-clientes">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Clientes</h2>
+          <span id="clientCount" class="text-muted text-sm"></span>
+        </div>
+        <div class="admin-grid" id="clientGrid">
+          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div id="sec-config" class="hidden">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Configuración</h2>
+        <div class="card" style="max-width:600px;">
+          <div class="card-header"><h2>Firebase</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+              Para conectar Firebase real, editá el archivo <code>js/firebase.js</code> con tus credenciales.<br>
+              Seguí las instrucciones del archivo <code>SETUP.md</code>.
+            </p>
+            <div id="firebase-status" style="padding:10px 12px;border-radius:6px;font-size:13px;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo cliente -->
+<div id="newClientModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Nuevo cliente</h3>
+      <button class="modal-close" onclick="closeNewClientModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="nc-nombre" class="form-control" placeholder="Ej: Slots!">
+        </div>
+        <div class="form-group">
+          <label>ID único *</label>
+          <input type="text" id="nc-id" class="form-control" placeholder="ej: slots (sin espacios)">
+        </div>
+        <div class="form-group">
+          <label>Email de acceso *</label>
+          <input type="email" id="nc-email" class="form-control" placeholder="cliente@email.com">
+        </div>
+        <div class="form-group">
+          <label>Contraseña inicial *</label>
+          <input type="text" id="nc-pass" class="form-control" placeholder="min. 6 caracteres">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Redes sociales</p>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label>Instagram 1</label>
+          <input type="text" id="nc-ig1" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>Instagram 2</label>
+          <input type="text" id="nc-ig2" class="form-control" placeholder="@cuenta2">
+        </div>
+        <div class="form-group">
+          <label>Instagram 3</label>
+          <input type="text" id="nc-ig3" class="form-control" placeholder="@cuenta3">
+        </div>
+        <div class="form-group">
+          <label>Facebook</label>
+          <input type="text" id="nc-fb" class="form-control" placeholder="Nombre de página">
+        </div>
+        <div class="form-group">
+          <label>TikTok</label>
+          <input type="text" id="nc-tiktok" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>YouTube</label>
+          <input type="text" id="nc-youtube" class="form-control" placeholder="Canal">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Sitio web principal</label>
+          <input type="url" id="nc-website" class="form-control" placeholder="https://misitioweb.com">
+        </div>
+        <div class="form-group">
+          <label>Sitio web 2 (opcional)</label>
+          <input type="url" id="nc-website2" class="form-control" placeholder="https://otro.com">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Meta & Publicidad</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Meta Business Manager ID <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+          <input type="text" id="nc-meta-bm" class="form-control" placeholder="Ej: 123456789012345">
+        </div>
+        <div class="form-group">
+          <label>Notas internas</label>
+          <input type="text" id="nc-notas" class="form-control" placeholder="Notas sobre el cliente...">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo inicial</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Usuarios que pueden recibir @ menciones en comentarios. Podés agregar más después desde el hub.</p>
+      <div id="nc-usuarios-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;">
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Nombre</label>
+          <input type="text" id="nc-eq-nombre" class="form-control" placeholder="Ej: Vaneh">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Email</label>
+          <input type="email" id="nc-eq-email" class="form-control" placeholder="usuario@email.com">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Rol</label>
+          <select id="nc-eq-rol" class="form-control">
+            <option>Usuario</option>
+            <option>Responsable COSMART</option>
+            <option>Admin cliente</option>
+            <option>Colaborador</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="agregarEquipoNuevoCliente()" style="height:38px;">+ Agregar</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewClientModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="createNewClient()">Crear cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal equipo cliente -->
+<div id="equipoClienteModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3>Equipo — <span id="equipo-cliente-nombre"></span></h3>
+      <button class="modal-close" onclick="document.getElementById('equipoClienteModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Usuarios que pueden recibir @ menciones en comentarios del hub.</p>
+      <div id="equipo-cliente-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;min-height:32px;"></div>
+      <div style="border-top:1px solid var(--border-strong);padding-top:14px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;">Agregar usuario</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 140px auto;gap:8px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Nombre</label>
+            <input type="text" id="eq-nombre" class="form-control" placeholder="Ej: Vaneh">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Email</label>
+            <input type="email" id="eq-email" class="form-control" placeholder="usuario@email.com">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Rol</label>
+            <select id="eq-rol" class="form-control">
+              <option>Responsable COSMART</option>
+              <option>Cliente</option>
+              <option>Diseñador/a</option>
+              <option>Community Manager</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="agregarUsuarioCliente()" style="height:38px;white-space:nowrap;">+ Agregar</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('equipoClienteModal').classList.add('hidden')">Cerrar</button>
+      <button class="btn btn-primary" onclick="guardarEquipoCliente()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar cliente -->
+<div id="editClientModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Editar cliente</h3>
+      <button class="modal-close" onclick="closeEditClientModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="ec-nombre" class="form-control" placeholder="Ej: Slots!">
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="ec-activo" class="form-control">
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Redes sociales</p>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label>Instagram 1</label>
+          <input type="text" id="ec-ig1" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>Instagram 2</label>
+          <input type="text" id="ec-ig2" class="form-control" placeholder="@cuenta2">
+        </div>
+        <div class="form-group">
+          <label>Instagram 3</label>
+          <input type="text" id="ec-ig3" class="form-control" placeholder="@cuenta3">
+        </div>
+        <div class="form-group">
+          <label>Facebook</label>
+          <input type="text" id="ec-fb" class="form-control" placeholder="Nombre de página">
+        </div>
+        <div class="form-group">
+          <label>TikTok</label>
+          <input type="text" id="ec-tiktok" class="form-control" placeholder="@cuenta">
+        </div>
+        <div class="form-group">
+          <label>YouTube</label>
+          <input type="text" id="ec-youtube" class="form-control" placeholder="Canal">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Sitio web principal</label>
+          <input type="url" id="ec-website" class="form-control" placeholder="https://misitioweb.com">
+        </div>
+        <div class="form-group">
+          <label>Sitio web 2 (opcional)</label>
+          <input type="url" id="ec-website2" class="form-control" placeholder="https://otro.com">
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Meta & Publicidad</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Meta Business Manager ID <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+          <input type="text" id="ec-meta-bm" class="form-control" placeholder="Ej: 123456789012345">
+        </div>
+        <div class="form-group">
+          <label>Notas internas</label>
+          <input type="text" id="ec-notas" class="form-control" placeholder="Notas sobre el cliente...">
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">Para cambiar el email de acceso o la contraseña, pedile a COSMART (dev) que lo actualice desde el backend — por ahora esto edita solo los datos del negocio.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditClientModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditClient()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireAuth, logoutUser } from '../js/auth.js';
+  import { getAllClients, createClient, getClientData, saveClientData } from '../js/data.js';
+  import { DEMO_MODE } from '../js/firebase.js';
+
+  const user = requireAuth('admin');
+  if (!user) throw new Error('No auth');
+  document.getElementById('adminName').textContent = user.name || user.email;
+
+  document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+
+  // Worker status
+  const fsEl = document.getElementById('firebase-status');
+  if (DEMO_MODE) {
+    fsEl.style.background = '#fffbeb'; fsEl.style.color = '#b45309'; fsEl.style.border = '1px solid #fde68a';
+    fsEl.innerHTML = '⚠️ <strong>Modo demo activo.</strong> Editá <code>js/firebase.js</code> con la URL de tu Cloudflare Worker para activar el backend real.';
+  } else {
+    fsEl.style.background = '#ecfdf5'; fsEl.style.color = '#059669'; fsEl.style.border = '1px solid #a7f3d0';
+    fsEl.innerHTML = '✅ <strong>Worker conectado.</strong> Datos guardados en Cloudflare KV.';
+  }
+
+  window.showSection = function(sec) {
+    ['clientes','config'].forEach(s => {
+      document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+  };
+
+  async function loadClients() {
+    const clients = await getAllClients();
+    document.getElementById('clientCount').textContent = `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
+    const grid = document.getElementById('clientGrid');
+    if (!clients.length) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Sin clientes</h3><p>Creá tu primer cliente.</p></div>`;
+      return;
+    }
+    grid.innerHTML = clients.map(c => `
+      <div class="client-card">
+        <div>
+          <div class="client-card-name">${c.nombre || c.name || c.id}</div>
+          <div class="client-card-meta">${c.email || ''}</div>
+          <div class="client-card-meta" style="margin-top:4px;">${c.instagram ? '📸 ' + c.instagram : ''}${c.facebook ? ' · 📘 ' + c.facebook : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
+          <span style="font-size:11px;color:var(--text-muted);">${c.activo !== false ? 'Activo' : 'Inactivo'}</span>
+        </div>
+        <div class="client-card-actions">
+          <a href="../app/index.html?client=${c.id}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
+          <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
+          <button class="btn btn-secondary btn-sm" onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
+          <button class="btn btn-secondary btn-sm" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.openNewClientModal = () => {
+    // Limpiar todos los campos del formulario
+    ['nc-nombre','nc-id','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
+     'nc-fb','nc-tiktok','nc-youtube','nc-website','nc-website2',
+     'nc-meta-bm','nc-notas','nc-eq-nombre','nc-eq-email'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const rolEl = document.getElementById('nc-eq-rol');
+    if (rolEl) rolEl.value = 'Usuario';
+    _ncUsuarios = [];
+    renderNcUsuarios();
+    document.getElementById('newClientModal').classList.remove('hidden');
+  };
+  window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
+
+  let _ncUsuarios = [];
+  function renderNcUsuarios() {
+    const list = document.getElementById('nc-usuarios-list');
+    if (!list) return;
+    list.innerHTML = _ncUsuarios.length ? _ncUsuarios.map((u,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f1f5f9;border-radius:6px;font-size:12px;">
+        <span style="flex:1;font-weight:600;">${u.nombre}</span>
+        <span style="color:var(--text-muted);">${u.email}</span>
+        <button onclick="_ncUsuarios.splice(${i},1);renderNcUsuarios();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:0 4px;">×</button>
+      </div>`).join('') : '';
+  }
+  window.agregarEquipoNuevoCliente = function() {
+    const nombre = document.getElementById('nc-eq-nombre').value.trim();
+    const email = document.getElementById('nc-eq-email').value.trim();
+    const rol = document.getElementById('nc-eq-rol')?.value || 'Usuario';
+    if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+    _ncUsuarios.push({ nombre, email, rol });
+    document.getElementById('nc-eq-nombre').value = '';
+    document.getElementById('nc-eq-email').value = '';
+    renderNcUsuarios();
+  };
+
+  window.copyLogin = (email) => {
+    navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
+  };
+
+  // ── Editar cliente existente ────────────────────────
+  let _editClientId = null;
+
+  window.openEditClientModal = async function(clientId) {
+    _editClientId = clientId;
+    const client = await getClientData(clientId);
+    if (!client) { alert('No se pudo cargar el cliente.'); return; }
+
+    document.getElementById('ec-nombre').value = client.nombre || client.name || '';
+    document.getElementById('ec-activo').value = client.activo === false ? 'false' : 'true';
+
+    const igs = client.instagrams && client.instagrams.length ? client.instagrams : [client.instagram || ''];
+    document.getElementById('ec-ig1').value = igs[0] || '';
+    document.getElementById('ec-ig2').value = igs[1] || '';
+    document.getElementById('ec-ig3').value = igs[2] || '';
+
+    document.getElementById('ec-fb').value = client.facebook || '';
+    document.getElementById('ec-tiktok').value = client.tiktok || '';
+    document.getElementById('ec-youtube').value = client.youtube || '';
+    document.getElementById('ec-website').value = client.website || '';
+    document.getElementById('ec-website2').value = client.website2 || '';
+    document.getElementById('ec-meta-bm').value = client.metaBusinessId || '';
+    document.getElementById('ec-notas').value = client.notas || '';
+
+    document.getElementById('editClientModal').classList.remove('hidden');
+  };
+
+  window.closeEditClientModal = () => document.getElementById('editClientModal').classList.add('hidden');
+
+  window.saveEditClient = async function() {
+    if (!_editClientId) return;
+    const nombre = document.getElementById('ec-nombre').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+    const ig1 = document.getElementById('ec-ig1').value.trim();
+    const ig2 = document.getElementById('ec-ig2').value.trim();
+    const ig3 = document.getElementById('ec-ig3').value.trim();
+    const instagrams = [ig1, ig2, ig3].filter(Boolean);
+
+    try {
+      await saveClientData(_editClientId, {
+        nombre,
+        activo: document.getElementById('ec-activo').value === 'true',
+        instagram: ig1,
+        instagrams,
+        facebook: document.getElementById('ec-fb').value.trim(),
+        tiktok: document.getElementById('ec-tiktok').value.trim(),
+        youtube: document.getElementById('ec-youtube').value.trim(),
+        website: document.getElementById('ec-website').value.trim(),
+        website2: document.getElementById('ec-website2').value.trim(),
+        metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
+        notas: document.getElementById('ec-notas').value.trim(),
+      });
+      closeEditClientModal();
+      loadClients();
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  window.createNewClient = async function() {
+    const nombre = document.getElementById('nc-nombre').value.trim();
+    const id = document.getElementById('nc-id').value.trim().toLowerCase().replace(/\s+/g,'');
+    const email = document.getElementById('nc-email').value.trim();
+    const pass = document.getElementById('nc-pass').value.trim();
+    const notas = document.getElementById('nc-notas').value.trim();
+
+    if (!nombre || !id || !email || !pass) { alert('Completá los campos obligatorios.'); return; }
+    if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+
+    const ig1 = document.getElementById('nc-ig1').value.trim();
+    const ig2 = document.getElementById('nc-ig2').value.trim();
+    const ig3 = document.getElementById('nc-ig3').value.trim();
+    const instagrams = [ig1, ig2, ig3].filter(Boolean);
+
+    await createClient({
+      id, nombre, email, password: pass, notas, activo: true,
+      instagram: ig1, // backwards compat
+      instagrams,
+      facebook: document.getElementById('nc-fb').value.trim(),
+      tiktok: document.getElementById('nc-tiktok').value.trim(),
+      youtube: document.getElementById('nc-youtube').value.trim(),
+      website: document.getElementById('nc-website').value.trim(),
+      website2: document.getElementById('nc-website2').value.trim(),
+      metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
+      usuarios: _ncUsuarios,
+    });
+    closeNewClientModal();
+    loadClients();
+  };
+
+  // ── Equipo de cliente existente ────────────────────────
+  let _equipoClienteId = null;
+  let _equipoUsuarios = [];
+
+  window.openEquipoClienteModal = async function(clientId) {
+    _equipoClienteId = clientId;
+    const client = await getClientData(clientId);
+    _equipoUsuarios = (client && client.usuarios) ? [...client.usuarios] : [];
+    document.getElementById('equipo-cliente-nombre').textContent = client ? (client.nombre || client.name || clientId) : clientId;
+    document.getElementById('eq-nombre').value = '';
+    document.getElementById('eq-email').value = '';
+    document.getElementById('eq-rol').value = 'Responsable COSMART';
+    renderEquipoClienteList();
+    document.getElementById('equipoClienteModal').classList.remove('hidden');
+  };
+
+  function renderEquipoClienteList() {
+    const list = document.getElementById('equipo-cliente-list');
+    if (!_equipoUsuarios.length) {
+      list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);font-style:italic;">Sin usuarios agregados todavía.</p>';
+      return;
+    }
+    list.innerHTML = _equipoUsuarios.map((u, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;font-size:12px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
+        <span style="flex:1;font-weight:600;">${u.nombre}</span>
+        <span style="color:var(--text-muted);">${u.email}</span>
+        <span style="font-size:10px;background:#e2e8f0;padding:2px 7px;border-radius:99px;color:var(--text-muted);">${u.rol||'Usuario'}</span>
+        <button onclick="_equipoUsuarios.splice(${i},1);renderEquipoClienteList();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:0 4px;line-height:1;">×</button>
+      </div>`).join('');
+  }
+
+  window.agregarUsuarioCliente = function() {
+    const nombre = document.getElementById('eq-nombre').value.trim();
+    const email = document.getElementById('eq-email').value.trim();
+    const rol = document.getElementById('eq-rol').value;
+    if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+    _equipoUsuarios.push({ nombre, email, rol });
+    document.getElementById('eq-nombre').value = '';
+    document.getElementById('eq-email').value = '';
+    renderEquipoClienteList();
+  };
+
+  window.guardarEquipoCliente = async function() {
+    if (!_equipoClienteId) return;
+    await saveClientData(_equipoClienteId, { usuarios: _equipoUsuarios });
+    document.getElementById('equipoClienteModal').classList.add('hidden');
+    alert('Equipo guardado correctamente.');
+  };
+
+  loadClients();
+</script>
+</body>
+</html>

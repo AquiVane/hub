@@ -94,8 +94,13 @@ function saveDemoData(clientId, data) {
 
 export async function getClientData(clientId) {
   if (DEMO_MODE) return getDemoData(clientId);
-  const clients = await api('GET', '/admin/clients');
-  return clients.find(c => c.id === clientId) || { id: clientId };
+  // Admins usan /admin/clients (lista completa); clientes usan su propio endpoint
+  const user = JSON.parse(localStorage.getItem('mh_user') || '{}');
+  if (user.role === 'admin') {
+    const clients = await api('GET', '/admin/clients');
+    return clients.find(c => c.id === clientId) || { id: clientId };
+  }
+  return api('GET', `/data/${clientId}/clientinfo`);
 }
 
 // ── Contenidos ────────────────────────────────────────────────
