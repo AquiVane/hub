@@ -1701,7 +1701,7 @@ function renderTareas(container) {
               })() : ''}
               <div style="display:flex;gap:4px;margin-top:8px;">
                 <button class="btn btn-secondary btn-sm" onclick="openTareaModal('${t.id}')">Editar</button>
-                <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
+                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
               </div>
             </div>
           `).join('')}
@@ -2151,7 +2151,7 @@ function renderWeb(container) {
 
 let _editingWebTask = null;
 window.openWebTaskModal = function(id, defaultEstado) {
-  _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => t.id === id) : null;
+  _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => String(t.id) === String(id)) : null;
   const t = _editingWebTask || {};
   document.getElementById('wt-titulo').value = t.titulo || '';
   document.getElementById('wt-categoria').value = t.categoria || 'Contenido';
