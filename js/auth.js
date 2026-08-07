@@ -57,7 +57,7 @@ export async function logoutUser() {
     }
   }
   clearSession();
-  window.location.href = '/index.html';
+  window.location.href = '/login.html';
 }
 
 export function getCurrentUser() {
@@ -69,13 +69,13 @@ export function getCurrentUser() {
 export function requireAuth(requiredRole) {
   const user = getCurrentUser();
   if (!user) {
-    if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
-      window.location.href = '/index.html';
+    if (window.location.pathname !== '/login.html') {
+      window.location.href = '/login.html';
     }
     return null;
   }
   if (requiredRole && user.role !== requiredRole) {
-    window.location.href = '/index.html';
+    window.location.href = '/login.html';
     return null;
   }
   return user;
