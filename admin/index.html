@@ -130,6 +130,10 @@
           <label>YouTube</label>
           <input type="text" id="nc-youtube" class="form-control" placeholder="Canal">
         </div>
+        <div class="form-group">
+          <label>LinkedIn</label>
+          <input type="text" id="nc-linkedin" class="form-control" placeholder="company/nombre-empresa">
+        </div>
       </div>
 
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
@@ -159,7 +163,7 @@
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo inicial</p>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Usuarios que pueden recibir @ menciones en comentarios. Podés agregar más después desde el hub.</p>
       <div id="nc-usuarios-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;">
         <div class="form-group" style="margin:0;">
           <label style="font-size:11px;">Nombre</label>
           <input type="text" id="nc-eq-nombre" class="form-control" placeholder="Ej: Vaneh">
@@ -167,6 +171,15 @@
         <div class="form-group" style="margin:0;">
           <label style="font-size:11px;">Email</label>
           <input type="email" id="nc-eq-email" class="form-control" placeholder="usuario@email.com">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11px;">Rol</label>
+          <select id="nc-eq-rol" class="form-control">
+            <option>Usuario</option>
+            <option>Responsable COSMART</option>
+            <option>Admin cliente</option>
+            <option>Colaborador</option>
+          </select>
         </div>
         <button type="button" class="btn btn-secondary btn-sm" onclick="agregarEquipoNuevoCliente()" style="height:38px;">+ Agregar</button>
       </div>
@@ -268,6 +281,10 @@
           <label>YouTube</label>
           <input type="text" id="ec-youtube" class="form-control" placeholder="Canal">
         </div>
+        <div class="form-group">
+          <label>LinkedIn</label>
+          <input type="text" id="ec-linkedin" class="form-control" placeholder="company/nombre-empresa">
+        </div>
       </div>
 
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Sitio web</p>
@@ -362,9 +379,18 @@
   }
 
   window.openNewClientModal = () => {
-    document.getElementById('newClientModal').classList.remove('hidden');
+    // Limpiar todos los campos del formulario
+    ['nc-nombre','nc-id','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
+     'nc-fb','nc-tiktok','nc-youtube','nc-linkedin','nc-website','nc-website2',
+     'nc-meta-bm','nc-notas','nc-eq-nombre','nc-eq-email'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const rolEl = document.getElementById('nc-eq-rol');
+    if (rolEl) rolEl.value = 'Usuario';
     _ncUsuarios = [];
     renderNcUsuarios();
+    document.getElementById('newClientModal').classList.remove('hidden');
   };
   window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
 
@@ -382,8 +408,9 @@
   window.agregarEquipoNuevoCliente = function() {
     const nombre = document.getElementById('nc-eq-nombre').value.trim();
     const email = document.getElementById('nc-eq-email').value.trim();
+    const rol = document.getElementById('nc-eq-rol')?.value || 'Usuario';
     if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
-    _ncUsuarios.push({ nombre, email, rol: 'Usuario' });
+    _ncUsuarios.push({ nombre, email, rol });
     document.getElementById('nc-eq-nombre').value = '';
     document.getElementById('nc-eq-email').value = '';
     renderNcUsuarios();
@@ -412,6 +439,7 @@
     document.getElementById('ec-fb').value = client.facebook || '';
     document.getElementById('ec-tiktok').value = client.tiktok || '';
     document.getElementById('ec-youtube').value = client.youtube || '';
+    document.getElementById('ec-linkedin').value = client.linkedin || '';
     document.getElementById('ec-website').value = client.website || '';
     document.getElementById('ec-website2').value = client.website2 || '';
     document.getElementById('ec-meta-bm').value = client.metaBusinessId || '';
@@ -441,6 +469,7 @@
         facebook: document.getElementById('ec-fb').value.trim(),
         tiktok: document.getElementById('ec-tiktok').value.trim(),
         youtube: document.getElementById('ec-youtube').value.trim(),
+        linkedin: document.getElementById('ec-linkedin').value.trim(),
         website: document.getElementById('ec-website').value.trim(),
         website2: document.getElementById('ec-website2').value.trim(),
         metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
@@ -475,6 +504,7 @@
       facebook: document.getElementById('nc-fb').value.trim(),
       tiktok: document.getElementById('nc-tiktok').value.trim(),
       youtube: document.getElementById('nc-youtube').value.trim(),
+      linkedin: document.getElementById('nc-linkedin').value.trim(),
       website: document.getElementById('nc-website').value.trim(),
       website2: document.getElementById('nc-website2').value.trim(),
       metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
