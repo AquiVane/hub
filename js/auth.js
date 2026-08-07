@@ -57,9 +57,7 @@ export async function logoutUser() {
     }
   }
   clearSession();
-  // Detectar si estamos en una subcarpeta para ajustar la ruta
-  const depth = window.location.pathname.split('/').filter(Boolean).length;
-  window.location.href = depth >= 2 ? '../index.html' : 'index.html';
+  window.location.href = '/index.html';
 }
 
 export function getCurrentUser() {
