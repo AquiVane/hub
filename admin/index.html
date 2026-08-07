@@ -321,9 +321,9 @@
 </div>
 
 <script type="module">
-  import { requireAuth, logoutUser } from '../js/auth.js';
+  import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
   import { getAllClients, createClient, getClientData, saveClientData } from '../js/data.js';
-  import { DEMO_MODE } from '../js/firebase.js';
+  import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth('admin');
   if (!user) throw new Error('No auth');
@@ -369,10 +369,11 @@
           <span style="font-size:11px;color:var(--text-muted);">${c.activo !== false ? 'Activo' : 'Inactivo'}</span>
         </div>
         <div class="client-card-actions">
-          <a href="../app/index.html?client=${c.id}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
+          <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
           <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
           <button class="btn btn-secondary btn-sm" onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
           <button class="btn btn-secondary btn-sm" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
+          <button class="btn btn-sm" onclick="deleteClient('${c.id}','${c.nombre||c.name||c.id}')" title="Eliminar" style="color:#E02020;border:1px solid #E02020;background:transparent;border-radius:6px;width:28px;height:28px;padding:0;cursor:pointer;font-size:15px;font-weight:700;line-height:1;flex-shrink:0;">×</button>
         </div>
       </div>
     `).join('');
@@ -418,6 +419,21 @@
 
   window.copyLogin = (email) => {
     navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
+  };
+
+  window.deleteClient = async function(clientId, nombre) {
+    if (!confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(WORKER_URL + `/admin/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar');
+      loadClients();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
   };
 
   // ── Editar cliente existente ────────────────────────
