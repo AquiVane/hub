@@ -103,7 +103,7 @@
         </a>
         <a href="https://shows.cosmart.com.ar" target="_blank" class="puerto-item">
           <i data-lucide="music" class="puerto-icon"></i>
-          <div><div class="puerto-name">PRODUCCIÓN DE SHOWS</div><div class="puerto-desc">Eventos y entretenimiento</div></div>
+          <div><div class="puerto-name">PRODUCCIÓN DE SHOWS</div><div class="puerto-desc">Artistas para tus eventos</div></div>
         </a>
       </div>
       <a href="https://www.cosmart.com.ar/productos-ganadores" target="_blank" class="sidebar-course-card">
@@ -246,7 +246,7 @@
       <div id="cont-advanced" class="form-grid advanced-section" style="grid-template-columns:1fr 1fr 1fr;">
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>Dimensión / Relación de aspecto</label>
+          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Dimensión / Relación de aspecto</label>
           <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
             <label class="check-label"><input type="checkbox" value="1:1" class="dim-check"> 1:1 – Cuadrado</label>
             <label class="check-label"><input type="checkbox" value="4:5" class="dim-check"> 4:5 – Vertical</label>
@@ -279,6 +279,11 @@
             <option>Tutorial</option>
           </select>
         </div>
+        <div class="form-group" id="cf-duracion-group" style="display:none;">
+          <label>Duración del video</label>
+          <input type="text" id="cf-duracion" class="form-control" placeholder="Ej: 30s, 1:15, 90s">
+          <span style="font-size:11px;color:var(--text-muted);">Reel/TikTok ≤ 90s · Story ≤ 60s · YouTube libre</span>
+        </div>
         <div class="form-group">
           <label>Objetivo</label>
           <select id="cf-objetivo" class="form-control">
@@ -291,12 +296,12 @@
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>Copy / Texto del post</label>
+          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Copy / Texto del post</label>
           <textarea id="cf-copy" class="form-control" rows="3" placeholder="Escribí el texto que va a aparecer en el post..."></textarea>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label>¿Es contenido para pauta?</label>
+          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">¿Es contenido para pauta?</label>
           <div style="display:flex;gap:16px;flex-wrap:wrap;padding:8px 0;">
             <label class="check-label"><input type="radio" name="cf-pauta" value="organico" checked> Solo orgánico</label>
             <label class="check-label"><input type="radio" name="cf-pauta" value="dark"> Sí – Dark post</label>
@@ -535,6 +540,11 @@
             <button type="button" class="rte-btn rte-color-btn" style="background:#0D2B6B;" onclick="rteColor('#0D2B6B')" title="Azul oscuro"></button>
             <button type="button" class="rte-btn rte-color-btn" style="background:#64748b;" onclick="rteColor('#64748b')" title="Gris"></button>
             <span class="rte-sep"></span>
+            <span class="rte-sep"></span>
+            <button type="button" class="rte-btn" onclick="rteCmd('h1')" title="Título H1" style="font-weight:700;font-size:12px;">H1</button>
+            <button type="button" class="rte-btn" onclick="rteCmd('h2')" title="Título H2" style="font-weight:700;font-size:11px;">H2</button>
+            <button type="button" class="rte-btn" onclick="rteCmd('h3')" title="Título H3" style="font-weight:700;font-size:10px;">H3</button>
+            <span class="rte-sep"></span>
             <button type="button" class="rte-btn" onclick="rteCmd('removeFormat')" title="Limpiar formato" style="font-size:10px;">✕ fmt</button>
           </div>
           <div id="tf-notas"
@@ -572,6 +582,7 @@
         <!-- Comentarios tarea -->
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
           <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
+          <div id="tarea-new-note" style="font-size:12px;color:var(--text-muted);padding:8px 12px;background:var(--surface);border-radius:6px;margin-bottom:8px;display:none;">Los comentarios estarán disponibles después de guardar la tarea.</div>
           <div id="tarea-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:140px;overflow-y:auto;"></div>
           <div style="position:relative;">
             <div id="tarea-mention-list" class="mention-dropdown hidden" style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;"></div>
@@ -815,6 +826,12 @@
       <div class="form-group">
         <label>Descripción (opcional)</label>
         <input type="text" id="lf-desc" class="form-control" placeholder="Ej: Carpeta de assets del cliente">
+      </div>
+      <div class="form-group">
+        <label>Categoría</label>
+        <input type="text" id="lf-categoria" class="form-control" placeholder="Ej: Drive, Diseño, Reportes..." list="lf-cat-list" autocomplete="off">
+        <datalist id="lf-cat-list"></datalist>
+        <span style="font-size:11px;color:var(--text-muted);">Escribí una categoría nueva o elegí una existente</span>
       </div>
     </div>
     <div class="modal-footer">
