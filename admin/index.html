@@ -513,21 +513,25 @@
     const ig3 = document.getElementById('nc-ig3').value.trim();
     const instagrams = [ig1, ig2, ig3].filter(Boolean);
 
-    await createClient({
-      id, nombre, email, password: pass, notas, activo: true,
-      instagram: ig1, // backwards compat
-      instagrams,
-      facebook: document.getElementById('nc-fb').value.trim(),
-      tiktok: document.getElementById('nc-tiktok').value.trim(),
-      youtube: document.getElementById('nc-youtube').value.trim(),
-      linkedin: document.getElementById('nc-linkedin').value.trim(),
-      website: document.getElementById('nc-website').value.trim(),
-      website2: document.getElementById('nc-website2').value.trim(),
-      metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
-      usuarios: _ncUsuarios,
-    });
-    closeNewClientModal();
-    loadClients();
+    try {
+      await createClient({
+        id, nombre, email, password: pass, notas, activo: true,
+        instagram: ig1, // backwards compat
+        instagrams,
+        facebook: document.getElementById('nc-fb').value.trim(),
+        tiktok: document.getElementById('nc-tiktok').value.trim(),
+        youtube: document.getElementById('nc-youtube').value.trim(),
+        linkedin: document.getElementById('nc-linkedin').value.trim(),
+        website: document.getElementById('nc-website').value.trim(),
+        website2: document.getElementById('nc-website2').value.trim(),
+        metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
+        usuarios: _ncUsuarios,
+      });
+      closeNewClientModal();
+      loadClients();
+    } catch (e) {
+      alert('Error al crear el cliente: ' + (e.message || 'intentá de nuevo.'));
+    }
   };
 
   // ── Equipo de cliente existente ────────────────────────
