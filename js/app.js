@@ -4,7 +4,8 @@ import {
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
-  getIdeas, saveIdea, deleteIdea
+  getIdeas, saveIdea, deleteIdea,
+  getPlan
 } from './data.js';
 
 // ── Bootstrap ──────────────────────────────────────────
@@ -49,6 +50,7 @@ async function init() {
     await loadAllData();
     window.STATE = STATE; // necesario para inline handlers en módulos ES
     if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
+    if (STATE.plan && STATE.plan.html) document.getElementById('nav-plan').classList.remove('hidden');
     setupNav();
     renderSection('home');
     setTimeout(() => refreshIcons(), 100);
@@ -60,9 +62,9 @@ async function init() {
 }
 
 async function loadAllData() {
-  const [cont, tareas, campanas, metricas, home, ideas] = await Promise.all([
+  const [cont, tareas, campanas, metricas, home, ideas, plan] = await Promise.all([
     getContenidos(clientId), getTareas(clientId), getCampanas(clientId),
-    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId)
+    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId)
   ]);
   STATE.contenidos = cont;
   STATE.tareas = tareas;
@@ -70,6 +72,7 @@ async function loadAllData() {
   STATE.metricas = metricas;
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   STATE.ideas = ideas;
+  STATE.plan = plan || { html: '' };
   STATE.links = STATE.home.links || [];
   updateBadges();
 }
@@ -109,8 +112,8 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', archivos: 'Archivos importantes', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', archivos: 'Documentos y carpetas clave del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', archivos: 'Archivos importantes', plan: 'Plan de ejecución', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', archivos: 'Documentos y carpetas clave del cliente', plan: 'Plan estratégico del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -201,10 +204,32 @@ function renderSection(sec) {
     renderArchivos(content);
     setTimeout(refreshIcons, 50);
   }
+  else if (sec === 'plan') {
+    renderPlan(content);
+  }
   else if (sec === 'instrucciones') {
     renderInstrucciones(content);
     setTimeout(refreshIcons, 50);
   }
+}
+
+function renderPlan(container) {
+  const html = (STATE.plan && STATE.plan.html) || '';
+  if (!html) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>Todavía no hay un plan de ejecución para este cliente.</p></div>`;
+    return;
+  }
+  container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin"></iframe>`;
+  const frame = document.getElementById('plan-frame');
+  frame.srcdoc = html;
+  frame.addEventListener('load', () => {
+    try {
+      const doc = frame.contentDocument;
+      const resize = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+      resize();
+      new ResizeObserver(resize).observe(doc.body);
+    } catch (e) {}
+  });
 }
 
 // ──────────────────────────────────────────────────────

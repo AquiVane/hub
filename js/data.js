@@ -217,23 +217,33 @@ export async function getHomeData(clientId) {
     todos: home.todos || [],
     links: home.links || [],
     webTareas: home.webTareas || [],
+    archivos: home.archivos || [],
     logoEmpresa: home.logoEmpresa || ''
   };
 }
 
 export async function saveHomeData(clientId, homeObj) {
-  const { prioridades=[], todos=[], links=[], webTareas=[], logoEmpresa='' } = homeObj || {};
+  const { prioridades=[], todos=[], links=[], webTareas=[], archivos=[], logoEmpresa='' } = homeObj || {};
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.prioridades = prioridades;
     data.todos = todos;
     data.links = links;
     data.webTareas = webTareas;
+    data.archivos = archivos;
     data.logoEmpresa = logoEmpresa;
     saveDemoData(clientId, data);
     return;
   }
-  await api('POST', `/data/${clientId}/home`, { prioridades, todos, links, webTareas, logoEmpresa });
+  await api('POST', `/data/${clientId}/home`, { prioridades, todos, links, webTareas, archivos, logoEmpresa });
+}
+
+// ── Plan de ejecución (página privada por cliente) ─────────────
+
+export async function getPlan(clientId) {
+  if (DEMO_MODE) return { html: '' };
+  const plan = await api('GET', `/data/${clientId}/plan`);
+  return (plan && plan.html) ? plan : { html: '' };
 }
 
 // ── Ideas ─────────────────────────────────────────────────────
