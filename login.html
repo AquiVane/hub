@@ -382,7 +382,7 @@
     errEl.style.display = 'none';
     try {
       const result = await loginUser(email, password);
-      if (result.role === 'admin') {
+      if (result.role === 'admin' || result.role === 'colaborador') {
         window.location.href = '/admin/index.html';
       } else {
         window.location.href = `/app/index.html?client=${result.clientId}`;

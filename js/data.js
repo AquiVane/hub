@@ -312,6 +312,14 @@ export async function createClient(clientData) {
   return api('POST', '/admin/clients', clientData);
 }
 
+export async function createColaborador(data) {
+  if (DEMO_MODE) {
+    alert('Para crear colaboradores reales configurá el worker primero (editá js/firebase.js con la URL).');
+    return;
+  }
+  return api('POST', '/admin/colaboradores', data);
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);

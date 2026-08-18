@@ -37,7 +37,7 @@ async function init() {
       const reader = new FileReader();
       reader.onload = async ev => {
         const logo = ev.target.result;
-        if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [] };
+        if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
         STATE.home.logoEmpresa = logo;
         applyClientLogo(logo);
         await saveHomeData(clientId, STATE.home);
@@ -68,7 +68,7 @@ async function loadAllData() {
   STATE.tareas = tareas;
   STATE.campanas = campanas;
   STATE.metricas = metricas;
-  STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [] };
+  STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   STATE.ideas = ideas;
   STATE.links = STATE.home.links || [];
   updateBadges();
@@ -109,8 +109,8 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', archivos: 'Archivos importantes', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', archivos: 'Documentos y carpetas clave del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -190,6 +190,15 @@ function renderSection(sec) {
     btn.onclick = () => openWebTaskModal(null);
     actions.appendChild(btn);
     renderWeb(content);
+    setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'archivos') {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Nuevo archivo';
+    btn.onclick = () => openArchivoModal(null);
+    actions.appendChild(btn);
+    renderArchivos(content);
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'instrucciones') {
@@ -2103,6 +2112,97 @@ window.openLinkModal = function(id) {
   document.getElementById('linkModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('lf-titulo').focus(), 50);
 };
+
+// ──────────────────────────────────────────────────────
+// ARCHIVOS IMPORTANTES
+// ──────────────────────────────────────────────────────
+const ARCHIVO_ICONS = {
+  Drive: 'folder', Dropbox: 'box', PDF: 'file-text',
+  Documento: 'file', Planilla: 'table', Otro: 'link',
+};
+
+function renderArchivos(container) {
+  const archivos = STATE.home.archivos || [];
+  container.innerHTML = archivos.length ? `
+    <div class="links-grid">
+      ${archivos.map(a => `
+        <div class="link-card" onclick="window.open('${a.url.replace(/'/g,"\\'")}','_blank')" style="cursor:pointer;">
+          <div class="link-card-icon">
+            <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.titulo}</div>
+            <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}</div>
+            ${a.desc ? `<div class="link-card-desc">${a.desc}</div>` : ''}
+          </div>
+          <button class="link-card-edit" onclick="event.stopPropagation();openArchivoModal('${a.id}')" title="Editar">
+            <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
+          </button>
+        </div>
+      `).join('')}
+      <div class="link-card" onclick="openArchivoModal(null)"
+        style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
+        <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
+        <span style="font-size:13px;color:var(--text-muted);">Agregar archivo</span>
+      </div>
+    </div>
+  ` : `
+    <div class="empty-state">
+      <i data-lucide="folder-open" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
+      <h3>Sin archivos guardados</h3>
+      <p>Guardá los documentos clave del cliente: carpetas de Drive, contratos, manuales de marca...</p>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="openArchivoModal(null)">+ Agregar primer archivo</button>
+    </div>
+  `;
+  setTimeout(refreshIcons, 30);
+}
+
+let _editingArchivo = null;
+window.openArchivoModal = function(id) {
+  _editingArchivo = id ? (STATE.home.archivos||[]).find(a => String(a.id) === String(id)) : null;
+  const a = _editingArchivo || {};
+  document.getElementById('archivo-modal-title').textContent = _editingArchivo ? 'Editar archivo' : 'Nuevo archivo';
+  document.getElementById('af-titulo').value = a.titulo || '';
+  document.getElementById('af-url').value = a.url || '';
+  document.getElementById('af-tipo').value = a.tipo || 'Drive';
+  document.getElementById('af-desc').value = a.desc || '';
+  document.getElementById('deleteArchivoBtn').style.display = _editingArchivo ? '' : 'none';
+  document.getElementById('archivoModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('af-titulo').focus(), 50);
+};
+
+function closeArchivoModal() { document.getElementById('archivoModal').classList.add('hidden'); }
+document.getElementById('closeArchivoModal').addEventListener('click', closeArchivoModal);
+document.getElementById('closeArchivoModal2').addEventListener('click', closeArchivoModal);
+document.getElementById('saveArchivoBtn').addEventListener('click', async () => {
+  const titulo = document.getElementById('af-titulo').value.trim();
+  const url = document.getElementById('af-url').value.trim();
+  if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
+  if (!STATE.home.archivos) STATE.home.archivos = [];
+  const obj = {
+    ...(_editingArchivo || {}), id: _editingArchivo?.id || Date.now(),
+    titulo, url, tipo: document.getElementById('af-tipo').value,
+    desc: document.getElementById('af-desc').value.trim(),
+  };
+  if (_editingArchivo) {
+    const i = STATE.home.archivos.findIndex(a => a.id === obj.id);
+    STATE.home.archivos[i] = obj;
+  } else {
+    STATE.home.archivos.push(obj);
+  }
+  await saveHomeData(clientId, STATE.home);
+  closeArchivoModal();
+  renderArchivos(document.getElementById('main-content'));
+  setTimeout(refreshIcons, 50);
+});
+document.getElementById('deleteArchivoBtn').addEventListener('click', async () => {
+  if (!_editingArchivo || !confirm('¿Eliminar este archivo?')) return;
+  STATE.home.archivos = (STATE.home.archivos||[]).filter(a => a.id !== _editingArchivo.id);
+  await saveHomeData(clientId, STATE.home);
+  closeArchivoModal();
+  renderArchivos(document.getElementById('main-content'));
+  setTimeout(refreshIcons, 50);
+});
 
 // ──────────────────────────────────────────────────────
 // SITIO WEB

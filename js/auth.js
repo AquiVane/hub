@@ -41,7 +41,7 @@ export async function loginUser(email, password) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión.');
 
-  const userData = { email: data.email, role: data.role, clientId: data.clientId, name: data.name };
+  const userData = { email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name };
   saveSession(data.token, userData);
   return data;
 }
@@ -74,9 +74,12 @@ export function requireAuth(requiredRole) {
     }
     return null;
   }
-  if (requiredRole && user.role !== requiredRole) {
-    window.location.href = '/login.html';
-    return null;
+  if (requiredRole) {
+    const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowed.includes(user.role)) {
+      window.location.href = '/login.html';
+      return null;
+    }
   }
   return user;
 }
