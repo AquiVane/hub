@@ -1,6 +1,11 @@
 import { requireAuth, logoutUser } from './auth.js';
+
+const COSMART_TEAM = [
+  { nombre: 'Vaneh', email: 'vaneh@cosmart.com.ar' },
+  { nombre: 'Germán', email: 'ger@cosmart.com.ar' },
+];
 import {
-  getClientData, getContenidos, saveContenido, deleteContenido,
+  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk,
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
@@ -23,16 +28,40 @@ let editingCampana = null;
 
 // ── Init ───────────────────────────────────────────────
 async function init() {
-  document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+  try {
+    document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
-  STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
-  document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
-  document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
+    STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
+    document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
+    document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
 
-  await loadAllData();
-  setupNav();
-  renderSection('home');
-  setTimeout(() => refreshIcons(), 100);
+    // Logo upload
+    document.getElementById('client-logo-input').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const logo = ev.target.result;
+        if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [] };
+        STATE.home.logoEmpresa = logo;
+        applyClientLogo(logo);
+        await saveHomeData(clientId, STATE.home);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    await loadAllData();
+    window.STATE = STATE; // necesario para inline handlers en módulos ES
+    if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
+    setupNav();
+    renderSection('home');
+    setTimeout(() => refreshIcons(), 100);
+  } catch (err) {
+    const content = document.getElementById('main-content');
+    if (content) content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p style="max-width:340px;">${err.message || 'Error desconocido. Revisá la consola del navegador.'}</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:16px;">Reintentar</button></div>`;
+    console.error('[init] Error:', err);
+  }
 }
 
 async function loadAllData() {
@@ -44,15 +73,26 @@ async function loadAllData() {
   STATE.tareas = tareas;
   STATE.campanas = campanas;
   STATE.metricas = metricas;
-  STATE.home = home;
+  STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [] };
   STATE.ideas = ideas;
-  STATE.links = home.links || [];
+  STATE.links = STATE.home.links || [];
   updateBadges();
+}
+
+function applyClientLogo(src) {
+  const img = document.getElementById('sb-client-logo');
+  const placeholder = document.getElementById('sb-client-logo-placeholder');
+  const hint = document.querySelector('.client-logo-upload-hint');
+  img.src = src;
+  img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;';
+  if (placeholder) placeholder.style.display = 'none';
+  if (hint) hint.style.display = 'none';
 }
 
 function updateBadges() {
   const pending = STATE.tareas.filter(t => t.estado !== 'Listo').length;
   document.getElementById('badge-tareas').textContent = pending;
+  if (typeof updateBnavBadge === 'function') updateBnavBadge();
 }
 
 // ── Nav ────────────────────────────────────────────────
@@ -68,8 +108,14 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
-  const titles = { home: 'Inicio', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', instrucciones: 'Guía de uso del Marketing Hub' };
+  document.querySelectorAll('.nav-item[data-section]').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sec);
+  });
+  // Sincronizar bottom nav y FAB en mobile
+  if (typeof updateBottomNav === 'function') updateBottomNav(sec);
+  if (typeof updateFab === 'function') updateFab(sec);
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -78,8 +124,31 @@ function renderSection(sec) {
 
   const content = document.getElementById('main-content');
 
-  if (sec === 'home') { renderHome(content); setTimeout(refreshIcons, 50); }
+  if (sec === 'home') {
+    const rptBtn = document.createElement('button');
+    rptBtn.className = 'btn btn-secondary';
+    rptBtn.textContent = '📊 Reporte';
+    rptBtn.onclick = () => openReporteModal();
+    actions.appendChild(rptBtn);
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn btn-primary';
+    newBtn.textContent = '+ Nuevo contenido';
+    newBtn.onclick = () => openContenidoModal(null);
+    actions.appendChild(newBtn);
+    renderHome(content); setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'dashboard') { renderDashboard(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
+    const rptBtn = document.createElement('button');
+    rptBtn.className = 'btn btn-secondary';
+    rptBtn.textContent = '📊 Reporte';
+    rptBtn.onclick = () => openReporteModal();
+    actions.appendChild(rptBtn);
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn btn-secondary';
+    importBtn.textContent = '📥 Importar Excel';
+    importBtn.onclick = () => openImportModal();
+    actions.appendChild(importBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nuevo contenido';
@@ -115,11 +184,216 @@ function renderSection(sec) {
     renderLinks(content);
     setTimeout(refreshIcons, 50);
   }
+  else if (sec === 'web') {
+    const siteUrl = STATE.client.website || STATE.client.sitioWeb;
+    if (siteUrl) {
+      const verBtn = document.createElement('a');
+      verBtn.className = 'btn btn-secondary';
+      verBtn.textContent = '🌐 Ver sitio web';
+      verBtn.href = siteUrl.startsWith('http') ? siteUrl : 'https://' + siteUrl;
+      verBtn.target = '_blank';
+      actions.appendChild(verBtn);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Nueva tarea web';
+    btn.onclick = () => openWebTaskModal(null);
+    actions.appendChild(btn);
+    renderWeb(content);
+    setTimeout(refreshIcons, 50);
+  }
   else if (sec === 'instrucciones') {
     renderInstrucciones(content);
     setTimeout(refreshIcons, 50);
   }
 }
+
+// ──────────────────────────────────────────────────────
+// DASHBOARD EDITORIAL
+// ──────────────────────────────────────────────────────
+let dashYear = new Date().getFullYear();
+let dashMonth = new Date().getMonth(); // 0-based
+
+function buildPieChart(tipos, COLORS) {
+  const entries = Object.entries(tipos).filter(function(e){ return e[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; });
+  if (!entries.length) return '';
+  var totalT = entries.reduce(function(s,e){ return s+e[1]; }, 0);
+  var angle = -Math.PI/2;
+  var CX=90, CY=90, R=70;
+  var paths='', labels='', legend='';
+  entries.forEach(function(entry, i) {
+    var lbl = entry[0], val = entry[1];
+    var slice = (val/totalT)*Math.PI*2;
+    var x1 = CX + R*Math.cos(angle), y1 = CY + R*Math.sin(angle);
+    var x2 = CX + R*Math.cos(angle+slice), y2 = CY + R*Math.sin(angle+slice);
+    var large = slice > Math.PI ? 1 : 0;
+    var midA = angle + slice/2;
+    var lx = +(CX + R*0.65*Math.cos(midA)).toFixed(1);
+    var ly = +(CY + R*0.65*Math.sin(midA)).toFixed(1);
+    var pct = Math.round(val/totalT*100);
+    var col = COLORS[i % COLORS.length];
+    paths += '<path d="M'+CX+','+CY+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+R+','+R+' 0 '+large+',1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+col+'" stroke="#fff" stroke-width="1.5"/>';
+    if (pct >= 8) labels += '<text x="'+lx+'" y="'+ly+'" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#fff" font-weight="700">'+pct+'%</text>';
+    legend += '<div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:'+col+';display:inline-block;"></span>'+lbl+' ('+val+')</div>';
+    angle += slice;
+  });
+  return '<div class="dash-card" style="margin-top:14px;">'
+    + '<div class="dash-card-title">Distribución por tipo</div>'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<svg viewBox="0 0 180 180" width="130" height="130" style="flex-shrink:0;">'+paths+labels+'</svg>'
+    + '<div style="display:flex;flex-direction:column;gap:4px;">'+legend+'</div>'
+    + '</div></div>';
+}
+
+function renderDashboard(container) {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DIAS = ['L','M','Mi','J','V','S','D'];
+  const yearStr = dashYear;
+  const monthStr = String(dashMonth + 1).padStart(2, '0');
+  const prefix = `${yearStr}-${monthStr}`;
+
+  const conts = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(prefix));
+
+  // ── STAT PILLS ──
+  const total = conts.length;
+  const publicados = conts.filter(c => c.estado === 'Publicado').length;
+  const programados = conts.filter(c => c.estado === 'Programado').length;
+  const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
+
+  // ── FORMATO breakdown ──
+  const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
+  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f => { formatos[f] = (formatos[f]||0)+1; }); });
+  const maxFormato = Math.max(1, ...Object.values(formatos));
+
+  // ── TIPO breakdown ──
+  const tipos = {};
+  conts.forEach(c => { const t = c.tipo || 'Sin tipo'; tipos[t] = (tipos[t]||0)+1; });
+  const maxTipo = Math.max(1, ...Object.values(tipos));
+
+  // ── EJE breakdown ──
+  const ejes = {};
+  conts.forEach(c => { const e = c.eje || 'Sin eje'; ejes[e] = (ejes[e]||0)+1; });
+  const maxEje = Math.max(1, ...Object.values(ejes));
+
+  // ── FRECUENCIA SEMANAL ──
+  // Build weeks: group days of month into S1..S4 by week-of-month
+  const daysInMonth = new Date(dashYear, dashMonth + 1, 0).getDate();
+  // For each week (S1-S4), collect Mon-Sun buckets
+  const weeks = [[], [], [], []]; // each: [L,M,Mi,J,V,S,D] count
+  for (let w = 0; w < 4; w++) weeks[w] = [0,0,0,0,0,0,0];
+  // day 1..daysInMonth
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(dashYear, dashMonth, d);
+    const dow = (date.getDay() + 6) % 7; // 0=Mon..6=Sun
+    const weekIdx = Math.min(3, Math.floor((d - 1) / 7));
+    const dateStr = `${yearStr}-${monthStr}-${String(d).padStart(2,'0')}`;
+    const count = conts.filter(c => c.fechaPub === dateStr).length;
+    weeks[weekIdx][dow] += count;
+  }
+
+  // ── BAR CHART helper ──
+  const COLORS = ['#3A8FC7','#1A4DAA','#10b981','#f59e0b','#ec4899','#8b5cf6','#e02020'];
+  function barRows(data, maxVal) {
+    return Object.entries(data).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([label, val], i) =>
+      `<div class="dash-bar-row">
+        <div class="dash-bar-label">${label}</div>
+        <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${Math.round(val/maxVal*100)}%;background:${COLORS[i%COLORS.length]}"></div></div>
+        <div class="dash-bar-val">${val}</div>
+      </div>`
+    ).join('');
+  }
+
+  function freqCell(n) {
+    if (n === 0) return `<td><span class="freq-cell-0">·</span></td>`;
+    const cls = n === 1 ? 'freq-cell-1' : n === 2 ? 'freq-cell-2' : n === 3 ? 'freq-cell-3' : 'freq-cell-many';
+    return `<td><span class="${cls}">${n}</span></td>`;
+  }
+
+  const freqRows = weeks.map((week, wi) => {
+    const weekTotal = week.reduce((s,v) => s+v, 0);
+    if (wi > 0 && weeks.slice(0,wi).every(w => w.reduce((s,v)=>s+v,0) === 0) && weekTotal === 0) return '';
+    return `
+      <tr>
+        <td class="cat-label week-sep" style="color:var(--primary);font-weight:700;">S${wi+1}</td>
+        ${week.map(n => `<td class="week-sep">${n > 0 ? `<span class="${n===1?'freq-cell-1':n===2?'freq-cell-2':n===3?'freq-cell-3':'freq-cell-many'}">${n}</span>` : '<span class="freq-cell-0">·</span>'}</td>`).join('')}
+        <td class="week-sep" style="font-weight:700;color:var(--primary);font-size:11px;">${weekTotal}</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">Dashboard Calendario Editorial</div>
+        <div class="dash-meta">Cliente: <strong>${STATE.client.nombre || STATE.client.name || clientId}</strong></div>
+      </div>
+      <div class="dash-month-nav">
+        <button onclick="dashNavMonth(-1)">‹</button>
+        <div class="dash-month-label">${MESES[dashMonth]} ${dashYear}</div>
+        <button onclick="dashNavMonth(1)">›</button>
+      </div>
+    </div>
+
+    <div class="dash-stat-row">
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val">${total}</div><div class="dash-stat-pill-label">Total del mes</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#22c55e">${publicados}</div><div class="dash-stat-pill-label">Publicados</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3b82f6">${programados}</div><div class="dash-stat-pill-label">Programados</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
+    </div>
+
+    <div class="dash-layout">
+      <div>
+        <div class="dash-card">
+          <div class="dash-card-title">Frecuencia de contenidos</div>
+          <table class="freq-grid">
+            <thead>
+              <tr>
+                <th class="week-header">Semana</th>
+                ${DIAS.map(d => `<th>${d}</th>`).join('')}
+                <th>Tot.</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${freqRows || `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">Sin contenidos este mes</td></tr>`}
+              <tr style="border-top:2px solid var(--border);">
+                <td class="cat-label" style="font-weight:700;color:var(--text-muted);">Total</td>
+                ${[0,1,2,3,4,5,6].map(d => {
+                  const tot = weeks.reduce((s,w) => s+w[d], 0);
+                  return `<td style="font-weight:${tot?'700':'400'};color:${tot?'var(--primary)':'#cbd5e1'};font-size:11px;">${tot||'·'}</td>`;
+                }).join('')}
+                <td style="font-weight:700;color:var(--primary);font-size:12px;">${total}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Gráfico de torta por tipo -->
+        ${buildPieChart(tipos, COLORS)}
+      </div>
+
+      <div>
+        <div class="dash-card">
+          <div class="dash-card-title">Formato de contenidos</div>
+          ${Object.values(formatos).some(v=>v>0) ? barRows(formatos, maxFormato) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title">Eje de comunicación</div>
+          ${Object.keys(ejes).length ? barRows(ejes, maxEje) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title">Tipo de contenido</div>
+          ${Object.keys(tipos).length ? barRows(tipos, maxTipo) : '<div style="font-size:12px;color:var(--text-muted)">Sin datos</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.dashNavMonth = function(dir) {
+  dashMonth += dir;
+  if (dashMonth < 0) { dashMonth = 11; dashYear--; }
+  if (dashMonth > 11) { dashMonth = 0; dashYear++; }
+  const content = document.getElementById('main-content');
+  renderDashboard(content);
+};
 
 // ──────────────────────────────────────────────────────
 // HOME
@@ -248,6 +522,46 @@ function renderHome(container) {
         </div>
       ` : '';
     })()}
+
+    <!-- Sitio Web widget -->
+    ${(() => {
+      const wt = STATE.home.webTareas || [];
+      const pend = wt.filter(t => t.estado !== 'Listo');
+      if (!wt.length) return `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <i data-lucide="globe" style="width:15px;height:15px;color:#64748b;stroke-width:1.75;"></i>
+            <h2>Sitio Web</h2>
+            <button class="btn btn-secondary btn-sm" onclick="renderSection('web');document.querySelector('[data-section=web]').click();" style="margin-left:auto;">Ver todo</button>
+          </div>
+          <div class="card-body" style="padding:12px 20px;">
+            <button class="btn btn-primary btn-sm" onclick="openWebTaskModal(null)">+ Cargar primera tarea web</button>
+          </div>
+        </div>`;
+      return `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <i data-lucide="globe" style="width:15px;height:15px;color:#64748b;stroke-width:1.75;"></i>
+            <h2>Sitio Web <span style="font-size:12px;font-weight:400;color:var(--text-muted);">${pend.length} pendiente${pend.length!==1?'s':''}</span></h2>
+            <button class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-section=web]').click();" style="margin-left:auto;">Ver todo</button>
+            <button class="btn btn-primary btn-sm" onclick="openWebTaskModal(null)">+</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead><tr><th>Tarea</th><th>Categoría</th><th>Estado</th><th>Vence</th><th></th></tr></thead>
+              <tbody>${pend.slice(0,5).map(t => `
+                <tr>
+                  <td style="font-weight:500;">${t.titulo}</td>
+                  <td><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);">${t.categoria||'Otro'}</span></td>
+                  <td>${t.estado}</td>
+                  <td style="font-size:12px;color:var(--text-muted);">${t.vencimiento ? fmtDate(t.vencimiento) : '—'}</td>
+                  <td><button class="btn btn-secondary btn-sm" onclick="openWebTaskModal('${t.id}')">✏️</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    })()}
   `;
 }
 
@@ -300,11 +614,7 @@ window.removeTodo = async function(id) {
 };
 
 window.addTodoItem = function() {
-  document.getElementById('todo-text').value = '';
-  document.getElementById('todo-vencimiento').value = '';
-  document.getElementById('todo-prioridad').value = 'Media';
-  document.getElementById('todoModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('todo-text').focus(), 50);
+  openTareaModal(null);
 };
 
 // ──────────────────────────────────────────────────────
@@ -316,15 +626,15 @@ function renderContenidos(container) {
   container.innerHTML = `
     <div class="mb-16">
       <div class="tabs" id="cont-tabs">
-        <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">📋 Banco de contenidos</button>
-        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">📅 Calendario</button>
-        <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">🗂 Estados (Kanban)</button>
-        <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">📸 Feed IG</button>
-        <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">📘 Muro FB</button>
-        <button class="tab-btn ${activeContTab==='stories'?'active':''}" data-tab="stories">▯ Stories IG</button>
-        <button class="tab-btn ${activeContTab==='ideas'?'active':''}" data-tab="ideas">💡 Banco de ideas</button>
-        <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">✏️ En proceso</button>
-        <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">📈 Métricas</button>
+        <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
+        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario</button>
+        <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">Kanban</button>
+        <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">Feed IG</button>
+        <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">Muro FB</button>
+        <button class="tab-btn ${activeContTab==='stories'?'active':''}" data-tab="stories">Stories IG</button>
+        <button class="tab-btn ${activeContTab==='ideas'?'active':''}" data-tab="ideas">Banco de ideas</button>
+        <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">En proceso</button>
+        <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">Métricas</button>
       </div>
     </div>
     <div id="cont-tab-body"></div>
@@ -357,48 +667,73 @@ function renderContTab(tab) {
   else if (tab === 'metricas') renderMetricasContenidos(body);
 }
 
-// ─ Banco de contenidos (tabla editable) ─
+// ─ Banco de contenidos (tabla desktop + cards mobile) ─
 function renderBancoContenidos(container) {
-  const all = [...STATE.contenidos].sort((a,b) => (a.fechaPub||'') > (b.fechaPub||'') ? 1 : -1);
+  const all = [...STATE.contenidos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+
+  const cardsHtml = all.length ? all.map(c => `
+    <div class="content-card" onclick="openContenidoModalById('${c.id}')">
+      <div class="content-card-top">
+        <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
+        ${statusBadge(c.estado)}
+      </div>
+      <div class="content-card-titulo">${c.titulo}</div>
+      <div class="content-card-meta">
+        ${(c.plataformas || []).map(p => platBadge(p)).join('')}
+        ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
+        ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`;
+
   container.innerHTML = `
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Fecha pub.</th><th>Título</th><th>Plataforma</th>
-            <th>Ubicación</th><th>Eje</th><th>Tipo</th>
-            <th>Estado</th><th>Cuenta</th><th>Formato</th>
-            <th>Objetivo</th><th>Drive</th><th>Notas</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${all.map(c => `
-            <tr data-id="${c.id}">
-              <td>${fmtDate(c.fechaPub)}</td>
-              <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
-              <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-              <td>${c.ubicacion||''}</td>
-              <td>${c.eje||''}</td>
-              <td>${c.tipo||''}</td>
-              <td>${statusBadge(c.estado)}</td>
-              <td class="text-sm text-muted">${c.cuenta||''}</td>
-              <td>${c.formato||''}</td>
-              <td>${c.objetivo||''}</td>
-              <td>${c.linkDrive ? `<a class="drive-link" href="${c.linkDrive}" target="_blank" title="${c.linkDrive}">📎 Drive</a>` : ''}</td>
-              <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
-              <td>
-                <div style="display:flex;gap:4px;">
-                  <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
-                  <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁</button>
-                </div>
+    <div class="banco-cards-mobile">${cardsHtml}</div>
+    <div class="banco-table-desktop">
+      <p class="table-scroll-hint">← deslizá para ver más →</p>
+      <div class="table-wrapper table-scroll-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${all.map(c => `
+              <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
+                <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
+                <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
+                <td>${statusBadge(c.estado)}</td>
+                <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
+                <td style="font-size:12px;">${c.eje||''}</td>
+                <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
+                <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+                  ${c.estado === 'En revisión' ? `
+                    <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
+                    <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
+                  ` : ''}
+                </td>
+              </tr>
+            `).join('')}
+            <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
+              <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido</span>
               </td>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
+
+window.bancoUpdateFecha = async function(id, fecha) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.fechaPub = fecha || null;
+  await saveContenido(clientId, c);
+  const i = STATE.contenidos.findIndex(x => x.id === id);
+  STATE.contenidos[i] = c;
+};
 
 // ─ Calendario ─
 function renderCalendario(container) {
@@ -428,8 +763,8 @@ function renderCalendario(container) {
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div class="cal-day-num">${cellDate.getDate()}</div>
-          ${!isOther ? `<button onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;border-radius:3px;" title="Agregar contenido" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
+          <div class="cal-day-num" ${!isOther ? `onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="cursor:pointer;" title="Agregar contenido"` : ''}>${cellDate.getDate()}</div>
+          ${!isOther ? `<button onclick="openContenidoModal({fechaPub:'${dateStr}'})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;border-radius:3px;" title="Agregar contenido" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
         </div>
         ${dayConts.map(c => `
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
@@ -486,10 +821,14 @@ function renderKanbanContenidos(container) {
             <div class="kanban-card" draggable="true" data-id="${c.id}">
               <div class="kanban-card-title">${c.titulo}</div>
               <div class="kanban-card-meta">${(c.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
-              ${c.fechaPub ? `<div class="kanban-card-date">📅 ${fmtDate(c.fechaPub)}</div>` : ''}
-              <div style="display:flex;gap:4px;margin-top:6px;">
+              ${c.fechaPub ? `<div class="kanban-card-date">${fmtDate(c.fechaPub)}</div>` : ''}
+              <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button>
-                <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁</button>
+                <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">Preview</button>
+                ${col.key === 'En revisión' ? `
+                  <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;" onclick="aprobarContenido('${c.id}')">✓ Aprobar</button>
+                  <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="rechazarContenido('${c.id}')">✗ Rechazar</button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -509,74 +848,107 @@ function renderKanbanContenidos(container) {
 }
 
 // ─ Feed IG ─
+let _igFilter = 'Aprobado';
+const FEED_FILTERS = [
+  { val: 'todas', label: 'Todas' },
+  { val: 'Sin empezar', label: 'Sin empezar' },
+  { val: 'En proceso', label: 'En proceso' },
+  { val: 'En revisión', label: 'En revisión' },
+  { val: 'Aprobado', label: 'Aprobadas' },
+  { val: 'Publicado', label: 'Publicadas' },
+];
+
+window.setIgFilter = function(val) { _igFilter = val; renderContTab('feed-ig'); };
+
 function renderFeedIG(container) {
-  const feedItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story'))
-    .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1)
-    .slice(0, 9);
+  const all = STATE.contenidos
+    .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion||[]).includes('Story'))
+    .sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1); // ASC: próximos primero
+
+  const filtered = _igFilter === 'todas' ? all : all.filter(c => c.estado === _igFilter);
+  const feedItems = filtered.slice(0, 9);
 
   const client = STATE.client;
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setIgFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_igFilter===f.val?'var(--primary)':'var(--border)'};background:${_igFilter===f.val?'var(--primary)':'transparent'};color:${_igFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;font-weight:${_igFilter===f.val?'600':'400'}">${f.label}</button>`
+  ).join('');
+
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
+      ${filterBtns}
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">${filtered.length} contenido${filtered.length!==1?'s':''}</span>
+    </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
-      <div class="phone-device" style="width:360px;">
+      <div class="phone-device">
         <div class="phone-screen">
-          <!-- Header de perfil -->
           <div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
             <div class="ig-avatar"></div>
             <div>
               <div style="font-weight:700;font-size:13px;">${client.instagram||'@cuenta'}</div>
-              <div style="font-size:10px;color:#666;">${feedItems.length} publicaciones</div>
+              <div style="font-size:10px;color:#666;">${all.filter(c=>c.estado==='Publicado').length} publicaciones</div>
             </div>
           </div>
-          <!-- Grid feed -->
           <div class="feed-grid">
-            ${feedItems.map(c => `
-              <div class="feed-cell" onclick="openPreview('${c.id}')">
-                ${c.linkDrive
-                  ? `<img src="${driveThumb(c.linkDrive)}" onerror="this.parentElement.querySelector('.feed-cell-empty').style.display='flex';this.style.display='none';">`
-                  : ''
-                }
-                <div class="feed-cell-empty" style="${c.linkDrive ? 'display:none' : ''}">${platIcon('Instagram')}</div>
+            ${feedItems.map(c => {
+              const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+              const imgTag = thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : '';
+              return `
+              <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
+                ${imgTag}
+                <div class="feed-cell-empty" style="${thumb?'display:none':''};">${platIcon('Instagram')}</div>
                 <div class="feed-cell-overlay">
-                  <div style="font-size:10px;font-weight:600;">${c.titulo}</div>
-                  <div style="margin-top:4px;">${statusBadge(c.estado)}</div>
+                  <div style="font-size:9px;font-weight:600;line-height:1.2;">${c.titulo}</div>
+                  <div style="margin-top:3px;">${statusDot(c.estado)}</div>
                 </div>
-                <div class="feed-cell-status">${statusDot(c.estado)}</div>
-              </div>
-            `).join('')}
+              </div>`;
+            }).join('')}
             ${Array(Math.max(0, 9 - feedItems.length)).fill(0).map(() =>
-              `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;">+</div></div>`
+              `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;font-size:20px;">+</div></div>`
             ).join('')}
           </div>
         </div>
         <div class="phone-label">Feed Instagram</div>
       </div>
 
-      <!-- Lista lateral -->
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Instagram (Feed)</h3>
-        ${feedItems.length ? feedItems.map(c => `
-          <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;">${c.titulo}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)} · ${c.formato||''}</div>
+        ${filtered.length ? filtered.map(c => {
+          const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+          return `
+          <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">${platIcon('Instagram')}</div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
-            <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁 Preview</button>
-          </div>
-        `).join('') : `<div class="empty-state"><p>No hay posts de Instagram Feed.</p></div>`}
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No hay contenidos con ese filtro.</p></div>`}
       </div>
     </div>
   `;
 }
 
 // ─ Muro FB ─
+let _fbFilter = 'Aprobado';
+window.setFbFilter = function(val) { _fbFilter = val; renderContTab('muro-fb'); };
+
 function renderMuroFB(container) {
-  const fbItems = STATE.contenidos
-    .filter(c => (c.plataformas||[]).includes('Facebook') && !normUbicacion(c.ubicacion).includes('Story'))
-    .sort((a,b) => (b.fechaPub||'') > (a.fechaPub||'') ? 1 : -1);
+  const all = STATE.contenidos
+    .filter(c => (c.plataformas||[]).includes('Facebook') && !normUbicacion(c.ubicacion||[]).includes('Story'))
+    .sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1);
+  const fbItems = _fbFilter === 'todas' ? all : all.filter(c => c.estado === _fbFilter);
+
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setFbFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_fbFilter===f.val?'var(--primary)':'var(--border)'};background:${_fbFilter===f.val?'var(--primary)':'transparent'};color:${_fbFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;">${f.label}</button>`
+  ).join('');
 
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>${filterBtns}
+    </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
       <div class="phone-device" style="width:300px;">
         <div class="phone-screen" style="background:#f0f2f5;">
@@ -593,7 +965,7 @@ function renderMuroFB(container) {
                 </div>
               </div>
               <div class="fb-text">${(c.copy||c.titulo||'').slice(0,80)}${(c.copy||'').length>80?'...':''}</div>
-              <div class="fb-image">${c.linkDrive?`<img src="${driveThumb(c.linkDrive)}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
+              <div class="fb-image">${firstLink(c.linkDrive)?`<img src="${driveThumb(firstLink(c.linkDrive))}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
             </div>
           `).join('')}
         </div>
@@ -602,59 +974,67 @@ function renderMuroFB(container) {
 
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Facebook</h3>
-        ${fbItems.length ? fbItems.map(c => `
-          <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;">${c.titulo}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)} · ${c.formato||''}</div>
+        ${fbItems.length ? fbItems.map(c => {
+          const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+          return `
+          <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;">📘</div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
-            <button class="btn btn-secondary btn-sm" onclick="openPreview('${c.id}')">👁 Preview</button>
-          </div>
-        `).join('') : `<div class="empty-state"><p>No hay posts de Facebook.</p></div>`}
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️</button>
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No hay posts con ese filtro.</p></div>`}
       </div>
     </div>
   `;
 }
 
 // ─ Stories ─
+let _storiesFilter = 'todas';
+window.setStoriesFilter = function(val) { _storiesFilter = val; renderContTab('stories-ig'); };
+
 function renderStories(container) {
-  const stories = STATE.contenidos.filter(c =>
-    (c.plataformas||[]).includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')
-  );
+  const all = STATE.contenidos.filter(c =>
+    (c.plataformas||[]).includes('Instagram') && normUbicacion(c.ubicacion||[]).includes('Story')
+  ).sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1);
+
+  const stories = _storiesFilter === 'todas' ? all : all.filter(c => c.estado === _storiesFilter);
+
+  const filterBtns = FEED_FILTERS.map(f =>
+    `<button onclick="setStoriesFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_storiesFilter===f.val?'var(--primary)':'var(--border)'};background:${_storiesFilter===f.val?'var(--primary)':'transparent'};color:${_storiesFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;">${f.label}</button>`
+  ).join('');
 
   container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>${filterBtns}
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">${stories.length} story${stories.length!==1?'s':''}</span>
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
-      ${stories.length ? stories.slice(0,4).map(c => `
+      ${stories.length ? stories.map(c => {
+        const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+        return `
         <div>
-          <div class="phone-device" style="width:180px;">
-            <div class="phone-screen">
+          <div class="phone-device" style="width:170px;">
+            <div class="phone-screen" style="min-height:300px;">
               <div class="story-preview">
-                ${c.linkDrive
-                  ? `<img src="${driveThumb(c.linkDrive)}" onerror="this.style.display='none'">`
-                  : '<div class="story-preview-empty">▯</div>'
-                }
-                <div class="story-bar">
-                  <div class="story-bar-seg active"></div>
-                  <div class="story-bar-seg"></div>
-                  <div class="story-bar-seg"></div>
-                </div>
-                <div class="story-user">
-                  <div class="story-avatar"></div>
-                  <span class="story-uname">${STATE.client.instagram||'@cuenta'}</span>
-                </div>
+                ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display='none'">` : '<div class="story-preview-empty">▯</div>'}
+                <div class="story-bar"><div class="story-bar-seg active"></div><div class="story-bar-seg"></div><div class="story-bar-seg"></div></div>
+                <div class="story-user"><div class="story-avatar"></div><span class="story-uname">${STATE.client.instagram||'@cuenta'}</span></div>
                 <div class="story-caption">${(c.copy||c.titulo||'').slice(0,60)}</div>
               </div>
             </div>
           </div>
-          <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,20)}</div>
+          <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,22)}</div>
           <div style="text-align:center;margin-top:4px;">${statusBadge(c.estado)}</div>
           <div style="text-align:center;margin-top:6px;">
-            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button>
+            <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️ Editar</button>
           </div>
-        </div>
-      `).join('')
-      : `<div class="empty-state w-full"><div class="empty-state-icon">▯</div><h3>Sin stories</h3><p>Agregá contenidos con ubicación "Story" e Instagram como plataforma.</p></div>`}
+        </div>`;
+      }).join('')
+      : `<div class="empty-state"><div class="empty-state-icon">▯</div><h3>Sin stories</h3><p>Agregá contenidos con ubicación "Story" e Instagram.</p></div>`}
     </div>
   `;
 }
@@ -670,7 +1050,7 @@ function renderIdeas(container) {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
         ${STATE.ideas.map(i => `
           <div class="card" style="padding:14px;">
-            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">💡 ${i.titulo}</div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${i.titulo}</div>
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
             ${i.formato ? `<div style="font-size:12px;color:var(--text-muted);">Formato: ${i.formato}</div>` : ''}
             ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${i.notas}</div>` : ''}
@@ -746,49 +1126,69 @@ function renderEnProceso(container) {
 }
 
 // ─ Métricas ─
+const METRICAS_FIELDS = [
+  { key:'seguidores_ig',   label:'Seguidores IG',      icon:'📸', type:'number' },
+  { key:'crecimiento_ig',  label:'Crecimiento IG',     icon:'📈', type:'text', placeholder:'+150' },
+  { key:'seguidores_fb',   label:'Seguidores FB',      icon:'📘', type:'number' },
+  { key:'crecimiento_fb',  label:'Crecimiento FB',     icon:'📈', type:'text', placeholder:'+40' },
+  { key:'alcance_mensual', label:'Alcance mensual',    icon:'📡', type:'number' },
+  { key:'impresiones',     label:'Impresiones',        icon:'👁', type:'number' },
+  { key:'tasa_engagement', label:'Engagement rate',    icon:'❤️', type:'text', placeholder:'3.2%' },
+  { key:'publicaciones',   label:'Publicaciones',      icon:'📋', type:'number' },
+  { key:'visitas_perfil',  label:'Visitas al perfil',  icon:'🧑', type:'number' },
+  { key:'clics_link',      label:'Clics en link bio',  icon:'🔗', type:'number' },
+  { key:'historias_views', label:'Vistas historias',   icon:'🎞', type:'number' },
+  { key:'guardados',       label:'Guardados',          icon:'🔖', type:'number' },
+];
+
 function renderMetricasContenidos(container) {
   const m = STATE.metricas || {};
+  const cards = METRICAS_FIELDS.filter(f => m[f.key]);
   container.innerHTML = `
-    <div class="metrics-grid">
-      ${[
-        { label: 'Seguidores IG', val: fmtNum(m.seguidores_ig), delta: m.crecimiento_ig, icon:'📸' },
-        { label: 'Seguidores FB', val: fmtNum(m.seguidores_fb), delta: m.crecimiento_fb, icon:'📘' },
-        { label: 'Alcance mensual', val: fmtNum(m.alcance_mensual), delta: '', icon:'📡' },
-        { label: 'Engagement', val: m.tasa_engagement||'—', delta: '', icon:'❤️' },
-        { label: 'Publicaciones', val: m.publicaciones||'—', delta: '', icon:'📋' },
-        { label: 'Impresiones', val: fmtNum(m.impresiones), delta: '', icon:'👁' },
-      ].map(x => `
+    ${cards.length ? `
+    <div class="metrics-grid" style="margin-bottom:24px;">
+      ${cards.map(f => `
         <div class="metric-card">
-          <div style="font-size:20px;margin-bottom:4px;">${x.icon}</div>
-          <div class="metric-label">${x.label}</div>
-          <div class="metric-value">${x.val||'—'}</div>
-          ${x.delta ? `<div class="metric-delta up">${x.delta}</div>` : ''}
+          <div style="font-size:20px;margin-bottom:4px;">${f.icon}</div>
+          <div class="metric-label">${f.label}</div>
+          <div class="metric-value">${fmtNum(m[f.key])}</div>
         </div>
       `).join('')}
-    </div>
+    </div>` : ''}
     <div class="card">
-      <div class="card-header"><h2>Editar métricas del mes</h2></div>
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2>📊 Métricas del mes</h2>
+        <button class="btn btn-primary btn-sm" onclick="saveMetricas(this)">Guardar métricas</button>
+      </div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-          ${Object.entries(m).map(([k,v]) => `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+          ${METRICAS_FIELDS.map(f => `
             <div class="form-group">
-              <label>${k.replace(/_/g,' ')}</label>
-              <input type="text" class="form-control form-control-sm" value="${v||''}" data-key="${k}" onchange="updateMetrica('${k}',this.value)">
+              <label style="font-size:12px;">${f.icon} ${f.label}</label>
+              <input type="${f.type}" class="form-control form-control-sm"
+                     value="${m[f.key]||''}"
+                     placeholder="${f.placeholder||'0'}"
+                     oninput="STATE.metricas['${f.key}']=this.value"
+                     style="font-size:13px;">
             </div>
           `).join('')}
-          <div class="form-group" style="align-self:end;">
-            <button class="btn btn-primary btn-sm" onclick="saveMetricas()">Guardar métricas</button>
-          </div>
+        </div>
+        <div style="margin-top:16px;text-align:right;">
+          <button class="btn btn-primary" onclick="saveMetricas(this)">💾 Guardar métricas</button>
         </div>
       </div>
     </div>
   `;
 }
 
-window.updateMetrica = function(key, val) { STATE.metricas[key] = val; };
-window.saveMetricas = async function() {
-  await saveMetricasData(clientId, STATE.metricas);
-  alert('Métricas guardadas.');
+window.saveMetricas = async function(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  try {
+    await saveMetricasData(clientId, STATE.metricas);
+    renderContTab('metricas');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar métricas'; }
+  }
 };
 
 // ──────────────────────────────────────────────────────
@@ -800,8 +1200,8 @@ window.openPreview = function(id) {
   const client = STATE.client;
   const ig = client.instagram || '@cuenta';
   const fbName = client.facebook || client.nombre || 'Página';
-  const imgHtml = c.linkDrive
-    ? `<img src="${driveThumb(c.linkDrive)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+  const imgHtml = firstLink(c.linkDrive)
+    ? `<img src="${driveThumb(firstLink(c.linkDrive))}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
     : '';
   const copy = c.copy || c.titulo || '';
   const plats = c.plataformas || [];
@@ -933,72 +1333,367 @@ document.getElementById('closePreviewModal').addEventListener('click', closePrev
 // ──────────────────────────────────────────────────────
 // MODAL CONTENIDO
 // ──────────────────────────────────────────────────────
+
+// Platform → allowed ubicaciones
+const PLAT_UBIC = {
+  Instagram: ['Feed', 'Story', 'Reel', 'Carrusel'],
+  Facebook: ['Feed', 'Story', 'Reel'],
+  LinkedIn: ['Feed'],
+  'Twitter / X': ['Feed'],
+  TikTok: ['Feed', 'Story'],
+  YouTube: ['Feed', 'Shorts'],
+  'Sitio Web': ['Página', 'Banner'],
+  Blog: ['Artículo', 'Banner'],
+};
+
+// Platform → allowed formatos
+const PLAT_FORMAT = {
+  Instagram: ['Imagen', 'Video', 'Reel', 'Carrusel', 'Story', 'GIF'],
+  Facebook: ['Imagen', 'Video', 'Carrusel', 'Story', 'GIF'],
+  LinkedIn: ['Imagen', 'Video', 'Carrusel', 'Documento'],
+  'Twitter / X': ['Imagen', 'Video', 'GIF'],
+  TikTok: ['Video'],
+  YouTube: ['Video'],
+  'Sitio Web': ['Imagen', 'Video', 'GIF', 'Documento'],
+  Blog: ['Imagen', 'Video', 'GIF', 'Documento'],
+};
+
+function updatePlatFilters() {
+  const selectedPlats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
+
+  // Compute union of allowed ubicaciones/formatos
+  const ubicSet = new Set();
+  const fmtSet = new Set();
+  selectedPlats.forEach(p => {
+    (PLAT_UBIC[p] || []).forEach(u => ubicSet.add(u));
+    (PLAT_FORMAT[p] || []).forEach(f => fmtSet.add(f));
+  });
+
+  const prevUbic = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  const prevFmt = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+
+  const ubicDiv = document.getElementById('ubic-dynamic');
+  const fmtDiv = document.getElementById('formato-dynamic');
+
+  if (ubicSet.size === 0) {
+    ubicDiv.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>';
+    fmtDiv.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>';
+    return;
+  }
+
+  ubicDiv.innerHTML = [...ubicSet].map(u =>
+    `<label class="check-label"><input type="checkbox" value="${u}" class="ubic-check"${prevUbic.includes(u) ? ' checked' : ''}> ${u}</label>`
+  ).join('');
+
+  fmtDiv.innerHTML = [...fmtSet].map(f =>
+    `<label class="check-label"><input type="checkbox" value="${f}" class="fmt-check"${prevFmt.includes(f) ? ' checked' : ''}> ${f}</label>`
+  ).join('');
+}
+
+// Multiple drive links
+let _driveLinks = [];
+let _refLinks = [];
+
+function renderDriveLinks(type) {
+  const arr = type === 'drive' ? _driveLinks : _refLinks;
+  const container = document.getElementById(type === 'drive' ? 'drive-links-list' : 'ref-links-list');
+  container.innerHTML = arr.map((url, i) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+      <input type="url" class="form-control" value="${url}" placeholder="https://drive.google.com/..." oninput="updateDriveLink('${type}',${i},this.value)" style="flex:1;">
+      ${url ? `<a href="${url}" target="_blank" style="font-size:12px;color:var(--accent);white-space:nowrap;text-decoration:none;" title="Abrir">↗</a>` : ''}
+      <button type="button" onclick="removeDriveLink('${type}',${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;" title="Quitar">×</button>
+    </div>
+  `).join('');
+}
+
+window.addDriveLink = function(type) {
+  if (type === 'drive') _driveLinks.push('');
+  else _refLinks.push('');
+  renderDriveLinks(type);
+};
+window.updateDriveLink = function(type, idx, val) {
+  if (type === 'drive') _driveLinks[idx] = val;
+  else _refLinks[idx] = val;
+};
+window.removeDriveLink = function(type, idx) {
+  if (type === 'drive') _driveLinks.splice(idx, 1);
+  else _refLinks.splice(idx, 1);
+  renderDriveLinks(type);
+};
+
+// Image paste/upload
+let _imgList = [];
+
+function renderImgThumbs() {
+  const wrap = document.getElementById('img-thumbnails');
+  if (!wrap) return;
+  wrap.innerHTML = _imgList.map((item, i) => {
+    const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
+    const preview = f.isImage
+      ? `<img src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;">`
+      : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
+    return `<div style="position:relative;">${preview}<button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+  }).join('');
+  const ph = document.querySelector('.img-paste-placeholder');
+  if (ph) ph.style.display = _imgList.length ? 'none' : '';
+}
+
+window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
+
+function addImgFromFile(file) {
+  if (!file) return;
+  const MAX = 50 * 1024 * 1024; // 50 MB
+  if (file.size > MAX) {
+    alert(`"${file.name}" pesa más de 50 MB. Subilo a Google Drive y pegá el link en el campo de Drive.`);
+    return;
+  }
+  const reader = new FileReader();
+  const isImage = file.type.startsWith('image/');
+  reader.onload = e => {
+    _imgList.push({ src: e.target.result, name: file.name, isImage });
+    renderImgThumbs();
+  };
+  reader.readAsDataURL(file);
+}
+
+// Populate cuenta select from client data
+function populateCuentaSelect(selected) {
+  const sel = document.getElementById('cf-cuenta');
+  sel.innerHTML = '<option value="">Seleccionar cuenta...</option>';
+  const accounts = [];
+  if (STATE.client.instagram) accounts.push({ label: `Instagram: @${STATE.client.instagram}`, val: STATE.client.instagram });
+  if (STATE.client.facebook) accounts.push({ label: `Facebook: ${STATE.client.facebook}`, val: STATE.client.facebook });
+  if (STATE.client.youtube) accounts.push({ label: `YouTube: ${STATE.client.youtube}`, val: STATE.client.youtube });
+  if (STATE.client.tiktok) accounts.push({ label: `TikTok: @${STATE.client.tiktok}`, val: STATE.client.tiktok });
+  if (!accounts.length) accounts.push({ label: STATE.client.nombre || STATE.client.name || clientId, val: STATE.client.nombre || clientId });
+  accounts.push({ label: 'Multicuenta', val: 'multicuenta' });
+  accounts.push({ label: 'Otra / personalizar...', val: '__custom__' });
+  accounts.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.val; opt.textContent = a.label;
+    sel.appendChild(opt);
+  });
+  if (selected) sel.value = selected;
+  const customInput = document.getElementById('cf-cuenta-custom');
+  sel.onchange = () => {
+    customInput.style.display = sel.value === '__custom__' ? '' : 'none';
+    if (sel.value === '__custom__') customInput.focus();
+  };
+  customInput.style.display = (selected && !accounts.find(a => a.val === selected)) ? '' : 'none';
+}
+
 window.openContenidoModal = function(defaults = {}) {
   defaults = defaults || {};
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
   const c = editingContenido || {};
+
   document.getElementById('modal-cont-title').textContent = editingContenido ? 'Editar contenido' : 'Nuevo contenido';
   document.getElementById('cf-titulo').value = c.titulo || '';
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
   document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
-  document.getElementById('cf-cuenta').value = c.cuenta || STATE.client.instagram || '';
-  const ubicArr = normUbicacion(c.ubicacion || defaults.ubicacion || ['Feed']);
-  document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
-  document.getElementById('cf-formato').value = c.formato || 'Imagen';
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
-  document.getElementById('cf-drive').value = c.linkDrive || '';
-  document.getElementById('cf-drive-ref').value = c.linkDriveRef || '';
   document.getElementById('cf-notas').value = c.notas || '';
+  setTimeout(() => {
+    const df = document.getElementById('cf-duracion');
+    if (df) df.value = c.duracion || '';
+    updateDuracionVisibility();
+  }, 80);
+
+  // Cuenta
+  populateCuentaSelect(c.cuenta || STATE.client.instagram || '');
+
+  // Plataformas
   document.querySelectorAll('.plat-check').forEach(cb => {
     cb.checked = (c.plataformas || defaults.plataformas || []).includes(cb.value);
   });
+  updatePlatFilters();
+
+  // Ubicacion & Formato — set after filters rendered
+  const ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion : (c.ubicacion ? [c.ubicacion] : defaults.ubicacion || []);
+  const fmtArr = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+  setTimeout(() => {
+    document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
+    document.querySelectorAll('.fmt-check').forEach(cb => cb.checked = fmtArr.includes(cb.value));
+  }, 30);
+
+  // Dimensiones
+  const dimArr = Array.isArray(c.dimensiones) ? c.dimensiones : [];
+  document.querySelectorAll('.dim-check').forEach(cb => cb.checked = dimArr.includes(cb.value));
+
+  // Pauta
+  const pautaVal = c.pauta || 'organico';
+  const pautaRadio = document.querySelector(`input[name="cf-pauta"][value="${pautaVal}"]`);
+  if (pautaRadio) pautaRadio.checked = true;
+  document.getElementById('pauta-hint').style.display = pautaVal !== 'organico' ? '' : 'none';
+
+  // Multiple links
+  _driveLinks = Array.isArray(c.linkDrive) ? [...c.linkDrive] : (c.linkDrive ? [c.linkDrive] : []);
+  _refLinks = Array.isArray(c.linkDriveRef) ? [...c.linkDriveRef] : (c.linkDriveRef ? [c.linkDriveRef] : []);
+  renderDriveLinks('drive');
+  renderDriveLinks('ref');
+
+  // Images
+  _imgList = Array.isArray(c.imagenes) ? [...c.imagenes] : [];
+  renderImgThumbs();
+
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
+
+  // Asignar
+  const contAsignado = document.getElementById('cont-asignado');
+  if (contAsignado) {
+    contAsignado.innerHTML = getAsignarOptions(c.asignado?.email || '');
+  }
+
+  renderComments('cont', c.comentarios || []);
+  document.getElementById('cont-comment-input').value = '';
   document.getElementById('contenidoModal').classList.remove('hidden');
 };
 
-window.openContenidoModalById = function(id) {
-  openContenidoModal({ id });
-};
+window.openContenidoModalById = function(id) { openContenidoModal({ id }); };
 
 function closeContenidoModal() { document.getElementById('contenidoModal').classList.add('hidden'); }
 document.getElementById('closeContenidoModal').addEventListener('click', closeContenidoModal);
 document.getElementById('closeContenidoModal2').addEventListener('click', closeContenidoModal);
 
-document.getElementById('saveContenidoBtn').addEventListener('click', async () => {
+// Platform checkboxes → update formats
+document.getElementById('plat-checks').addEventListener('change', () => { updatePlatFilters(); updateDuracionVisibility(); });
+
+function updateDuracionVisibility() {
+  setTimeout(() => {
+    const videoFormats = ['Reel','Video','TikTok','Story','YouTube','Short'];
+    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => videoFormats.some(v => cb.value.includes(v)));
+    const g = document.getElementById('cf-duracion-group');
+    if (g) g.style.display = hasVideo ? '' : 'none';
+  }, 60);
+}
+
+// Pauta radios → show/hide hint
+document.querySelectorAll('input[name="cf-pauta"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('pauta-hint').style.display = r.value !== 'organico' ? '' : 'none';
+  });
+});
+
+// Image paste & file pick — upload via button onclick in HTML, paste via Ctrl+V listener below
+document.getElementById('img-file-input').addEventListener('change', e => {
+  [...e.target.files].forEach(addImgFromFile);
+  e.target.value = '';
+});
+document.addEventListener('paste', e => {
+  const contenidoOpen = !document.getElementById('contenidoModal').classList.contains('hidden');
+  const tareaOpen = !document.getElementById('tareaModal').classList.contains('hidden');
+  if (!contenidoOpen && !tareaOpen) return;
+  // Si el foco está en el editor RTE de tarea, dejar que el navegador maneje el paste de texto
+  if (tareaOpen && document.activeElement && document.activeElement.id === 'tf-notas') {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        addTareaImgFromFile(item.getAsFile());
+        return;
+      }
+    }
+    return; // texto normal: el browser lo inserta solo
+  }
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      if (contenidoOpen) addImgFromFile(item.getAsFile());
+      else addTareaImgFromFile(item.getAsFile());
+      return;
+    }
+  }
+});
+
+document.getElementById('saveContenidoBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
   const titulo = document.getElementById('cf-titulo').value.trim();
-  if (!titulo) { alert('El título es obligatorio.'); return; }
+  if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
+
+  const cuentaSel = document.getElementById('cf-cuenta');
+  const cuentaCustom = document.getElementById('cf-cuenta-custom');
+  const cuenta = cuentaSel.value === '__custom__' ? cuentaCustom.value.trim() : cuentaSel.value;
+  if (!cuenta) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
+
   const plats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
+  if (!plats.length) { alert('Seleccioná al menos una plataforma.'); return; }
+
+  const formatos = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+  if (!formatos.length) { alert('Seleccioná al menos un formato.'); return; }
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  const dimensiones = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
+  const pauta = document.querySelector('input[name="cf-pauta"]:checked')?.value || 'organico';
+
+  const contAsignadoEl = document.getElementById('cont-asignado');
+  const contAsignadoEmail = contAsignadoEl ? contAsignadoEl.value : '';
+  const contAsignadoNombre = contAsignadoEl ? (contAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
+  const prevContAsignadoEmail = editingContenido?.asignado?.email || '';
+
   const obj = {
     ...(editingContenido || {}),
     titulo,
     fechaPub: document.getElementById('cf-fecha').value,
     estado: document.getElementById('cf-estado').value,
-    cuenta: document.getElementById('cf-cuenta').value,
+    cuenta,
     plataformas: plats,
-    ubicacion: ubicacion.length ? ubicacion : ['Feed'],
+    ubicacion,
+    formato: formatos,
+    dimensiones,
     eje: document.getElementById('cf-eje').value,
     tipo: document.getElementById('cf-tipo').value,
-    formato: document.getElementById('cf-formato').value,
     objetivo: document.getElementById('cf-objetivo').value,
     copy: document.getElementById('cf-copy').value,
-    linkDrive: document.getElementById('cf-drive').value,
-    linkDriveRef: document.getElementById('cf-drive-ref').value,
+    pauta,
+    linkDrive: _driveLinks.filter(Boolean),
+    linkDriveRef: _refLinks.filter(Boolean),
+    imagenes: _imgList,
     notas: document.getElementById('cf-notas').value,
+    comentarios: editingContenido?.comentarios || [],
+    asignado: contAsignadoEmail ? { email: contAsignadoEmail, nombre: contAsignadoNombre } : null,
   };
-  const saved = await saveContenido(clientId, obj);
-  if (editingContenido) {
-    const i = STATE.contenidos.findIndex(c => c.id === saved.id);
-    STATE.contenidos[i] = saved;
-  } else {
-    STATE.contenidos.push(saved);
+
+  try {
+    const saved = await saveContenido(clientId, obj);
+    if (editingContenido) {
+      const i = STATE.contenidos.findIndex(c => c.id === saved.id);
+      STATE.contenidos[i] = saved;
+    } else {
+      STATE.contenidos.push(saved);
+    }
+    // Notify assigned user via TODO if assignment changed
+    if (contAsignadoEmail && contAsignadoEmail !== prevContAsignadoEmail) {
+      const { WORKER_URL } = await import('./firebase.js');
+      const { getSessionToken } = await import('./auth.js');
+      fetch(WORKER_URL + '/todos/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: contAsignadoEmail,
+          toNombre: contAsignadoNombre,
+          tipo: 'asignacion',
+          clientId,
+          clientNombre: STATE.client.nombre || STATE.client.name || clientId,
+          itemId: String(saved.id),
+          itemTitulo: saved.titulo || '',
+          contexto: '',
+          asignadorNombre: user.name || user.email.split('@')[0],
+        }),
+      }).catch(() => {});
+    }
+    closeContenidoModal();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+  } finally {
+    const b = document.getElementById('saveContenidoBtn');
+    if (b) { b.disabled = false; b.textContent = 'Guardar'; }
   }
-  closeContenidoModal();
-  renderContTab(activeContTab);
-  if (currentSection === 'home') renderSection('home');
 });
 
 document.getElementById('deleteContenidoBtn').addEventListener('click', async () => {
@@ -1007,6 +1702,205 @@ document.getElementById('deleteContenidoBtn').addEventListener('click', async ()
   STATE.contenidos = STATE.contenidos.filter(c => c.id !== editingContenido.id);
   closeContenidoModal();
   renderContTab(activeContTab);
+});
+
+// ──────────────────────────────────────────────────────
+// IMPORTAR CONTENIDOS DESDE EXCEL
+// ──────────────────────────────────────────────────────
+const IMPORT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const IMPORT_PAUTA_MAP = {
+  'solo organico': 'organico',
+  'si dark post': 'dark',
+  'si dark + organico': 'dark-organico',
+  'si dark organico': 'dark-organico',
+  organico: 'organico',
+  dark: 'dark',
+  'dark-organico': 'dark-organico',
+};
+// header normalizado (sin acentos, minúscula) -> campo del contenido
+const IMPORT_HEADER_MAP = {
+  'titulo del contenido': 'titulo',
+  titulo: 'titulo',
+  'fecha de publicacion': 'fechaPub',
+  fecha: 'fechaPub',
+  estado: 'estado',
+  cuenta: 'cuenta',
+  plataformas: 'plataformas',
+  plataforma: 'plataformas',
+  ubicacion: 'ubicacion',
+  formato: 'formato',
+  dimensiones: 'dimensiones',
+  dimension: 'dimensiones',
+  'eje de comunicacion': 'eje',
+  eje: 'eje',
+  'tipo de contenido': 'tipo',
+  tipo: 'tipo',
+  objetivo: 'objetivo',
+  'copy / texto del post': 'copy',
+  'copy texto del post': 'copy',
+  copy: 'copy',
+  pauta: 'pauta',
+  'link pieza terminada': 'linkDrive',
+  'link material de referencia': 'linkDriveRef',
+  'notas internas': 'notas',
+  notas: 'notas',
+};
+
+const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
+
+function normalizeHeader(h) {
+  return String(h || '')
+    .toLowerCase()
+    .replace(/[áéíóúñü]/g, ch => ACCENT_MAP[ch] || ch)
+    .replace(/[^a-z0-9/ ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function importParseFecha(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0'), d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  return s;
+}
+
+function importSplitMulti(val) {
+  if (!val) return [];
+  return String(val).split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function importParsePauta(val) {
+  const norm = normalizeHeader(val).replace(/–|—/g, '-');
+  return IMPORT_PAUTA_MAP[norm] || 'organico';
+}
+
+let _importRows = []; // filas parseadas y válidas, listas para importar
+
+function openImportModal() {
+  _importRows = [];
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-status').textContent = '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('confirmImportBtn').disabled = true;
+  document.getElementById('importContenidoModal').classList.remove('hidden');
+}
+window.openImportModal = openImportModal;
+
+function closeImportModal() {
+  document.getElementById('importContenidoModal').classList.add('hidden');
+}
+document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
+document.getElementById('closeImportModal2').addEventListener('click', closeImportModal);
+
+document.getElementById('import-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('import-status');
+  const previewEl = document.getElementById('import-preview');
+  const confirmBtn = document.getElementById('confirmImportBtn');
+  previewEl.innerHTML = '';
+  confirmBtn.disabled = true;
+  _importRows = [];
+  if (!file) return;
+
+  statusEl.textContent = 'Leyendo archivo…';
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetName = wb.SheetNames.find(n => normalizeHeader(n) === 'contenidos') || wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+    const headerRow = raw[0].map(normalizeHeader);
+    const fieldByCol = headerRow.map(h => IMPORT_HEADER_MAP[h] || null);
+
+    const valid = [];
+    const errores = [];
+    for (let r = 1; r < raw.length; r++) {
+      const dataRow = raw[r];
+      if (!dataRow || dataRow.every(v => v === '' || v == null)) continue; // fila vacía
+      const obj = {};
+      fieldByCol.forEach((field, ci) => {
+        if (field) obj[field] = dataRow[ci];
+      });
+
+      const titulo = String(obj.titulo || '').trim();
+      const cuenta = String(obj.cuenta || '').trim();
+      const plataformas = importSplitMulti(obj.plataformas);
+      const formato = importSplitMulti(obj.formato);
+
+      if (!titulo || !cuenta || !plataformas.length || !formato.length) {
+        errores.push(`Fila ${r + 1}: faltan datos obligatorios (título, cuenta, plataformas o formato).`);
+        continue;
+      }
+
+      const estadoRaw = String(obj.estado || '').trim();
+      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : 'Idea';
+
+      valid.push({
+        titulo,
+        fechaPub: importParseFecha(obj.fechaPub),
+        estado,
+        cuenta,
+        plataformas,
+        ubicacion: importSplitMulti(obj.ubicacion),
+        formato,
+        dimensiones: importSplitMulti(obj.dimensiones),
+        eje: String(obj.eje || '').trim(),
+        tipo: String(obj.tipo || '').trim(),
+        objetivo: String(obj.objetivo || '').trim(),
+        copy: String(obj.copy || '').trim(),
+        pauta: importParsePauta(obj.pauta),
+        linkDrive: importSplitMulti(obj.linkDrive),
+        linkDriveRef: importSplitMulti(obj.linkDriveRef),
+        notas: String(obj.notas || '').trim(),
+        comentarios: [],
+        asignado: null,
+      });
+    }
+
+    _importRows = valid;
+    statusEl.textContent = `${valid.length} contenido(s) listos para importar${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
+
+    previewEl.innerHTML = `
+      ${valid.length ? `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+        <thead><tr><th>Fecha</th><th>Título</th><th>Plataformas</th><th>Estado</th><th>Cuenta</th></tr></thead>
+        <tbody>
+          ${valid.map(c => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`).join('')}
+        </tbody>
+      </table></div>` : ''}
+      ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
+    `;
+    confirmBtn.disabled = !valid.length;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+  }
+});
+
+document.getElementById('confirmImportBtn').addEventListener('click', async () => {
+  if (!_importRows.length) return;
+  const btn = document.getElementById('confirmImportBtn');
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try {
+    const saved = await saveContenidosBulk(clientId, _importRows);
+    STATE.contenidos.push(...saved);
+    closeImportModal();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+  } catch (err) {
+    console.error(err);
+    alert('Hubo un error al importar. Probá de nuevo.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
 });
 
 // ──────────────────────────────────────────────────────
@@ -1031,7 +1925,7 @@ function renderTareas(container) {
         </div>
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(t => `
-            <div class="kanban-card" draggable="true" data-id="${t.id}">
+            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)">
               <div class="kanban-card-title">${t.titulo}</div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
@@ -1049,7 +1943,7 @@ function renderTareas(container) {
               })() : ''}
               <div style="display:flex;gap:4px;margin-top:8px;">
                 <button class="btn btn-secondary btn-sm" onclick="openTareaModal('${t.id}')">Editar</button>
-                <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
+                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
               </div>
             </div>
           `).join('')}
@@ -1077,12 +1971,55 @@ function renderTareas(container) {
 
   initKanbanDrag('#kanban-tareas', STATE.tareas.filter(t => !t.archivado), async (id, newCol) => {
     const t = STATE.tareas.find(x => x.id === id);
-    if (!t) return;
+    if (!t || t.estado === newCol) return;
     t.estado = newCol;
-    await saveTarea(clientId, t);
     updateBadges();
     renderTareas(document.getElementById('main-content'));
+    saveTarea(clientId, t).catch(() => {});
   });
+}
+
+// ── Rich Text Editor helpers ──
+let _tareaImgList = [];
+
+window.rteCmd = function(cmd) {
+  if (/^h[1-3]$/.test(cmd)) {
+    document.getElementById('tf-notas').focus();
+    document.execCommand('formatBlock', false, cmd);
+    return;
+  }
+  document.getElementById('tf-notas').focus();
+  document.execCommand(cmd, false, null);
+};
+
+window.rteColor = function(color) {
+  document.getElementById('tf-notas').focus();
+  document.execCommand('foreColor', false, color);
+};
+
+function renderTareaImgThumbs() {
+  const container = document.getElementById('tarea-img-thumbs');
+  if (!container) return;
+  container.innerHTML = _tareaImgList.map((src, i) => `
+    <div style="position:relative;display:inline-block;">
+      <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+      <button onclick="removeTareaImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
+    </div>
+  `).join('');
+}
+
+window.removeTareaImg = function(i) {
+  _tareaImgList.splice(i, 1);
+  renderTareaImgThumbs();
+};
+
+function addTareaImgFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (_tareaImgList.length >= 3) { alert('M\u00e1ximo 3 im\u00e1genes por tarea.'); return; }
+  if (file.size > 4 * 1024 * 1024) { alert('La imagen supera 4 MB. Sub\u00edla a Drive y peg\u00e1 el link.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => { _tareaImgList.push(e.target.result); renderTareaImgThumbs(); };
+  reader.readAsDataURL(file);
 }
 
 window.openTareaModal = function(id, defaultEstado) {
@@ -1093,9 +2030,12 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
-  document.getElementById('tf-notas').value = t.notas || '';
+  document.getElementById('tf-notas').innerHTML = t.notas || '';
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
   document.getElementById('tf-link').value = t.linkRef || '';
+  // Imágenes
+  _tareaImgList = t.imagenes ? [...t.imagenes] : [];
+  renderTareaImgThumbs();
   document.getElementById('deleteTareaBtn').style.display = editingTarea ? '' : 'none';
   document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
 
@@ -1111,6 +2051,16 @@ window.openTareaModal = function(id, defaultEstado) {
   stSection.style.display = editingTarea ? '' : 'none';
   if (editingTarea) renderSubtareas(t.subtareas || []);
 
+  // Asignar
+  const tfAsignado = document.getElementById('tf-asignado');
+  if (tfAsignado) {
+    tfAsignado.innerHTML = getAsignarOptions(t.asignado?.email || '');
+  }
+
+  renderComments('tarea', t.comentarios || []);
+  document.getElementById('tarea-comment-input').value = '';
+  const _tnote = document.getElementById('tarea-new-note');
+  if (_tnote) _tnote.style.display = editingTarea ? 'none' : '';
   document.getElementById('tareaModal').classList.remove('hidden');
 };
 
@@ -1150,20 +2100,69 @@ function closeTareaModal() { document.getElementById('tareaModal').classList.add
 document.getElementById('closeTareaModal').addEventListener('click', closeTareaModal);
 document.getElementById('closeTareaModal2').addEventListener('click', closeTareaModal);
 
-document.getElementById('saveTareaBtn').addEventListener('click', async () => {
+// Área de imágenes en tarea
+const tareaImgArea = document.getElementById('tarea-img-area');
+const tareaImgInput = document.getElementById('tarea-img-input');
+// click en el área no abre el explorador — el botón "📎 Subir archivo" lo maneja
+// Ctrl+V se captura en el listener global de paste
+if (tareaImgInput) {
+  tareaImgInput.addEventListener('change', e => {
+    [...e.target.files].forEach(addTareaImgFromFile);
+    e.target.value = '';
+  });
+}
+
+document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
-  const recurrencia = document.getElementById('tf-recurrencia').value;
-  const diasSemana = recurrencia === 'dias-semana'
-    ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
-    : [];
-  const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').value, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [] };
-  const saved = await saveTarea(clientId, obj);
-  if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
-  else STATE.tareas.push(saved);
-  closeTareaModal();
-  updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    const recurrencia = document.getElementById('tf-recurrencia').value;
+    const diasSemana = recurrencia === 'dias-semana'
+      ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
+      : [];
+    const asignadoEl = document.getElementById('tf-asignado');
+    const asignadoEmail = asignadoEl ? asignadoEl.value : '';
+    const asignadoNombre = asignadoEl ? (asignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
+    const prevAsignadoEmail = editingTarea?.asignado?.email || '';
+    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: asignadoEmail ? { email: asignadoEmail, nombre: asignadoNombre } : null };
+    const saved = await Promise.race([
+      saveTarea(clientId, obj),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
+    ]);
+    if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
+    else STATE.tareas.push(saved);
+    // Notify assigned user via TODO if assignment changed
+    if (asignadoEmail && asignadoEmail !== prevAsignadoEmail) {
+      const { WORKER_URL } = await import('./firebase.js');
+      const { getSessionToken } = await import('./auth.js');
+      fetch(WORKER_URL + '/todos/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: asignadoEmail,
+          toNombre: asignadoNombre,
+          tipo: 'asignacion',
+          clientId,
+          clientNombre: STATE.client.nombre || STATE.client.name || clientId,
+          itemId: String(saved.id),
+          itemTitulo: saved.titulo || '',
+          contexto: '',
+          asignadorNombre: user.name || user.email.split('@')[0],
+        }),
+      }).catch(() => {});
+    }
+    closeTareaModal();
+    updateBadges();
+    if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
+    else renderSection('home');
+  } catch (err) {
+    alert('Error al guardar: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
 });
 
 document.getElementById('deleteTareaBtn').addEventListener('click', async () => {
@@ -1288,23 +2287,48 @@ function renderPauta(container) {
 // ──────────────────────────────────────────────────────
 function renderLinks(container) {
   const links = STATE.links || [];
+  const cats = ['Todas', ...new Set(links.map(l => l.categoria).filter(Boolean))];
+  if (!window._linkCatFilter) window._linkCatFilter = 'Todas';
+  const filter = window._linkCatFilter;
+  const visible = filter === 'Todas' ? links : links.filter(l => l.categoria === filter);
+
   container.innerHTML = `
-    ${links.length ? `
-      <div class="links-grid">
-        ${links.map(l => `
-          <div class="link-card" onclick="window.open('${l.url}','_blank')" style="cursor:pointer;">
+    ${cats.length > 1 ? `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+      ${cats.map(c => `
+        <button onclick="window._linkCatFilter='${c.replace(/'/g,"\\'")}';renderSection('links');"
+          style="padding:4px 12px;border-radius:999px;border:1.5px solid ${c===filter?'var(--primary)':'var(--border)'};
+          background:${c===filter?'var(--primary)':'transparent'};color:${c===filter?'#fff':'var(--text-muted)'};
+          font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;">${c}</button>
+      `).join('')}
+    </div>` : ''}
+    ${visible.length ? `
+      <div class="links-grid" id="links-sortable">
+        ${visible.map(l => `
+          <div class="link-card" draggable="true" data-link-id="${l.id}"
+            style="cursor:grab;user-select:none;"
+            onclick="if(!this._ldrag)window.open('${l.url.replace(/'/g,"\\'")}','_blank')"
+            ondragstart="this._ldrag=false;window._linkDragId='${l.id}';this.style.opacity='.4';"
+            ondragend="this._ldrag=true;this.style.opacity='1';setTimeout(()=>{this._ldrag=false},200);"
+            ondragover="event.preventDefault();this.style.outline='2px solid var(--primary)';"
+            ondragleave="this.style.outline='';"
+            ondrop="event.preventDefault();this.style.outline='';dropLinkOn('${l.id}');">
             <div class="link-card-icon">
               <i data-lucide="link" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
             </div>
             <div style="flex:1;min-width:0;">
               <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.titulo}</div>
+              ${l.categoria ? `<div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${l.categoria}</div>` : ''}
               ${l.desc ? `<div class="link-card-desc">${l.desc}</div>` : ''}
               <div style="font-size:10px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.url}</div>
             </div>
-            <button class="link-card-edit" onclick="event.stopPropagation();openLinkModal('${l.id}')" title="Editar">✏️</button>
+            <button class="link-card-edit" onclick="event.stopPropagation();openLinkModal('${l.id}')" title="Editar">
+              <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
+            </button>
           </div>
         `).join('')}
-        <div class="link-card" onclick="openLinkModal(null)" style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
+        <div class="link-card" onclick="openLinkModal(null)"
+          style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
           <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
           <span style="font-size:13px;color:var(--text-muted);">Agregar link</span>
         </div>
@@ -1312,13 +2336,28 @@ function renderLinks(container) {
     ` : `
       <div class="empty-state">
         <i data-lucide="link" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
-        <h3>Sin links guardados</h3>
+        <h3>Sin links${filter!=='Todas'?' en esta categoría':' guardados'}</h3>
         <p>Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes...</p>
         <button class="btn btn-primary" style="margin-top:12px;" onclick="openLinkModal(null)">+ Agregar primer link</button>
       </div>
     `}
   `;
+  setTimeout(refreshIcons, 30);
 }
+
+window.dropLinkOn = async function(targetId) {
+  const dragId = window._linkDragId;
+  if (!dragId || dragId === targetId) return;
+  const links = STATE.links;
+  const fromIdx = links.findIndex(l => String(l.id) === String(dragId));
+  const toIdx   = links.findIndex(l => String(l.id) === String(targetId));
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = links.splice(fromIdx, 1);
+  links.splice(toIdx, 0, moved);
+  STATE.home.links = links;
+  renderSection('links');
+  saveHomeData(clientId, STATE.home).catch(() => {});
+};
 
 let _editingLink = null;
 window.openLinkModal = function(id) {
@@ -1328,9 +2367,74 @@ window.openLinkModal = function(id) {
   document.getElementById('lf-titulo').value = l.titulo || '';
   document.getElementById('lf-url').value = l.url || '';
   document.getElementById('lf-desc').value = l.desc || '';
+  document.getElementById('lf-categoria').value = l.categoria || '';
+  const cats = [...new Set((STATE.links || []).map(x => x.categoria).filter(Boolean))];
+  const dl = document.getElementById('lf-cat-list');
+  if (dl) dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
   document.getElementById('deleteLinkBtn').style.display = _editingLink ? '' : 'none';
   document.getElementById('linkModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('lf-titulo').focus(), 50);
+};
+
+// ──────────────────────────────────────────────────────
+// SITIO WEB
+// ──────────────────────────────────────────────────────
+const WEB_CATS = ['Contenido', 'Arreglo / Bug', 'Funcionalidad nueva', 'SEO / Métricas', 'Diseño', 'Otro'];
+const WEB_ESTADOS = ['Pendiente', 'En proceso', 'En revisión', 'Listo'];
+
+function renderWeb(container) {
+  const tasks = (STATE.home.webTareas || []);
+  const byEstado = WEB_ESTADOS.reduce((acc, e) => { acc[e] = tasks.filter(t => t.estado === e); return acc; }, {});
+  const colors = { 'Pendiente': '#94a3b8', 'En proceso': '#f59e0b', 'En revisión': '#ec4899', 'Listo': '#22c55e' };
+
+  container.innerHTML = `
+    <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <div style="font-size:13px;color:var(--text-muted);">${tasks.length} tareas · ${byEstado['Listo'].length} completadas</div>
+    </div>
+    <div class="kanban-board">
+      ${WEB_ESTADOS.map(estado => {
+        const items = byEstado[estado];
+        return `
+        <div class="kanban-col" style="flex:1;max-width:none;">
+          <div class="kanban-col-header">
+            <span class="kanban-col-dot" style="background:${colors[estado]};"></span>
+            <span class="col-title">${estado}</span>
+            <span class="col-count">${items.length}</span>
+          </div>
+          <div class="kanban-cards">
+            ${items.map(t => `
+              <div class="kanban-card" onclick="openWebTaskModal('${t.id}')">
+                <div style="display:flex;align-items:flex-start;gap:6px;">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
+                  <button onclick="event.stopPropagation();eliminarWebTask('${t.id}')" title="Eliminar" style="margin-left:auto;background:transparent;border:1px solid #E02020;color:#E02020;border-radius:4px;width:20px;height:20px;cursor:pointer;font-size:13px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+                </div>
+                <div class="kanban-card-title" style="margin-top:6px;">${t.titulo}</div>
+                ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+                ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
+                ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
+              </div>
+            `).join('')}
+            <button class="kanban-add-btn" onclick="openWebTaskModal(null,'${estado}')">+ Agregar</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+let _editingWebTask = null;
+window.openWebTaskModal = function(id, defaultEstado) {
+  _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => String(t.id) === String(id)) : null;
+  const t = _editingWebTask || {};
+  document.getElementById('wt-titulo').value = t.titulo || '';
+  document.getElementById('wt-categoria').value = t.categoria || 'Contenido';
+  document.getElementById('wt-estado').value = t.estado || defaultEstado || 'Pendiente';
+  document.getElementById('wt-vencimiento').value = t.vencimiento || '';
+  document.getElementById('wt-url').value = t.url || '';
+  document.getElementById('wt-notas').value = t.notas || '';
+  document.getElementById('deleteWebTaskBtn').style.display = _editingWebTask ? '' : 'none';
+  document.getElementById('webTaskModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('wt-titulo').focus(), 50);
 };
 
 // ──────────────────────────────────────────────────────
@@ -1347,20 +2451,25 @@ function renderInstrucciones(container) {
       </div>
 
       ${[
+        { icon:'bar-chart-2', title:'Dashboard Editorial', color:'#8b5cf6', items:[
+          'Mostrá el resumen mensual: frecuencia por semana, formatos, ejes y tipos de contenido.',
+          'Navegá entre meses con las flechas. Se actualiza solo con los contenidos cargados.',
+          'Usalo para presentar avances a clientes o gerencia.',
+        ]},
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
-          '<strong>Banco de contenidos:</strong> Tabla completa con todos tus posts programados.',
-          '<strong>Calendario:</strong> Vista mensual de las publicaciones.',
+          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá.',
+          '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
           '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
-          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa de cómo se ve tu perfil.',
-          '<strong>Banco de ideas:</strong> Guardá ideas para trabajarlas después.',
-          '<strong>+ Nuevo contenido:</strong> Completá título, fecha, plataforma, copy y el link de Google Drive de la pieza terminada.',
+          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
+          '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
+          '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
+          '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
           'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
-          'Podés arrastrar tareas entre columnas.',
-          'Cada tarea puede tener <strong>subtareas</strong> con su propio avance.',
-          'Las tareas de "Sin empezar" también aparecen en el <strong>To-do del Home</strong>.',
-          'Si una tarea tiene fecha de vencimiento, recibís un email ese día.',
+          'El <strong>To-do del Home</strong> y las Tareas están sincronizados: lo que agregás en uno aparece en el otro.',
+          'Cada tarea puede tener <strong>subtareas</strong>, fecha de vencimiento, prioridad y enlace.',
+          'Podés agregar <strong>recurrencia</strong>: diaria, semanal, quincenal, mensual o días específicos.',
           'Podés <strong>archivar</strong> tareas completadas para mantener el tablero limpio.',
         ]},
         { icon:'trending-up', title:'Pauta Digital', color:'#f59e0b', items:[
@@ -1369,9 +2478,24 @@ function renderInstrucciones(container) {
           'Definí tu <strong>ROAS de equilibrio</strong> para saber si la campaña es rentable.',
           'La barra de progreso muestra el % del presupuesto ejecutado.',
         ]},
+        { icon:'file-text', title:'Reporte Ejecutivo', color:'#e02020', items:[
+          'Generá un reporte mensual para presentar a gerencia: contenidos publicados, métricas, campañas e insights.',
+          'Accedé desde el botón "📊 Reporte" en la sección Contenidos.',
+          'Podés imprimir o guardar como PDF con Ctrl+P.',
+        ]},
+        { icon:'link', title:'Links', color:'#0d9488', items:[
+          'Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes, portales.',
+          'Tocá "+ Nuevo link" o el botón "+" en la grilla para agregar uno.',
+          'Tocá el ✏️ sobre un link para editarlo o eliminarlo.',
+        ]},
+        { icon:'globe', title:'Sitio Web', color:'#64748b', items:[
+          'Gestioná tareas y mejoras del sitio web del cliente.',
+          'Podés cargar tareas del tipo: contenidos, arreglos, agregados o análisis.',
+          'Las tareas del sitio web están separadas de las tareas de marketing pero usan la misma interfaz.',
+        ]},
         { icon:'map-pin', title:'Google Drive', color:'#ec4899', items:[
           'Usamos Google Drive para almacenar las piezas gráficas y videos.',
-          '<strong>Pieza terminada:</strong> el archivo listo para publicar.',
+          '<strong>Pieza terminada:</strong> el archivo listo para publicar (podés agregar múltiples links).',
           '<strong>Material de referencia:</strong> fotos brutas, referencias, brief visual.',
           'Para linkear: abrí el archivo en Drive → botón derecho → "Copiar link" → pegalo en el campo.',
         ]},
@@ -1391,12 +2515,164 @@ function renderInstrucciones(container) {
 
       <div class="card" style="border:1px solid #bfdbfe;background:#eff6ff;">
         <div class="card-body" style="font-size:13px;color:#1d4ed8;line-height:1.7;">
-          <strong>¿Tenés dudas?</strong> Contactá a tu equipo COSMART en <a href="mailto:info@cosmart.com.ar" style="color:#1d4ed8;">info@cosmart.com.ar</a> o por WhatsApp al equipo de COMUNICOS.
+          <strong>¿Tenés dudas?</strong> Contactá a tu equipo COSMART en <a href="mailto:info@cosmart.com.ar" style="color:#1d4ed8;">info@cosmart.com.ar</a>.
         </div>
       </div>
     </div>
   `;
 }
+
+// ──────────────────────────────────────────────────────
+// REPORTE EJECUTIVO
+// ──────────────────────────────────────────────────────
+window.openReporteModal = function() {
+  const hoy = new Date();
+  const mesActual = hoy.toISOString().slice(0, 7);
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesLabel = `${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`;
+  const cliente = STATE.client.nombre || STATE.client.name || clientId;
+
+  const conts = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(mesActual));
+  const publicados = conts.filter(c => c.estado === 'Publicado');
+  const aprobados = conts.filter(c => c.estado === 'Aprobado');
+  const campanas = STATE.campanas || [];
+  const activas = campanas.filter(c => c.estado === 'Activa');
+  const finalizadas = campanas.filter(c => c.estado === 'Finalizada');
+
+  // Formato breakdown
+  const fmtCount = {};
+  conts.forEach(c => {
+    const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+    fmts.forEach(f => { fmtCount[f] = (fmtCount[f]||0)+1; });
+  });
+
+  // Eje breakdown
+  const ejeCount = {};
+  conts.forEach(c => { if(c.eje) ejeCount[c.eje] = (ejeCount[c.eje]||0)+1; });
+
+  // Métricas pauta
+  const totalPresup = campanas.reduce((s,c)=>s+(c.presupuesto||0),0);
+  const totalGastado = campanas.reduce((s,c)=>s+(c.gastado||0),0);
+  const totalIngresos = campanas.reduce((s,c)=>s+(c.ingresos||0),0);
+  const roasTotal = totalGastado ? (totalIngresos/totalGastado).toFixed(2) : '—';
+
+  // Tareas del mes
+  const tareasPend = STATE.tareas.filter(t => !t.archivado && t.estado !== 'Listo').length;
+  const tareasOk = STATE.tareas.filter(t => t.estado === 'Listo').length;
+
+  // Insights automáticos
+  const insights = [];
+  if (publicados.length < 8) insights.push('📉 Menos de 8 contenidos publicados este mes. Considerá aumentar la frecuencia.');
+  if (conts.filter(c=>c.eje==='Comercial').length === 0) insights.push('💡 No hay contenido comercial este mes. Incluir al menos 1-2 posts de conversión.');
+  if (conts.filter(c=>(c.plataformas||[]).includes('TikTok')).length === 0) insights.push('📱 Sin contenido para TikTok este mes.');
+  if (activas.length && totalGastado && parseFloat(roasTotal) < 2) insights.push(`⚠️ ROAS de ${roasTotal} por debajo del umbral recomendado (2x). Revisar segmentación.`);
+  if (tareasPend > 5) insights.push(`📋 Hay ${tareasPend} tareas pendientes. Priorizar para no acumular deuda operativa.`);
+  if (!insights.length) insights.push('✅ Todo en orden. Excelente desempeño este mes.');
+
+  const body = document.getElementById('reporte-body');
+  body.innerHTML = `
+    <div style="font-family:'DM Sans',sans-serif;" id="reporte-print-content">
+      <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--primary);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase;">Reporte Ejecutivo</div>
+        <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--primary-dark);margin:4px 0;">${cliente}</div>
+        <div style="font-size:13px;color:var(--text-muted);">${mesLabel} · Generado el ${hoy.toLocaleDateString('es-AR')}</div>
+      </div>
+
+      <!-- Stats resumen -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+        ${[
+          {label:'Contenidos del mes', val:conts.length, color:'var(--primary)'},
+          {label:'Publicados', val:publicados.length, color:'#22c55e'},
+          {label:'Aprobados / listos', val:aprobados.length, color:'#3b82f6'},
+          {label:'Campañas activas', val:activas.length, color:'#f59e0b'},
+        ].map(s=>`
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:26px;font-weight:700;color:${s.color};">${s.val}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${s.label}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Contenidos -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Contenidos del mes</div>
+        ${conts.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">${['Título','Fecha','Plataformas','Formato','Estado'].map(h=>`<th style="text-align:left;padding:6px 8px;font-weight:600;border-bottom:1px solid var(--border);">${h}</th>`).join('')}</tr></thead>
+          <tbody>${conts.map(c=>`
+            <tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:6px 8px;font-weight:500;">${c.titulo}</td>
+              <td style="padding:6px 8px;color:var(--text-muted);">${fmtDate(c.fechaPub)||'—'}</td>
+              <td style="padding:6px 8px;">${(c.plataformas||[]).join(', ')||'—'}</td>
+              <td style="padding:6px 8px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</td>
+              <td style="padding:6px 8px;">${c.estado||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<p style="color:var(--text-muted);font-size:13px;">Sin contenidos este mes.</p>'}
+      </div>
+
+      <!-- Distribución -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">Por Formato</div>
+          ${Object.entries(fmtCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;font-size:12px;">${k}</div>
+              <div style="width:80px;background:#f1f5f9;border-radius:20px;height:6px;overflow:hidden;"><div style="width:${Math.round(v/conts.length*100)}%;background:var(--accent);height:6px;border-radius:20px;"></div></div>
+              <div style="font-size:12px;font-weight:700;color:var(--primary);min-width:20px;">${v}</div>
+            </div>`).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin datos</p>'}
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">Por Eje de Comunicación</div>
+          ${Object.entries(ejeCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;font-size:12px;">${k}</div>
+              <div style="width:80px;background:#f1f5f9;border-radius:20px;height:6px;overflow:hidden;"><div style="width:${Math.round(v/conts.length*100)}%;background:var(--primary);height:6px;border-radius:20px;"></div></div>
+              <div style="font-size:12px;font-weight:700;color:var(--primary);min-width:20px;">${v}</div>
+            </div>`).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin datos</p>'}
+        </div>
+      </div>
+
+      <!-- Campañas -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Campañas de Pauta</div>
+        ${campanas.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">${['Campaña','Plataforma','Estado','Presup.','Gastado','ROAS'].map(h=>`<th style="text-align:left;padding:6px 8px;font-weight:600;border-bottom:1px solid var(--border);">${h}</th>`).join('')}</tr></thead>
+          <tbody>${campanas.map(c=>{
+            const roas = c.gastado ? (c.ingresos/c.gastado).toFixed(2) : '—';
+            return `<tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:6px 8px;font-weight:500;">${c.nombre}</td>
+              <td style="padding:6px 8px;color:var(--text-muted);">${c.plataforma||'—'}</td>
+              <td style="padding:6px 8px;"><span style="padding:2px 8px;border-radius:10px;background:${c.estado==='Activa'?'#dcfce7':'#f1f5f9'};color:${c.estado==='Activa'?'#16a34a':'#64748b'};font-size:11px;font-weight:600;">${c.estado||'—'}</span></td>
+              <td style="padding:6px 8px;">$${fmtNum(c.presupuesto)}</td>
+              <td style="padding:6px 8px;">$${fmtNum(c.gastado)}</td>
+              <td style="padding:6px 8px;font-weight:700;color:${parseFloat(roas)>=2?'#16a34a':'#dc2626'}">${roas}x</td>
+            </tr>`;}).join('')}
+            <tr style="background:#f8fafc;font-weight:700;">
+              <td colspan="3" style="padding:6px 8px;">TOTALES</td>
+              <td style="padding:6px 8px;">$${fmtNum(totalPresup)}</td>
+              <td style="padding:6px 8px;">$${fmtNum(totalGastado)}</td>
+              <td style="padding:6px 8px;color:${parseFloat(roasTotal)>=2?'#16a34a':'#dc2626'}">${roasTotal}x</td>
+            </tr>
+          </tbody>
+        </table>` : '<p style="color:var(--text-muted);font-size:13px;">Sin campañas registradas.</p>'}
+      </div>
+
+      <!-- Insights -->
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#b45309;margin-bottom:10px;">💡 Insights y Sugerencias</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+          ${insights.map(i=>`<li style="font-size:13px;color:#78350f;line-height:1.5;">${i}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('reporteModal').classList.remove('hidden');
+};
+
+document.getElementById('closeReporteModal').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteModal2').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
 
 window.openCampanaModal = function(id) {
   editingCampana = id ? STATE.campanas.find(c => c.id === id) : null;
@@ -1503,6 +2779,12 @@ function initKanbanDrag(boardSelector, items, onDrop) {
 // ──────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────
+// Normalize linkDrive/linkDriveRef — supports old string or new array
+function firstLink(val) {
+  if (!val) return '';
+  return Array.isArray(val) ? (val[0] || '') : val;
+}
+
 function fmtDate(d) {
   if (!d) return '';
   try { return new Date(d + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch { return d; }
@@ -1528,13 +2810,15 @@ function statusDot(estado) {
 }
 
 function platBadge(plat) {
+  if (!plat) return '';
   const map = { Instagram:'plat-ig', Facebook:'plat-fb', LinkedIn:'plat-li', Twitter:'plat-tw' };
-  const icons = { Instagram:'📸', Facebook:'📘', LinkedIn:'💼', Twitter:'🐦' };
-  return `<span class="plat-badge ${map[plat]||''}">${icons[plat]||''} ${plat}</span>`;
+  const abbr = { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' };
+  return `<span class="plat-badge ${map[plat]||''}">${abbr[plat]||(plat.slice(0,2).toUpperCase())} · ${plat}</span>`;
 }
 
 function platIcon(plat) {
-  return { Instagram:'📸', Facebook:'📘', LinkedIn:'💼', Twitter:'🐦' }[plat] || '';
+  if (!plat) return '';
+  return { Instagram:'IG', Facebook:'FB', LinkedIn:'LI', Twitter:'TW' }[plat] || plat.slice(0,2).toUpperCase();
 }
 
 function driveThumb(url) {
@@ -1593,7 +2877,7 @@ document.getElementById('saveLinkBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('lf-titulo').value.trim();
   const url = document.getElementById('lf-url').value.trim();
   if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
-  const obj = { ...(_editingLink || {}), id: _editingLink?.id || Date.now(), titulo, url, desc: document.getElementById('lf-desc').value.trim() };
+  const obj = { ...(_editingLink || {}), id: _editingLink?.id || Date.now(), titulo, url, desc: document.getElementById('lf-desc').value.trim(), categoria: (document.getElementById('lf-categoria')?.value || '').trim() };
   if (_editingLink) {
     const i = STATE.links.findIndex(l => l.id === obj.id);
     STATE.links[i] = obj;
@@ -1638,10 +2922,377 @@ document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
   renderContTab('ideas');
 });
 
+// ── Sitio Web modal wiring ─────────────────────────────
+function closeWebTaskModal() { document.getElementById('webTaskModal').classList.add('hidden'); }
+document.getElementById('closeWebTaskModal').addEventListener('click', closeWebTaskModal);
+document.getElementById('closeWebTaskModal2').addEventListener('click', closeWebTaskModal);
+
+document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
+  const titulo = document.getElementById('wt-titulo').value.trim();
+  if (!titulo) { alert('La descripción es obligatoria.'); return; }
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    if (!STATE.home.webTareas) STATE.home.webTareas = [];
+    const obj = {
+      ...(_editingWebTask || {}),
+      id: _editingWebTask?.id || Date.now(),
+      titulo,
+      categoria: document.getElementById('wt-categoria').value,
+      estado: document.getElementById('wt-estado').value,
+      vencimiento: document.getElementById('wt-vencimiento').value || null,
+      url: document.getElementById('wt-url').value.trim() || null,
+      notas: document.getElementById('wt-notas').value.trim(),
+    };
+    if (_editingWebTask) {
+      const i = STATE.home.webTareas.findIndex(t => t.id === obj.id);
+      STATE.home.webTareas[i] = obj;
+    } else {
+      STATE.home.webTareas.push(obj);
+    }
+    await saveHomeData(clientId, STATE.home);
+    closeWebTaskModal();
+    renderSection(currentSection);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+});
+
+document.getElementById('deleteWebTaskBtn').addEventListener('click', async () => {
+  if (!_editingWebTask || !confirm('¿Eliminar esta tarea?')) return;
+  STATE.home.webTareas = (STATE.home.webTareas||[]).filter(t => t.id !== _editingWebTask.id);
+  await saveHomeData(clientId, STATE.home);
+  closeWebTaskModal();
+  renderSection(currentSection);
+});
+
+window.eliminarWebTask = async function(id) {
+  if (!confirm('¿Eliminar esta tarea?')) return;
+  STATE.home.webTareas = (STATE.home.webTareas||[]).filter(t => String(t.id) !== String(id));
+  await saveHomeData(clientId, STATE.home);
+  renderSection(currentSection);
+};
+
+// ── Aprobación de contenido ────────────────────────────
+window.aprobarContenido = async function(id) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.estado = 'Aprobado';
+  await saveContenido(clientId, c);
+  STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
+  renderContTab(activeContTab);
+  // Notificar al cliente por email
+  if (STATE.client.email) {
+    const { WORKER_URL } = await import('./firebase.js');
+    const { getSessionToken } = await import('./auth.js');
+    fetch(WORKER_URL + '/email/aprobado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+      body: JSON.stringify({
+        toEmail: STATE.client.email,
+        toName: STATE.client.nombre || STATE.client.name || '',
+        titulo: c.titulo || '',
+        tipo: c.tipo || '',
+        cuenta: c.cuenta || c.red || '',
+        fechaPub: c.fechaPub || '',
+      }),
+    }).catch(() => {});
+  }
+};
+
+window.rechazarContenido = async function(id) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  const motivo = prompt('Motivo del rechazo (opcional):');
+  if (motivo === null) return;
+  c.estado = 'En proceso';
+  if (motivo) c.notas = `[Rechazado: ${motivo}]${c.notas ? ' — ' + c.notas : ''}`;
+  await saveContenido(clientId, c);
+  STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
+  renderContTab(activeContTab);
+};
+
+// ── Comentarios ────────────────────────────────────────
+function renderComments(ctx, comments) {
+  const prefix = ctx === 'cont' ? 'cont' : 'tarea';
+  const listEl = document.getElementById(`${prefix}-comments-list`);
+  if (!listEl) return;
+  if (!comments || !comments.length) {
+    listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
+    return;
+  }
+  listEl.innerHTML = comments.map(c => {
+    const inicial = (c.autor || '?')[0].toUpperCase();
+    const textoHtml = (c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+    return `
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
+      <div style="flex:1;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:700;color:var(--text);">${c.autor || 'Anónimo'}</span>
+          <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
+        </div>
+        <p style="font-size:13px;margin:0;color:var(--text);">${textoHtml}</p>
+      </div>
+    </div>`;
+  }).join('');
+  listEl.scrollTop = listEl.scrollHeight;
+}
+
+function getMentionUsers() {
+  const usuarios = STATE.client.usuarios || [];
+  const all = [
+    ...COSMART_TEAM,
+    ...usuarios,
+    { nombre: user.name || user.email.split('@')[0], email: user.email },
+  ];
+  const seen = new Set();
+  return all.filter(u => { if (seen.has(u.email)) return false; seen.add(u.email); return true; });
+}
+
+function getAsignarOptions(currentEmail) {
+  const clientTeam = (STATE.client.usuarios || []);
+  const all = [...COSMART_TEAM, ...clientTeam];
+  const seen = new Set();
+  const unique = all.filter(u => { if (seen.has(u.email)) return false; seen.add(u.email); return true; });
+  return '<option value="">Sin asignar</option>' + unique.map(u =>
+    `<option value="${u.email}" data-nombre="${u.nombre}" ${currentEmail === u.email ? 'selected' : ''}>${u.nombre} — ${u.email}</option>`
+  ).join('');
+}
+
+function setupMentionAutocomplete(inputId, dropdownId) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
+  input.addEventListener('input', () => {
+    const val = input.value;
+    const atIdx = val.lastIndexOf('@');
+    if (atIdx === -1) { dropdown.classList.add('hidden'); return; }
+    const query = val.slice(atIdx + 1).toLowerCase();
+    const users = getMentionUsers().filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+    if (!users.length) { dropdown.classList.add('hidden'); return; }
+    dropdown.innerHTML = users.map(u => `
+      <div class="mention-item" data-nombre="${u.nombre}">
+        <div class="mention-avatar">${u.nombre[0].toUpperCase()}</div>
+        <div><div style="font-weight:600;font-size:12px;">${u.nombre}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
+      </div>`).join('');
+    dropdown.classList.remove('hidden');
+    dropdown.querySelectorAll('.mention-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const nombre = item.dataset.nombre;
+        const atIdx2 = input.value.lastIndexOf('@');
+        input.value = input.value.slice(0, atIdx2) + '@' + nombre + ' ';
+        dropdown.classList.add('hidden');
+        input.focus();
+      });
+    });
+  });
+  input.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 150));
+}
+
+async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
+  const prefix = ctx === 'cont' ? 'cont' : 'tarea';
+  const input = document.getElementById(`${prefix}-comment-input`);
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto) return;
+  if (!editingObj) {
+    input.placeholder = '⚠ Guardá primero para comentar';
+    setTimeout(() => { input.placeholder = '@usuario — escribí un comentario...'; }, 2000);
+    return;
+  }
+  const autorNombre = user.name || user.email.split('@')[0];
+  const comment = { autor: autorNombre, email: user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
+  if (!editingObj.comentarios) editingObj.comentarios = [];
+  editingObj.comentarios.push(comment);
+  await saveFn(clientId, editingObj);
+  const i = stateArr.findIndex(x => x.id === editingObj.id);
+  if (i >= 0) stateArr[i] = editingObj;
+  input.value = '';
+  renderComments(ctx, editingObj.comentarios);
+  // Notificar por email a los usuarios mencionados con @
+  const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
+  const allUsers = getMentionUsers();
+  const { WORKER_URL } = await import('./firebase.js');
+  const { getSessionToken } = await import('./auth.js');
+  mencionados.forEach(nombre => {
+    const u = allUsers.find(u => u.nombre.toLowerCase() === nombre.toLowerCase());
+    if (u && u.email && u.email !== user.email) {
+      fetch(WORKER_URL + '/email/mencion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: u.email,
+          toName: u.nombre,
+          mencionador: autorNombre,
+          contexto: editingObj.titulo || '',
+          tipo: ctx === 'cont' ? 'contenido' : 'tarea',
+          clientId,
+          itemId: String(editingObj.id),
+          itemTitulo: editingObj.titulo || '',
+          asignadorNombre: autorNombre,
+        }),
+      }).catch(() => {});
+      fetch(WORKER_URL + '/todos/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: u.email,
+          toNombre: u.nombre,
+          tipo: 'mencion',
+          clientId,
+          clientNombre: STATE.client.nombre || STATE.client.name || clientId,
+          itemId: String(editingObj.id),
+          itemTitulo: editingObj.titulo || '',
+          contexto: texto,
+          asignadorNombre: autorNombre,
+        }),
+      }).catch(() => {});
+    }
+  });
+}
+
+window.addContenidoComment = () => doAddComment('cont', editingContenido, saveContenido, STATE.contenidos);
+window.addTareaComment = () => doAddComment('tarea', editingTarea, saveTarea, STATE.tareas);
+
+// Inicializar autocomplete de mentions al cargar
+setTimeout(() => {
+  setupMentionAutocomplete('cont-comment-input', 'cont-mention-list');
+  setupMentionAutocomplete('tarea-comment-input', 'tarea-mention-list');
+}, 200);
+
+// ── Gestión de equipo ──────────────────────────────────
+window.openEquipoModal = function() {
+  renderEquipoList();
+  document.getElementById('eq-nombre').value = '';
+  document.getElementById('eq-email').value = '';
+  document.getElementById('eq-rol').value = 'Responsable COSMART';
+  document.getElementById('equipoModal').classList.remove('hidden');
+};
+
+function renderEquipoList() {
+  const usuarios = STATE.client.usuarios || [];
+  const list = document.getElementById('equipo-list');
+  if (!list) return;
+  if (!usuarios.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Sin usuarios agregados todavía.</p>';
+    return;
+  }
+  list.innerHTML = usuarios.map((u, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${u.nombre}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${u.email} · <span style="color:var(--accent);">${u.rol||'Usuario'}</span></div>
+      </div>
+      <button onclick="eliminarUsuarioEquipo(${i})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:2px 6px;" title="Eliminar">×</button>
+    </div>
+  `).join('');
+}
+
+window.agregarUsuarioEquipo = async function() {
+  const nombre = document.getElementById('eq-nombre').value.trim();
+  const email = document.getElementById('eq-email').value.trim();
+  const rol = document.getElementById('eq-rol').value;
+  if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+  if (!STATE.client.usuarios) STATE.client.usuarios = [];
+  if (STATE.client.usuarios.length >= 5) { alert('Límite alcanzado: podés tener hasta 5 miembros en tu equipo.'); return; }
+  if (STATE.client.usuarios.find(u => u.email === email)) { alert('Ya existe un usuario con ese email.'); return; }
+  STATE.client.usuarios.push({ nombre, email, rol });
+  await saveClientData(clientId, { usuarios: STATE.client.usuarios });
+  document.getElementById('eq-nombre').value = '';
+  document.getElementById('eq-email').value = '';
+  renderEquipoList();
+};
+
+window.eliminarUsuarioEquipo = async function(idx) {
+  if (!confirm('¿Eliminar este usuario del equipo?')) return;
+  STATE.client.usuarios.splice(idx, 1);
+  await saveClientData(clientId, { usuarios: STATE.client.usuarios });
+  renderEquipoList();
+};
+
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
+
+// ── Mobile sidebar toggle ──────────────────────────────
+const _sidebar = document.querySelector('.sidebar');
+const _sidebarOverlay = document.getElementById('sidebar-overlay');
+const _sidebarToggle = document.getElementById('sidebar-toggle');
+
+function openMobileSidebar() {
+  _sidebar.classList.add('open');
+  _sidebarOverlay.classList.add('active');
+}
+function closeMobileSidebar() {
+  _sidebar.classList.remove('open');
+  _sidebarOverlay.classList.remove('active');
+}
+
+_sidebarToggle?.addEventListener('click', () => {
+  _sidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+});
+_sidebarOverlay?.addEventListener('click', closeMobileSidebar);
+
+// Cerrar al navegar en mobile
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
+});
+
+// ── Bottom nav mobile ──────────────────────────────────
+const _bottomNav = document.getElementById('mobile-bottom-nav');
+
+function updateBottomNav(sec) {
+  if (!_bottomNav) return;
+  _bottomNav.querySelectorAll('.bnav-btn[data-section]').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sec);
+  });
+}
+
+function updateFab(sec) {
+  const fab = document.getElementById('fab-btn');
+  if (!fab) return;
+  const fabSections = { home: () => openTareaModal(null), contenidos: () => openContenidoModal(null), tareas: () => openTareaModal(null) };
+  if (fabSections[sec] && window.innerWidth <= 768) {
+    fab.style.display = 'flex';
+    fab.onclick = fabSections[sec];
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+// Bottom nav clicks
+_bottomNav?.querySelectorAll('.bnav-btn[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => renderSection(btn.dataset.section));
+});
+
+// Botón "Más" → abre sidebar
+document.getElementById('bnav-more')?.addEventListener('click', openMobileSidebar);
+
+// Badge tareas en bottom nav
+function updateBnavBadge() {
+  const badge = document.getElementById('bnav-badge-tareas');
+  if (!badge) return;
+  const vencidas = (STATE.tareas || []).filter(t => !t.archivado && t.vencimiento && t.vencimiento < new Date().toISOString().split('T')[0]).length;
+  badge.textContent = vencidas || '';
+  badge.classList.toggle('visible', vencidas > 0);
+}
+
+
+// ── Collapsible avanzado en modal contenido ────────────
+window.toggleContAdvanced = function() {
+  const section = document.getElementById('cont-advanced');
+  const btn = document.getElementById('cont-advanced-toggle');
+  if (!section || !btn) return;
+  const isOpen = section.classList.contains('open');
+  section.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  btn.innerHTML = `<i data-lucide="${isOpen ? 'chevron-down' : 'chevron-up'}" style="width:14px;height:14px;stroke-width:2;"></i> ${isOpen ? 'Ver más opciones' : 'Ocultar opciones avanzadas'}`;
+  refreshIcons();
+};
 
 // ── Start ──────────────────────────────────────────────
 function refreshIcons() {
