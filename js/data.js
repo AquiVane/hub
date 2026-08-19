@@ -127,6 +127,20 @@ export async function saveContenido(clientId, contenido) {
   return contenido;
 }
 
+export async function saveContenidosBulk(clientId, contenidos) {
+  const withIds = contenidos.map((c, i) => ({ ...c, id: 'c' + Date.now() + '_' + i }));
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.contenidos.push(...withIds);
+    saveDemoData(clientId, data);
+    return withIds;
+  }
+  const list = await api('GET', `/data/${clientId}/contenidos`);
+  list.push(...withIds);
+  await api('POST', `/data/${clientId}/contenidos`, list);
+  return withIds;
+}
+
 export async function deleteContenido(clientId, id) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
@@ -195,6 +209,20 @@ export async function saveCampana(clientId, campana) {
   else { campana.id = 'p' + Date.now(); list.push(campana); }
   await api('POST', `/data/${clientId}/campanas`, list);
   return campana;
+}
+
+export async function saveCampanasBulk(clientId, campanas) {
+  const withIds = campanas.map((c, i) => ({ ...c, id: 'p' + Date.now() + '_' + i }));
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.campanas.push(...withIds);
+    saveDemoData(clientId, data);
+    return withIds;
+  }
+  const list = await api('GET', `/data/${clientId}/campanas`);
+  list.push(...withIds);
+  await api('POST', `/data/${clientId}/campanas`, list);
+  return withIds;
 }
 
 // ── Métricas ──────────────────────────────────────────────────

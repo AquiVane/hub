@@ -1,8 +1,8 @@
 import { requireAuth, logoutUser } from './auth.js';
 import {
-  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido,
+  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk,
   getTareas, saveTarea, deleteTarea,
-  getCampanas, saveCampana, deleteCampana,
+  getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
   getPlan
@@ -142,6 +142,11 @@ function renderSection(sec) {
     rptBtn.textContent = '📊 Reporte';
     rptBtn.onclick = () => openReporteModal();
     actions.appendChild(rptBtn);
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn btn-secondary';
+    importBtn.textContent = '📥 Importar Excel';
+    importBtn.onclick = () => openImportModal();
+    actions.appendChild(importBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nuevo contenido';
@@ -160,6 +165,11 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'pauta') {
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn btn-secondary';
+    importBtn.textContent = '📥 Importar Excel';
+    importBtn.onclick = () => openImportCampanasModal();
+    actions.appendChild(importBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nueva campaña';
@@ -1696,6 +1706,221 @@ document.getElementById('deleteContenidoBtn').addEventListener('click', async ()
 });
 
 // ──────────────────────────────────────────────────────
+// IMPORTAR CONTENIDOS DESDE EXCEL
+// ──────────────────────────────────────────────────────
+const IMPORT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const IMPORT_PAUTA_MAP = {
+  'solo organico': 'organico',
+  'si dark post': 'dark',
+  'si dark + organico': 'dark-organico',
+  'si dark organico': 'dark-organico',
+  organico: 'organico',
+  dark: 'dark',
+  'dark-organico': 'dark-organico',
+};
+// header normalizado (sin acentos, minúscula) -> campo del contenido
+const IMPORT_HEADER_MAP = {
+  'titulo del contenido': 'titulo',
+  titulo: 'titulo',
+  'fecha de publicacion': 'fechaPub',
+  fecha: 'fechaPub',
+  estado: 'estado',
+  cuenta: 'cuenta',
+  plataformas: 'plataformas',
+  plataforma: 'plataformas',
+  ubicacion: 'ubicacion',
+  formato: 'formato',
+  dimensiones: 'dimensiones',
+  dimension: 'dimensiones',
+  'eje de comunicacion': 'eje',
+  eje: 'eje',
+  'tipo de contenido': 'tipo',
+  tipo: 'tipo',
+  objetivo: 'objetivo',
+  'copy / texto del post': 'copy',
+  'copy texto del post': 'copy',
+  copy: 'copy',
+  pauta: 'pauta',
+  'link pieza terminada': 'linkDrive',
+  'link material de referencia': 'linkDriveRef',
+  'notas internas': 'notas',
+  notas: 'notas',
+};
+
+const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
+
+function normalizeHeader(h) {
+  return String(h || '')
+    .toLowerCase()
+    .replace(/[áéíóúñü]/g, ch => ACCENT_MAP[ch] || ch)
+    .replace(/[^a-z0-9/ ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function importParseFecha(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0'), d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  return s;
+}
+
+function importSplitMulti(val) {
+  if (!val) return [];
+  return String(val).split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function importParsePauta(val) {
+  const norm = normalizeHeader(val).replace(/–|—/g, '-');
+  return IMPORT_PAUTA_MAP[norm] || 'organico';
+}
+
+let _importRows = []; // filas parseadas y válidas, listas para importar
+
+function openImportModal() {
+  _importRows = [];
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-status').textContent = '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('confirmImportBtn').disabled = true;
+  document.getElementById('importContenidoModal').classList.remove('hidden');
+  loadXLSXLib();
+}
+window.openImportModal = openImportModal;
+
+let _xlsxLoadPromise = null;
+function loadXLSXLib() {
+  if (window.XLSX) return Promise.resolve();
+  if (_xlsxLoadPromise) return _xlsxLoadPromise;
+  _xlsxLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return _xlsxLoadPromise;
+}
+
+function closeImportModal() {
+  document.getElementById('importContenidoModal').classList.add('hidden');
+}
+document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
+document.getElementById('closeImportModal2').addEventListener('click', closeImportModal);
+
+document.getElementById('import-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('import-status');
+  const previewEl = document.getElementById('import-preview');
+  const confirmBtn = document.getElementById('confirmImportBtn');
+  previewEl.innerHTML = '';
+  confirmBtn.disabled = true;
+  _importRows = [];
+  if (!file) return;
+
+  statusEl.textContent = 'Leyendo archivo…';
+  try {
+    await loadXLSXLib();
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetName = wb.SheetNames.find(n => normalizeHeader(n) === 'contenidos') || wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+    const headerRow = raw[0].map(normalizeHeader);
+    const fieldByCol = headerRow.map(h => IMPORT_HEADER_MAP[h] || null);
+
+    const valid = [];
+    const errores = [];
+    for (let r = 1; r < raw.length; r++) {
+      const dataRow = raw[r];
+      if (!dataRow || dataRow.every(v => v === '' || v == null)) continue; // fila vacía
+      const obj = {};
+      fieldByCol.forEach((field, ci) => {
+        if (field) obj[field] = dataRow[ci];
+      });
+
+      const titulo = String(obj.titulo || '').trim();
+      const cuenta = String(obj.cuenta || '').trim();
+      const plataformas = importSplitMulti(obj.plataformas);
+      const formato = importSplitMulti(obj.formato);
+
+      if (!titulo || !cuenta || !plataformas.length || !formato.length) {
+        errores.push(`Fila ${r + 1}: faltan datos obligatorios (título, cuenta, plataformas o formato).`);
+        continue;
+      }
+
+      const estadoRaw = String(obj.estado || '').trim();
+      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : 'Idea';
+
+      valid.push({
+        titulo,
+        fechaPub: importParseFecha(obj.fechaPub),
+        estado,
+        cuenta,
+        plataformas,
+        ubicacion: importSplitMulti(obj.ubicacion),
+        formato,
+        dimensiones: importSplitMulti(obj.dimensiones),
+        eje: String(obj.eje || '').trim(),
+        tipo: String(obj.tipo || '').trim(),
+        objetivo: String(obj.objetivo || '').trim(),
+        copy: String(obj.copy || '').trim(),
+        pauta: importParsePauta(obj.pauta),
+        linkDrive: importSplitMulti(obj.linkDrive),
+        linkDriveRef: importSplitMulti(obj.linkDriveRef),
+        notas: String(obj.notas || '').trim(),
+        comentarios: [],
+        asignado: null,
+      });
+    }
+
+    _importRows = valid;
+    statusEl.textContent = `${valid.length} contenido(s) listos para importar${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
+
+    previewEl.innerHTML = `
+      ${valid.length ? `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+        <thead><tr><th>Fecha</th><th>Título</th><th>Plataformas</th><th>Estado</th><th>Cuenta</th></tr></thead>
+        <tbody>
+          ${valid.map(c => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`).join('')}
+        </tbody>
+      </table></div>` : ''}
+      ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
+    `;
+    confirmBtn.disabled = !valid.length;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+  }
+});
+
+document.getElementById('confirmImportBtn').addEventListener('click', async () => {
+  if (!_importRows.length) return;
+  const btn = document.getElementById('confirmImportBtn');
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try {
+    const saved = await saveContenidosBulk(clientId, _importRows);
+    STATE.contenidos.push(...saved);
+    closeImportModal();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+  } catch (err) {
+    console.error(err);
+    alert('Hubo un error al importar. Probá de nuevo.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
+});
+
+// ──────────────────────────────────────────────────────
 // TAREAS
 // ──────────────────────────────────────────────────────
 function renderTareas(container) {
@@ -2602,6 +2827,158 @@ document.getElementById('deleteCampanaBtn').addEventListener('click', async () =
   STATE.campanas = STATE.campanas.filter(c => c.id !== editingCampana.id);
   closeCampanaModal();
   renderPauta(document.getElementById('main-content'));
+});
+
+// ──────────────────────────────────────────────────────
+// IMPORTAR CAMPAÑAS DESDE EXCEL
+// ──────────────────────────────────────────────────────
+const IMPORT_CAMPANA_ESTADOS = ['Activa', 'Pausada', 'Finalizada', 'Borrador'];
+const IMPORT_CAMPANA_PLATAFORMAS = ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
+const IMPORT_CAMPANA_HEADER_MAP = {
+  nombre: 'nombre',
+  plataforma: 'plataforma',
+  estado: 'estado',
+  'presupuesto total': 'presupuesto',
+  presupuesto: 'presupuesto',
+  'gastado hasta hoy': 'gastado',
+  gastado: 'gastado',
+  'fecha inicio': 'fechaInicio',
+  'fecha fin': 'fechaFin',
+  impresiones: 'impresiones',
+  alcance: 'alcance',
+  clics: 'clics',
+  cpm: 'cpm',
+  cpc: 'cpc',
+  ctr: 'ctr',
+  'visitas en pagina de destino': 'visitas',
+  visitas: 'visitas',
+  conversiones: 'conversiones',
+  'ingresos generados': 'ingresos',
+  ingresos: 'ingresos',
+  'roas de equilibrio break-even': 'roasEq',
+  'roas de equilibrio': 'roasEq',
+  roaseq: 'roasEq',
+};
+
+function importCampanaNum(val) {
+  if (val === '' || val == null) return 0;
+  const n = parseFloat(String(val).replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+let _importCampanaRows = [];
+
+function openImportCampanasModal() {
+  _importCampanaRows = [];
+  document.getElementById('import-campana-file-input').value = '';
+  document.getElementById('import-campana-status').textContent = '';
+  document.getElementById('import-campana-preview').innerHTML = '';
+  document.getElementById('confirmImportCampanaBtn').disabled = true;
+  document.getElementById('importCampanaModal').classList.remove('hidden');
+  loadXLSXLib();
+}
+window.openImportCampanasModal = openImportCampanasModal;
+
+function closeImportCampanaModal() {
+  document.getElementById('importCampanaModal').classList.add('hidden');
+}
+document.getElementById('closeImportCampanaModal').addEventListener('click', closeImportCampanaModal);
+document.getElementById('closeImportCampanaModal2').addEventListener('click', closeImportCampanaModal);
+
+document.getElementById('import-campana-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('import-campana-status');
+  const previewEl = document.getElementById('import-campana-preview');
+  const confirmBtn = document.getElementById('confirmImportCampanaBtn');
+  previewEl.innerHTML = '';
+  confirmBtn.disabled = true;
+  _importCampanaRows = [];
+  if (!file) return;
+
+  statusEl.textContent = 'Leyendo archivo…';
+  try {
+    await loadXLSXLib();
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetName = wb.SheetNames.find(n => normalizeHeader(n) === 'campanas') || wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+    const headerRow = raw[0].map(normalizeHeader);
+    const fieldByCol = headerRow.map(h => IMPORT_CAMPANA_HEADER_MAP[h] || null);
+
+    const valid = [];
+    const errores = [];
+    for (let r = 1; r < raw.length; r++) {
+      const dataRow = raw[r];
+      if (!dataRow || dataRow.every(v => v === '' || v == null)) continue;
+      const obj = {};
+      fieldByCol.forEach((field, ci) => { if (field) obj[field] = dataRow[ci]; });
+
+      const nombre = String(obj.nombre || '').trim();
+      if (!nombre) { errores.push(`Fila ${r + 1}: falta el nombre de la campaña.`); continue; }
+
+      const plataformaRaw = String(obj.plataforma || '').trim();
+      const plataforma = IMPORT_CAMPANA_PLATAFORMAS.includes(plataformaRaw) ? plataformaRaw : 'Meta Ads';
+      const estadoRaw = String(obj.estado || '').trim();
+      const estado = IMPORT_CAMPANA_ESTADOS.includes(estadoRaw) ? estadoRaw : 'Activa';
+      const gastado = importCampanaNum(obj.gastado);
+      const ingresos = importCampanaNum(obj.ingresos);
+
+      valid.push({
+        nombre, plataforma, estado,
+        presupuesto: importCampanaNum(obj.presupuesto),
+        gastado,
+        fechaInicio: importParseFecha(obj.fechaInicio),
+        fechaFin: importParseFecha(obj.fechaFin),
+        impresiones: importCampanaNum(obj.impresiones),
+        alcance: importCampanaNum(obj.alcance),
+        clics: importCampanaNum(obj.clics),
+        cpm: importCampanaNum(obj.cpm),
+        cpc: importCampanaNum(obj.cpc),
+        ctr: importCampanaNum(obj.ctr),
+        visitas: importCampanaNum(obj.visitas),
+        conversiones: importCampanaNum(obj.conversiones),
+        ingresos,
+        roasEq: importCampanaNum(obj.roasEq),
+      });
+    }
+
+    _importCampanaRows = valid;
+    statusEl.textContent = `${valid.length} campaña(s) lista(s) para importar${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
+
+    previewEl.innerHTML = `
+      ${valid.length ? `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+        <thead><tr><th>Nombre</th><th>Plataforma</th><th>Estado</th><th>Presup.</th><th>Inicio</th><th>Fin</th></tr></thead>
+        <tbody>
+          ${valid.map(c => `<tr><td>${c.nombre}</td><td>${c.plataforma}</td><td>${c.estado}</td><td>$${c.presupuesto}</td><td>${c.fechaInicio || '—'}</td><td>${c.fechaFin || '—'}</td></tr>`).join('')}
+        </tbody>
+      </table></div>` : ''}
+      ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
+    `;
+    confirmBtn.disabled = !valid.length;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+  }
+});
+
+document.getElementById('confirmImportCampanaBtn').addEventListener('click', async () => {
+  if (!_importCampanaRows.length) return;
+  const btn = document.getElementById('confirmImportCampanaBtn');
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try {
+    const saved = await saveCampanasBulk(clientId, _importCampanaRows);
+    STATE.campanas.push(...saved);
+    closeImportCampanaModal();
+    renderPauta(document.getElementById('main-content'));
+  } catch (err) {
+    console.error(err);
+    alert('Hubo un error al importar. Probá de nuevo.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
 });
 
 // ──────────────────────────────────────────────────────
