@@ -2348,7 +2348,7 @@ window.dropLinkOn = async function(targetId) {
 
 let _editingLink = null;
 window.openLinkModal = function(id) {
-  _editingLink = id ? STATE.links.find(l => l.id === id) : null;
+  _editingLink = id ? STATE.links.find(l => String(l.id) === String(id)) : null;
   const l = _editingLink || {};
   document.getElementById('link-modal-title').textContent = _editingLink ? 'Editar link' : 'Nuevo link';
   document.getElementById('lf-titulo').value = l.titulo || '';
@@ -2541,6 +2541,7 @@ function renderInstrucciones(container) {
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
+          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
           'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
@@ -2554,11 +2555,16 @@ function renderInstrucciones(container) {
           'El <strong>ROAS</strong> se calcula automáticamente (Ingresos ÷ Gastado).',
           'Definí tu <strong>ROAS de equilibrio</strong> para saber si la campaña es rentable.',
           'La barra de progreso muestra el % del presupuesto ejecutado.',
+          '<strong>📥 Importar Excel:</strong> subí varias campañas de una desde una planilla, sin cargarlas a mano.',
         ]},
         { icon:'file-text', title:'Reporte Ejecutivo', color:'#e02020', items:[
           'Generá un reporte mensual para presentar a gerencia: contenidos publicados, métricas, campañas e insights.',
           'Accedé desde el botón "📊 Reporte" en la sección Contenidos.',
           'Podés imprimir o guardar como PDF con Ctrl+P.',
+        ]},
+        { icon:'folder-open', title:'Archivos importantes', color:'#7c3aed', items:[
+          'Guardá los documentos clave del cliente: contratos, briefings, manuales de marca, carpetas de Drive/Dropbox.',
+          'Cada archivo es un link con título, tipo (Drive, Dropbox, PDF, Documento, Planilla u Otro) y descripción opcional.',
         ]},
         { icon:'link', title:'Links', color:'#0d9488', items:[
           'Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes, portales.',
