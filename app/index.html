@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="layout">
@@ -61,6 +60,12 @@
       </button>
       <button class="nav-item" data-section="web">
         <i data-lucide="globe" class="nav-icon"></i><span>Sitio Web</span>
+      </button>
+      <button class="nav-item" data-section="archivos">
+        <i data-lucide="folder-open" class="nav-icon"></i><span>Archivos importantes</span>
+      </button>
+      <button class="nav-item hidden" id="nav-plan" data-section="plan">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Plan de ejecución</span>
       </button>
       <button class="nav-item" data-section="instrucciones">
         <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
@@ -790,6 +795,28 @@
   </div>
 </div>
 
+<!-- Modal: Importar campañas desde Excel -->
+<div id="importCampanaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h3>Importar campañas desde Excel</h3>
+      <button class="modal-close" id="closeImportCampanaModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Subí el Excel de campañas de pauta. El sistema identifica las columnas por su nombre — no importa el orden. Fila 1 = encabezados, no la toques.
+      </p>
+      <input type="file" id="import-campana-file-input" accept=".xlsx,.xls" class="form-control">
+      <div id="import-campana-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+      <div id="import-campana-preview" style="margin-top:14px;max-height:340px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeImportCampanaModal2">Cancelar</button>
+      <button class="btn btn-primary" id="confirmImportCampanaBtn" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Agregar To-do -->
 <div id="todoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:400px;">
@@ -876,6 +903,46 @@
       <button class="btn btn-danger btn-sm" id="deleteLinkBtn" style="margin-right:auto;display:none;">Eliminar</button>
       <button class="btn btn-secondary" id="closeLinkModal2">Cancelar</button>
       <button class="btn btn-primary" id="saveLinkBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Archivo importante -->
+<div id="archivoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 id="archivo-modal-title">Nuevo archivo</h3>
+      <button class="modal-close" id="closeArchivoModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="af-titulo" class="form-control" placeholder="Ej: Manual de marca, Contrato, Briefing...">
+      </div>
+      <div class="form-group">
+        <label>URL *</label>
+        <input type="url" id="af-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="af-tipo" class="form-control">
+          <option>Drive</option>
+          <option>Dropbox</option>
+          <option>PDF</option>
+          <option>Documento</option>
+          <option>Planilla</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descripción (opcional)</label>
+        <input type="text" id="af-desc" class="form-control" placeholder="Ej: Versión actualizada agosto 2026">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deleteArchivoBtn" style="margin-right:auto;display:none;">Eliminar</button>
+      <button class="btn btn-secondary" id="closeArchivoModal2">Cancelar</button>
+      <button class="btn btn-primary" id="saveArchivoBtn">Guardar</button>
     </div>
   </div>
 </div>
