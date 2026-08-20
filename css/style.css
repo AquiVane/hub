@@ -53,7 +53,7 @@ input, select, textarea { font-family: inherit; }
   color: #fff;
   border-bottom: 1px solid rgba(255,255,255,.12);
   display: flex; flex-direction: column; gap: 2px;
-  background: rgba(0,0,0,.45);
+  background: var(--sidebar-hover);
 }
 .logo-icon-wrap { display: flex; align-items: center; margin-bottom: 6px; }
 .cosmart-logo-img { height: 24px; max-width: 100px; width: auto; object-fit: contain; }
@@ -463,6 +463,19 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .client-card-name { font-size: 15px; font-weight: 700; }
 .client-card-meta { font-size: 12px; color: var(--text-muted); }
 .client-card-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+.client-row-list { display: flex; flex-direction: column; gap: 6px; }
+.client-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.client-row-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.client-row-name { font-size: 13px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.client-row-menu-wrap { position: relative; flex-shrink: 0; }
+.client-row-menu-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 14px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; padding: 0; }
+.client-row-menu-btn:hover { background: #f1f5f9; }
+.client-row-menu { position: absolute; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 150px; z-index: 50; overflow: hidden; }
+.client-row-menu.hidden { display: none; }
+.client-row-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; font-size: 12px; background: none; border: none; cursor: pointer; color: var(--text); }
+.client-row-menu button:hover { background: #f1f5f9; }
+.client-row-menu button.danger { color: #E02020; }
 
 /* ── LOGIN ── */
 .login-page {
