@@ -53,7 +53,7 @@ input, select, textarea { font-family: inherit; }
   color: #fff;
   border-bottom: 1px solid rgba(255,255,255,.12);
   display: flex; flex-direction: column; gap: 2px;
-  background: var(--sidebar-active);
+  background: var(--sidebar-hover);
 }
 .logo-icon-wrap { display: flex; align-items: center; margin-bottom: 6px; }
 .cosmart-logo-img { height: 24px; max-width: 100px; width: auto; object-fit: contain; }
