@@ -876,6 +876,7 @@ function renderCalendario(container) {
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
       const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr);
+      const dayTareas = tareasVisibles(STATE.tareas).filter(t => t.vencimiento === dateStr && !t.archivado);
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -886,6 +887,12 @@ function renderCalendario(container) {
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
                onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
             ${(c.plataformas||[]).map(p=>platIcon(p)).join('')} ${c.titulo}
+          </div>
+        `).join('')}
+        ${dayTareas.map(t => `
+          <div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
+               onclick="openTareaModal('${t.id}')" title="Tarea: ${t.titulo}">
+            ✅ ${t.titulo}
           </div>
         `).join('')}
       </div>`;
@@ -2031,6 +2038,7 @@ window.toggleTareaListo = async function(id) {
   const t = STATE.tareas.find(x => x.id === id);
   if (!t) return;
   t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
+  if (t.estado === 'Listo') t.visibleParaCliente = true; // al terminarla, el cliente la puede ver
   const saved = await saveTarea(clientId, t);
   const i = STATE.tareas.findIndex(x => x.id === id);
   STATE.tareas[i] = saved;
@@ -2280,7 +2288,9 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
       ? { ...editingTarea.asignado, email: tfAsignadoEmail, nombre: tfAsignadoNombre }
       : { email: tfAsignadoEmail, nombre: tfAsignadoNombre }) : null;
     const tfVisibleClienteEl = document.getElementById('tf-visible-cliente');
-    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleClienteEl ? tfVisibleClienteEl.checked : true };
+    const tfEstadoVal = document.getElementById('tf-estado').value;
+    const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
+    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
