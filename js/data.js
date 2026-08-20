@@ -358,6 +358,16 @@ export async function createColaborador(data) {
   return api('POST', '/admin/colaboradores', data);
 }
 
+export async function getColaboradores() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/admin/colaboradores');
+}
+
+export async function updateColaborador(email, updates) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden editar colaboradores reales.'); return; }
+  return api('PATCH', `/admin/colaboradores/${encodeURIComponent(email)}`, updates);
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);
