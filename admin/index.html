@@ -25,6 +25,15 @@
       <button class="nav-item active" onclick="showSection('clientes')">
         <span class="icon">👥</span><span>Clientes</span>
       </button>
+      <button class="nav-item" onclick="showSection('mistareas')">
+        <span class="icon">✅</span><span>Mis tareas</span>
+      </button>
+      <button class="nav-item" onclick="showSection('colaboradores')">
+        <span class="icon">👤</span><span>Colaboradores</span>
+      </button>
+      <button class="nav-item" onclick="showSection('internas')">
+        <span class="icon">🏢</span><span>Tareas internas</span>
+      </button>
       <button class="nav-item" onclick="showSection('config')">
         <span class="icon">⚙️</span><span>Configuración</span>
       </button>
@@ -41,7 +50,9 @@
         <div class="topbar-title">Panel Admin</div>
         <div class="topbar-sub" id="adminName"></div>
       </div>
-      <div class="topbar-right">
+      <div class="topbar-right" style="position:relative;">
+        <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()">📋 Clientes ▾</button>
+        <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
         <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()">+ Nuevo cliente</button>
       </div>
@@ -56,6 +67,41 @@
           <span id="clientCount" class="text-muted text-sm"></span>
         </div>
         <div class="admin-grid" id="clientGrid">
+          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Mis tareas -->
+      <div id="sec-mistareas" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
+          <span id="misTareasCount" class="text-muted text-sm"></span>
+        </div>
+        <div id="misTareasList">
+          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Colaboradores -->
+      <div id="sec-colaboradores" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Colaboradores</h2>
+          <span id="colabCount" class="text-muted text-sm"></span>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
+        </div>
+        <div id="colabList">
+          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Tareas internas COSMART (no atadas a ningún cliente) -->
+      <div id="sec-internas" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Tareas internas COSMART</h2>
+          <span class="text-muted text-sm">No atadas a ningún cliente</span>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
+        </div>
+        <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
         </div>
       </div>
@@ -110,6 +156,84 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeNewColaboradorModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="createNewColaborador()">Crear colaborador</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar colaborador -->
+<div id="editColaboradorModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3>Editar colaborador</h3>
+      <button class="modal-close" onclick="closeEditColaboradorModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;" id="ec-email-label"></p>
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="ec-nombre" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="ec-activo">
+          Cuenta activa
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Clientes asignados</label>
+        <div id="ec-clientes-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditColaboradorModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditColaborador()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal tarea interna COSMART -->
+<div id="internaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 id="interna-modal-title">Nueva tarea interna</h3>
+      <button class="modal-close" onclick="closeInternaModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="in-titulo" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="in-estado" class="form-control">
+          <option>Sin empezar</option>
+          <option>En progreso</option>
+          <option>Listo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prioridad</label>
+        <select id="in-prioridad" class="form-control">
+          <option>Alta</option>
+          <option selected>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vencimiento</label>
+        <input type="date" id="in-vencimiento" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Asignar a</label>
+        <select id="in-asignado" class="form-control">
+          <option value="">Sin asignar</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:auto;display:none;" onclick="deleteInterna()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeInternaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInterna()">Guardar</button>
     </div>
   </div>
 </div>
@@ -359,7 +483,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData } from '../js/data.js';
+  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -383,11 +507,286 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','config'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','config'].forEach(s => {
       document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
+    if (sec === 'mistareas') loadMisTareas();
+    if (sec === 'colaboradores') loadColaboradores();
+    if (sec === 'internas') loadInternas();
+  };
+
+  window.toggleClientesMenu = async function() {
+    const dd = document.getElementById('clientesMenuDropdown');
+    const abrir = dd.classList.contains('hidden');
+    if (!abrir) { dd.classList.add('hidden'); return; }
+    dd.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Cargando...</div>';
+    dd.classList.remove('hidden');
+    const clients = await getAllClients();
+    const ordenados = [...clients].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
+    dd.innerHTML = ordenados.length ? ordenados.map(c => `
+      <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;text-decoration:none;color:var(--text);font-size:13px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
+        ${c.nombre || c.name || c.id}
+      </a>
+    `).join('') : '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Sin clientes todavía.</div>';
+  };
+  document.addEventListener('click', (e) => {
+    const dd = document.getElementById('clientesMenuDropdown');
+    const btn = document.getElementById('btnClientesMenu');
+    if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && e.target !== btn) dd.classList.add('hidden');
+  });
+
+  const INTERNAS_CLIENT_ID = '_cosmart';
+  let _internasCache = [];
+  let _editingInterna = null;
+
+  async function loadInternas() {
+    const board = document.getElementById('internasBoard');
+    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    try {
+      _internasCache = await getTareas(INTERNAS_CLIENT_ID);
+      renderInternasBoard();
+    } catch (e) {
+      board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  }
+
+  function renderInternasBoard() {
+    const board = document.getElementById('internasBoard');
+    const cols = [
+      { key: 'Sin empezar', color: '#94a3b8' },
+      { key: 'En progreso', color: '#3b82f6' },
+      { key: 'Listo', color: '#10b981' },
+    ];
+    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    board.innerHTML = cols.map(col => {
+      const items = _internasCache.filter(t => t.estado === col.key && !t.archivado);
+      return `
+        <div class="kanban-col" style="flex:1;max-width:none;">
+          <div class="kanban-col-header">
+            <span class="kanban-col-dot" style="background:${col.color};"></span>
+            <span class="col-title">${col.key}</span>
+            <span class="col-count">${items.length}</span>
+          </div>
+          <div class="kanban-cards">
+            ${items.map(t => `
+              <div class="kanban-card" onclick="openInternaModal('${t.id}')">
+                <div style="display:flex;align-items:flex-start;gap:8px;">
+                  <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
+                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
+                </div>
+                ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
+                ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">📅 ${t.vencimiento}</div>` : ''}
+                ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:var(--primary);">👤 ${t.asignado.nombre}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <button class="kanban-add-btn" onclick="openInternaModal(null,'${col.key}')">+ Agregar</button>
+        </div>`;
+    }).join('');
+  }
+
+  window.openInternaModal = async function(id, defaultEstado) {
+    _editingInterna = id ? _internasCache.find(t => t.id === id) : null;
+    const t = _editingInterna || {};
+    document.getElementById('interna-modal-title').textContent = _editingInterna ? 'Editar tarea interna' : 'Nueva tarea interna';
+    document.getElementById('in-titulo').value = t.titulo || '';
+    document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
+    document.getElementById('in-prioridad').value = t.prioridad || 'Media';
+    document.getElementById('in-vencimiento').value = t.vencimiento || '';
+    document.getElementById('deleteInternaBtn').style.display = _editingInterna ? '' : 'none';
+    const asignadoSel = document.getElementById('in-asignado');
+    asignadoSel.innerHTML = '<option value="">Sin asignar</option>';
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.email; opt.textContent = `${c.nombre} — ${c.email}`; opt.dataset.nombre = c.nombre;
+        if (t.asignado?.email === c.email) opt.selected = true;
+        asignadoSel.appendChild(opt);
+      });
+    } catch (e) {}
+    document.getElementById('internaModal').classList.remove('hidden');
+  };
+  window.closeInternaModal = () => document.getElementById('internaModal').classList.add('hidden');
+
+  window.saveInterna = async function() {
+    const titulo = document.getElementById('in-titulo').value.trim();
+    if (!titulo) { alert('El título es obligatorio.'); return; }
+    const asignadoEl = document.getElementById('in-asignado');
+    const asignadoEmail = asignadoEl.value;
+    const asignadoNombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
+    const obj = {
+      ...(_editingInterna || {}),
+      titulo,
+      estado: document.getElementById('in-estado').value,
+      prioridad: document.getElementById('in-prioridad').value,
+      vencimiento: document.getElementById('in-vencimiento').value || null,
+      asignado: asignadoEmail ? { email: asignadoEmail, nombre: asignadoNombre } : null,
+    };
+    try {
+      const saved = await saveTarea(INTERNAS_CLIENT_ID, obj);
+      if (_editingInterna) { const i = _internasCache.findIndex(t => t.id === saved.id); _internasCache[i] = saved; }
+      else _internasCache.push(saved);
+      closeInternaModal();
+      renderInternasBoard();
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  window.deleteInterna = async function() {
+    if (!_editingInterna || !confirm('¿Eliminar esta tarea interna?')) return;
+    await deleteTarea(INTERNAS_CLIENT_ID, _editingInterna.id);
+    _internasCache = _internasCache.filter(t => t.id !== _editingInterna.id);
+    closeInternaModal();
+    renderInternasBoard();
+  };
+
+  window.toggleInternaListo = async function(id) {
+    const t = _internasCache.find(x => x.id === id);
+    if (!t) return;
+    t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
+    const saved = await saveTarea(INTERNAS_CLIENT_ID, t);
+    const i = _internasCache.findIndex(x => x.id === id);
+    _internasCache[i] = saved;
+    renderInternasBoard();
+  };
+
+  let _colaboradoresCache = [];
+  let _clientsCacheForColab = [];
+  async function loadColaboradores() {
+    const listEl = document.getElementById('colabList');
+    const countEl = document.getElementById('colabCount');
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    try {
+      const [colaboradores, clients] = await Promise.all([getColaboradores(), getAllClients()]);
+      _colaboradoresCache = colaboradores || [];
+      _clientsCacheForColab = clients || [];
+      countEl.textContent = `${_colaboradoresCache.length} colaborador${_colaboradoresCache.length !== 1 ? 'es' : ''}`;
+      if (!_colaboradoresCache.length) {
+        listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><h3>Sin colaboradores todavía</h3><p>Creá el primero con "+ Nuevo colaborador".</p></div>`;
+        return;
+      }
+      const nombreCliente = (id) => { const c = _clientsCacheForColab.find(x => x.id === id); return c ? (c.nombre || c.name || c.id) : id; };
+      listEl.innerHTML = `<div class="admin-grid">${_colaboradoresCache.map(col => `
+        <div class="card" style="padding:16px;">
+          <div style="font-weight:700;font-size:14px;">${col.nombre}${col.activo === false ? ' <span style="font-size:10px;color:#dc2626;font-weight:700;">(INACTIVO)</span>' : ''}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin:2px 0 10px;">${col.email}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+            ${col.clientIds.length ? col.clientIds.map(id => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">${nombreCliente(id)}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted);font-style:italic;">Sin clientes asignados</span>'}
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')" style="width:100%;justify-content:center;">✏️ Editar</button>
+        </div>
+      `).join('')}</div>`;
+    } catch (e) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  }
+
+  window.openEditColaboradorModal = function(email) {
+    const col = _colaboradoresCache.find(c => c.email === email);
+    if (!col) return;
+    document.getElementById('ec-email-label').textContent = col.email;
+    document.getElementById('ec-nombre').value = col.nombre || '';
+    document.getElementById('ec-activo').checked = col.activo !== false;
+    const list = document.getElementById('ec-clientes-list');
+    list.innerHTML = _clientsCacheForColab.length
+      ? _clientsCacheForColab.map(c => `
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
+          <input type="checkbox" class="ec-client-check" value="${c.id}" ${col.clientIds.includes(c.id) ? 'checked' : ''}> ${c.nombre || c.name || c.id}
+        </label>`).join('')
+      : '<p style="font-size:12px;color:var(--text-muted);">No hay clientes creados todavía.</p>';
+    document.getElementById('editColaboradorModal').dataset.email = email;
+    document.getElementById('editColaboradorModal').classList.remove('hidden');
+  };
+  window.closeEditColaboradorModal = () => document.getElementById('editColaboradorModal').classList.add('hidden');
+
+  window.saveEditColaborador = async function() {
+    const email = document.getElementById('editColaboradorModal').dataset.email;
+    const nombre = document.getElementById('ec-nombre').value.trim();
+    const activo = document.getElementById('ec-activo').checked;
+    const clientIds = Array.from(document.querySelectorAll('.ec-client-check:checked')).map(cb => cb.value);
+    try {
+      await updateColaborador(email, { nombre, activo, clientIds });
+      closeEditColaboradorModal();
+      await loadColaboradores();
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  let _misTareasCache = []; // [{clientId, clientNombre, tipo:'tarea'|'contenido', tarea}]
+  async function loadMisTareas() {
+    const listEl = document.getElementById('misTareasList');
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    const clients = await getAllClients();
+    const miEmail = (user.email || '').toLowerCase();
+    const items = [];
+    await Promise.all(clients.map(async (c) => {
+      try {
+        const [tareas, contenidos] = await Promise.all([getTareas(c.id), getContenidos(c.id)]);
+        (tareas || []).forEach(t => {
+          if (!t.archivado && t.asignado && (t.asignado.email || '').toLowerCase() === miEmail) {
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t });
+          }
+        });
+        (contenidos || []).forEach(t => {
+          if (t.asignado && (t.asignado.email || '').toLowerCase() === miEmail && t.estado !== 'Publicado') {
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t });
+          }
+        });
+      } catch (e) { console.error('No se pudieron cargar tareas/contenidos de', c.id, e); }
+    }));
+    _misTareasCache = items;
+    renderMisTareas();
+  }
+
+  function renderMisTareas() {
+    const listEl = document.getElementById('misTareasList');
+    const countEl = document.getElementById('misTareasCount');
+    const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
+    const pendientes = _misTareasCache.filter(i => !estaListo(i));
+    countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}`;
+    if (!_misTareasCache.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas asignadas</h3><p>Cuando te asignen una tarea o contenido en cualquier cliente, va a aparecer acá.</p></div>`;
+      return;
+    }
+    const ordenados = [..._misTareasCache].sort((a, b) => {
+      const aListo = estaListo(a), bListo = estaListo(b);
+      if (aListo !== bListo) return aListo ? 1 : -1;
+      const aFecha = a.tarea.vencimiento || a.tarea.fechaPub || '9999';
+      const bFecha = b.tarea.vencimiento || b.tarea.fechaPub || '9999';
+      return aFecha > bFecha ? 1 : -1;
+    });
+    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    listEl.innerHTML = ordenados.map(({ clientId, clientNombre, tipo, tarea: t }) => {
+      const listo = tipo === 'tarea' ? t.estado === 'Listo' : ['Aprobado', 'Programado'].includes(t.estado);
+      const fecha = t.vencimiento || t.fechaPub || '';
+      return `
+      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;${listo ? 'opacity:.55;' : ''}">
+        ${tipo === 'tarea'
+          ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
+          : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${tipo === 'contenido' ? ' · ' + (t.estado || '') : ''}</div>
+        </div>
+        ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
+        <a href="../app/index.html?client=${clientId}&open=${tipo}&id=${t.id}" target="_blank" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Abrir</a>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleMiTareaListo = async function(clientId, tareaId) {
+    const item = _misTareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.tipo === 'tarea');
+    if (!item) return;
+    item.tarea.estado = item.tarea.estado === 'Listo' ? 'Sin empezar' : 'Listo';
+    if (item.tarea.estado === 'Listo') item.tarea.visibleParaCliente = true; // al terminarla, el cliente la puede ver
+    await saveTarea(clientId, item.tarea);
+    renderMisTareas();
   };
 
   async function loadClients() {
