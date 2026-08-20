@@ -622,6 +622,14 @@
           </select>
         </div>
 
+        <div class="form-group" style="grid-column:span 2;">
+          <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+            <input type="checkbox" id="tf-visible-cliente">
+            Visible para el cliente
+          </label>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto las tareas son internas del equipo COSMART. Tildá esto solo si el cliente tiene que verla.</span>
+        </div>
+
         <!-- Comentarios tarea -->
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
           <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
@@ -943,6 +951,36 @@
       <button class="btn btn-danger btn-sm" id="deleteArchivoBtn" style="margin-right:auto;display:none;">Eliminar</button>
       <button class="btn btn-secondary" id="closeArchivoModal2">Cancelar</button>
       <button class="btn btn-primary" id="saveArchivoBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cambio de contraseña obligatorio (primer login) -->
+<div id="mustChangePasswordModal" class="modal-overlay hidden" style="z-index:9999;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Creá tu contraseña</h3>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5;">
+        Por seguridad, antes de seguir tenés que cambiar la contraseña temporal que te llegó por mail.
+      </p>
+      <div class="form-group">
+        <label>Contraseña actual (la temporal)</label>
+        <input type="password" id="mcp-actual" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Contraseña nueva</label>
+        <input type="password" id="mcp-nueva" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Repetir contraseña nueva</label>
+        <input type="password" id="mcp-confirmar" class="form-control">
+      </div>
+      <div id="mcp-error" style="display:none;font-size:12px;color:#dc2626;margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="mcpSaveBtn" style="width:100%;justify-content:center;">Guardar y entrar</button>
     </div>
   </div>
 </div>
