@@ -1,4 +1,4 @@
-import { requireAuth, logoutUser } from './auth.js';
+import { requireAuth, logoutUser, changePassword } from './auth.js';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk,
   getTareas, saveTarea, deleteTarea,
@@ -110,8 +110,13 @@ function applyClientLogo(src) {
   if (hint) hint.style.display = 'none';
 }
 
+function tareasVisibles(lista) {
+  if (user.role !== 'client') return lista;
+  return lista.filter(t => t.visibleParaCliente === true);
+}
+
 function updateBadges() {
-  const pending = STATE.tareas.filter(t => t.estado !== 'Listo').length;
+  const pending = tareasVisibles(STATE.tareas).filter(t => t.estado !== 'Listo').length;
   document.getElementById('badge-tareas').textContent = pending;
   if (typeof updateBnavBadge === 'function') updateBnavBadge();
 }
@@ -271,9 +276,17 @@ function renderPlan(container) {
 let dashYear = new Date().getFullYear();
 let dashMonth = new Date().getMonth(); // 0-based
 
-function buildPieChart(tipos, COLORS) {
+function buildPieChart(tipos, COLORS, sideExtraHtml) {
   const entries = Object.entries(tipos).filter(function(e){ return e[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; });
-  if (!entries.length) return '';
+  if (!entries.length) {
+    if (!sideExtraHtml) return '';
+    return '<div class="dash-card" style="margin-top:14px;">'
+      + '<div class="dash-card-title">Distribución por tipo</div>'
+      + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+      + '<div style="font-size:12px;color:var(--text-muted);">Sin datos este mes</div>'
+      + sideExtraHtml
+      + '</div></div>';
+  }
   var totalT = entries.reduce(function(s,e){ return s+e[1]; }, 0);
   var angle = -Math.PI/2;
   var CX=90, CY=90, R=70;
@@ -299,6 +312,7 @@ function buildPieChart(tipos, COLORS) {
     + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
     + '<svg viewBox="0 0 180 180" width="130" height="130" style="flex-shrink:0;">'+paths+labels+'</svg>'
     + '<div style="display:flex;flex-direction:column;gap:4px;">'+legend+'</div>'
+    + (sideExtraHtml || '')
     + '</div></div>';
 }
 
@@ -317,8 +331,8 @@ function renderDashboard(container) {
   const programados = conts.filter(c => c.estado === 'Programado').length;
   const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
 
-  // ── TAREAS (general + sitio web) ──
-  const tareasActivas = STATE.tareas.filter(t => !t.archivado);
+  // ── TAREAS (general + sitio web) — resumen chico, va al lado del gráfico de torta ──
+  const tareasActivas = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
   const tareasPendientes = tareasActivas.filter(t => t.estado === 'Sin empezar').length;
   const tareasEnProceso = tareasActivas.filter(t => t.estado === 'En progreso').length;
   const tareasListas = tareasActivas.filter(t => t.estado === 'Listo').length;
@@ -326,6 +340,25 @@ function renderDashboard(container) {
   const webPendientes = webTareas.filter(t => t.estado === 'Pendiente').length;
   const webEnProceso = webTareas.filter(t => t.estado === 'En proceso' || t.estado === 'En revisión').length;
   const webListas = webTareas.filter(t => t.estado === 'Listo').length;
+  const tareasResumenHtml = `
+    <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto;min-width:150px;">
+      <div>
+        <div class="dash-card-title" style="margin-bottom:4px;">Tareas</div>
+        <div style="display:flex;gap:8px;font-size:11px;flex-wrap:wrap;">
+          <span style="color:#94a3b8;">${tareasPendientes} sin empezar</span>
+          <span style="color:#f59e0b;">${tareasEnProceso} en progreso</span>
+          <span style="color:#10b981;">${tareasListas} listas</span>
+        </div>
+      </div>
+      <div>
+        <div class="dash-card-title" style="margin-bottom:4px;">Tareas sitio web</div>
+        <div style="display:flex;gap:8px;font-size:11px;flex-wrap:wrap;">
+          <span style="color:#94a3b8;">${webPendientes} pendientes</span>
+          <span style="color:#f59e0b;">${webEnProceso} en proceso</span>
+          <span style="color:#10b981;">${webListas} listas</span>
+        </div>
+      </div>
+    </div>`;
 
   // ── FORMATO breakdown ──
   const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
@@ -407,20 +440,6 @@ function renderDashboard(container) {
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
     </div>
 
-    <div class="dash-card-title" style="margin:16px 0 8px;">Tareas</div>
-    <div class="dash-stat-row">
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#94a3b8">${tareasPendientes}</div><div class="dash-stat-pill-label">Sin empezar</div></div>
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${tareasEnProceso}</div><div class="dash-stat-pill-label">En progreso</div></div>
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#10b981">${tareasListas}</div><div class="dash-stat-pill-label">Listas</div></div>
-    </div>
-
-    <div class="dash-card-title" style="margin:16px 0 8px;">Tareas del sitio web</div>
-    <div class="dash-stat-row">
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#94a3b8">${webPendientes}</div><div class="dash-stat-pill-label">Pendientes</div></div>
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${webEnProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
-      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#10b981">${webListas}</div><div class="dash-stat-pill-label">Listas</div></div>
-    </div>
-
     <div class="dash-layout">
       <div>
         <div class="dash-card">
@@ -447,7 +466,7 @@ function renderDashboard(container) {
           </table>
         </div>
         <!-- Gráfico de torta por tipo -->
-        ${buildPieChart(tipos, COLORS)}
+        ${buildPieChart(tipos, COLORS, tareasResumenHtml)}
       </div>
 
       <div>
@@ -538,7 +557,7 @@ function renderHome(container) {
         <div class="card-body">
           <div id="todo-list">
             ${(() => {
-              const tareasPend = STATE.tareas.filter(t => t.estado === 'Sin empezar' && !t.archivado);
+              const tareasPend = tareasVisibles(STATE.tareas).filter(t => t.estado === 'Sin empezar' && !t.archivado);
               const allItems = [
                 ...todos.map(t => ({ type:'todo', ...t })),
                 ...tareasPend.map(t => ({ type:'tarea', id: t.id, text: t.titulo, done: false, tarea: t }))
@@ -547,6 +566,7 @@ function renderHome(container) {
               return allItems.map(item => {
                 if (item.type === 'tarea') return `
                   <div class="todo-item" style="border-left:3px solid #3b82f6;padding-left:8px;">
+                    <button onclick="event.stopPropagation();toggleTareaListo('${item.id}')" title="Marcar como hecha" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid #cbd5e1;background:transparent;cursor:pointer;padding:0;margin-right:2px;"></button>
                     <span style="font-size:10px;color:#3b82f6;font-weight:700;margin-right:4px;">TAREA</span>
                     <label style="flex:1;cursor:pointer;" onclick="openTareaModal('${item.id}')">${item.text}</label>
                     ${item.tarea.vencimiento ? `<span style="font-size:10px;color:${new Date(item.tarea.vencimiento+'T00:00:00')<new Date()?'#dc2626':'var(--text-muted)'};">📅${item.tarea.vencimiento}</span>` : ''}
@@ -1637,6 +1657,8 @@ window.openContenidoModal = function(defaults = {}) {
 
   const contAsignado = document.getElementById('cont-asignado');
   if (contAsignado) contAsignado.innerHTML = getAsignarOptions(c.asignado?.email || '');
+  renderAsignadoVisto('cont-asignado', c);
+  if (editingContenido) marcarAsignacionVista(c, saveContenido, STATE.contenidos).then(() => renderAsignadoVisto('cont-asignado', c));
 
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
   renderComments('cont', c.comentarios || []);
@@ -1725,6 +1747,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const contAsignadoEl = document.getElementById('cont-asignado');
   const contAsignadoEmail = contAsignadoEl ? contAsignadoEl.value : '';
   const contAsignadoNombre = contAsignadoEl ? (contAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
+  const prevContAsignadoEmail = editingContenido?.asignado?.email || '';
 
   const obj = {
     ...(editingContenido || {}),
@@ -1746,7 +1769,9 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     imagenes: _imgList,
     notas: document.getElementById('cf-notas').value,
     comentarios: editingContenido?.comentarios || [],
-    asignado: contAsignadoEmail ? { email: contAsignadoEmail, nombre: contAsignadoNombre } : null,
+    asignado: contAsignadoEmail ? (contAsignadoEmail === prevContAsignadoEmail
+      ? { ...editingContenido.asignado, email: contAsignadoEmail, nombre: contAsignadoNombre }
+      : { email: contAsignadoEmail, nombre: contAsignadoNombre }) : null,
   };
 
   try {
@@ -1757,6 +1782,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     } else {
       STATE.contenidos.push(saved);
     }
+    notifyAsignacion('contenido', saved, prevContAsignadoEmail);
     closeContenidoModal();
     renderContTab(activeContTab);
     if (currentSection === 'home') renderSection('home');
@@ -1989,6 +2015,18 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
   }
 });
 
+window.toggleTareaVisibleCliente = async function(id) {
+  if (user.role === 'client') return; // el cliente no puede tocar esto
+  const t = STATE.tareas.find(x => x.id === id);
+  if (!t) return;
+  t.visibleParaCliente = t.visibleParaCliente === true ? false : true;
+  const saved = await saveTarea(clientId, t);
+  const i = STATE.tareas.findIndex(x => x.id === id);
+  STATE.tareas[i] = saved;
+  renderTareas(document.getElementById('main-content'));
+  if (currentSection === 'home') renderSection('home');
+};
+
 window.toggleTareaListo = async function(id) {
   const t = STATE.tareas.find(x => x.id === id);
   if (!t) return;
@@ -2010,10 +2048,11 @@ function renderTareas(container) {
     { key: 'En progreso', label: 'En progreso', color: '#3b82f6' },
     { key: 'Listo', label: 'Listo', color: '#10b981' },
   ];
-  const archivadas = STATE.tareas.filter(t => t.archivado);
+  const tareasBase = tareasVisibles(STATE.tareas);
+  const archivadas = tareasBase.filter(t => t.archivado);
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
-    const items = STATE.tareas.filter(t => t.estado === col.key && !t.archivado);
+    const items = tareasBase.filter(t => t.estado === col.key && !t.archivado);
     return `
       <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
         <div class="kanban-col-header">
@@ -2044,6 +2083,7 @@ function renderTareas(container) {
               })() : ''}
               <div style="display:flex;gap:4px;margin-top:8px;">
                 <button class="btn btn-secondary btn-sm" onclick="openTareaModal('${t.id}')">Editar</button>
+                ${user.role !== 'client' ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleTareaVisibleCliente('${t.id}')" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
                 <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
               </div>
             </div>
@@ -2124,6 +2164,10 @@ function addTareaImgFromFile(file) {
 }
 
 window.openTareaModal = function(id, defaultEstado) {
+  if (id && user.role === 'client') {
+    const tCheck = STATE.tareas.find(t => t.id === id);
+    if (tCheck && tCheck.visibleParaCliente !== true) return; // tarea interna (default), el cliente no puede abrirla
+  }
   editingTarea = id ? STATE.tareas.find(t => t.id === id) : null;
   const t = editingTarea || {};
   document.getElementById('tarea-modal-title').textContent = editingTarea ? 'Editar tarea' : 'Nueva tarea';
@@ -2132,6 +2176,12 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
   document.getElementById('tf-notas').innerHTML = t.notas || '';
+  const tfVisibleCliente = document.getElementById('tf-visible-cliente');
+  if (tfVisibleCliente) {
+    tfVisibleCliente.checked = t.visibleParaCliente === true;
+    const wrap = tfVisibleCliente.closest('.form-group');
+    if (wrap) wrap.style.display = user.role === 'client' ? 'none' : '';
+  }
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
   document.getElementById('tf-link').value = t.linkRef || '';
   // Imágenes
@@ -2141,6 +2191,8 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
   const tfAsignado = document.getElementById('tf-asignado');
   if (tfAsignado) tfAsignado.innerHTML = getAsignarOptions(t.asignado?.email || '');
+  renderAsignadoVisto('tf-asignado', t);
+  if (editingTarea) marcarAsignacionVista(t, saveTarea, STATE.tareas).then(() => renderAsignadoVisto('tf-asignado', t));
 
   // dias-semana
   const diasGroup = document.getElementById('dias-semana-group');
@@ -2223,13 +2275,19 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfAsignadoEl = document.getElementById('tf-asignado');
     const tfAsignadoEmail = tfAsignadoEl ? tfAsignadoEl.value : '';
     const tfAsignadoNombre = tfAsignadoEl ? (tfAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
-    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoEmail ? { email: tfAsignadoEmail, nombre: tfAsignadoNombre } : null };
+    const prevTfAsignadoEmail = editingTarea?.asignado?.email || '';
+    const tfAsignadoObj = tfAsignadoEmail ? (tfAsignadoEmail === prevTfAsignadoEmail
+      ? { ...editingTarea.asignado, email: tfAsignadoEmail, nombre: tfAsignadoNombre }
+      : { email: tfAsignadoEmail, nombre: tfAsignadoNombre }) : null;
+    const tfVisibleClienteEl = document.getElementById('tf-visible-cliente');
+    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleClienteEl ? tfVisibleClienteEl.checked : true };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
     ]);
     if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
     else STATE.tareas.push(saved);
+    notifyAsignacion('tarea', saved, prevTfAsignadoEmail);
     closeTareaModal();
     updateBadges();
     if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
@@ -2745,8 +2803,9 @@ window.openReporteModal = function() {
   const roasTotal = totalGastado ? (totalIngresos/totalGastado).toFixed(2) : '—';
 
   // Tareas del mes
-  const tareasPend = STATE.tareas.filter(t => !t.archivado && t.estado !== 'Listo').length;
-  const tareasOk = STATE.tareas.filter(t => t.estado === 'Listo').length;
+  const tareasReporte = tareasVisibles(STATE.tareas);
+  const tareasPend = tareasReporte.filter(t => !t.archivado && t.estado !== 'Listo').length;
+  const tareasOk = tareasReporte.filter(t => t.estado === 'Listo').length;
 
   // Insights automáticos
   const insights = [];
@@ -3379,6 +3438,58 @@ function renderComments(ctx, comments) {
   listEl.scrollTop = listEl.scrollHeight;
 }
 
+function renderAsignadoVisto(selectId, item) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const existing = document.getElementById(selectId + '-visto');
+  if (existing) existing.remove();
+  const a = item?.asignado;
+  if (!a || !a.email) return;
+  const div = document.createElement('div');
+  div.id = selectId + '-visto';
+  div.style.cssText = 'font-size:11px;margin-top:4px;';
+  if (a.visto) {
+    div.style.color = '#10b981';
+    div.textContent = `👁 Visto por ${a.nombre}${a.vistoFecha ? ' el ' + a.vistoFecha : ''}`;
+  } else {
+    div.style.color = '#94a3b8';
+    div.textContent = `${a.nombre} todavía no vio esta asignación`;
+  }
+  sel.insertAdjacentElement('afterend', div);
+}
+
+async function marcarAsignacionVista(item, saveFn, stateArr) {
+  const a = item?.asignado;
+  if (!a || a.email !== user.email || a.visto) return;
+  a.visto = true;
+  a.vistoFecha = new Date().toLocaleDateString('es-AR');
+  const saved = await saveFn(clientId, item);
+  const i = stateArr.findIndex(x => x.id === item.id);
+  if (i >= 0) stateArr[i] = saved;
+}
+
+async function notifyAsignacion(tipo, item, prevAsignadoEmail) {
+  const asignado = item.asignado;
+  if (!asignado || !asignado.email || asignado.email === prevAsignadoEmail || asignado.email === user.email) return;
+  try {
+    const { WORKER_URL } = await import('./firebase.js');
+    const { getSessionToken } = await import('./auth.js');
+    fetch(WORKER_URL + '/email/asignacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+      body: JSON.stringify({
+        toEmail: asignado.email,
+        toName: asignado.nombre,
+        asignadorNombre: user.name || user.email.split('@')[0],
+        titulo: item.titulo || '',
+        tipo,
+        itemId: item.id,
+        clientId,
+      }),
+    }).catch(() => {});
+  } catch (e) { /* no bloquea el guardado si falla la notificación */ }
+}
+
 function getAsignarOptions(currentEmail) {
   const options = [];
   if (STATE.client.email) options.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
@@ -3555,6 +3666,7 @@ window.eliminarUsuarioEquipo = async function(idx) {
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  if (overlay.id === 'mustChangePasswordModal') return; // obligatorio, no se cierra clickeando afuera
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
 
@@ -3639,4 +3751,36 @@ function refreshIcons() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-init();
+function showMustChangePasswordModal() {
+  const modal = document.getElementById('mustChangePasswordModal');
+  if (!modal) { init(); return; } // por si el HTML no se actualizó todavía, no bloquear el acceso
+  modal.classList.remove('hidden');
+  const err = document.getElementById('mcp-error');
+  const btn = document.getElementById('mcpSaveBtn');
+  btn.onclick = async () => {
+    err.style.display = 'none';
+    const actual = document.getElementById('mcp-actual').value;
+    const nueva = document.getElementById('mcp-nueva').value;
+    const confirmar = document.getElementById('mcp-confirmar').value;
+    if (!actual || !nueva) { err.textContent = 'Completá los dos campos.'; err.style.display = ''; return; }
+    if (nueva.length < 6) { err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; err.style.display = ''; return; }
+    if (nueva !== confirmar) { err.textContent = 'Las contraseñas nuevas no coinciden.'; err.style.display = ''; return; }
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      await changePassword(actual, nueva);
+      modal.classList.add('hidden');
+      init();
+    } catch (e) {
+      err.textContent = e.message || 'Error al cambiar la contraseña.';
+      err.style.display = '';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar y entrar';
+    }
+  };
+}
+
+if (user.mustChangePassword) {
+  showMustChangePasswordModal();
+} else {
+  init();
+}
