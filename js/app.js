@@ -22,6 +22,12 @@ let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
 
+window.cerrarSesionYVolver = function() {
+  localStorage.removeItem('mh_session_token');
+  localStorage.removeItem('mh_user');
+  window.location.href = '/login.html';
+};
+
 // ── Init ───────────────────────────────────────────────
 async function init() {
   try {
@@ -52,11 +58,28 @@ async function init() {
     if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
     if (STATE.plan && STATE.plan.html) document.getElementById('nav-plan').classList.remove('hidden');
     setupNav();
-    renderSection('home');
+    const openTipo = params.get('open');
+    const openId = params.get('id');
+    if (openTipo === 'contenido' && openId && STATE.contenidos.some(c => c.id === openId)) {
+      renderSection('contenidos');
+      openContenidoModalById(openId);
+    } else if (openTipo === 'tarea' && openId && STATE.tareas.some(t => t.id === openId)) {
+      renderSection('tareas');
+      openTareaModal(openId);
+    } else {
+      renderSection('home');
+    }
     setTimeout(() => refreshIcons(), 100);
   } catch (err) {
     const content = document.getElementById('main-content');
-    if (content) content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p style="max-width:340px;">${err.message || 'Error desconocido. Revisá la consola del navegador.'}</p><button class="btn btn-primary" onclick="location.reload()" style="margin-top:16px;">Reintentar</button></div>`;
+    const esPermisos = err.message === 'Sin permisos' || err.message === 'No autorizado';
+    if (content) content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p style="max-width:340px;">${err.message || 'Error desconocido. Revisá la consola del navegador.'}</p>
+      ${esPermisos ? `<p style="max-width:340px;font-size:13px;color:var(--text-muted);margin-top:8px;">Esta sesión no tiene acceso a este cliente. Puede que este navegador tenga guardada una cuenta distinta a la tuya.</p>` : ''}
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="location.reload()">Reintentar</button>
+        ${esPermisos ? `<button class="btn btn-secondary" onclick="window.cerrarSesionYVolver()">Cerrar sesión y volver a entrar</button>` : ''}
+      </div>
+    </div>`;
     console.error('[init] Error:', err);
   }
 }
@@ -294,6 +317,16 @@ function renderDashboard(container) {
   const programados = conts.filter(c => c.estado === 'Programado').length;
   const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
 
+  // ── TAREAS (general + sitio web) ──
+  const tareasActivas = STATE.tareas.filter(t => !t.archivado);
+  const tareasPendientes = tareasActivas.filter(t => t.estado === 'Sin empezar').length;
+  const tareasEnProceso = tareasActivas.filter(t => t.estado === 'En progreso').length;
+  const tareasListas = tareasActivas.filter(t => t.estado === 'Listo').length;
+  const webTareas = STATE.home.webTareas || [];
+  const webPendientes = webTareas.filter(t => t.estado === 'Pendiente').length;
+  const webEnProceso = webTareas.filter(t => t.estado === 'En proceso' || t.estado === 'En revisión').length;
+  const webListas = webTareas.filter(t => t.estado === 'Listo').length;
+
   // ── FORMATO breakdown ──
   const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
   conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f => { formatos[f] = (formatos[f]||0)+1; }); });
@@ -372,6 +405,20 @@ function renderDashboard(container) {
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#22c55e">${publicados}</div><div class="dash-stat-pill-label">Publicados</div></div>
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3b82f6">${programados}</div><div class="dash-stat-pill-label">Programados</div></div>
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
+    </div>
+
+    <div class="dash-card-title" style="margin:16px 0 8px;">Tareas</div>
+    <div class="dash-stat-row">
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#94a3b8">${tareasPendientes}</div><div class="dash-stat-pill-label">Sin empezar</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${tareasEnProceso}</div><div class="dash-stat-pill-label">En progreso</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#10b981">${tareasListas}</div><div class="dash-stat-pill-label">Listas</div></div>
+    </div>
+
+    <div class="dash-card-title" style="margin:16px 0 8px;">Tareas del sitio web</div>
+    <div class="dash-stat-row">
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#94a3b8">${webPendientes}</div><div class="dash-stat-pill-label">Pendientes</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${webEnProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#10b981">${webListas}</div><div class="dash-stat-pill-label">Listas</div></div>
     </div>
 
     <div class="dash-layout">
@@ -531,7 +578,7 @@ function renderHome(container) {
             .sort((a,b) => a.fechaPub > b.fechaPub ? 1 : -1)
             .slice(0, 5);
           if (!proximos.length) return `<div class="empty-state" style="padding:24px;"><p>No hay contenidos programados próximamente.</p></div>`;
-          return `<table class="data-table">
+          return `<div style="overflow-x:auto;"><table class="data-table">
             <thead><tr><th>Fecha</th><th>Título</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
             <tbody>${proximos.map(c => `
               <tr>
@@ -542,7 +589,7 @@ function renderHome(container) {
                 <td><button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button></td>
               </tr>
             `).join('')}</tbody>
-          </table>`;
+          </table></div>`;
         })()}
       </div>
     </div>
@@ -735,7 +782,11 @@ function renderBancoContenidos(container) {
                 <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
                 <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
                 <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-                <td>${statusBadge(c.estado)}</td>
+                <td onclick="event.stopPropagation()">
+                  <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
+                    ${['Idea','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
+                  </select>
+                </td>
                 <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
                 <td style="font-size:12px;">${c.eje||''}</td>
                 <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
@@ -767,6 +818,17 @@ window.bancoUpdateFecha = async function(id, fecha) {
   await saveContenido(clientId, c);
   const i = STATE.contenidos.findIndex(x => x.id === id);
   STATE.contenidos[i] = c;
+};
+
+window.bancoUpdateEstado = async function(id, estado) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.estado = estado;
+  const saved = await saveContenido(clientId, c);
+  const i = STATE.contenidos.findIndex(x => x.id === id);
+  STATE.contenidos[i] = saved;
+  renderContTab(activeContTab);
+  if (currentSection === 'home') renderSection('home');
 };
 
 // ─ Calendario ─
@@ -1573,6 +1635,9 @@ window.openContenidoModal = function(defaults = {}) {
   _imgList = Array.isArray(c.imagenes) ? [...c.imagenes] : [];
   renderImgThumbs();
 
+  const contAsignado = document.getElementById('cont-asignado');
+  if (contAsignado) contAsignado.innerHTML = getAsignarOptions(c.asignado?.email || '');
+
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
   renderComments('cont', c.comentarios || []);
   document.getElementById('cont-comment-input').value = '';
@@ -1657,6 +1722,9 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
   const dimensiones = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
   const pauta = document.querySelector('input[name="cf-pauta"]:checked')?.value || 'organico';
+  const contAsignadoEl = document.getElementById('cont-asignado');
+  const contAsignadoEmail = contAsignadoEl ? contAsignadoEl.value : '';
+  const contAsignadoNombre = contAsignadoEl ? (contAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
 
   const obj = {
     ...(editingContenido || {}),
@@ -1678,6 +1746,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     imagenes: _imgList,
     notas: document.getElementById('cf-notas').value,
     comentarios: editingContenido?.comentarios || [],
+    asignado: contAsignadoEmail ? { email: contAsignadoEmail, nombre: contAsignadoNombre } : null,
   };
 
   try {
@@ -1920,6 +1989,18 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
   }
 });
 
+window.toggleTareaListo = async function(id) {
+  const t = STATE.tareas.find(x => x.id === id);
+  if (!t) return;
+  t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
+  const saved = await saveTarea(clientId, t);
+  const i = STATE.tareas.findIndex(x => x.id === id);
+  STATE.tareas[i] = saved;
+  updateBadges();
+  renderTareas(document.getElementById('main-content'));
+  if (currentSection === 'home') renderSection('home');
+};
+
 // ──────────────────────────────────────────────────────
 // TAREAS
 // ──────────────────────────────────────────────────────
@@ -1943,7 +2024,10 @@ function renderTareas(container) {
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(t => `
             <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)">
-              <div class="kanban-card-title">${t.titulo}</div>
+              <div style="display:flex;align-items:flex-start;gap:8px;">
+                <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
+                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
+              </div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
               ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
@@ -2055,6 +2139,8 @@ window.openTareaModal = function(id, defaultEstado) {
   renderTareaImgThumbs();
   document.getElementById('deleteTareaBtn').style.display = editingTarea ? '' : 'none';
   document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
+  const tfAsignado = document.getElementById('tf-asignado');
+  if (tfAsignado) tfAsignado.innerHTML = getAsignarOptions(t.asignado?.email || '');
 
   // dias-semana
   const diasGroup = document.getElementById('dias-semana-group');
@@ -2134,7 +2220,10 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const diasSemana = recurrencia === 'dias-semana'
       ? Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value)
       : [];
-    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [] };
+    const tfAsignadoEl = document.getElementById('tf-asignado');
+    const tfAsignadoEmail = tfAsignadoEl ? tfAsignadoEl.value : '';
+    const tfAsignadoNombre = tfAsignadoEl ? (tfAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
+    const obj = { ...(editingTarea||{}), titulo, estado: document.getElementById('tf-estado').value, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoEmail ? { email: tfAsignadoEmail, nombre: tfAsignadoNombre } : null };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
@@ -2272,6 +2361,12 @@ function renderPauta(container) {
 // ──────────────────────────────────────────────────────
 // LINKS
 // ──────────────────────────────────────────────────────
+window.setLinkCatFilter = function(cat) {
+  window._linkCatFilter = cat;
+  renderLinks(document.getElementById('main-content'));
+  setTimeout(refreshIcons, 30);
+};
+
 function renderLinks(container) {
   const links = STATE.links || [];
   const cats = ['Todas', ...new Set(links.map(l => l.categoria).filter(Boolean))];
@@ -2283,7 +2378,7 @@ function renderLinks(container) {
     ${cats.length > 1 ? `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
       ${cats.map(c => `
-        <button onclick="window._linkCatFilter='${c.replace(/'/g,"\\'")}';renderSection('links');"
+        <button onclick="setLinkCatFilter('${c.replace(/'/g,"\\'")}')"
           style="padding:4px 12px;border-radius:999px;border:1.5px solid ${c===filter?'var(--primary)':'var(--border)'};
           background:${c===filter?'var(--primary)':'transparent'};color:${c===filter?'#fff':'var(--text-muted)'};
           font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;">${c}</button>
@@ -2483,9 +2578,10 @@ function renderWeb(container) {
             ${items.map(t => `
               <div class="kanban-card" onclick="openWebTaskModal('${t.id}')">
                 <div style="display:flex;align-items:flex-start;gap:6px;">
+                  <button onclick="event.stopPropagation();toggleWebTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#22c55e' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#22c55e' : 'transparent'};color:#fff;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
                 </div>
-                <div class="kanban-card-title" style="margin-top:6px;">${t.titulo}</div>
+                <div class="kanban-card-title" style="margin-top:6px;${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
                 ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
                 ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
@@ -2498,6 +2594,15 @@ function renderWeb(container) {
     </div>
   `;
 }
+
+window.toggleWebTareaListo = async function(id) {
+  const t = (STATE.home.webTareas || []).find(x => String(x.id) === String(id));
+  if (!t) return;
+  t.estado = t.estado === 'Listo' ? 'Pendiente' : 'Listo';
+  await saveHomeData(clientId, STATE.home);
+  renderWeb(document.getElementById('main-content'));
+  if (currentSection === 'home') renderSection('home');
+};
 
 let _editingWebTask = null;
 window.openWebTaskModal = function(id, defaultEstado) {
@@ -3250,9 +3355,12 @@ function renderComments(ctx, comments) {
     listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
     return;
   }
-  listEl.innerHTML = comments.map(c => {
+  listEl.innerHTML = comments.map((c, idx) => {
     const inicial = (c.autor || '?')[0].toUpperCase();
     const textoHtml = (c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+    const vistoPor = c.vistoPor || [];
+    const yoLoVi = vistoPor.some(v => v.email === user.email);
+    const vistoTitle = vistoPor.length ? `Visto por ${vistoPor.map(v => v.nombre).join(', ')}` : 'Marcar como visto';
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
@@ -3261,11 +3369,29 @@ function renderComments(ctx, comments) {
           <span style="font-size:11px;font-weight:700;color:var(--text);">${c.autor || 'Anónimo'}</span>
           <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
         </div>
-        <p style="font-size:13px;margin:0;color:var(--text);">${textoHtml}</p>
+        <p style="font-size:13px;margin:0 0 4px;color:var(--text);">${textoHtml}</p>
+        <button onclick="toggleCommentSeen('${ctx}',${idx})" title="${vistoTitle}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">
+          ✓ ${vistoPor.length ? vistoTitle : 'Visto'}
+        </button>
       </div>
     </div>`;
   }).join('');
   listEl.scrollTop = listEl.scrollHeight;
+}
+
+function getAsignarOptions(currentEmail) {
+  const options = [];
+  if (STATE.client.email) options.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  (STATE.client.usuarios || []).forEach(u => options.push(u));
+  const seen = new Set();
+  const unique = options.filter(u => {
+    if (!u.email || seen.has(u.email.toLowerCase())) return false;
+    seen.add(u.email.toLowerCase());
+    return true;
+  });
+  return '<option value="">Sin asignar</option>' + unique.map(u =>
+    `<option value="${u.email}" data-nombre="${u.nombre}" ${currentEmail === u.email ? 'selected' : ''}>${u.nombre} — ${u.email}</option>`
+  ).join('');
 }
 
 function getMentionUsers() {
@@ -3343,6 +3469,7 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
           mencionador: autorNombre,
           contexto: editingObj.titulo || '',
           tipo: ctx === 'cont' ? 'contenido' : 'tarea',
+          itemId: editingObj.id,
           clientId,
         }),
       }).catch(() => {});
@@ -3352,6 +3479,22 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
 
 window.addContenidoComment = () => doAddComment('cont', editingContenido, saveContenido, STATE.contenidos);
 window.addTareaComment = () => doAddComment('tarea', editingTarea, saveTarea, STATE.tareas);
+
+window.toggleCommentSeen = async function(ctx, idx) {
+  const editingObj = ctx === 'cont' ? editingContenido : editingTarea;
+  const saveFn = ctx === 'cont' ? saveContenido : saveTarea;
+  const stateArr = ctx === 'cont' ? STATE.contenidos : STATE.tareas;
+  if (!editingObj || !editingObj.comentarios || !editingObj.comentarios[idx]) return;
+  const comment = editingObj.comentarios[idx];
+  if (!comment.vistoPor) comment.vistoPor = [];
+  const yaLoVi = comment.vistoPor.findIndex(v => v.email === user.email);
+  if (yaLoVi >= 0) comment.vistoPor.splice(yaLoVi, 1);
+  else comment.vistoPor.push({ email: user.email, nombre: user.name || user.email.split('@')[0] });
+  await saveFn(clientId, editingObj);
+  const i = stateArr.findIndex(x => x.id === editingObj.id);
+  if (i >= 0) stateArr[i] = editingObj;
+  renderComments(ctx, editingObj.comentarios);
+};
 
 // Inicializar autocomplete de mentions al cargar
 setTimeout(() => {
