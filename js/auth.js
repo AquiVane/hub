@@ -41,8 +41,26 @@ export async function loginUser(email, password) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión.');
 
-  const userData = { email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name };
+  const userData = { email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name, mustChangePassword: data.mustChangePassword || false };
   saveSession(data.token, userData);
+  return userData;
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  if (DEMO_MODE) {
+    const user = getCurrentUser();
+    if (user) { user.mustChangePassword = false; localStorage.setItem('mh_user', JSON.stringify(user)); }
+    return { ok: true };
+  }
+  const res = await fetch(WORKER_URL + '/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error al cambiar la contraseña.');
+  const user = getCurrentUser();
+  if (user) { user.mustChangePassword = false; localStorage.setItem('mh_user', JSON.stringify(user)); }
   return data;
 }
 
