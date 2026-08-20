@@ -1778,7 +1778,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     comentarios: editingContenido?.comentarios || [],
     asignado: contAsignadoEmail ? (contAsignadoEmail === prevContAsignadoEmail
       ? { ...editingContenido.asignado, email: contAsignadoEmail, nombre: contAsignadoNombre }
-      : { email: contAsignadoEmail, nombre: contAsignadoNombre }) : null,
+      : { email: contAsignadoEmail, nombre: contAsignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } }) : null,
   };
 
   try {
@@ -2286,7 +2286,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const prevTfAsignadoEmail = editingTarea?.asignado?.email || '';
     const tfAsignadoObj = tfAsignadoEmail ? (tfAsignadoEmail === prevTfAsignadoEmail
       ? { ...editingTarea.asignado, email: tfAsignadoEmail, nombre: tfAsignadoNombre }
-      : { email: tfAsignadoEmail, nombre: tfAsignadoNombre }) : null;
+      : { email: tfAsignadoEmail, nombre: tfAsignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } }) : null;
     const tfVisibleClienteEl = document.getElementById('tf-visible-cliente');
     const tfEstadoVal = document.getElementById('tf-estado').value;
     const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
