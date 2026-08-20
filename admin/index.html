@@ -66,16 +66,22 @@
           <h2 style="font-size:18px;font-weight:700;">Clientes</h2>
           <span id="clientCount" class="text-muted text-sm"></span>
         </div>
-        <div class="admin-grid" id="clientGrid">
+        <div class="client-row-list" id="clientGrid">
           <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
         </div>
       </div>
 
       <!-- Mis tareas -->
       <div id="sec-mistareas" class="hidden">
-        <div class="mb-20 flex items-center gap-8">
-          <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
-          <span id="misTareasCount" class="text-muted text-sm"></span>
+        <div class="mb-20 flex items-center gap-8" style="justify-content:space-between;flex-wrap:wrap;">
+          <div class="flex items-center gap-8">
+            <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
+            <span id="misTareasCount" class="text-muted text-sm"></span>
+          </div>
+          <div class="flex gap-8">
+            <button id="misTareasViewLista" class="btn btn-primary btn-sm" onclick="setMisTareasView('lista')">📋 Lista</button>
+            <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')">📅 Calendario</button>
+          </div>
         </div>
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
@@ -234,6 +240,44 @@
       <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:auto;display:none;" onclick="deleteInterna()">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeInternaModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveInterna()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="misTareaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Tarea</h3>
+      <button class="modal-close" onclick="closeMisTareaModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="mt-cliente" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+      <div class="form-group">
+        <label>Título</label>
+        <input type="text" id="mt-titulo" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="mt-estado" class="form-control"></select>
+      </div>
+      <div class="form-group" id="mt-prioridad-group">
+        <label>Prioridad</label>
+        <select id="mt-prioridad" class="form-control">
+          <option>Alta</option>
+          <option>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vencimiento</label>
+        <input type="date" id="mt-vencimiento" class="form-control">
+      </div>
+      <div id="mt-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <a id="mt-abrir-panel" href="#" target="_blank" class="btn btn-secondary btn-sm" style="margin-right:auto;text-decoration:none;">Abrir en panel del cliente</a>
+      <button class="btn btn-secondary" onclick="closeMisTareaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMisTareaModal()">Guardar</button>
     </div>
   </div>
 </div>
@@ -624,7 +668,9 @@
       estado: document.getElementById('in-estado').value,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
-      asignado: asignadoEmail ? { email: asignadoEmail, nombre: asignadoNombre } : null,
+      asignado: asignadoEmail ? (asignadoEmail === (_editingInterna?.asignado?.email || '')
+        ? { ...(_editingInterna.asignado), email: asignadoEmail, nombre: asignadoNombre }
+        : { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.nombre || user.name || user.email } }) : null,
     };
     try {
       const saved = await saveTarea(INTERNAS_CLIENT_ID, obj);
@@ -719,6 +765,10 @@
   };
 
   let _misTareasCache = []; // [{clientId, clientNombre, tipo:'tarea'|'contenido', tarea}]
+  let _misTareasView = 'lista';
+  const ESTADOS_TAREA = ['Sin empezar', 'En progreso', 'Listo'];
+  const ESTADOS_CONTENIDO = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+
   async function loadMisTareas() {
     const listEl = document.getElementById('misTareasList');
     listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
@@ -744,12 +794,27 @@
     renderMisTareas();
   }
 
+  window.setMisTareasView = function(v) {
+    _misTareasView = v;
+    const btnLista = document.getElementById('misTareasViewLista');
+    const btnCal = document.getElementById('misTareasViewCal');
+    btnLista.className = 'btn btn-sm ' + (v === 'lista' ? 'btn-primary' : 'btn-secondary');
+    btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
+    renderMisTareas();
+  };
+
   function renderMisTareas() {
-    const listEl = document.getElementById('misTareasList');
     const countEl = document.getElementById('misTareasCount');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const pendientes = _misTareasCache.filter(i => !estaListo(i));
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}`;
+    if (_misTareasView === 'calendario') renderMisTareasCalendario();
+    else renderMisTareasLista();
+  }
+
+  function renderMisTareasLista() {
+    const listEl = document.getElementById('misTareasList');
+    const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     if (!_misTareasCache.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas asignadas</h3><p>Cuando te asignen una tarea o contenido en cualquier cliente, va a aparecer acá.</p></div>`;
       return;
@@ -762,22 +827,68 @@
       return aFecha > bFecha ? 1 : -1;
     });
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
-    listEl.innerHTML = ordenados.map(({ clientId, clientNombre, tipo, tarea: t }) => {
-      const listo = tipo === 'tarea' ? t.estado === 'Listo' : ['Aprobado', 'Programado'].includes(t.estado);
+    listEl.innerHTML = ordenados.map(({ clientId, clientNombre, tipo, tarea: t }, idx) => {
+      const listo = estaListo({ tipo, tarea: t });
       const fecha = t.vencimiento || t.fechaPub || '';
+      const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
+      const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
       return `
-      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;${listo ? 'opacity:.55;' : ''}">
+      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}">
         ${tipo === 'tarea'
           ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
           : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${tipo === 'contenido' ? ' · ' + (t.estado || '') : ''}</div>
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${t.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}</div>
         </div>
         ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
-        <a href="../app/index.html?client=${clientId}&open=${tipo}&id=${t.id}" target="_blank" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Abrir</a>
+        <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
+          ${estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
+        </select>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openMisTareaModal(${idx})">Ver / Editar</button>
       </div>`;
     }).join('');
+  }
+
+  function renderMisTareasCalendario() {
+    const listEl = document.getElementById('misTareasList');
+    const hoy = new Date();
+    const year = hoy.getFullYear(), month = hoy.getMonth();
+    const primerDia = new Date(year, month, 1);
+    const ultimoDia = new Date(year, month + 1, 0);
+    const offset = primerDia.getDay();
+    const porFecha = {};
+    _misTareasCache.forEach((item, idx) => {
+      const f = item.tarea.vencimiento || item.tarea.fechaPub;
+      if (!f) return;
+      if (!porFecha[f]) porFecha[f] = [];
+      porFecha[f].push(idx);
+    });
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    let celdas = '';
+    for (let i = 0; i < offset; i++) celdas += `<div class="cal-day cal-day-empty"></div>`;
+    for (let d = 1; d <= ultimoDia.getDate(); d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const idxs = porFecha[dateStr] || [];
+      celdas += `<div class="cal-day">
+        <div class="cal-day-num">${d}</div>
+        ${idxs.map(idx => {
+          const item = _misTareasCache[idx];
+          const listo = item.tipo === 'tarea' ? item.tarea.estado === 'Listo' : ['Aprobado','Programado'].includes(item.tarea.estado);
+          return `<div class="cal-event" style="background:#3b82f622;color:#3b82f6;${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.clientNombre}: ${item.tarea.titulo}">${item.tarea.titulo}</div>`;
+        }).join('')}
+      </div>`;
+    }
+    if (!_misTareasCache.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas asignadas</h3><p>Cuando te asignen una tarea o contenido en cualquier cliente, va a aparecer acá.</p></div>`;
+      return;
+    }
+    listEl.innerHTML = `
+      <div style="font-weight:700;margin-bottom:10px;">${meses[month]} de ${year}</div>
+      <div class="cal-grid">
+        <div class="cal-head">Dom</div><div class="cal-head">Lun</div><div class="cal-head">Mar</div><div class="cal-head">Mié</div><div class="cal-head">Jue</div><div class="cal-head">Vie</div><div class="cal-head">Sáb</div>
+        ${celdas}
+      </div>`;
   }
 
   window.toggleMiTareaListo = async function(clientId, tareaId) {
@@ -789,6 +900,59 @@
     renderMisTareas();
   };
 
+  window.cambiarEstadoMiTarea = async function(idx, nuevoEstado) {
+    const item = _misTareasCache[idx];
+    if (!item) return;
+    item.tarea.estado = nuevoEstado;
+    if (item.tipo === 'tarea' && nuevoEstado === 'Listo') item.tarea.visibleParaCliente = true;
+    if (item.tipo === 'tarea') await saveTarea(item.clientId, item.tarea);
+    else await saveContenido(item.clientId, item.tarea);
+    renderMisTareas();
+  };
+
+  let _misTareaModalIdx = null;
+  window.openMisTareaModal = function(idx) {
+    const item = _misTareasCache[idx];
+    if (!item) return;
+    _misTareaModalIdx = idx;
+    const { clientNombre, tipo, tarea: t } = item;
+    document.getElementById('mt-cliente').textContent = `${clientNombre} · ${tipo === 'tarea' ? 'Tarea' : 'Contenido'}`;
+    document.getElementById('mt-titulo').value = t.titulo || '';
+    const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
+    document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
+    document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
+    if (tipo === 'tarea') document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
+    document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
+    const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
+    document.getElementById('mt-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
+    document.getElementById('mt-abrir-panel').href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
+    document.getElementById('misTareaModal').classList.remove('hidden');
+  };
+  window.closeMisTareaModal = function() {
+    document.getElementById('misTareaModal').classList.add('hidden');
+    _misTareaModalIdx = null;
+  };
+  window.saveMisTareaModal = async function() {
+    if (_misTareaModalIdx === null) return;
+    const item = _misTareasCache[_misTareaModalIdx];
+    if (!item) return;
+    const { tipo } = item;
+    item.tarea.titulo = document.getElementById('mt-titulo').value.trim() || item.tarea.titulo;
+    const nuevoEstado = document.getElementById('mt-estado').value;
+    item.tarea.estado = nuevoEstado;
+    if (tipo === 'tarea') {
+      item.tarea.prioridad = document.getElementById('mt-prioridad').value;
+      item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
+      if (nuevoEstado === 'Listo') item.tarea.visibleParaCliente = true;
+      item.tarea = await saveTarea(item.clientId, item.tarea);
+    } else {
+      item.tarea.fechaPub = document.getElementById('mt-vencimiento').value || item.tarea.fechaPub;
+      item.tarea = await saveContenido(item.clientId, item.tarea);
+    }
+    closeMisTareaModal();
+    renderMisTareas();
+  };
+
   async function loadClients() {
     const clients = await getAllClients();
     document.getElementById('clientCount').textContent = `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
@@ -797,27 +961,36 @@
       grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Sin clientes</h3><p>Creá tu primer cliente.</p></div>`;
       return;
     }
-    grid.innerHTML = clients.map(c => `
-      <div class="client-card">
-        <div>
-          <div class="client-card-name">${c.nombre || c.name || c.id}</div>
-          <div class="client-card-meta">${c.email || ''}</div>
-          <div class="client-card-meta" style="margin-top:4px;">${c.instagram ? '📸 ' + c.instagram : ''}${c.facebook ? ' · 📘 ' + c.facebook : ''}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="width:8px;height:8px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
-          <span style="font-size:11px;color:var(--text-muted);">${c.activo !== false ? 'Activo' : 'Inactivo'}</span>
-        </div>
-        <div class="client-card-actions">
-          <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;text-decoration:none;">Ver panel</a>
-          <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
-          <button class="btn btn-secondary btn-sm" onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
-          <button class="btn btn-secondary btn-sm" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
-          ${user.role === 'admin' ? `<button class="btn btn-sm" onclick="deleteClient('${c.id}','${c.nombre||c.name||c.id}')" title="Eliminar" style="color:#E02020;border:1px solid #E02020;background:transparent;border-radius:6px;padding:0 10px;cursor:pointer;font-size:15px;font-weight:700;line-height:1;flex-shrink:0;justify-content:center;">×</button>` : ''}
+    grid.innerHTML = clients.map(c => {
+      const nombre = c.nombre || c.name || c.id;
+      return `
+      <div class="client-row">
+        <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
+        <span class="client-row-name" title="${nombre}">${nombre}</span>
+        <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
+        <div class="client-row-menu-wrap">
+          <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
+          <div class="client-row-menu hidden" id="crmenu-${c.id}">
+            <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
+            <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
+            ${user.role === 'admin' ? `<button class="danger" onclick="deleteClient('${c.id}','${nombre}')">🗑 Eliminar</button>` : ''}
+          </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
+
+  window.toggleClientRowMenu = function(id, ev) {
+    if (ev) ev.stopPropagation();
+    document.querySelectorAll('.client-row-menu').forEach(m => { if (m.id !== `crmenu-${id}`) m.classList.add('hidden'); });
+    const menu = document.getElementById(`crmenu-${id}`);
+    if (menu) menu.classList.toggle('hidden');
+  };
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+  });
 
   window.openNewClientModal = () => {
     // Limpiar todos los campos del formulario
