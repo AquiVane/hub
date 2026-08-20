@@ -461,8 +461,18 @@
     if (!clientIds.length) { alert('Asigná al menos un cliente.'); return; }
     try {
       await createColaborador({ nombre, email, password: pass, clientIds });
+      await Promise.all(clientIds.map(async id => {
+        try {
+          const client = await getClientData(id);
+          const usuarios = client.usuarios || [];
+          if (!usuarios.some(u => (u.email || '').toLowerCase() === email.toLowerCase())) {
+            usuarios.push({ nombre, email });
+            await saveClientData(id, { usuarios });
+          }
+        } catch (e) { console.error('No se pudo agregar el colaborador al equipo del cliente', id, e); }
+      }));
       closeNewColaboradorModal();
-      alert('Colaborador creado. Le llegó un mail con sus datos de acceso.');
+      alert('Colaborador creado. Le llegó un mail con sus datos de acceso, y ya puede ser mencionado (@) en los clientes asignados.');
     } catch (e) {
       alert('Error al crear el colaborador: ' + (e.message || 'intentá de nuevo.'));
     }
