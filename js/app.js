@@ -484,8 +484,87 @@ function renderDashboard(container) {
         </div>
       </div>
     </div>
+
+    ${renderTrabajoRealizado()}
   `;
 }
+
+function getTrabajoRealizadoMes(year, month) {
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const inicioMes = new Date(year, month, 1);
+  const finMes = new Date(year, month + 1, 0);
+  const items = [];
+  tareasVisibles(STATE.tareas).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
+    items.push({ tipo: 'Tarea', icon: '✅', titulo: t.titulo, fecha: t.completadoEn }));
+  (STATE.home.webTareas || []).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
+    items.push({ tipo: 'Sitio web', icon: '🌐', titulo: t.titulo, fecha: t.completadoEn }));
+  STATE.contenidos.filter(c => c.estado === 'Publicado' && c.fechaPub && c.fechaPub.startsWith(prefix)).forEach(c =>
+    items.push({ tipo: 'Contenido', icon: '📣', titulo: c.titulo, fecha: c.fechaPub }));
+  (STATE.campanas || []).filter(camp => {
+    if (!camp.fechaInicio) return false;
+    const ini = new Date(camp.fechaInicio + 'T00:00:00');
+    const fin = camp.fechaFin ? new Date(camp.fechaFin + 'T00:00:00') : ini;
+    return ini <= finMes && fin >= inicioMes;
+  }).forEach(camp =>
+    items.push({ tipo: 'Pauta', icon: '📈', titulo: camp.nombre, fecha: camp.fechaInicio, rango: `${fmtDate(camp.fechaInicio)} → ${camp.fechaFin ? fmtDate(camp.fechaFin) : 'en curso'}` }));
+  items.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  return items;
+}
+
+function renderTrabajoRealizado() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const items = getTrabajoRealizadoMes(dashYear, dashMonth);
+  const visibles = items.slice(0, 7);
+  const rowHtml = (it) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:15px;flex-shrink:0;">${it.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.titulo || ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : (it.fecha ? ' · ' + fmtDate(it.fecha) : '')}</div>
+      </div>
+    </div>`;
+  return `
+    <div class="dash-card" style="margin-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="dash-card-title" style="margin-bottom:0;">Trabajo realizado — ${MESES[dashMonth]} ${dashYear}</div>
+      </div>
+      ${items.length ? `
+        <div>${visibles.map(rowHtml).join('')}</div>
+        ${items.length > 7 ? `
+          <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;font-weight:700;" onclick="verTodoTrabajoRealizado()">
+            👉 Tocá para ver el total de tareas (${items.length})
+          </button>` : ''}
+      ` : `<p style="font-size:12px;color:var(--text-muted);padding:8px 0;">Sin trabajo completado en este mes todavía.</p>`}
+    </div>`;
+}
+
+window.verTodoTrabajoRealizado = function() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const items = getTrabajoRealizadoMes(dashYear, dashMonth);
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'trabajoRealizadoModal';
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  modal.innerHTML = `
+    <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <h3>Trabajo realizado — ${MESES[dashMonth]} ${dashYear}</h3>
+        <button class="modal-close" onclick="document.getElementById('trabajoRealizadoModal').remove()">×</button>
+      </div>
+      <div class="modal-body" style="overflow-y:auto;">
+        ${items.map(it => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:15px;flex-shrink:0;">${it.icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;">${it.titulo || ''}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : (it.fecha ? ' · ' + fmtDate(it.fecha) : '')}</div>
+            </div>
+          </div>
+        `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin trabajo completado en este mes.</p>'}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+};
 
 window.dashNavMonth = function(dir) {
   dashMonth += dir;
@@ -2038,7 +2117,8 @@ window.toggleTareaListo = async function(id) {
   const t = STATE.tareas.find(x => x.id === id);
   if (!t) return;
   t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-  if (t.estado === 'Listo') t.visibleParaCliente = true; // al terminarla, el cliente la puede ver
+  if (t.estado === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; } // al terminarla, el cliente la puede ver
+  else t.completadoEn = null;
   const saved = await saveTarea(clientId, t);
   const i = STATE.tareas.findIndex(x => x.id === id);
   STATE.tareas[i] = saved;
@@ -2122,6 +2202,8 @@ function renderTareas(container) {
     const t = STATE.tareas.find(x => x.id === id);
     if (!t || t.estado === newCol) return;
     t.estado = newCol;
+    if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; }
+    else t.completadoEn = null;
     updateBadges();
     renderTareas(document.getElementById('main-content'));
     saveTarea(clientId, t).catch(() => {});
@@ -2290,7 +2372,8 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfVisibleClienteEl = document.getElementById('tf-visible-cliente');
     const tfEstadoVal = document.getElementById('tf-estado').value;
     const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
-    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente };
+    const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
+    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
@@ -2667,6 +2750,7 @@ window.toggleWebTareaListo = async function(id) {
   const t = (STATE.home.webTareas || []).find(x => String(x.id) === String(id));
   if (!t) return;
   t.estado = t.estado === 'Listo' ? 'Pendiente' : 'Listo';
+  t.completadoEn = t.estado === 'Listo' ? new Date().toISOString().split('T')[0] : null;
   await saveHomeData(clientId, STATE.home);
   renderWeb(document.getElementById('main-content'));
   if (currentSection === 'home') renderSection('home');
@@ -3344,15 +3428,17 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     if (!STATE.home.webTareas) STATE.home.webTareas = [];
+    const wtEstadoVal = document.getElementById('wt-estado').value;
     const obj = {
       ...(_editingWebTask || {}),
       id: _editingWebTask?.id || Date.now(),
       titulo,
       categoria: document.getElementById('wt-categoria').value,
-      estado: document.getElementById('wt-estado').value,
+      estado: wtEstadoVal,
       vencimiento: document.getElementById('wt-vencimiento').value || null,
       url: document.getElementById('wt-url').value.trim() || null,
       notas: document.getElementById('wt-notas').value.trim(),
+      completadoEn: wtEstadoVal === 'Listo' ? (_editingWebTask?.estado === 'Listo' ? _editingWebTask.completadoEn : new Date().toISOString().split('T')[0]) : null,
     };
     if (_editingWebTask) {
       const i = STATE.home.webTareas.findIndex(t => t.id === obj.id);

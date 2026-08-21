@@ -368,6 +368,21 @@ export async function updateColaborador(email, updates) {
   return api('PATCH', `/admin/colaboradores/${encodeURIComponent(email)}`, updates);
 }
 
+export async function getInformes() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/admin/informes');
+}
+
+export async function aprobarInforme(id) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden aprobar informes reales.'); return; }
+  return api('POST', `/admin/informes/${encodeURIComponent(id)}/aprobar`);
+}
+
+export async function generarInformesManual(mes, anio) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden generar informes reales.'); return { generados: 0 }; }
+  return api('POST', '/admin/informes/generar', { mes, anio });
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);
