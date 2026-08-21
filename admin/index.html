@@ -33,7 +33,11 @@
         <i data-lucide="user-cog" class="nav-icon"></i><span>Colaboradores</span>
       </button>
       <button class="nav-item" onclick="showSection('internas')">
-        <i data-lucide="building-2" class="nav-icon"></i><span>Tareas internas</span>
+        <i data-lucide="building-2" class="nav-icon"></i><span>Gestión COSMART</span>
+      </button>
+      <button class="nav-item" onclick="showSection('informes')">
+        <i data-lucide="mail-check" class="nav-icon"></i><span>Informes mensuales</span>
+        <span class="badge" id="informesBadge" style="display:none;"></span>
       </button>
       <button class="nav-item" onclick="showSection('config')">
         <i data-lucide="settings" class="nav-icon"></i><span>Configuración</span>
@@ -51,9 +55,11 @@
         <div class="topbar-title">Panel Admin</div>
         <div class="topbar-sub" id="adminName"></div>
       </div>
-      <div class="topbar-right" style="position:relative;">
-        <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()">📋 Clientes ▾</button>
-        <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
+      <div class="topbar-right">
+        <div style="position:relative;">
+          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()">📋 Clientes ▾</button>
+          <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
+        </div>
         <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()">+ Nuevo cliente</button>
       </div>
@@ -68,7 +74,7 @@
           <span id="clientCount" class="text-muted text-sm"></span>
         </div>
         <div class="client-row-list" id="clientGrid">
-          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -78,14 +84,22 @@
           <div class="flex items-center gap-8">
             <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
             <span id="misTareasCount" class="text-muted text-sm"></span>
+            <label style="font-size:12px;color:var(--text-muted);margin-left:8px;">Ver de:</label>
+            <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
           </div>
           <div class="flex gap-8">
+            <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
             <button id="misTareasViewLista" class="btn btn-primary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
             <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
           </div>
         </div>
+        <div class="tabs" style="margin-bottom:14px;">
+          <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
+          <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
+        </div>
         <div id="misTareasList">
-          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -97,23 +111,35 @@
           <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         </div>
         <div id="colabList">
-          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
       <!-- Tareas internas COSMART (no atadas a ningún cliente) -->
       <div id="sec-internas" class="hidden">
         <div class="mb-20 flex items-center gap-8">
-          <h2 style="font-size:18px;font-weight:700;">Tareas internas COSMART</h2>
+          <h2 style="font-size:18px;font-weight:700;">Gestión COSMART</h2>
           <span class="text-muted text-sm">No atadas a ningún cliente</span>
           <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
         </div>
         <div id="internasBoard" class="kanban-board">
-          <div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
       <!-- Config -->
+      <div id="sec-informes" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Informes mensuales</h2>
+          <span id="informesCount" class="text-muted text-sm"></span>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="generarInformesAhora()">Generar ahora</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno.</p>
+        <div id="informesList">
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+        </div>
+      </div>
+
       <div id="sec-config" class="hidden">
         <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Configuración</h2>
         <div class="card" style="max-width:600px;">
@@ -236,6 +262,15 @@
           <option value="">Sin asignar</option>
         </select>
       </div>
+      <div id="in-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:-8px;margin-bottom:8px;"></div>
+      <div class="form-group">
+        <label>Subtareas</label>
+        <div id="in-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="in-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="agregarInSubtarea()">+ Agregar</button>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:auto;display:none;" onclick="deleteInterna()">Eliminar</button>
@@ -287,6 +322,75 @@
       <a id="mt-abrir-panel" href="#" target="_blank" class="btn btn-secondary btn-sm" style="margin-right:auto;text-decoration:none;">Abrir en panel del cliente</a>
       <button class="btn btn-secondary" onclick="closeMisTareaModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveMisTareaModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="nuevaMiTareaModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Nueva tarea</h3>
+      <button class="modal-close" onclick="closeNuevaMiTareaModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Cliente *</label>
+        <select id="nmt-cliente" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="nmt-titulo" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="nmt-estado" class="form-control">
+          <option>Sin empezar</option>
+          <option>En progreso</option>
+          <option>Listo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prioridad</label>
+        <select id="nmt-prioridad" class="form-control">
+          <option>Alta</option>
+          <option selected>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vencimiento</label>
+        <input type="date" id="nmt-vencimiento" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Asignar a</label>
+        <select id="nmt-asignado" class="form-control"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNuevaMiTareaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNuevaMiTarea()">Crear tarea</button>
+    </div>
+  </div>
+</div>
+
+<div id="importarTareasModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <h3>Importar tareas desde Excel</h3>
+      <button class="modal-close" onclick="closeImportarTareasModal()">×</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        Columnas esperadas: <strong>Categoría, Área/Cliente, Tarea, Prioridad, Día sugerido, Horario, Fecha límite, Notas</strong>.
+        Revisá el destino de cada fila antes de confirmar — las que queden en "Elegí destino" no se van a importar.
+      </p>
+      <input type="file" id="importar-tareas-input" accept=".xlsx,.xls">
+      <div id="importar-tareas-status" style="font-size:13px;margin-top:8px;color:var(--text-muted);"></div>
+      <div id="importar-tareas-preview" style="margin-top:14px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportarTareasModal()">Cancelar</button>
+      <button class="btn btn-primary" id="confirmImportarTareasBtn" onclick="confirmarImportarTareas()" disabled>Importar</button>
     </div>
   </div>
 </div>
@@ -536,7 +640,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador } from '../js/data.js';
+  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador, getInformes, aprobarInforme, generarInformesManual } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -545,6 +649,7 @@
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
     document.getElementById('btnNuevoColaborador').style.display = 'none';
+    document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
   }
 
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
@@ -560,7 +665,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','config'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','informes','config'].forEach(s => {
       document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -568,6 +673,7 @@
     if (sec === 'mistareas') loadMisTareas();
     if (sec === 'colaboradores') loadColaboradores();
     if (sec === 'internas') loadInternas();
+    if (sec === 'informes') loadInformes();
   };
 
   window.toggleClientesMenu = async function() {
@@ -597,7 +703,7 @@
 
   async function loadInternas() {
     const board = document.getElementById('internasBoard');
-    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
       renderInternasBoard();
@@ -633,6 +739,15 @@
                 ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">📅 ${t.vencimiento}</div>` : ''}
                 ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:var(--primary);">👤 ${t.asignado.nombre}</div>` : ''}
+                ${t.subtareas?.length ? (() => {
+                  const done = t.subtareas.filter(s => s.done).length;
+                  const total = t.subtareas.length;
+                  const pct = Math.round(done / total * 100);
+                  return `<div style="margin-top:6px;">
+                    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
+                    <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:#10b981;border-radius:2px;width:${pct}%;"></div></div>
+                  </div>`;
+                })() : ''}
               </div>
             `).join('')}
           </div>
@@ -661,6 +776,7 @@
         const t = _internasCache.find(x => x.id === id);
         if (!t || t.estado === zone.dataset.col) return;
         t.estado = zone.dataset.col;
+        t.completadoEn = zone.dataset.col === 'Listo' ? new Date().toISOString().split('T')[0] : null;
         renderInternasBoard();
         try { const saved = await saveTarea(INTERNAS_CLIENT_ID, t); const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; } catch (e) { console.error(e); }
       });
@@ -687,9 +803,42 @@
         asignadoSel.appendChild(opt);
       });
     } catch (e) {}
+    const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
+    document.getElementById('in-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
+    _inSubtareas = [...(t.subtareas || [])];
+    renderInSubtareas();
     document.getElementById('internaModal').classList.remove('hidden');
   };
   window.closeInternaModal = () => document.getElementById('internaModal').classList.add('hidden');
+
+  let _inSubtareas = [];
+  function renderInSubtareas() {
+    const list = document.getElementById('in-subtareas-list');
+    list.innerHTML = _inSubtareas.map((s, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;">
+        <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
+        <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;" title="Eliminar">×</button>
+      </div>
+    `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+  }
+  window.agregarInSubtarea = function() {
+    const input = document.getElementById('in-subtarea-input');
+    const titulo = input.value.trim();
+    if (!titulo) return;
+    _inSubtareas.push({ titulo, done: false });
+    input.value = '';
+    renderInSubtareas();
+  };
+  window.toggleInSubtarea = function(i) {
+    if (!_inSubtareas[i]) return;
+    _inSubtareas[i].done = !_inSubtareas[i].done;
+    renderInSubtareas();
+  };
+  window.eliminarInSubtarea = function(i) {
+    _inSubtareas.splice(i, 1);
+    renderInSubtareas();
+  };
 
   window.saveInterna = async function() {
     const titulo = document.getElementById('in-titulo').value.trim();
@@ -697,15 +846,18 @@
     const asignadoEl = document.getElementById('in-asignado');
     const asignadoEmail = asignadoEl.value;
     const asignadoNombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
+    const inEstadoVal = document.getElementById('in-estado').value;
     const obj = {
       ...(_editingInterna || {}),
       titulo,
-      estado: document.getElementById('in-estado').value,
+      estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
       asignado: asignadoEmail ? (asignadoEmail === (_editingInterna?.asignado?.email || '')
         ? { ...(_editingInterna.asignado), email: asignadoEmail, nombre: asignadoNombre }
         : { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.nombre || user.name || user.email } }) : null,
+      subtareas: _inSubtareas,
+      completadoEn: inEstadoVal === 'Listo' ? (_editingInterna?.estado === 'Listo' ? _editingInterna.completadoEn : new Date().toISOString().split('T')[0]) : null,
     };
     try {
       const saved = await saveTarea(INTERNAS_CLIENT_ID, obj);
@@ -730,6 +882,7 @@
     const t = _internasCache.find(x => x.id === id);
     if (!t) return;
     t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
+    t.completadoEn = t.estado === 'Listo' ? new Date().toISOString().split('T')[0] : null;
     const saved = await saveTarea(INTERNAS_CLIENT_ID, t);
     const i = _internasCache.findIndex(x => x.id === id);
     _internasCache[i] = saved;
@@ -741,7 +894,7 @@
   async function loadColaboradores() {
     const listEl = document.getElementById('colabList');
     const countEl = document.getElementById('colabCount');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
     try {
       const [colaboradores, clients] = await Promise.all([getColaboradores(), getAllClients()]);
       _colaboradoresCache = colaboradores || [];
@@ -803,31 +956,72 @@
   let _misTareasView = 'lista';
   const ESTADOS_TAREA = ['Sin empezar', 'En progreso', 'Listo'];
   const ESTADOS_CONTENIDO = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+  const MESES_NOMBRE_JS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+  let _misTareasTab = 'laboral';
+  let _misTareasVerDe = '';
   async function loadMisTareas() {
     const listEl = document.getElementById('misTareasList');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Cargando...</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase();
     const clients = await getAllClients();
-    const miEmail = (user.email || '').toLowerCase();
     const items = [];
-    await Promise.all(clients.map(async (c) => {
+    const pseudoClients = [
+      { id: '_cosmart', nombre: 'COSMART (interno)' },
+      { id: '_personal', nombre: 'Personal' },
+    ];
+    await Promise.all([...clients, ...pseudoClients].map(async (c) => {
       try {
-        const [tareas, contenidos] = await Promise.all([getTareas(c.id), getContenidos(c.id)]);
+        const esPersonal = c.id === '_personal';
+        const [tareas, contenidos] = await Promise.all([
+          getTareas(c.id),
+          esPersonal ? Promise.resolve([]) : getContenidos(c.id),
+        ]);
         (tareas || []).forEach(t => {
-          if (!t.archivado && t.asignado && (t.asignado.email || '').toLowerCase() === miEmail) {
-            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t });
+          if (!t.archivado && t.asignado?.email) {
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail: t.asignado.email.toLowerCase() });
           }
         });
         (contenidos || []).forEach(t => {
-          if (t.asignado && (t.asignado.email || '').toLowerCase() === miEmail && t.estado !== 'Publicado') {
-            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t });
+          if (t.asignado?.email && t.estado !== 'Publicado') {
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t, personal: false, asignadoEmail: t.asignado.email.toLowerCase() });
           }
         });
       } catch (e) { console.error('No se pudieron cargar tareas/contenidos de', c.id, e); }
     }));
     _misTareasCache = items;
+    await poblarMisTareasVerDe();
     renderMisTareas();
   }
+
+  async function poblarMisTareasVerDe() {
+    const sel = document.getElementById('misTareasVerDe');
+    if (!sel || sel.dataset.poblado) return;
+    const miEmail = (user.email || '').toLowerCase();
+    let opciones = [`<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        if (c.email.toLowerCase() === miEmail) return;
+        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+      });
+    } catch (e) {}
+    sel.innerHTML = opciones.join('');
+    sel.value = _misTareasVerDe;
+    sel.dataset.poblado = '1';
+  }
+
+  window.cambiarMisTareasVerDe = function(email) {
+    _misTareasVerDe = email.toLowerCase();
+    renderMisTareas();
+  };
+
+  window.setMisTareasTab = function(tab) {
+    _misTareasTab = tab;
+    document.getElementById('misTareasTabLaboral').classList.toggle('active', tab === 'laboral');
+    document.getElementById('misTareasTabPersonal').classList.toggle('active', tab === 'personal');
+    renderMisTareas();
+  };
 
   window.setMisTareasView = function(v) {
     _misTareasView = v;
@@ -838,10 +1032,18 @@
     renderMisTareas();
   };
 
+  function misTareasFiltradas() {
+    return _misTareasCache.filter(i =>
+      (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
+      i.asignadoEmail === _misTareasVerDe
+    );
+  }
+
   function renderMisTareas() {
     const countEl = document.getElementById('misTareasCount');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
-    const pendientes = _misTareasCache.filter(i => !estaListo(i));
+    const visibles = misTareasFiltradas();
+    const pendientes = visibles.filter(i => !estaListo(i));
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else renderMisTareasLista();
@@ -850,11 +1052,12 @@
   function renderMisTareasLista() {
     const listEl = document.getElementById('misTareasList');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
-    if (!_misTareasCache.length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas asignadas</h3><p>Cuando te asignen una tarea o contenido en cualquier cliente, va a aparecer acá.</p></div>`;
+    const visibles = misTareasFiltradas();
+    if (!visibles.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo${_misTareasTab === 'personal' ? ' personal' : ' de un cliente o de COSMART'}, va a aparecer acá.</p></div>`;
       return;
     }
-    const ordenados = [..._misTareasCache].sort((a, b) => {
+    const ordenados = [...visibles].sort((a, b) => {
       const aListo = estaListo(a), bListo = estaListo(b);
       if (aListo !== bListo) return aListo ? 1 : -1;
       const aFecha = a.tarea.vencimiento || a.tarea.fechaPub || '9999';
@@ -862,7 +1065,9 @@
       return aFecha > bFecha ? 1 : -1;
     });
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
-    listEl.innerHTML = ordenados.map(({ clientId, clientNombre, tipo, tarea: t }, idx) => {
+    listEl.innerHTML = ordenados.map((item) => {
+      const { clientId, clientNombre, tipo, tarea: t } = item;
+      const idx = _misTareasCache.indexOf(item);
       const listo = estaListo({ tipo, tarea: t });
       const fecha = t.vencimiento || t.fechaPub || '';
       const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
@@ -903,6 +1108,8 @@
     const offset = primerDia.getDay();
     const porFecha = {};
     _misTareasCache.forEach((item, idx) => {
+      if (_misTareasTab === 'personal' ? !item.personal : item.personal) return;
+      if (item.asignadoEmail !== _misTareasVerDe) return;
       const f = item.tarea.vencimiento || item.tarea.fechaPub;
       if (!f) return;
       if (!porFecha[f]) porFecha[f] = [];
@@ -923,8 +1130,8 @@
         }).join('')}
       </div>`;
     }
-    if (!_misTareasCache.length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas asignadas</h3><p>Cuando te asignen una tarea o contenido en cualquier cliente, va a aparecer acá.</p></div>`;
+    if (!misTareasFiltradas().length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo, va a aparecer acá.</p></div>`;
       return;
     }
     listEl.innerHTML = `
@@ -943,7 +1150,8 @@
     const item = _misTareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.tipo === 'tarea');
     if (!item) return;
     item.tarea.estado = item.tarea.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-    if (item.tarea.estado === 'Listo') item.tarea.visibleParaCliente = true; // al terminarla, el cliente la puede ver
+    if (item.tarea.estado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; } // al terminarla, el cliente la puede ver
+    else item.tarea.completadoEn = null;
     await saveTarea(clientId, item.tarea);
     renderMisTareas();
   };
@@ -952,7 +1160,10 @@
     const item = _misTareasCache[idx];
     if (!item) return;
     item.tarea.estado = nuevoEstado;
-    if (item.tipo === 'tarea' && nuevoEstado === 'Listo') item.tarea.visibleParaCliente = true;
+    if (item.tipo === 'tarea') {
+      if (nuevoEstado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; }
+      else item.tarea.completadoEn = null;
+    }
     if (item.tipo === 'tarea') await saveTarea(item.clientId, item.tarea);
     else await saveContenido(item.clientId, item.tarea);
     renderMisTareas();
@@ -977,7 +1188,10 @@
     renderMiSubtareas();
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     document.getElementById('mt-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
-    document.getElementById('mt-abrir-panel').href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
+    const abrirPanelLink = document.getElementById('mt-abrir-panel');
+    const esPseudoCliente = ['_cosmart', '_personal'].includes(item.clientId);
+    abrirPanelLink.style.display = esPseudoCliente ? 'none' : '';
+    if (!esPseudoCliente) abrirPanelLink.href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
     document.getElementById('misTareaModal').classList.remove('hidden');
   };
   window.closeMisTareaModal = function() {
@@ -1020,12 +1234,18 @@
     const { tipo } = item;
     item.tarea.titulo = document.getElementById('mt-titulo').value.trim() || item.tarea.titulo;
     const nuevoEstado = document.getElementById('mt-estado').value;
+    const estadoPrevio = item.tarea.estado;
     item.tarea.estado = nuevoEstado;
     if (tipo === 'tarea') {
       item.tarea.prioridad = document.getElementById('mt-prioridad').value;
       item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
       item.tarea.subtareas = _mtSubtareas;
-      if (nuevoEstado === 'Listo') item.tarea.visibleParaCliente = true;
+      if (nuevoEstado === 'Listo') {
+        item.tarea.visibleParaCliente = true;
+        if (estadoPrevio !== 'Listo') item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+      } else {
+        item.tarea.completadoEn = null;
+      }
       item.tarea = await saveTarea(item.clientId, item.tarea);
     } else {
       item.tarea.fechaPub = document.getElementById('mt-vencimiento').value || item.tarea.fechaPub;
@@ -1033,6 +1253,251 @@
     }
     closeMisTareaModal();
     renderMisTareas();
+  };
+
+  window.openNuevaMiTareaModal = async function() {
+    document.getElementById('nmt-titulo').value = '';
+    document.getElementById('nmt-estado').value = 'Sin empezar';
+    document.getElementById('nmt-prioridad').value = 'Media';
+    document.getElementById('nmt-vencimiento').value = '';
+
+    const clienteSel = document.getElementById('nmt-cliente');
+    clienteSel.innerHTML = '<option value="">Cargando...</option>';
+    const clients = await getAllClients();
+    clienteSel.innerHTML = `
+      <option value="_personal">🏠 Personal (Vaneh)</option>
+      <option value="_cosmart">COSMART (interno)</option>
+      ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
+
+    const asignadoSel = document.getElementById('nmt-asignado');
+    asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
+        asignadoSel.appendChild(opt);
+      });
+    } catch (e) {}
+
+    document.getElementById('nuevaMiTareaModal').classList.remove('hidden');
+  };
+  window.closeNuevaMiTareaModal = function() {
+    document.getElementById('nuevaMiTareaModal').classList.add('hidden');
+  };
+
+  const MESES_CORTO_IMPORT = { ene:1,enero:1,feb:2,febrero:2,mar:3,marzo:3,abr:4,abril:4,may:5,mayo:5,jun:6,junio:6,jul:7,julio:7,ago:8,agosto:8,sep:9,set:9,septiembre:9,setiembre:9,oct:10,octubre:10,nov:11,noviembre:11,dic:12,diciembre:12 };
+  function normalizarTextoImport(s) {
+    return String(s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function parseFechaCortaImport(val, anioDefault) {
+    if (!val) return null;
+    if (val instanceof Date) {
+      const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0'), d = String(val.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    const s = String(val).trim();
+    let m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    m = s.match(/^(\d{1,2})[/-](\d{1,2})$/);
+    if (m) return `${anioDefault}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    m = normalizarTextoImport(s).match(/^(\d{1,2}) de ([a-z]+)$/);
+    if (m && MESES_CORTO_IMPORT[m[2]]) return `${anioDefault}-${String(MESES_CORTO_IMPORT[m[2]]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    return null;
+  }
+  function normalizarPrioridadImport(val) {
+    const n = normalizarTextoImport(val);
+    if (n === 'alta') return 'Alta';
+    if (n === 'baja') return 'Baja';
+    return 'Media';
+  }
+
+  let _importarTareasRows = [];
+  let _importarTareasClientesReales = [];
+  window.openImportarTareasModal = async function() {
+    document.getElementById('importar-tareas-input').value = '';
+    document.getElementById('importar-tareas-status').textContent = '';
+    document.getElementById('importar-tareas-preview').innerHTML = '';
+    document.getElementById('confirmImportarTareasBtn').disabled = true;
+    _importarTareasRows = [];
+    _importarTareasClientesReales = await getAllClients();
+    document.getElementById('importarTareasModal').classList.remove('hidden');
+    loadXLSXLibAdmin();
+  };
+  window.closeImportarTareasModal = function() {
+    document.getElementById('importarTareasModal').classList.add('hidden');
+  };
+
+  let _xlsxLoadPromiseAdmin = null;
+  function loadXLSXLibAdmin() {
+    if (window.XLSX) return Promise.resolve();
+    if (_xlsxLoadPromiseAdmin) return _xlsxLoadPromiseAdmin;
+    _xlsxLoadPromiseAdmin = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    return _xlsxLoadPromiseAdmin;
+  }
+
+  function opcionesDestinoImport(seleccionado) {
+    const opts = [`<option value="">— Elegí destino —</option>`, `<option value="_personal">🏠 Personal (Vaneh)</option>`, `<option value="_cosmart">COSMART (interno)</option>`];
+    _importarTareasClientesReales.forEach(c => opts.push(`<option value="${c.id}">${c.nombre || c.name || c.id}</option>`));
+    return opts.join('').replace(`value="${seleccionado}"`, `value="${seleccionado}" selected`);
+  }
+
+  function adivinarDestinoImport(categoria, area) {
+    const catN = normalizarTextoImport(categoria);
+    const areaN = normalizarTextoImport(area);
+    if (catN === 'personal') return '_personal';
+    if (areaN.includes('equipo interno') || areaN.includes('training') || areaN.includes('capacitacion de verticales')) return '_cosmart';
+    let mejor = null, mejorScore = 0;
+    _importarTareasClientesReales.forEach(c => {
+      const nombreN = normalizarTextoImport(c.nombre || c.name || c.id);
+      if (!nombreN) return;
+      let score = 0;
+      if (areaN === nombreN) score = 100;
+      else if (areaN.includes(nombreN) || nombreN.includes(areaN)) score = 60;
+      else {
+        const palabras = nombreN.split(' ').filter(w => w.length > 2);
+        const matches = palabras.filter(w => areaN.includes(w)).length;
+        if (palabras.length && matches === palabras.length) score = 50;
+      }
+      if (score > mejorScore) { mejorScore = score; mejor = c.id; }
+    });
+    return mejorScore >= 50 ? mejor : '';
+  }
+
+  document.getElementById('importar-tareas-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const statusEl = document.getElementById('importar-tareas-status');
+    const previewEl = document.getElementById('importar-tareas-preview');
+    const confirmBtn = document.getElementById('confirmImportarTareasBtn');
+    previewEl.innerHTML = '';
+    confirmBtn.disabled = true;
+    _importarTareasRows = [];
+    if (!file) return;
+
+    statusEl.textContent = 'Leyendo archivo…';
+    try {
+      await loadXLSXLibAdmin();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+      const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas' };
+      const headerRow = raw[0].map(normalizarTextoImport);
+      const fieldByCol = headerRow.map(h => headerMap[h] || null);
+      const anioDefault = new Date().getFullYear();
+
+      const filas = [];
+      for (let r = 1; r < raw.length; r++) {
+        const dataRow = raw[r];
+        if (!dataRow || dataRow.every(v => v === '' || v == null)) continue;
+        const obj = {};
+        fieldByCol.forEach((field, ci) => { if (field) obj[field] = dataRow[ci]; });
+        const titulo = String(obj.tarea || '').trim();
+        if (!titulo) continue;
+
+        const notasPartes = [];
+        if (obj.dia) notasPartes.push(String(obj.dia).trim());
+        if (obj.horario) notasPartes.push(String(obj.horario).trim());
+        if (obj.notas) notasPartes.push(String(obj.notas).trim());
+
+        filas.push({
+          titulo,
+          prioridad: normalizarPrioridadImport(obj.prioridad),
+          vencimiento: parseFechaCortaImport(obj.fecha, anioDefault),
+          notas: notasPartes.join(' · '),
+          destino: adivinarDestinoImport(obj.categoria, obj.area),
+          categoriaOriginal: obj.categoria || '',
+          areaOriginal: obj.area || '',
+        });
+      }
+
+      if (!filas.length) { statusEl.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Tarea").'; return; }
+
+      _importarTareasRows = filas;
+      const sinDestino = filas.filter(f => !f.destino).length;
+      statusEl.textContent = `${filas.length} tarea(s) encontradas${sinDestino ? ` · ${sinDestino} sin destino asignado todavía` : ''}.`;
+
+      previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+        <thead><tr><th>Tarea</th><th>Prioridad</th><th>Fecha</th><th>Categoría / Área</th><th>Destino</th></tr></thead>
+        <tbody>
+          ${filas.map((f, i) => `
+            <tr>
+              <td style="max-width:220px;">${f.titulo}</td>
+              <td>${f.prioridad}</td>
+              <td>${f.vencimiento || '—'}</td>
+              <td style="font-size:11px;color:var(--text-muted);">${f.categoriaOriginal} ${f.areaOriginal ? '· ' + f.areaOriginal : ''}</td>
+              <td><select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="_importarTareasRows[${i}].destino=this.value">${opcionesDestinoImport(f.destino)}</select></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table></div>`;
+      confirmBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+    }
+  });
+
+  window.confirmarImportarTareas = async function() {
+    const btn = document.getElementById('confirmImportarTareasBtn');
+    const conDestino = _importarTareasRows.filter(f => f.destino);
+    if (!conDestino.length) { alert('Ninguna fila tiene destino asignado.'); return; }
+    btn.disabled = true; btn.textContent = 'Importando…';
+    let ok = 0, error = 0;
+    for (const f of conDestino) {
+      try {
+        await saveTarea(f.destino, {
+          titulo: f.titulo,
+          estado: 'Sin empezar',
+          prioridad: f.prioridad,
+          vencimiento: f.vencimiento,
+          notas: f.notas,
+          asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
+          visibleParaCliente: false,
+        });
+        ok++;
+      } catch (e) { console.error(e); error++; }
+    }
+    btn.disabled = false; btn.textContent = 'Importar';
+    alert(`Se importaron ${ok} tarea(s)${error ? ` · ${error} con error` : ''}.`);
+    closeImportarTareasModal();
+    loadMisTareas();
+  };
+  window.guardarNuevaMiTarea = async function() {
+    const clientId = document.getElementById('nmt-cliente').value;
+    const titulo = document.getElementById('nmt-titulo').value.trim();
+    if (!clientId) { alert('Elegí un cliente.'); return; }
+    if (!titulo) { alert('El título es obligatorio.'); return; }
+    const asignadoSel = document.getElementById('nmt-asignado');
+    const asignadoEmail = asignadoSel.value;
+    const asignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    const obj = {
+      titulo,
+      estado: document.getElementById('nmt-estado').value,
+      prioridad: document.getElementById('nmt-prioridad').value,
+      vencimiento: document.getElementById('nmt-vencimiento').value || null,
+      asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
+      visibleParaCliente: false,
+    };
+    try {
+      await saveTarea(clientId, obj);
+      closeNuevaMiTareaModal();
+      loadMisTareas();
+    } catch (e) {
+      alert('Error al crear la tarea: ' + (e.message || 'intentá de nuevo.'));
+    }
   };
 
   async function loadClients() {
@@ -1321,7 +1786,89 @@
     alert('Equipo guardado correctamente.');
   };
 
+  let _informesCache = [];
+  async function loadInformes() {
+    const listEl = document.getElementById('informesList');
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    try {
+      _informesCache = await getInformes();
+      renderInformes();
+    } catch (e) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  }
+
+  function renderInformes() {
+    const listEl = document.getElementById('informesList');
+    const countEl = document.getElementById('informesCount');
+    const badge = document.getElementById('informesBadge');
+    const pendientes = _informesCache.filter(i => !i.aprobado);
+    countEl.textContent = `${_informesCache.length} informe${_informesCache.length !== 1 ? 's' : ''}`;
+    if (pendientes.length) { badge.style.display = ''; badge.textContent = pendientes.length; }
+    else { badge.style.display = 'none'; }
+
+    if (!_informesCache.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="mail-check" style="width:40px;height:40px;stroke-width:1.5;color:var(--text-muted);"></i></div><h3>Sin informes todavía</h3><p>Se generan solos el día 1 de cada mes, o los podés generar ahora para probar.</p></div>`;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+    const ordenados = [..._informesCache].sort((a, b) => {
+      if (a.aprobado !== b.aprobado) return a.aprobado ? 1 : -1;
+      return (b.generadoEn || 0) - (a.generadoEn || 0);
+    });
+    listEl.innerHTML = ordenados.map((inf, idx) => {
+      const realIdx = _informesCache.indexOf(inf);
+      return `
+      <div class="card" style="padding:16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <div style="font-size:14px;font-weight:700;">${inf.clientNombre}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${MESES_NOMBRE_JS[inf.mes]} ${inf.anio} · ${inf.items.length} ítem${inf.items.length !== 1 ? 's' : ''}</div>
+          </div>
+          <span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;background:${inf.aprobado ? '#d1fae5' : '#fef3c7'};color:${inf.aprobado ? '#059669' : '#b45309'};">${inf.aprobado ? '✓ Aprobado y enviado' : 'Pendiente de revisión'}</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleInformeDetalle(${realIdx})">Ver detalle</button>
+          ${!inf.aprobado ? `<button class="btn btn-primary btn-sm" onclick="aprobarInformeClick('${inf.id}')">Aprobar y enviar</button>` : ''}
+        </div>
+        <div id="informe-detalle-${realIdx}" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+          ${inf.items.map(it => `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
+              <span>${it.icon}</span>
+              <span style="flex:1;">${it.titulo}</span>
+              <span style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleInformeDetalle = function(idx) {
+    document.getElementById(`informe-detalle-${idx}`).classList.toggle('hidden');
+  };
+
+  window.aprobarInformeClick = async function(id) {
+    if (!confirm('¿Aprobar y enviarle este informe al cliente por mail? No se puede deshacer.')) return;
+    try {
+      await aprobarInforme(id);
+      await loadInformes();
+    } catch (e) {
+      alert('Error al aprobar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  window.generarInformesAhora = async function() {
+    if (!confirm('¿Generar los informes del mes pasado ahora? Esto no se los envía a los clientes, solo los deja listos para revisar.')) return;
+    try {
+      const res = await generarInformesManual();
+      alert(`Se generaron ${res.generados} informe(s) nuevos.`);
+      await loadInformes();
+    } catch (e) {
+      alert('Error al generar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
   loadClients();
+  if (user.role === 'admin') loadInformes();
   if (window.lucide) lucide.createIcons();
 </script>
 </body>
