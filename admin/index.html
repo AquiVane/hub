@@ -120,6 +120,19 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Gestión COSMART</h2>
           <span class="text-muted text-sm">No atadas a ningún cliente</span>
+          <select id="internasVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:12px;" onchange="filtrarInternasPorVertical(this.value)">
+            <option value="">Todas las verticales</option>
+            <option value="_general">General (sin vertical)</option>
+            <option>Brújula</option>
+            <option>Rumbo Voraz</option>
+            <option>Design</option>
+            <option>ComuniCOS</option>
+            <option>Talent</option>
+            <option>Shows</option>
+            <option>Euforia</option>
+            <option>Training</option>
+            <option>MPG</option>
+          </select>
           <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
         </div>
         <div id="internasBoard" class="kanban-board">
@@ -235,6 +248,21 @@
       <div class="form-group">
         <label>Título *</label>
         <input type="text" id="in-titulo" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Vertical</label>
+        <select id="in-vertical" class="form-control">
+          <option value="">General (sin vertical)</option>
+          <option>Brújula</option>
+          <option>Rumbo Voraz</option>
+          <option>Design</option>
+          <option>ComuniCOS</option>
+          <option>Talent</option>
+          <option>Shows</option>
+          <option>Euforia</option>
+          <option>Training</option>
+          <option>MPG</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Estado</label>
@@ -700,6 +728,12 @@
   const INTERNAS_CLIENT_ID = '_cosmart';
   let _internasCache = [];
   let _editingInterna = null;
+  let _internasVerticalFiltro = '';
+  const VERTICAL_COLOR = { 'Brújula':'#0ea5e9', 'Rumbo Voraz':'#e02020', 'Design':'#a855f7', 'ComuniCOS':'#3b82f6', 'Talent':'#f59e0b', 'Shows':'#ec4899', 'Euforia':'#10b981', 'Training':'#8b5cf6', 'MPG':'#06b6d4' };
+  window.filtrarInternasPorVertical = function(v) {
+    _internasVerticalFiltro = v;
+    renderInternasBoard();
+  };
 
   async function loadInternas() {
     const board = document.getElementById('internasBoard');
@@ -720,8 +754,11 @@
       { key: 'Listo', color: '#10b981' },
     ];
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    const cacheFiltrado = _internasVerticalFiltro
+      ? _internasCache.filter(t => _internasVerticalFiltro === '_general' ? !t.vertical : t.vertical === _internasVerticalFiltro)
+      : _internasCache;
     board.innerHTML = cols.map(col => {
-      const items = _internasCache.filter(t => t.estado === col.key && !t.archivado);
+      const items = cacheFiltrado.filter(t => t.estado === col.key && !t.archivado);
       return `
         <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
           <div class="kanban-col-header">
@@ -736,7 +773,10 @@
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                   <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
                 </div>
-                ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                  ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
+                  ${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
+                </div>
                 ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">📅 ${t.vencimiento}</div>` : ''}
                 ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:var(--primary);">👤 ${t.asignado.nombre}</div>` : ''}
                 ${t.subtareas?.length ? (() => {
@@ -788,6 +828,7 @@
     const t = _editingInterna || {};
     document.getElementById('interna-modal-title').textContent = _editingInterna ? 'Editar tarea interna' : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
+    document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
     document.getElementById('in-vencimiento').value = t.vencimiento || '';
@@ -850,6 +891,7 @@
     const obj = {
       ...(_editingInterna || {}),
       titulo,
+      vertical: document.getElementById('in-vertical').value || null,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
@@ -1374,6 +1416,67 @@
     return mejorScore >= 50 ? mejor : '';
   }
 
+  let _importDestinoTareasCache = {};
+  async function obtenerTareasDestinoImport(destino) {
+    if (!destino) return [];
+    if (!_importDestinoTareasCache[destino]) {
+      try { _importDestinoTareasCache[destino] = await getTareas(destino); }
+      catch (e) { _importDestinoTareasCache[destino] = []; }
+    }
+    return _importDestinoTareasCache[destino];
+  }
+
+  async function chequearDuplicadoImport(f) {
+    f.duplicadoId = null;
+    if (!f.destino) return;
+    const tareasDestino = await obtenerTareasDestinoImport(f.destino);
+    const tituloN = normalizarTextoImport(f.titulo);
+    const existente = tareasDestino.find(t => !t.archivado && normalizarTextoImport(t.titulo) === tituloN);
+    if (existente) { f.duplicadoId = existente.id; f.accionDuplicado = f.accionDuplicado || 'omitir'; }
+  }
+
+  function renderImportarTareasPreview() {
+    const previewEl = document.getElementById('importar-tareas-preview');
+    const statusEl = document.getElementById('importar-tareas-status');
+    const filas = _importarTareasRows;
+    const sinDestino = filas.filter(f => !f.destino).length;
+    const duplicados = filas.filter(f => f.duplicadoId).length;
+    statusEl.textContent = `${filas.length} tarea(s) encontradas${sinDestino ? ` · ${sinDestino} sin destino asignado todavía` : ''}${duplicados ? ` · ${duplicados} ya existen (revisá qué hacer)` : ''}.`;
+
+    previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+      <thead><tr><th>Tarea</th><th>Prioridad</th><th>Fecha</th><th>Categoría / Área</th><th>Destino</th><th>Si ya existe</th></tr></thead>
+      <tbody>
+        ${filas.map((f, i) => `
+          <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
+            <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}</td>
+            <td>${f.prioridad}</td>
+            <td>${f.vencimiento || '—'}</td>
+            <td style="font-size:11px;color:var(--text-muted);">${f.categoriaOriginal} ${f.areaOriginal ? '· ' + f.areaOriginal : ''}</td>
+            <td><select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="cambiarDestinoImportRow(${i}, this.value)">${opcionesDestinoImport(f.destino)}</select></td>
+            <td>${f.duplicadoId ? `
+              <select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="cambiarAccionDuplicadoImport(${i}, this.value)">
+                <option value="omitir" ${f.accionDuplicado === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option>
+                <option value="actualizar" ${f.accionDuplicado === 'actualizar' ? 'selected' : ''}>Actualizar la existente</option>
+                <option value="nueva" ${f.accionDuplicado === 'nueva' ? 'selected' : ''}>Importar como nueva</option>
+              </select>
+            ` : '<span style="font-size:11px;color:var(--text-muted);">—</span>'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  window.cambiarDestinoImportRow = async function(i, valor) {
+    const f = _importarTareasRows[i];
+    f.destino = valor;
+    await chequearDuplicadoImport(f);
+    renderImportarTareasPreview();
+  };
+
+  window.cambiarAccionDuplicadoImport = function(i, valor) {
+    _importarTareasRows[i].accionDuplicado = valor;
+  };
+
   document.getElementById('importar-tareas-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     const statusEl = document.getElementById('importar-tareas-status');
@@ -1382,6 +1485,7 @@
     previewEl.innerHTML = '';
     confirmBtn.disabled = true;
     _importarTareasRows = [];
+    _importDestinoTareasCache = {};
     if (!file) return;
 
     statusEl.textContent = 'Leyendo archivo…';
@@ -1420,29 +1524,16 @@
           destino: adivinarDestinoImport(obj.categoria, obj.area),
           categoriaOriginal: obj.categoria || '',
           areaOriginal: obj.area || '',
+          duplicadoId: null,
+          accionDuplicado: 'omitir',
         });
       }
 
       if (!filas.length) { statusEl.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Tarea").'; return; }
 
       _importarTareasRows = filas;
-      const sinDestino = filas.filter(f => !f.destino).length;
-      statusEl.textContent = `${filas.length} tarea(s) encontradas${sinDestino ? ` · ${sinDestino} sin destino asignado todavía` : ''}.`;
-
-      previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
-        <thead><tr><th>Tarea</th><th>Prioridad</th><th>Fecha</th><th>Categoría / Área</th><th>Destino</th></tr></thead>
-        <tbody>
-          ${filas.map((f, i) => `
-            <tr>
-              <td style="max-width:220px;">${f.titulo}</td>
-              <td>${f.prioridad}</td>
-              <td>${f.vencimiento || '—'}</td>
-              <td style="font-size:11px;color:var(--text-muted);">${f.categoriaOriginal} ${f.areaOriginal ? '· ' + f.areaOriginal : ''}</td>
-              <td><select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="_importarTareasRows[${i}].destino=this.value">${opcionesDestinoImport(f.destino)}</select></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table></div>`;
+      await Promise.all(filas.map(f => chequearDuplicadoImport(f)));
+      renderImportarTareasPreview();
       confirmBtn.disabled = false;
     } catch (err) {
       console.error(err);
@@ -1452,26 +1543,37 @@
 
   window.confirmarImportarTareas = async function() {
     const btn = document.getElementById('confirmImportarTareasBtn');
-    const conDestino = _importarTareasRows.filter(f => f.destino);
-    if (!conDestino.length) { alert('Ninguna fila tiene destino asignado.'); return; }
+    const aProcesar = _importarTareasRows.filter(f => f.destino && (!f.duplicadoId || f.accionDuplicado !== 'omitir'));
+    if (!aProcesar.length) { alert('No hay ninguna fila para importar (revisá destinos y duplicados).'); return; }
     btn.disabled = true; btn.textContent = 'Importando…';
     let ok = 0, error = 0;
-    for (const f of conDestino) {
+    for (const f of aProcesar) {
       try {
-        await saveTarea(f.destino, {
-          titulo: f.titulo,
-          estado: 'Sin empezar',
-          prioridad: f.prioridad,
-          vencimiento: f.vencimiento,
-          notas: f.notas,
-          asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
-          visibleParaCliente: false,
-        });
+        if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
+          const tareasDestino = await obtenerTareasDestinoImport(f.destino);
+          const existente = tareasDestino.find(t => t.id === f.duplicadoId);
+          await saveTarea(f.destino, {
+            ...existente,
+            prioridad: f.prioridad,
+            vencimiento: f.vencimiento || existente.vencimiento,
+            notas: f.notas || existente.notas,
+          });
+        } else {
+          await saveTarea(f.destino, {
+            titulo: f.titulo,
+            estado: 'Sin empezar',
+            prioridad: f.prioridad,
+            vencimiento: f.vencimiento,
+            notas: f.notas,
+            asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
+            visibleParaCliente: false,
+          });
+        }
         ok++;
       } catch (e) { console.error(e); error++; }
     }
     btn.disabled = false; btn.textContent = 'Importar';
-    alert(`Se importaron ${ok} tarea(s)${error ? ` · ${error} con error` : ''}.`);
+    alert(`Se procesaron ${ok} tarea(s)${error ? ` · ${error} con error` : ''}.`);
     closeImportarTareasModal();
     loadMisTareas();
   };
