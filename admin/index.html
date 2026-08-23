@@ -57,7 +57,7 @@
       </div>
       <div class="topbar-right">
         <div style="position:relative;">
-          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()">📋 Clientes ▾</button>
+          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> Clientes ▾</button>
           <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
         </div>
         <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
@@ -74,32 +74,50 @@
           <span id="clientCount" class="text-muted text-sm"></span>
         </div>
         <div class="client-row-list" id="clientGrid">
-          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
       <!-- Mis tareas -->
       <div id="sec-mistareas" class="hidden">
         <div class="mb-20 flex items-center gap-8" style="justify-content:space-between;flex-wrap:wrap;">
-          <div class="flex items-center gap-8">
+          <div class="flex items-center gap-8" style="flex-wrap:wrap;">
             <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
             <span id="misTareasCount" class="text-muted text-sm"></span>
-            <label style="font-size:12px;color:var(--text-muted);margin-left:8px;">Ver de:</label>
-            <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
           </div>
           <div class="flex gap-8">
             <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
             <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
             <button id="misTareasViewLista" class="btn btn-primary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
+            <button id="misTareasViewKanban" class="btn btn-secondary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
             <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
           </div>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
+          <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
+          <select id="misTareasFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
+            <option value="">Todos</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Vertical:</label>
+          <select id="misTareasFiltroVertical" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('vertical', this.value)">
+            <option value="">Todas</option>
+            <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
+            <option>Talent</option><option>Shows</option><option>Euforia</option><option>Training</option><option>MPG</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
+          <select id="misTareasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasOrden(this.value)">
+            <option value="fecha">Fecha</option>
+            <option value="prioridad">Prioridad</option>
+          </select>
         </div>
         <div class="tabs" style="margin-bottom:14px;">
           <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
           <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
         </div>
         <div id="misTareasList">
-          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -111,7 +129,7 @@
           <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         </div>
         <div id="colabList">
-          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -133,10 +151,11 @@
             <option>Training</option>
             <option>MPG</option>
           </select>
-          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
         </div>
         <div id="internasBoard" class="kanban-board">
-          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -145,11 +164,12 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Informes mensuales</h2>
           <span id="informesCount" class="text-muted text-sm"></span>
-          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="generarInformesAhora()">Generar ahora</button>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="enviarResumenEquipoAhora()">Enviar resumen a equipo ahora</button>
+          <button class="btn btn-secondary btn-sm" onclick="generarInformesAhora()">Generar ahora</button>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno. El resumen de equipo (para colaboradores) sí se envía automáticamente ese mismo día.</p>
         <div id="informesList">
-          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -295,7 +315,7 @@
         <label>Subtareas</label>
         <div id="in-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:6px;">
-          <input type="text" id="in-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;">
+          <input type="text" id="in-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarInSubtarea();}">
           <button type="button" class="btn btn-secondary btn-sm" onclick="agregarInSubtarea()">+ Agregar</button>
         </div>
       </div>
@@ -333,14 +353,28 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Vencimiento</label>
-        <input type="date" id="mt-vencimiento" class="form-control">
+        <label>Descripción</label>
+        <textarea id="mt-descripcion" class="form-control" rows="2" placeholder="Mini descripción (opcional)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>URL</label>
+        <input type="url" id="mt-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Vencimiento</label>
+          <input type="date" id="mt-vencimiento" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" id="mt-hora" class="form-control">
+        </div>
       </div>
       <div class="form-group" id="mt-subtareas-group">
         <label>Subtareas</label>
         <div id="mt-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:6px;">
-          <input type="text" id="mt-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;">
+          <input type="text" id="mt-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarMiSubtarea();}">
           <button type="button" class="btn btn-secondary btn-sm" onclick="agregarMiSubtarea()">+ Agregar</button>
         </div>
       </div>
@@ -386,8 +420,22 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Vencimiento</label>
-        <input type="date" id="nmt-vencimiento" class="form-control">
+        <label>Descripción</label>
+        <textarea id="nmt-descripcion" class="form-control" rows="2" placeholder="Mini descripción (opcional)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>URL</label>
+        <input type="url" id="nmt-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Vencimiento</label>
+          <input type="date" id="nmt-vencimiento" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" id="nmt-hora" class="form-control">
+        </div>
       </div>
       <div class="form-group">
         <label>Asignar a</label>
@@ -419,6 +467,28 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeImportarTareasModal()">Cancelar</button>
       <button class="btn btn-primary" id="confirmImportarTareasBtn" onclick="confirmarImportarTareas()" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
+<div id="importarInternasModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <h3>Importar tareas internas desde Excel</h3>
+      <button class="modal-close" onclick="closeImportarInternasModal()">×</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        Columnas esperadas: <strong>Título, Vertical, Estado, Prioridad, Vencimiento, Asignar a</strong>.
+        Todas se cargan como tareas internas de COSMART (no atadas a ningún cliente).
+      </p>
+      <input type="file" id="importar-internas-input" accept=".xlsx,.xls">
+      <div id="importar-internas-status" style="font-size:13px;margin-top:8px;color:var(--text-muted);"></div>
+      <div id="importar-internas-preview" style="margin-top:14px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportarInternasModal()">Cancelar</button>
+      <button class="btn btn-primary" id="confirmImportarInternasBtn" onclick="confirmarImportarInternas()" disabled>Importar</button>
     </div>
   </div>
 </div>
@@ -668,7 +738,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador, getInformes, aprobarInforme, generarInformesManual } from '../js/data.js';
+  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador, getInformes, aprobarInforme, generarInformesManual, enviarResumenEquipoManual } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -737,7 +807,7 @@
 
   async function loadInternas() {
     const board = document.getElementById('internasBoard');
-    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
       renderInternasBoard();
@@ -936,7 +1006,7 @@
   async function loadColaboradores() {
     const listEl = document.getElementById('colabList');
     const countEl = document.getElementById('colabCount');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     try {
       const [colaboradores, clients] = await Promise.all([getColaboradores(), getAllClients()]);
       _colaboradoresCache = colaboradores || [];
@@ -1002,9 +1072,21 @@
 
   let _misTareasTab = 'laboral';
   let _misTareasVerDe = '';
+  let _misTareasFiltroCliente = '';
+  let _misTareasFiltroVertical = '';
+  let _misTareasOrden = 'fecha';
+
+  function diasDeAtraso(fecha) {
+    if (!fecha) return 0;
+    const hoyStr = new Date().toISOString().split('T')[0];
+    if (fecha >= hoyStr) return 0;
+    const ms = new Date(hoyStr + 'T00:00:00') - new Date(fecha + 'T00:00:00');
+    return Math.round(ms / 86400000);
+  }
+
   async function loadMisTareas() {
     const listEl = document.getElementById('misTareasList');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase();
     const clients = await getAllClients();
     const items = [];
@@ -1033,6 +1115,7 @@
     }));
     _misTareasCache = items;
     await poblarMisTareasVerDe();
+    poblarMisTareasFiltroCliente();
     renderMisTareas();
   }
 
@@ -1040,7 +1123,7 @@
     const sel = document.getElementById('misTareasVerDe');
     if (!sel || sel.dataset.poblado) return;
     const miEmail = (user.email || '').toLowerCase();
-    let opciones = [`<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    let opciones = [`<option value="">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -1053,8 +1136,34 @@
     sel.dataset.poblado = '1';
   }
 
+  function poblarMisTareasFiltroCliente() {
+    const sel = document.getElementById('misTareasFiltroCliente');
+    if (!sel) return;
+    const vistos = new Set();
+    const opciones = [`<option value="">Todos</option>`];
+    _misTareasCache.forEach(i => {
+      if (vistos.has(i.clientId)) return;
+      vistos.add(i.clientId);
+      opciones.push(`<option value="${i.clientId}">${i.clientNombre}</option>`);
+    });
+    const valorActual = sel.value;
+    sel.innerHTML = opciones.join('');
+    sel.value = valorActual;
+  }
+
   window.cambiarMisTareasVerDe = function(email) {
     _misTareasVerDe = email.toLowerCase();
+    renderMisTareas();
+  };
+
+  window.cambiarMisTareasFiltro = function(tipo, valor) {
+    if (tipo === 'cliente') _misTareasFiltroCliente = valor;
+    if (tipo === 'vertical') _misTareasFiltroVertical = valor;
+    renderMisTareas();
+  };
+
+  window.cambiarMisTareasOrden = function(valor) {
+    _misTareasOrden = valor;
     renderMisTareas();
   };
 
@@ -1068,17 +1177,36 @@
   window.setMisTareasView = function(v) {
     _misTareasView = v;
     const btnLista = document.getElementById('misTareasViewLista');
+    const btnKanban = document.getElementById('misTareasViewKanban');
     const btnCal = document.getElementById('misTareasViewCal');
     btnLista.className = 'btn btn-sm ' + (v === 'lista' ? 'btn-primary' : 'btn-secondary');
+    btnKanban.className = 'btn btn-sm ' + (v === 'kanban' ? 'btn-primary' : 'btn-secondary');
     btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
     renderMisTareas();
   };
 
-  function misTareasFiltradas() {
+  function misTareasFiltradas(ignorarTab) {
     return _misTareasCache.filter(i =>
-      (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
-      i.asignadoEmail === _misTareasVerDe
+      (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
+      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe) &&
+      (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
+      (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical)
     );
+  }
+
+  const PRIO_ORDEN = { Alta: 0, Media: 1, Baja: 2 };
+  function ordenarMisTareas(lista, estaListo) {
+    return [...lista].sort((a, b) => {
+      const aListo = estaListo(a), bListo = estaListo(b);
+      if (aListo !== bListo) return aListo ? 1 : -1;
+      if (_misTareasOrden === 'prioridad') {
+        const diff = (PRIO_ORDEN[a.tarea.prioridad] ?? 3) - (PRIO_ORDEN[b.tarea.prioridad] ?? 3);
+        if (diff !== 0) return diff;
+      }
+      const aFecha = (a.tarea.vencimiento || a.tarea.fechaPub || '9999') + 'T' + (a.tarea.hora || '00:00');
+      const bFecha = (b.tarea.vencimiento || b.tarea.fechaPub || '9999') + 'T' + (b.tarea.hora || '00:00');
+      return aFecha > bFecha ? 1 : -1;
+    });
   }
 
   function renderMisTareas() {
@@ -1086,9 +1214,37 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}`;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
+    countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
+    else if (_misTareasView === 'kanban') renderMisTareasKanban();
     else renderMisTareasLista();
+  }
+
+  function tareaCardHtml(item, idx, estaListo) {
+    const { clientId, clientNombre, tipo, tarea: t } = item;
+    const listo = estaListo(item);
+    const fecha = t.vencimiento || t.fechaPub || '';
+    const atraso = !listo ? diasDeAtraso(fecha) : 0;
+    const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
+    const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
+    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    return `
+    <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
+      ${tipo === 'tarea'
+        ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
+        : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
+      <div style="flex:1;min-width:160px;">
+        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${t.titulo}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
+      </div>
+      ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
+      <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
+        ${estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
+      </select>
+      <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openMisTareaModal(${idx})">Ver / Editar</button>
+    </div>`;
   }
 
   function renderMisTareasLista() {
@@ -1099,37 +1255,48 @@
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo${_misTareasTab === 'personal' ? ' personal' : ' de un cliente o de COSMART'}, va a aparecer acá.</p></div>`;
       return;
     }
-    const ordenados = [...visibles].sort((a, b) => {
-      const aListo = estaListo(a), bListo = estaListo(b);
-      if (aListo !== bListo) return aListo ? 1 : -1;
-      const aFecha = a.tarea.vencimiento || a.tarea.fechaPub || '9999';
-      const bFecha = b.tarea.vencimiento || b.tarea.fechaPub || '9999';
-      return aFecha > bFecha ? 1 : -1;
-    });
-    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
-    listEl.innerHTML = ordenados.map((item) => {
-      const { clientId, clientNombre, tipo, tarea: t } = item;
-      const idx = _misTareasCache.indexOf(item);
-      const listo = estaListo({ tipo, tarea: t });
-      const fecha = t.vencimiento || t.fechaPub || '';
-      const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
-      const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
+    const ordenados = ordenarMisTareas(visibles, estaListo);
+    listEl.innerHTML = ordenados.map((item) => tareaCardHtml(item, _misTareasCache.indexOf(item), estaListo)).join('');
+  }
+
+  function renderMisTareasKanban() {
+    const listEl = document.getElementById('misTareasList');
+    const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
+    const visibles = misTareasFiltradas();
+    if (!visibles.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo, va a aparecer acá.</p></div>`;
+      return;
+    }
+    const cols = [
+      { key: 'Sin empezar', color: '#94a3b8', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Sin empezar' : ['Idea','En proceso'].includes(i.tarea.estado) },
+      { key: 'En progreso', color: '#3b82f6', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'En progreso' : ['En revisión'].includes(i.tarea.estado) },
+      { key: 'Listo', color: '#10b981', match: (i) => estaListo(i) },
+    ];
+    listEl.innerHTML = `<div class="kanban-board">${cols.map(col => {
+      const items = ordenarMisTareas(visibles.filter(col.match), estaListo);
       return `
-      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}">
-        ${tipo === 'tarea'
-          ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
-          : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
-        <div style="flex:1;min-width:160px;">
-          <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${t.titulo}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}</div>
+      <div class="kanban-col" style="flex:1;max-width:none;">
+        <div class="kanban-col-header">
+          <span class="kanban-col-dot" style="background:${col.color};"></span>
+          <span class="col-title">${col.key}</span>
+          <span class="col-count">${items.length}</span>
         </div>
-        ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
-        <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
-          ${estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
-        </select>
-        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openMisTareaModal(${idx})">Ver / Editar</button>
+        <div class="kanban-cards">
+          ${items.map(item => {
+            const idx = _misTareasCache.indexOf(item);
+            const { t } = { t: item.tarea };
+            const fecha = t.vencimiento || t.fechaPub || '';
+            const atraso = !estaListo(item) ? diasDeAtraso(fecha) : 0;
+            return `
+            <div class="kanban-card" onclick="openMisTareaModal(${idx})" style="${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
+              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${t.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
+              ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
       </div>`;
-    }).join('');
+    }).join('')}</div>`;
   }
 
   let _misTareasCalYear = null, _misTareasCalMonth = null;
@@ -1148,10 +1315,10 @@
     const primerDia = new Date(year, month, 1);
     const ultimoDia = new Date(year, month + 1, 0);
     const offset = primerDia.getDay();
+    const visiblesCal = misTareasFiltradas(true); // unificado: ignora el tab laboral/personal
     const porFecha = {};
-    _misTareasCache.forEach((item, idx) => {
-      if (_misTareasTab === 'personal' ? !item.personal : item.personal) return;
-      if (item.asignadoEmail !== _misTareasVerDe) return;
+    visiblesCal.forEach((item) => {
+      const idx = _misTareasCache.indexOf(item);
       const f = item.tarea.vencimiento || item.tarea.fechaPub;
       if (!f) return;
       if (!porFecha[f]) porFecha[f] = [];
@@ -1168,12 +1335,14 @@
         ${idxs.map(idx => {
           const item = _misTareasCache[idx];
           const listo = item.tipo === 'tarea' ? item.tarea.estado === 'Listo' : ['Aprobado','Programado'].includes(item.tarea.estado);
-          return `<div class="cal-event" style="background:#3b82f622;color:#3b82f6;${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.clientNombre}: ${item.tarea.titulo}">${item.tarea.titulo}</div>`;
+          const color = item.personal ? '#f59e0b' : '#3b82f6';
+          const tituloCorto = item.tarea.titulo.length > 16 ? item.tarea.titulo.slice(0, 15) + '…' : item.tarea.titulo;
+          return `<div class="cal-event" style="background:${color}22;color:${color};${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.personal ? '🏠 Personal' : '💼 ' + item.clientNombre}: ${item.tarea.titulo}${item.tarea.hora ? ' (' + item.tarea.hora + ')' : ''}">${tituloCorto}</div>`;
         }).join('')}
       </div>`;
     }
-    if (!misTareasFiltradas().length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo, va a aparecer acá.</p></div>`;
+    if (!visiblesCal.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas</h3><p>Cuando te asignen algo, va a aparecer acá.</p></div>`;
       return;
     }
     listEl.innerHTML = `
@@ -1181,6 +1350,10 @@
         <button class="cal-btn" onclick="navMisTareasCal(-1)">‹</button>
         <div class="cal-month">${meses[month]} de ${year}</div>
         <button class="cal-btn" onclick="navMisTareasCal(1)">›</button>
+        <div style="margin-left:auto;display:flex;gap:12px;font-size:11px;color:var(--text-muted);">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:4px;"></span>Laboral</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px;"></span>Personal</span>
+        </div>
       </div>
       <div class="cal-grid">
         <div class="cal-head">Dom</div><div class="cal-head">Lun</div><div class="cal-head">Mar</div><div class="cal-head">Mié</div><div class="cal-head">Jue</div><div class="cal-head">Vie</div><div class="cal-head">Sáb</div>
@@ -1224,7 +1397,10 @@
     document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
     document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
     if (tipo === 'tarea') document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
+    document.getElementById('mt-descripcion').value = t.descripcion || '';
+    document.getElementById('mt-url').value = t.url || '';
     document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
+    document.getElementById('mt-hora').value = t.hora || '';
     document.getElementById('mt-subtareas-group').style.display = tipo === 'tarea' ? '' : 'none';
     _mtSubtareas = tipo === 'tarea' ? [...(t.subtareas || [])] : [];
     renderMiSubtareas();
@@ -1275,12 +1451,15 @@
     if (!item) return;
     const { tipo } = item;
     item.tarea.titulo = document.getElementById('mt-titulo').value.trim() || item.tarea.titulo;
+    item.tarea.descripcion = document.getElementById('mt-descripcion').value.trim() || null;
+    item.tarea.url = document.getElementById('mt-url').value.trim() || null;
     const nuevoEstado = document.getElementById('mt-estado').value;
     const estadoPrevio = item.tarea.estado;
     item.tarea.estado = nuevoEstado;
     if (tipo === 'tarea') {
       item.tarea.prioridad = document.getElementById('mt-prioridad').value;
       item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
+      item.tarea.hora = document.getElementById('mt-hora').value || null;
       item.tarea.subtareas = _mtSubtareas;
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
@@ -1301,7 +1480,10 @@
     document.getElementById('nmt-titulo').value = '';
     document.getElementById('nmt-estado').value = 'Sin empezar';
     document.getElementById('nmt-prioridad').value = 'Media';
+    document.getElementById('nmt-descripcion').value = '';
+    document.getElementById('nmt-url').value = '';
     document.getElementById('nmt-vencimiento').value = '';
+    document.getElementById('nmt-hora').value = '';
 
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
@@ -1577,6 +1759,180 @@
     closeImportarTareasModal();
     loadMisTareas();
   };
+
+  const VERTICALES_VALIDAS = ['Brújula','Rumbo Voraz','Design','ComuniCOS','Talent','Shows','Euforia','Training','MPG'];
+  function adivinarVerticalImport(val) {
+    const n = normalizarTextoImport(val);
+    if (!n) return null;
+    const match = VERTICALES_VALIDAS.find(v => normalizarTextoImport(v) === n);
+    return match || null;
+  }
+
+  function adivinarEstadoImport(val) {
+    const n = normalizarTextoImport(val);
+    if (n.includes('progreso') || n.includes('proceso')) return 'En progreso';
+    if (n === 'listo' || n.includes('hecho') || n.includes('terminad')) return 'Listo';
+    return 'Sin empezar';
+  }
+
+  let _internasColaboradoresCache = [];
+  function adivinarAsignadoImport(val) {
+    const n = normalizarTextoImport(val);
+    if (!n) return null;
+    const match = _internasColaboradoresCache.find(c =>
+      normalizarTextoImport(c.nombre) === n || normalizarTextoImport(c.email) === n || normalizarTextoImport(c.email).includes(n)
+    );
+    return match || null;
+  }
+
+  let _importarInternasRows = [];
+  let _internasDuplicadosCache = null;
+  window.openImportarInternasModal = async function() {
+    document.getElementById('importar-internas-input').value = '';
+    document.getElementById('importar-internas-status').textContent = '';
+    document.getElementById('importar-internas-preview').innerHTML = '';
+    document.getElementById('confirmImportarInternasBtn').disabled = true;
+    _importarInternasRows = [];
+    try { _internasColaboradoresCache = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores(); } catch (e) { _internasColaboradoresCache = []; }
+    document.getElementById('importarInternasModal').classList.remove('hidden');
+    loadXLSXLibAdmin();
+  };
+  window.closeImportarInternasModal = function() {
+    document.getElementById('importarInternasModal').classList.add('hidden');
+  };
+
+  function renderImportarInternasPreview() {
+    const previewEl = document.getElementById('importar-internas-preview');
+    const statusEl = document.getElementById('importar-internas-status');
+    const filas = _importarInternasRows;
+    const duplicados = filas.filter(f => f.duplicadoId).length;
+    statusEl.textContent = `${filas.length} tarea(s) encontradas${duplicados ? ` · ${duplicados} ya existen (revisá qué hacer)` : ''}.`;
+    previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+      <thead><tr><th>Título</th><th>Vertical</th><th>Estado</th><th>Prioridad</th><th>Vencimiento</th><th>Asignar a</th><th>Si ya existe</th></tr></thead>
+      <tbody>
+        ${filas.map((f, i) => `
+          <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
+            <td style="max-width:200px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}</td>
+            <td>${f.vertical || '<span style="color:var(--text-muted);">General</span>'}</td>
+            <td>${f.estado}</td>
+            <td>${f.prioridad}</td>
+            <td>${f.vencimiento || '—'}</td>
+            <td>${f.asignado ? f.asignado.nombre : '<span style="color:var(--text-muted);">Sin asignar</span>'}</td>
+            <td>${f.duplicadoId ? `
+              <select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="cambiarAccionDuplicadoInternas(${i}, this.value)">
+                <option value="omitir" ${f.accionDuplicado === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option>
+                <option value="actualizar" ${f.accionDuplicado === 'actualizar' ? 'selected' : ''}>Actualizar la existente</option>
+                <option value="nueva" ${f.accionDuplicado === 'nueva' ? 'selected' : ''}>Importar como nueva</option>
+              </select>
+            ` : '<span style="font-size:11px;color:var(--text-muted);">—</span>'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  window.cambiarAccionDuplicadoInternas = function(i, valor) {
+    _importarInternasRows[i].accionDuplicado = valor;
+  };
+
+  document.getElementById('importar-internas-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const statusEl = document.getElementById('importar-internas-status');
+    const previewEl = document.getElementById('importar-internas-preview');
+    const confirmBtn = document.getElementById('confirmImportarInternasBtn');
+    previewEl.innerHTML = '';
+    confirmBtn.disabled = true;
+    _importarInternasRows = [];
+    if (!file) return;
+
+    statusEl.textContent = 'Leyendo archivo…';
+    try {
+      await loadXLSXLibAdmin();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+      const headerMap = { titulo: 'titulo', tarea: 'titulo', vertical: 'vertical', estado: 'estado', prioridad: 'prioridad', vencimiento: 'vencimiento', 'fecha limite': 'vencimiento', 'asignar a': 'asignado', asignado: 'asignado', 'responsable sugerido': 'asignado' };
+      const headerRow = raw[0].map(normalizarTextoImport);
+      const fieldByCol = headerRow.map(h => headerMap[h] || null);
+      const anioDefault = new Date().getFullYear();
+
+      const filas = [];
+      for (let r = 1; r < raw.length; r++) {
+        const dataRow = raw[r];
+        if (!dataRow || dataRow.every(v => v === '' || v == null)) continue;
+        const obj = {};
+        fieldByCol.forEach((field, ci) => { if (field) obj[field] = dataRow[ci]; });
+        const titulo = String(obj.titulo || '').trim();
+        if (!titulo) continue;
+
+        filas.push({
+          titulo,
+          vertical: adivinarVerticalImport(obj.vertical),
+          estado: adivinarEstadoImport(obj.estado),
+          prioridad: normalizarPrioridadImport(obj.prioridad),
+          vencimiento: parseFechaCortaImport(obj.vencimiento, anioDefault),
+          asignado: adivinarAsignadoImport(obj.asignado),
+          duplicadoId: null,
+          accionDuplicado: 'omitir',
+        });
+      }
+
+      if (!filas.length) { statusEl.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Título").'; return; }
+
+      const tituloN = t => normalizarTextoImport(t);
+      filas.forEach(f => {
+        const existente = _internasCache.find(t => !t.archivado && tituloN(t.titulo) === tituloN(f.titulo));
+        if (existente) f.duplicadoId = existente.id;
+      });
+
+      _importarInternasRows = filas;
+      renderImportarInternasPreview();
+      confirmBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+    }
+  });
+
+  window.confirmarImportarInternas = async function() {
+    const btn = document.getElementById('confirmImportarInternasBtn');
+    const aProcesar = _importarInternasRows.filter(f => !f.duplicadoId || f.accionDuplicado !== 'omitir');
+    if (!aProcesar.length) { alert('No hay ninguna fila para importar.'); return; }
+    btn.disabled = true; btn.textContent = 'Importando…';
+    let ok = 0, error = 0;
+    for (const f of aProcesar) {
+      try {
+        const asignadoObj = f.asignado ? { email: f.asignado.email, nombre: f.asignado.nombre, asignadoPor: { email: user.email, nombre: user.name || user.email } } : null;
+        if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
+          const existente = _internasCache.find(t => t.id === f.duplicadoId);
+          await saveTarea(INTERNAS_CLIENT_ID, {
+            ...existente,
+            vertical: f.vertical || existente.vertical,
+            prioridad: f.prioridad,
+            vencimiento: f.vencimiento || existente.vencimiento,
+            asignado: asignadoObj || existente.asignado,
+          });
+        } else {
+          await saveTarea(INTERNAS_CLIENT_ID, {
+            titulo: f.titulo,
+            vertical: f.vertical,
+            estado: f.estado,
+            prioridad: f.prioridad,
+            vencimiento: f.vencimiento,
+            asignado: asignadoObj,
+          });
+        }
+        ok++;
+      } catch (e) { console.error(e); error++; }
+    }
+    btn.disabled = false; btn.textContent = 'Importar';
+    alert(`Se procesaron ${ok} tarea(s)${error ? ` · ${error} con error` : ''}.`);
+    closeImportarInternasModal();
+    loadInternas();
+  };
   window.guardarNuevaMiTarea = async function() {
     const clientId = document.getElementById('nmt-cliente').value;
     const titulo = document.getElementById('nmt-titulo').value.trim();
@@ -1589,7 +1945,10 @@
       titulo,
       estado: document.getElementById('nmt-estado').value,
       prioridad: document.getElementById('nmt-prioridad').value,
+      descripcion: document.getElementById('nmt-descripcion').value.trim() || null,
+      url: document.getElementById('nmt-url').value.trim() || null,
       vencimiento: document.getElementById('nmt-vencimiento').value || null,
+      hora: document.getElementById('nmt-hora').value || null,
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       visibleParaCliente: false,
     };
@@ -1891,7 +2250,7 @@
   let _informesCache = [];
   async function loadInformes() {
     const listEl = document.getElementById('informesList');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>Cargando...</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     try {
       _informesCache = await getInformes();
       renderInformes();
@@ -1966,6 +2325,16 @@
       await loadInformes();
     } catch (e) {
       alert('Error al generar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  window.enviarResumenEquipoAhora = async function() {
+    if (!confirm('¿Enviar YA el resumen de equipo del mes pasado a todos los colaboradores? Esto envía el mail de verdad, no se puede deshacer.')) return;
+    try {
+      const res = await enviarResumenEquipoManual();
+      alert(res.enviados ? `Resumen enviado a ${res.enviados} persona(s).` : (res.mensaje || 'Sin actividad para enviar.'));
+    } catch (e) {
+      alert('Error al enviar: ' + (e.message || 'intentá de nuevo.'));
     }
   };
 
