@@ -383,6 +383,11 @@ export async function generarInformesManual(mes, anio) {
   return api('POST', '/admin/informes/generar', { mes, anio });
 }
 
+export async function enviarResumenEquipoManual(mes, anio) {
+  if (DEMO_MODE) { alert('En modo demo no se puede enviar el resumen real.'); return { enviados: 0 }; }
+  return api('POST', '/admin/resumen-equipo/enviar', { mes, anio });
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);
