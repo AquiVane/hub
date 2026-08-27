@@ -3484,6 +3484,7 @@ window.aprobarContenido = async function(id) {
         tipo: c.tipo || '',
         cuenta: c.cuenta || c.red || '',
         fechaPub: c.fechaPub || '',
+        clientId,
       }),
     }).catch(() => {});
   }
