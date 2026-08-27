@@ -187,10 +187,13 @@
             <option value="90">Últimos 90 días</option>
           </select>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Datos en vivo desde Brevo, agrupados por el tag de cada campaña. Solo cuenta lo que ya está etiquetado — un envío sin tag aparece como "Sin tag".</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;" id="emailStatsAviso">Cargando datos reales de Brevo…</p>
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;">Por campaña — clic en una fila para ver el detalle día por día</h3>
         <div id="emailStatsTabla">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
+        <h3 style="font-size:13px;font-weight:700;margin:24px 0 10px;">Quiénes siguieron abriendo las secuencias automáticas</h3>
+        <div id="emailStatsSeguimiento"></div>
         <div id="emailStatsDemografia" style="margin-top:24px;"></div>
       </div>
 
@@ -797,80 +800,122 @@
     if (sec === 'email-stats') loadEmailStats();
   };
 
+  function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  const NOMBRES_CAMPANIA = {
+    'euforia': 'Euforia · secuencia bienvenida',
+    'brujula': 'Brújula (leads)',
+    'metodo': 'Método (lead magnet)',
+    'recuperar-password': 'Recuperar contraseña',
+    'sin-etiqueta': 'Sin etiqueta (envíos de antes de activar el etiquetado)',
+  };
+  function nombreCampania(base) {
+    if (NOMBRES_CAMPANIA[base]) return NOMBRES_CAMPANIA[base];
+    return base.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  function tagLabel(tag) {
+    const m = /^(.+)-email-(\d+)$/.exec(tag);
+    if (m) return nombreCampania(m[1]) + ' · Email ' + m[2];
+    return nombreCampania(tag);
+  }
+
   window.loadEmailStats = async function() {
     const dias = document.getElementById('emailStatsDias').value;
+    const avisoEl = document.getElementById('emailStatsAviso');
     const tablaEl = document.getElementById('emailStatsTabla');
-    const demoEl = document.getElementById('emailStatsDemografia');
+    const seguimientoEl = document.getElementById('emailStatsSeguimiento');
     tablaEl.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
-    demoEl.innerHTML = '';
-    let data;
+    seguimientoEl.innerHTML = '';
+    let d;
     try {
-      data = await getEmailStats(dias);
+      d = await getEmailStats(dias);
     } catch (e) {
-      tablaEl.innerHTML = `<div class="empty-state"><p>Error trayendo las métricas: ${e.message}</p></div>`;
+      avisoEl.textContent = 'No pudimos traer los datos de Brevo: ' + e.message;
+      tablaEl.innerHTML = '';
       return;
     }
-    document.getElementById('emailStatsRango').textContent = data.desde && data.hasta ? `${data.desde} → ${data.hasta}` : '';
+    avisoEl.textContent = `Del ${d.rangoDesde} al ${d.rangoHasta} (${d.totalEventos} eventos). ${d.aviso || ''}`;
 
-    if (!data.porCampana || !data.porCampana.length) {
-      tablaEl.innerHTML = '<div class="empty-state"><p>No hay envíos de Brevo en este rango.</p></div>';
-      return;
-    }
+    const campanas = d.campanas || [];
+    if (!campanas.length) {
+      tablaEl.innerHTML = '<div class="empty-state"><p>No hay eventos de email registrados con etiqueta en este rango.</p></div>';
+    } else {
+      const porTagDia = {};
+      (d.campanasPorDia || []).forEach(r => (porTagDia[r.tag] ??= []).push(r));
 
-    // Agrupar por vertical para que se lea de corrido, no todo mezclado
-    const porVertical = {};
-    for (const c of data.porCampana) {
-      (porVertical[c.vertical] ??= []).push(c);
-    }
+      // Agrupar por vertical para que se lea de corrido, no todo mezclado
+      const porVertical = {};
+      for (const c of campanas) (porVertical[c.vertical || 'Sin clasificar'] ??= []).push(c);
 
-    tablaEl.innerHTML = Object.entries(porVertical).map(([vertical, campanas]) => `
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-header"><h2 style="font-size:14px;">${vertical}</h2></div>
-        <div class="card-body" style="padding:0;">
-          <table class="data-table" style="width:100%;">
-            <thead>
-              <tr>
-                <th style="text-align:left;padding:8px 12px;">Campaña (tag)</th>
-                <th style="text-align:right;padding:8px 12px;">Entregados</th>
-                <th style="text-align:right;padding:8px 12px;">Abiertos</th>
-                <th style="text-align:right;padding:8px 12px;">Tasa apertura</th>
-                <th style="text-align:right;padding:8px 12px;">Clickeados</th>
-                <th style="text-align:right;padding:8px 12px;">Tasa click</th>
-                <th style="text-align:right;padding:8px 12px;">Rebotados</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${campanas.map(c => `
-                <tr>
-                  <td style="padding:8px 12px;font-family:monospace;font-size:12px;">${c.tag}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.entregados}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.abiertos}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.tasa_apertura ?? '—'}${c.tasa_apertura !== null ? '%' : ''}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.clickeados}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.tasa_click ?? '—'}${c.tasa_click !== null ? '%' : ''}</td>
-                  <td style="text-align:right;padding:8px 12px;">${c.rebotados}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+      tablaEl.innerHTML = Object.entries(porVertical).map(([vertical, camps]) => `
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h2 style="font-size:14px;">${vertical}</h2></div>
+          <div class="card-body" style="padding:0;overflow-x:auto;">
+            <table class="data-table" style="width:100%;">
+              <thead>
+                <tr><th>Campaña / paso</th><th style="text-align:right;">Enviados</th><th style="text-align:right;">Entregados</th><th style="text-align:right;">Aperturas</th><th style="text-align:right;">Únicas</th><th style="text-align:right;">Clicks</th><th style="text-align:right;">Rebotes</th><th style="text-align:right;">Bloqueados</th></tr>
+              </thead>
+              <tbody>
+                ${camps.map(c => {
+                  const dias2 = (porTagDia[c.tag] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+                  const principal = `<tr class="camp-row" data-tag="${escapeHtml(c.tag)}" style="cursor:pointer;">
+                    <td><strong>${dias2.length ? '▸ ' : ''}${escapeHtml(tagLabel(c.tag))}</strong>${dias2.length ? ` <span style="color:var(--text-muted);font-size:11px;">(${dias2.length} días — clic para el detalle)</span>` : ''}</td>
+                    <td style="text-align:right;">${c.enviados}</td><td style="text-align:right;">${c.entregados}</td><td style="text-align:right;">${c.abiertos}</td>
+                    <td style="text-align:right;">${c.aperturasUnicas}</td><td style="text-align:right;">${c.clicks}</td>
+                    <td style="text-align:right;">${c.rebotes}</td><td style="text-align:right;">${c.bloqueados}</td></tr>`;
+                  const detalle = dias2.map(r => `<tr class="dia-row" data-tag="${escapeHtml(c.tag)}" style="display:none;background:#FAFBFD;">
+                    <td style="padding-left:28px;color:var(--text-muted);">${escapeHtml(r.fecha)}</td>
+                    <td style="text-align:right;">${r.enviados}</td><td style="text-align:right;">${r.entregados}</td><td style="text-align:right;">${r.abiertos}</td>
+                    <td style="text-align:right;">${r.aperturasUnicas}</td><td style="text-align:right;">${r.clicks}</td>
+                    <td style="text-align:right;">${r.rebotes}</td><td style="text-align:right;">${r.bloqueados}</td></tr>`).join('');
+                  return principal + detalle;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
 
-    if (data.demografiaEuforia && data.demografiaEuforia.por_pais) {
-      demoEl.innerHTML = `
+      tablaEl.querySelectorAll('.camp-row').forEach(tr => {
+        tr.addEventListener('click', () => {
+          tablaEl.querySelectorAll('.dia-row').forEach(fila => {
+            if (fila.dataset.tag === tr.dataset.tag) fila.style.display = fila.style.display === 'none' ? 'table-row' : 'none';
+          });
+        });
+      });
+    }
+
+    const seg = d.seguimientoSecuencias || [];
+    if (!seg.length) {
+      seguimientoEl.innerHTML = '<div class="empty-state"><p>Sin datos de seguimiento todavía.</p></div>';
+    } else {
+      seguimientoEl.innerHTML = `
         <div class="card">
-          <div class="card-header"><h2 style="font-size:14px;">Euforia · país de las creadoras que abrieron o clickearon (${data.demografiaEuforia.total_creadoras_activas} en total)</h2></div>
+          <div class="card-body" style="padding:0;overflow-x:auto;">
+            <table class="data-table" style="width:100%;">
+              <thead><tr><th>Secuencia</th><th>Email</th><th>Último paso abierto</th><th>Fecha</th></tr></thead>
+              <tbody>
+                ${seg.map(s => `<tr><td><span style="background:var(--primary-light,#e8f0fe);color:var(--primary,#1A4DAA);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${escapeHtml(nombreCampania(s.slug))}</span></td><td>${escapeHtml(s.email)}</td><td>Email ${s.ultimoPaso}</td><td>${escapeHtml(s.fecha || '—')}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    if (d.demografiaEuforia && d.demografiaEuforia.por_pais) {
+      seguimientoEl.innerHTML += `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header"><h2 style="font-size:14px;">Euforia · país de las creadoras que abrieron o clickearon (${d.demografiaEuforia.total_creadoras_activas} en total)</h2></div>
           <div class="card-body">
-            ${data.demografiaEuforia.por_pais.map(p => `
+            ${d.demografiaEuforia.por_pais.map(p => `
               <div class="flex items-center gap-8" style="justify-content:space-between;padding:4px 0;font-size:13px;">
-                <span>${p.pais || 'Sin país cargado'}</span><span style="font-weight:600;">${p.n}</span>
+                <span>${escapeHtml(p.pais || 'Sin país cargado')}</span><span style="font-weight:600;">${p.n}</span>
               </div>
             `).join('')}
           </div>
         </div>`;
-    } else if (data.demografiaEuforia && data.demografiaEuforia.error) {
-      demoEl.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">${data.demografiaEuforia.error}</p>`;
+    } else if (d.demografiaEuforia && d.demografiaEuforia.error) {
+      seguimientoEl.innerHTML += `<p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${d.demografiaEuforia.error}</p>`;
     }
   };
 
