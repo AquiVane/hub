@@ -388,6 +388,11 @@ export async function enviarResumenEquipoManual(mes, anio) {
   return api('POST', '/admin/resumen-equipo/enviar', { mes, anio });
 }
 
+export async function getEmailStats(dias = 30) {
+  if (DEMO_MODE) return { desde: '', hasta: '', porCampana: [], demografiaEuforia: null };
+  return api('GET', `/admin/email-stats?dias=${dias}`);
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);
