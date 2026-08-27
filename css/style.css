@@ -187,10 +187,10 @@ input, select, textarea { font-family: inherit; }
 .content { flex: 1; overflow-y: auto; padding: 28px; }
 
 /* ── BUTTONS ── */
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .15s; text-decoration: none; letter-spacing: -.1px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: all .15s; text-decoration: none; letter-spacing: -.1px; }
 .btn-primary { background: #1A4DAA; color: #fff; }
 .btn-primary:hover { background: #1557c0; }
-.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); box-shadow: var(--shadow-sm); }
 .btn-secondary:hover { background: var(--bg); border-color: #cbd5e1; }
 .btn-sm { padding: 5px 11px; font-size: 12px; }
 .btn-danger { background: #fee2e2; color: #dc2626; }
