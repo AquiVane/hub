@@ -96,7 +96,21 @@ async function loadAllData() {
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   STATE.ideas = ideas;
   STATE.plan = plan || { html: '' };
-  STATE.links = STATE.home.links || [];
+  // Links guardados antes de que existiera el campo `id` (o cargados a mano
+  // en Firestore) llegan sin id -- eso hace que openLinkModal('undefined')
+  // matchee cualquier link sin id en vez del que se clickeó, y el modal
+  // termina mostrándose como "Nuevo link" en vez de editar el correcto.
+  // Les asignamos un id estable acá para que el botón de editar siempre
+  // abra el link correcto.
+  let _linkIdSeed = Date.now();
+  let _linksSinId = false;
+  STATE.links = (home?.links || []).map(l => {
+    if (l.id) return l;
+    _linksSinId = true;
+    return { ...l, id: ++_linkIdSeed };
+  });
+  STATE.home.links = STATE.links;
+  if (_linksSinId) saveHomeData(clientId, STATE.home).catch(() => {});
   updateBadges();
 }
 
