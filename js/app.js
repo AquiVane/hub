@@ -300,7 +300,7 @@ function renderPlan(container) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>${user.role !== 'client' ? 'Usá "+ Cargar plan" arriba para subir el HTML del plan de ejecución.' : 'Todavía no hay un plan de ejecución para este cliente.'}</p></div>`;
     return;
   }
-  container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin"></iframe>`;
+  container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('plan-frame');
   frame.srcdoc = html;
   frame.addEventListener('load', () => {
@@ -978,13 +978,34 @@ function bancoRowHtml(c) {
   `;
 }
 
+function bancoMesGroupHtml(label, items, abierto) {
+  return `
+    <details class="banco-mes-group" ${abierto ? 'open' : ''}>
+      <summary class="banco-mes-header">${label} <span class="banco-mes-count">${items.length}</span></summary>
+      <div class="banco-cards-mobile">${items.map(bancoCardHtml).join('')}</div>
+      <div class="banco-table-desktop">
+        <p class="table-scroll-hint">← deslizá para ver más →</p>
+        <div class="table-wrapper table-scroll-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+            </thead>
+            <tbody>${items.map(bancoRowHtml).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
 function renderBancoContenidos(container) {
   const activos = STATE.contenidos.filter(c => !c.archivado);
   const archivados = STATE.contenidos.filter(c => c.archivado);
   const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
 
   const hoy = new Date();
-  const claveActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const anioActual = String(hoy.getFullYear());
+  const claveActual = `${anioActual}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
 
   const grupos = new Map();
   all.forEach(c => {
@@ -992,37 +1013,29 @@ function renderBancoContenidos(container) {
     if (!grupos.has(clave)) grupos.set(clave, []);
     grupos.get(clave).push(c);
   });
-  const claves = [...grupos.keys()].sort((a, b) => {
-    if (a === 'sin-fecha') return -1;
-    if (b === 'sin-fecha') return 1;
-    return a.localeCompare(b);
-  });
+  const clavesConFecha = [...grupos.keys()].filter(c => c !== 'sin-fecha').sort((a, b) => a.localeCompare(b));
+  const anios = [...new Set(clavesConFecha.map(c => c.slice(0, 4)))];
 
-  const gruposHtml = claves.map(clave => {
-    const items = grupos.get(clave);
-    const label = clave === 'sin-fecha' ? '📌 Sin fecha' : mesAnioLabel(clave);
-    const abierto = clave === 'sin-fecha' || clave === claveActual;
+  const sinFechaHtml = grupos.has('sin-fecha')
+    ? bancoMesGroupHtml('📌 Sin fecha', grupos.get('sin-fecha'), true)
+    : '';
+
+  const aniosHtml = anios.map(anio => {
+    const clavesDelAnio = clavesConFecha.filter(c => c.slice(0, 4) === anio);
+    const totalAnio = clavesDelAnio.reduce((n, c) => n + grupos.get(c).length, 0);
+    const abiertoAnio = anio === anioActual;
     return `
-      <details class="banco-mes-group" ${abierto ? 'open' : ''}>
-        <summary class="banco-mes-header">${label} <span class="banco-mes-count">${items.length}</span></summary>
-        <div class="banco-cards-mobile">${items.map(bancoCardHtml).join('')}</div>
-        <div class="banco-table-desktop">
-          <p class="table-scroll-hint">← deslizá para ver más →</p>
-          <div class="table-wrapper table-scroll-wrap">
-            <table class="data-table">
-              <thead>
-                <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
-              </thead>
-              <tbody>${items.map(bancoRowHtml).join('')}</tbody>
-            </table>
-          </div>
+      <details class="banco-anio-group" ${abiertoAnio ? 'open' : ''}>
+        <summary class="banco-anio-header">${anio} <span class="banco-mes-count">${totalAnio}</span></summary>
+        <div class="banco-anio-body">
+          ${clavesDelAnio.map(clave => bancoMesGroupHtml(mesAnioLabel(clave), grupos.get(clave), clave === claveActual)).join('')}
         </div>
       </details>
     `;
   }).join('');
 
   container.innerHTML = `
-    ${all.length ? gruposHtml : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`}
+    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
         <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
@@ -1878,6 +1891,10 @@ window.openContenidoModal = function(defaults = {}) {
   archBtn.textContent = c.archivado ? 'Restaurar' : 'Archivar';
   renderComments('cont', c.comentarios || []);
   document.getElementById('cont-comment-input').value = '';
+  const _cnote = document.getElementById('cont-new-note');
+  if (_cnote) _cnote.style.display = editingContenido ? 'none' : '';
+  const _cinputWrap = document.getElementById('cont-comment-input-wrap');
+  if (_cinputWrap) _cinputWrap.style.display = editingContenido ? '' : 'none';
   document.getElementById('contenidoModal').classList.remove('hidden');
 };
 
@@ -2435,6 +2452,7 @@ function renderTareasCalendario(container) {
 
 // ── Rich Text Editor helpers ──
 let _tareaImgList = [];
+let _tareaSubtareasPendientes = [];
 
 window.rteCmd = function(cmd) {
   if (/^h[1-3]$/.test(cmd)) {
@@ -2514,15 +2532,17 @@ window.openTareaModal = function(id, defaultEstado) {
     cb.checked = (t.diasSemana || []).includes(cb.value);
   });
 
-  // Subtareas — solo visible al editar
-  const stSection = document.getElementById('subtareas-section');
-  stSection.style.display = editingTarea ? '' : 'none';
-  if (editingTarea) renderSubtareas(t.subtareas || []);
+  // Subtareas — disponibles también al crear una tarea nueva
+  document.getElementById('subtareas-section').style.display = '';
+  _tareaSubtareasPendientes = t.subtareas ? [...t.subtareas] : [];
+  renderSubtareas(_tareaSubtareasPendientes);
 
   renderComments('tarea', t.comentarios || []);
   document.getElementById('tarea-comment-input').value = '';
   const _tnote = document.getElementById('tarea-new-note');
   if (_tnote) _tnote.style.display = editingTarea ? 'none' : '';
+  const _tinputWrap = document.getElementById('tarea-comment-input-wrap');
+  if (_tinputWrap) _tinputWrap.style.display = editingTarea ? '' : 'none';
   document.getElementById('tareaModal').classList.remove('hidden');
 };
 
@@ -2539,16 +2559,14 @@ function renderSubtareas(subtareas) {
 }
 
 window.toggleSubtarea = function(idx) {
-  if (!editingTarea) return;
-  editingTarea.subtareas = editingTarea.subtareas || [];
-  editingTarea.subtareas[idx].done = !editingTarea.subtareas[idx].done;
-  renderSubtareas(editingTarea.subtareas);
+  if (!_tareaSubtareasPendientes[idx]) return;
+  _tareaSubtareasPendientes[idx].done = !_tareaSubtareasPendientes[idx].done;
+  renderSubtareas(_tareaSubtareasPendientes);
 };
 
 window.deleteSubtarea = function(idx) {
-  if (!editingTarea) return;
-  editingTarea.subtareas.splice(idx, 1);
-  renderSubtareas(editingTarea.subtareas);
+  _tareaSubtareasPendientes.splice(idx, 1);
+  renderSubtareas(_tareaSubtareasPendientes);
 };
 
 document.getElementById('addSubtareaBtn').addEventListener('click', () => {
@@ -2596,7 +2614,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfEstadoVal = document.getElementById('tf-estado').value;
     const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
-    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: editingTarea?.subtareas || [], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn };
+    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
@@ -3668,9 +3686,8 @@ document.getElementById('saveSubtareaBtn').addEventListener('click', () => {
   const titulo = document.getElementById('st-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
   const vencimiento = document.getElementById('st-vencimiento').value || null;
-  editingTarea.subtareas = editingTarea.subtareas || [];
-  editingTarea.subtareas.push({ titulo, done: false, vencimiento });
-  renderSubtareas(editingTarea.subtareas);
+  _tareaSubtareasPendientes.push({ titulo, done: false, vencimiento });
+  renderSubtareas(_tareaSubtareasPendientes);
   closeSubtareaModal();
 });
 

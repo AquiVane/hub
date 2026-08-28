@@ -1276,8 +1276,8 @@
           esPersonal ? Promise.resolve([]) : getContenidos(c.id),
         ]);
         (tareas || []).forEach(t => {
-          if (!t.archivado && t.asignado?.email) {
-            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail: t.asignado.email.toLowerCase() });
+          if (!t.archivado) {
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail: t.asignado?.email ? t.asignado.email.toLowerCase() : '' });
           }
         });
         (contenidos || []).forEach(t => {
@@ -1362,7 +1362,7 @@
   function misTareasFiltradas(ignorarTab) {
     return _misTareasCache.filter(i =>
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
-      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe) &&
+      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical)
     );
@@ -1388,8 +1388,8 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
-    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else if (_misTareasView === 'kanban') renderMisTareasKanban();
@@ -2160,7 +2160,16 @@
     if (ev) ev.stopPropagation();
     document.querySelectorAll('.client-row-menu').forEach(m => { if (m.id !== `crmenu-${id}`) m.classList.add('hidden'); });
     const menu = document.getElementById(`crmenu-${id}`);
-    if (menu) menu.classList.toggle('hidden');
+    if (!menu) return;
+    const abrir = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    if (abrir && ev && ev.currentTarget) {
+      const rect = ev.currentTarget.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 4}px`;
+      let left = rect.right - menu.offsetWidth;
+      if (left < 4) left = 4;
+      menu.style.left = `${left}px`;
+    }
   };
   document.addEventListener('click', () => {
     document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
