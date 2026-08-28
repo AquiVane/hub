@@ -240,6 +240,13 @@ input, select, textarea { font-family: inherit; }
 .link-card-edit { position: absolute; top: 6px; right: 6px; opacity: 0; transition: .15s; background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 2px 4px; }
 .link-card:hover .link-card-edit { opacity: 1; }
 
+/* ── LINKS Y ARCHIVOS (vista combinada) ── */
+.links-archivos-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.links-archivos-col-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; margin: 0 0 12px; color: var(--text); }
+@media (max-width: 900px) {
+  .links-archivos-split { grid-template-columns: 1fr; gap: 28px; }
+}
+
 /* ── TABS ── */
 .tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; flex-wrap: wrap; }
 .tab-btn { padding: 6px 12px; border: none; background: none; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: .15s; white-space: nowrap; }

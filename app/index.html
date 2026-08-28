@@ -56,13 +56,10 @@
         <i data-lucide="trending-up" class="nav-icon"></i><span>Pauta Digital</span>
       </button>
       <button class="nav-item" data-section="links">
-        <i data-lucide="link" class="nav-icon"></i><span>Links</span>
+        <i data-lucide="link" class="nav-icon"></i><span>Links y Archivos</span>
       </button>
       <button class="nav-item" data-section="web">
         <i data-lucide="globe" class="nav-icon"></i><span>Sitio Web</span>
-      </button>
-      <button class="nav-item" data-section="archivos">
-        <i data-lucide="folder-open" class="nav-icon"></i><span>Archivos importantes</span>
       </button>
       <button class="nav-item hidden" id="nav-plan" data-section="plan">
         <i data-lucide="file-text" class="nav-icon"></i><span>Plan de ejecución</span>
@@ -923,13 +920,26 @@
       <button class="modal-close" id="closeArchivoModal">×</button>
     </div>
     <div class="modal-body">
+      <div class="form-group" id="af-modo-group">
+        <label>¿Cómo lo agregás?</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-primary" id="af-modo-link" style="flex:1;">🔗 Pegar link</button>
+          <button type="button" class="btn btn-secondary" id="af-modo-subir" style="flex:1;">📎 Subir archivo</button>
+        </div>
+      </div>
       <div class="form-group">
         <label>Título *</label>
         <input type="text" id="af-titulo" class="form-control" placeholder="Ej: Manual de marca, Contrato, Briefing...">
       </div>
-      <div class="form-group">
+      <div class="form-group" id="af-url-group">
         <label>URL *</label>
         <input type="url" id="af-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group hidden" id="af-file-group">
+        <label>Archivo *</label>
+        <input type="file" id="af-file-input" class="form-control">
+        <div id="af-file-name" style="font-size:12px;color:var(--primary);margin-top:6px;"></div>
+        <span style="font-size:11px;color:var(--text-muted);">Máximo 50 MB. Para archivos más pesados, usá "Pegar link" (Drive/Dropbox).</span>
       </div>
       <div class="form-group">
         <label>Tipo</label>

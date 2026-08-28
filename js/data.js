@@ -279,6 +279,38 @@ export async function savePlan(clientId, html) {
   return api('POST', `/data/${clientId}/plan`, { html });
 }
 
+// ── Archivos subidos (R2) ────────────────────────────────────
+
+export async function uploadArchivo(clientId, file) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden subir archivos reales.'); throw new Error('Modo demo'); }
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${WORKER_URL}/archivo-upload/${encodeURIComponent(clientId)}`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+    body: fd,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error al subir el archivo');
+  return data;
+}
+
+export async function abrirArchivo(clientId, key, filename) {
+  const res = await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
+    headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+  });
+  if (!res.ok) throw new Error('No se pudo descargar el archivo');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || 'archivo';
+    a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 // ── Ideas ─────────────────────────────────────────────────────
 
 export async function getIdeas(clientId) {

@@ -5,7 +5,8 @@ import {
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
-  getPlan, savePlan
+  getPlan, savePlan,
+  uploadArchivo, abrirArchivo
 } from './data.js';
 
 // ── Bootstrap ──────────────────────────────────────────
@@ -154,8 +155,8 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links', web: 'Sitio Web', archivos: 'Archivos importantes', plan: 'Plan de ejecución', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos a tus recursos', web: 'Gestión del sitio web: contenidos, arreglos y métricas', archivos: 'Documentos y carpetas clave del cliente', plan: 'Plan estratégico del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -221,12 +222,30 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'links') {
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
-    btn.textContent = '+ Nuevo link';
-    btn.onclick = () => openLinkModal(null);
-    actions.appendChild(btn);
-    renderLinks(content);
+    const linkBtn = document.createElement('button');
+    linkBtn.className = 'btn btn-secondary';
+    linkBtn.textContent = '+ Nuevo link';
+    linkBtn.onclick = () => openLinkModal(null);
+    actions.appendChild(linkBtn);
+    const archivoBtn = document.createElement('button');
+    archivoBtn.className = 'btn btn-primary';
+    archivoBtn.textContent = '+ Nuevo archivo';
+    archivoBtn.onclick = () => openArchivoModal(null);
+    actions.appendChild(archivoBtn);
+    content.innerHTML = `
+      <div class="links-archivos-split">
+        <div class="links-archivos-col">
+          <h3 class="links-archivos-col-title"><i data-lucide="link" style="width:15px;height:15px;"></i> Links</h3>
+          <div id="links-col-body"></div>
+        </div>
+        <div class="links-archivos-col">
+          <h3 class="links-archivos-col-title"><i data-lucide="folder-open" style="width:15px;height:15px;"></i> Archivos</h3>
+          <div id="archivos-col-body"></div>
+        </div>
+      </div>
+    `;
+    renderLinks(document.getElementById('links-col-body'));
+    renderArchivos(document.getElementById('archivos-col-body'));
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'web') {
@@ -245,15 +264,6 @@ function renderSection(sec) {
     btn.onclick = () => openWebTaskModal(null);
     actions.appendChild(btn);
     renderWeb(content);
-    setTimeout(refreshIcons, 50);
-  }
-  else if (sec === 'archivos') {
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
-    btn.textContent = '+ Nuevo archivo';
-    btn.onclick = () => openArchivoModal(null);
-    actions.appendChild(btn);
-    renderArchivos(content);
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'plan') {
@@ -2575,7 +2585,7 @@ function renderPauta(container) {
 // ──────────────────────────────────────────────────────
 window.setLinkCatFilter = function(cat) {
   window._linkCatFilter = cat;
-  renderLinks(document.getElementById('main-content'));
+  renderLinks(document.getElementById('links-col-body'));
   setTimeout(refreshIcons, 30);
 };
 
@@ -2678,18 +2688,26 @@ const ARCHIVO_ICONS = {
   Documento: 'file', Planilla: 'table', Otro: 'link',
 };
 
+function tipoDesdeArchivo(filename) {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  if (ext === 'pdf') return 'PDF';
+  if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return 'Documento';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'Planilla';
+  return 'Otro';
+}
+
 function renderArchivos(container) {
   const archivos = STATE.home.archivos || [];
   container.innerHTML = archivos.length ? `
     <div class="links-grid">
       ${archivos.map(a => `
-        <div class="link-card" onclick="window.open('${a.url.replace(/'/g,"\\'")}','_blank')" style="cursor:pointer;">
+        <div class="link-card" onclick="${a.subido ? `abrirArchivoSubido('${a.id}')` : `window.open('${(a.url||'').replace(/'/g,"\\'")}','_blank')`}" style="cursor:pointer;">
           <div class="link-card-icon">
             <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
           </div>
           <div style="flex:1;min-width:0;">
             <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.titulo}</div>
-            <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}</div>
+            <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}${a.subido ? ' · Subido' : ''}</div>
             ${a.desc ? `<div class="link-card-desc">${a.desc}</div>` : ''}
           </div>
           <button class="link-card-edit" onclick="event.stopPropagation();openArchivoModal('${a.id}')" title="Editar">
@@ -2707,22 +2725,69 @@ function renderArchivos(container) {
     <div class="empty-state">
       <i data-lucide="folder-open" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
       <h3>Sin archivos guardados</h3>
-      <p>Guardá los documentos clave del cliente: carpetas de Drive, contratos, manuales de marca...</p>
+      <p>Subí un archivo directamente o pegá un link (Drive, Dropbox, etc.)</p>
       <button class="btn btn-primary" style="margin-top:12px;" onclick="openArchivoModal(null)">+ Agregar primer archivo</button>
     </div>
   `;
   setTimeout(refreshIcons, 30);
 }
 
+window.abrirArchivoSubido = async function(id) {
+  const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
+  if (!a) return;
+  try {
+    await abrirArchivo(clientId, a.key, a.filename);
+  } catch (e) {
+    alert('No se pudo abrir el archivo: ' + e.message);
+  }
+};
+
 let _editingArchivo = null;
+let _archivoModo = 'link';
+let _archivoFilePendiente = null;
+
+function setArchivoModo(modo) {
+  _archivoModo = modo;
+  document.getElementById('af-url-group').classList.toggle('hidden', modo !== 'link');
+  document.getElementById('af-file-group').classList.toggle('hidden', modo !== 'subir');
+  document.getElementById('af-modo-link').classList.toggle('btn-primary', modo === 'link');
+  document.getElementById('af-modo-link').classList.toggle('btn-secondary', modo !== 'link');
+  document.getElementById('af-modo-subir').classList.toggle('btn-primary', modo === 'subir');
+  document.getElementById('af-modo-subir').classList.toggle('btn-secondary', modo !== 'subir');
+}
+document.getElementById('af-modo-link').addEventListener('click', () => setArchivoModo('link'));
+document.getElementById('af-modo-subir').addEventListener('click', () => setArchivoModo('subir'));
+
+document.getElementById('af-file-input')?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  document.getElementById('af-file-name').textContent = '';
+  _archivoFilePendiente = null;
+  if (!file) return;
+  if (file.size > 50 * 1024 * 1024) {
+    alert('El archivo supera los 50 MB. Para archivos más pesados usá "Pegar link" (Drive/Dropbox).');
+    e.target.value = '';
+    return;
+  }
+  _archivoFilePendiente = file;
+  document.getElementById('af-file-name').textContent = `✓ ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+});
+
 window.openArchivoModal = function(id) {
   _editingArchivo = id ? (STATE.home.archivos||[]).find(a => String(a.id) === String(id)) : null;
   const a = _editingArchivo || {};
+  const esNuevo = !_editingArchivo;
+  const esSubido = !!a.subido;
   document.getElementById('archivo-modal-title').textContent = _editingArchivo ? 'Editar archivo' : 'Nuevo archivo';
   document.getElementById('af-titulo').value = a.titulo || '';
   document.getElementById('af-url').value = a.url || '';
   document.getElementById('af-tipo').value = a.tipo || 'Drive';
   document.getElementById('af-desc').value = a.desc || '';
+  document.getElementById('af-file-input').value = '';
+  document.getElementById('af-file-name').textContent = '';
+  _archivoFilePendiente = null;
+  document.getElementById('af-modo-group').classList.toggle('hidden', !esNuevo);
+  setArchivoModo('link');
+  if (esSubido) document.getElementById('af-url-group').classList.add('hidden');
   document.getElementById('deleteArchivoBtn').style.display = _editingArchivo ? '' : 'none';
   document.getElementById('archivoModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('af-titulo').focus(), 50);
@@ -2733,23 +2798,57 @@ document.getElementById('closeArchivoModal').addEventListener('click', closeArch
 document.getElementById('closeArchivoModal2').addEventListener('click', closeArchivoModal);
 document.getElementById('saveArchivoBtn').addEventListener('click', async () => {
   const titulo = document.getElementById('af-titulo').value.trim();
-  const url = document.getElementById('af-url').value.trim();
-  if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
+  if (!titulo) { alert('El título es obligatorio.'); return; }
   if (!STATE.home.archivos) STATE.home.archivos = [];
-  const obj = {
-    ...(_editingArchivo || {}), id: _editingArchivo?.id || Date.now(),
-    titulo, url, tipo: document.getElementById('af-tipo').value,
-    desc: document.getElementById('af-desc').value.trim(),
-  };
-  if (_editingArchivo) {
+  const btn = document.getElementById('saveArchivoBtn');
+  const esNuevo = !_editingArchivo;
+  const modo = esNuevo ? _archivoModo : (_editingArchivo.subido ? 'subido' : 'link');
+  let obj;
+
+  if (modo === 'subir') {
+    if (!_archivoFilePendiente) { alert('Elegí un archivo para subir.'); return; }
+    btn.disabled = true; btn.textContent = 'Subiendo...';
+    try {
+      const subido = await uploadArchivo(clientId, _archivoFilePendiente);
+      obj = {
+        id: Date.now(), titulo, desc: document.getElementById('af-desc').value.trim(),
+        tipo: tipoDesdeArchivo(subido.filename), subido: true,
+        key: subido.key, filename: subido.filename, size: subido.size,
+      };
+      STATE.home.archivos.push(obj);
+    } catch (e) {
+      alert('Error al subir el archivo: ' + e.message);
+      btn.disabled = false; btn.textContent = 'Guardar';
+      return;
+    }
+  } else if (modo === 'subido') {
+    obj = { ..._editingArchivo, titulo, desc: document.getElementById('af-desc').value.trim(), tipo: document.getElementById('af-tipo').value };
     const i = STATE.home.archivos.findIndex(a => a.id === obj.id);
     STATE.home.archivos[i] = obj;
   } else {
-    STATE.home.archivos.push(obj);
+    const url = document.getElementById('af-url').value.trim();
+    if (!url) { alert('La URL es obligatoria.'); return; }
+    obj = {
+      ...(_editingArchivo || {}), id: _editingArchivo?.id || Date.now(),
+      titulo, url, tipo: document.getElementById('af-tipo').value,
+      desc: document.getElementById('af-desc').value.trim(),
+    };
+    if (_editingArchivo) {
+      const i = STATE.home.archivos.findIndex(a => a.id === obj.id);
+      STATE.home.archivos[i] = obj;
+    } else {
+      STATE.home.archivos.push(obj);
+    }
   }
-  await saveHomeData(clientId, STATE.home);
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await saveHomeData(clientId, STATE.home);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
   closeArchivoModal();
-  renderArchivos(document.getElementById('main-content'));
+  renderArchivos(document.getElementById('archivos-col-body'));
   setTimeout(refreshIcons, 50);
 });
 document.getElementById('deleteArchivoBtn').addEventListener('click', async () => {
@@ -2757,7 +2856,7 @@ document.getElementById('deleteArchivoBtn').addEventListener('click', async () =
   STATE.home.archivos = (STATE.home.archivos||[]).filter(a => a.id !== _editingArchivo.id);
   await saveHomeData(clientId, STATE.home);
   closeArchivoModal();
-  renderArchivos(document.getElementById('main-content'));
+  renderArchivos(document.getElementById('archivos-col-body'));
   setTimeout(refreshIcons, 50);
 });
 
@@ -3441,7 +3540,7 @@ document.getElementById('saveLinkBtn').addEventListener('click', async () => {
   STATE.home.links = STATE.links;
   await saveHomeData(clientId, STATE.home);
   closeLinkModal();
-  renderLinks(document.getElementById('main-content'));
+  renderLinks(document.getElementById('links-col-body'));
   setTimeout(refreshIcons, 50);
 });
 document.getElementById('deleteLinkBtn').addEventListener('click', async () => {
@@ -3450,7 +3549,7 @@ document.getElementById('deleteLinkBtn').addEventListener('click', async () => {
   STATE.home.links = STATE.links;
   await saveHomeData(clientId, STATE.home);
   closeLinkModal();
-  renderLinks(document.getElementById('main-content'));
+  renderLinks(document.getElementById('links-col-body'));
   setTimeout(refreshIcons, 50);
 });
 
