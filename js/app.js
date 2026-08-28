@@ -57,7 +57,7 @@ async function init() {
     await loadAllData();
     window.STATE = STATE; // necesario para inline handlers en módulos ES
     if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
-    if (STATE.plan && STATE.plan.html) document.getElementById('nav-plan').classList.remove('hidden');
+    if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan').classList.remove('hidden');
     setupNav();
     const openTipo = params.get('open');
     const openId = params.get('id');
