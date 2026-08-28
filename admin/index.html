@@ -421,7 +421,7 @@
     <div class="modal-body">
       <div class="form-group">
         <label>Cliente *</label>
-        <select id="nmt-cliente" class="form-control"></select>
+        <select id="nmt-cliente" class="form-control" onchange="cambiarNmtCliente()"></select>
       </div>
       <div class="form-group">
         <label>Título *</label>
@@ -1148,6 +1148,35 @@
 
   let _colaboradoresCache = [];
   let _clientsCacheForColab = [];
+  let _nmtClientsCache = [];
+
+  async function poblarNmtAsignado(selectedClientId) {
+    const asignadoSel = document.getElementById('nmt-asignado');
+    const prevValue = asignadoSel.value;
+    asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
+        asignadoSel.appendChild(opt);
+      });
+    } catch (e) {}
+    if (selectedClientId && !['_personal', '_cosmart'].includes(selectedClientId)) {
+      const cliente = _nmtClientsCache.find(c => c.id === selectedClientId);
+      (cliente?.usuarios || []).forEach(u => {
+        if (!u.email) return;
+        if ([...asignadoSel.options].some(o => o.value.toLowerCase() === u.email.toLowerCase())) return;
+        const opt = document.createElement('option');
+        opt.value = u.email; opt.textContent = `${u.nombre} (equipo del cliente)`; opt.dataset.nombre = u.nombre;
+        asignadoSel.appendChild(opt);
+      });
+    }
+    if (prevValue && [...asignadoSel.options].some(o => o.value === prevValue)) asignadoSel.value = prevValue;
+  }
+  window.cambiarNmtCliente = function() {
+    poblarNmtAsignado(document.getElementById('nmt-cliente').value);
+  };
   async function loadColaboradores() {
     const listEl = document.getElementById('colabList');
     const countEl = document.getElementById('colabCount');
@@ -1633,21 +1662,13 @@
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
     const clients = await getAllClients();
+    _nmtClientsCache = clients || [];
     clienteSel.innerHTML = `
       <option value="_personal">🏠 Personal (Vaneh)</option>
       <option value="_cosmart">COSMART (interno)</option>
       ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
 
-    const asignadoSel = document.getElementById('nmt-asignado');
-    asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
-    try {
-      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-      colaboradores.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
-        asignadoSel.appendChild(opt);
-      });
-    } catch (e) {}
+    await poblarNmtAsignado(clienteSel.value);
 
     document.getElementById('nuevaMiTareaModal').classList.remove('hidden');
   };
