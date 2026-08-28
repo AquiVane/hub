@@ -19,6 +19,7 @@ if (!clientId) { window.location.href = '../admin/index.html'; }
 
 let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
+let _tareasView = 'kanban';
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -199,12 +200,23 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'tareas') {
+    const viewKanbanBtn = document.createElement('button');
+    viewKanbanBtn.className = 'btn btn-sm ' + (_tareasView === 'kanban' ? 'btn-primary' : 'btn-secondary');
+    viewKanbanBtn.innerHTML = '<i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban';
+    viewKanbanBtn.onclick = () => { _tareasView = 'kanban'; renderSection('tareas'); };
+    actions.appendChild(viewKanbanBtn);
+    const viewCalBtn = document.createElement('button');
+    viewCalBtn.className = 'btn btn-sm ' + (_tareasView === 'calendario' ? 'btn-primary' : 'btn-secondary');
+    viewCalBtn.innerHTML = '<i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario de tareas';
+    viewCalBtn.onclick = () => { _tareasView = 'calendario'; renderSection('tareas'); };
+    actions.appendChild(viewCalBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nueva tarea';
     btn.onclick = () => openTareaModal(null);
     actions.appendChild(btn);
-    renderTareas(content);
+    if (_tareasView === 'calendario') renderTareasCalendario(content);
+    else renderTareas(content);
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'pauta') {
@@ -878,7 +890,7 @@ function renderContenidos(container) {
     <div class="mb-16">
       <div class="tabs" id="cont-tabs">
         <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
-        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario</button>
+        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario de contenidos</button>
         <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">Kanban</button>
         <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">Feed IG</button>
         <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">Muro FB</button>
@@ -1026,7 +1038,6 @@ function renderCalendario(container) {
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
       const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr);
-      const dayTareas = tareasVisibles(STATE.tareas).filter(t => t.vencimiento === dateStr && !t.archivado);
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -1037,12 +1048,6 @@ function renderCalendario(container) {
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
                onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
             ${(c.plataformas||[]).map(p=>platIcon(p)).join('')} ${c.titulo}
-          </div>
-        `).join('')}
-        ${dayTareas.map(t => `
-          <div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
-               onclick="openTareaModal('${t.id}')" title="Tarea: ${t.titulo}">
-            ✅ ${t.titulo}
           </div>
         `).join('')}
       </div>`;
@@ -2180,7 +2185,7 @@ window.toggleTareaVisibleCliente = async function(id) {
   const saved = await saveTarea(clientId, t);
   const i = STATE.tareas.findIndex(x => x.id === id);
   STATE.tareas[i] = saved;
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
   if (currentSection === 'home') renderSection('home');
 };
 
@@ -2194,13 +2199,20 @@ window.toggleTareaListo = async function(id) {
   const i = STATE.tareas.findIndex(x => x.id === id);
   STATE.tareas[i] = saved;
   updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
   if (currentSection === 'home') renderSection('home');
 };
 
 // ──────────────────────────────────────────────────────
 // TAREAS
 // ──────────────────────────────────────────────────────
+function refreshTareasView() {
+  const el = document.getElementById('main-content');
+  if (!el) return;
+  if (_tareasView === 'calendario') renderTareasCalendario(el);
+  else renderTareas(el);
+}
+
 function renderTareas(container) {
   const cols = [
     { key: 'Sin empezar', label: 'Sin empezar', color: '#94a3b8' },
@@ -2276,9 +2288,70 @@ function renderTareas(container) {
     if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; }
     else t.completadoEn = null;
     updateBadges();
-    renderTareas(document.getElementById('main-content'));
+    refreshTareasView();
     saveTarea(clientId, t).catch(() => {});
   });
+}
+
+function renderTareasCalendario(container) {
+  const hoy = new Date();
+  let viewYear = hoy.getFullYear(), viewMonth = hoy.getMonth();
+  const tareasBase = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
+
+  function drawCal() {
+    const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrev = new Date(viewYear, viewMonth, 0).getDate();
+
+    let cells = '';
+    let day = 1;
+    let nextDay = 1;
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+    for (let i = 0; i < totalCells; i++) {
+      let cellDate, isOther = false;
+      if (i < firstDay) { cellDate = new Date(viewYear, viewMonth - 1, daysInPrev - firstDay + i + 1); isOther = true; }
+      else if (day > daysInMonth) { cellDate = new Date(viewYear, viewMonth + 1, nextDay++); isOther = true; }
+      else { cellDate = new Date(viewYear, viewMonth, day++); }
+
+      const dateStr = cellDate.toISOString().split('T')[0];
+      const isToday = dateStr === hoy.toISOString().split('T')[0];
+      const dayTareas = tareasBase.filter(t => t.vencimiento === dateStr);
+
+      cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="cal-day-num">${cellDate.getDate()}</div>
+          ${!isOther ? `<button onclick="openTareaModal(null)" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;border-radius:3px;" title="Nueva tarea" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
+        </div>
+        ${dayTareas.map(t => `
+          <div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
+               onclick="openTareaModal('${t.id}')" title="${t.titulo}">
+            ✅ ${t.titulo}
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          <div class="cal-nav">
+            <button class="cal-btn" id="cal-tareas-prev">‹</button>
+            <div class="cal-month">${monthName.charAt(0).toUpperCase()+monthName.slice(1)}</div>
+            <button class="cal-btn" id="cal-tareas-next">›</button>
+          </div>
+          <div class="cal-grid">
+            ${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => `<div class="cal-day-header">${d}</div>`).join('')}
+            ${cells}
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('cal-tareas-prev').onclick = () => { if (--viewMonth < 0) { viewMonth=11; viewYear--; } drawCal(); };
+    document.getElementById('cal-tareas-next').onclick = () => { if (++viewMonth > 11) { viewMonth=0; viewYear++; } drawCal(); };
+  }
+  drawCal();
 }
 
 // ── Rich Text Editor helpers ──
@@ -2454,7 +2527,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     notifyAsignacion('tarea', saved, prevTfAsignadoEmail);
     closeTareaModal();
     updateBadges();
-    if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
+    if (currentSection === 'tareas') refreshTareasView();
     else renderSection('home');
   } catch (err) {
     alert('Error al guardar: ' + err.message);
@@ -2469,7 +2542,7 @@ document.getElementById('deleteTareaBtn').addEventListener('click', async () => 
   STATE.tareas = STATE.tareas.filter(t => t.id !== editingTarea.id);
   closeTareaModal();
   updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
 });
 
 document.getElementById('archiveTareaBtn').addEventListener('click', async () => {
@@ -2480,7 +2553,7 @@ document.getElementById('archiveTareaBtn').addEventListener('click', async () =>
   STATE.tareas[i] = editingTarea;
   closeTareaModal();
   updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
 });
 
 window.eliminarTareaDirecta = async function(id) {
@@ -2488,7 +2561,7 @@ window.eliminarTareaDirecta = async function(id) {
   await deleteTarea(clientId, id);
   STATE.tareas = STATE.tareas.filter(t => t.id !== id);
   updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
 };
 
 window.desarchivarTarea = async function(id) {
@@ -2497,7 +2570,7 @@ window.desarchivarTarea = async function(id) {
   t.archivado = false;
   await saveTarea(clientId, t);
   updateBadges();
-  renderTareas(document.getElementById('main-content'));
+  refreshTareasView();
 };
 
 // ──────────────────────────────────────────────────────
@@ -3505,7 +3578,7 @@ document.getElementById('saveTodoBtn').addEventListener('click', async () => {
   closeTodoModal();
   updateBadges();
   if (currentSection === 'home') renderSection('home');
-  else if (currentSection === 'tareas') renderTareas(document.getElementById('main-content'));
+  else if (currentSection === 'tareas') refreshTareasView();
 });
 
 // ── Subtarea modal wiring ──────────────────────────────
