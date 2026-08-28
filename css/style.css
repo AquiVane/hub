@@ -695,6 +695,18 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .fab-btn:active { transform: scale(.93); }
 
+/* ── Banco de contenidos — grupos por mes ── */
+.banco-mes-group { margin-bottom: 18px; }
+.banco-mes-group + .banco-mes-group { border-top: 1px solid var(--border); padding-top: 14px; }
+.banco-mes-header {
+  cursor: pointer; list-style: none; font-size: 14px; font-weight: 700; color: var(--text);
+  padding: 6px 0; display: flex; align-items: center; gap: 8px; user-select: none;
+}
+.banco-mes-header::-webkit-details-marker { display: none; }
+.banco-mes-header::before { content: '▸'; color: var(--text-muted); font-size: 11px; transition: transform .15s; }
+.banco-mes-group[open] > .banco-mes-header::before { transform: rotate(90deg); }
+.banco-mes-count { font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+
 /* ── Banco de contenidos — vista cards mobile ── */
 .banco-cards-mobile {
   display: none;

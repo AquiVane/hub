@@ -931,10 +931,13 @@ function renderContTab(tab) {
 }
 
 // ─ Banco de contenidos (tabla desktop + cards mobile) ─
-function renderBancoContenidos(container) {
-  const all = [...STATE.contenidos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+function mesAnioLabel(fechaYYYYMM) {
+  const label = new Date(fechaYYYYMM + '-01T00:00:00').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
-  const cardsHtml = all.length ? all.map(c => `
+function bancoCardHtml(c) {
+  return `
     <div class="content-card" onclick="openContenidoModalById('${c.id}')">
       <div class="content-card-top">
         <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
@@ -947,49 +950,96 @@ function renderBancoContenidos(container) {
         ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
       </div>
     </div>
-  `).join('') : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`;
+  `;
+}
+
+function bancoRowHtml(c) {
+  return `
+    <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
+      <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
+      <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+      <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
+      <td onclick="event.stopPropagation()">
+        <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
+          ${['Idea','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
+        </select>
+      </td>
+      <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
+      <td style="font-size:12px;">${c.eje||''}</td>
+      <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
+      <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+        ${c.estado === 'En revisión' ? `
+          <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
+          <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
+        ` : ''}
+      </td>
+    </tr>
+  `;
+}
+
+function renderBancoContenidos(container) {
+  const activos = STATE.contenidos.filter(c => !c.archivado);
+  const archivados = STATE.contenidos.filter(c => c.archivado);
+  const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+
+  const hoy = new Date();
+  const claveActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+
+  const grupos = new Map();
+  all.forEach(c => {
+    const clave = c.fechaPub ? c.fechaPub.slice(0, 7) : 'sin-fecha';
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(c);
+  });
+  const claves = [...grupos.keys()].sort((a, b) => {
+    if (a === 'sin-fecha') return -1;
+    if (b === 'sin-fecha') return 1;
+    return a.localeCompare(b);
+  });
+
+  const gruposHtml = claves.map(clave => {
+    const items = grupos.get(clave);
+    const label = clave === 'sin-fecha' ? '📌 Sin fecha' : mesAnioLabel(clave);
+    const abierto = clave === 'sin-fecha' || clave === claveActual;
+    return `
+      <details class="banco-mes-group" ${abierto ? 'open' : ''}>
+        <summary class="banco-mes-header">${label} <span class="banco-mes-count">${items.length}</span></summary>
+        <div class="banco-cards-mobile">${items.map(bancoCardHtml).join('')}</div>
+        <div class="banco-table-desktop">
+          <p class="table-scroll-hint">← deslizá para ver más →</p>
+          <div class="table-wrapper table-scroll-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+              </thead>
+              <tbody>${items.map(bancoRowHtml).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    `;
+  }).join('');
 
   container.innerHTML = `
-    <div class="banco-cards-mobile">${cardsHtml}</div>
-    <div class="banco-table-desktop">
-      <p class="table-scroll-hint">← deslizá para ver más →</p>
-      <div class="table-wrapper table-scroll-wrap">
-        <table class="data-table">
-          <thead>
-            <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
-          </thead>
-          <tbody>
-            ${all.map(c => `
-              <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
-                <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
-                <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
-                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-                <td onclick="event.stopPropagation()">
-                  <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
-                    ${['Idea','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
-                  </select>
-                </td>
-                <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
-                <td style="font-size:12px;">${c.eje||''}</td>
-                <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
-                <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
-                <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-                  ${c.estado === 'En revisión' ? `
-                    <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
-                    <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:3px 8px;" onclick="rechazarContenido('${c.id}')">✗</button>
-                  ` : ''}
-                </td>
-              </tr>
-            `).join('')}
-            <tr onclick="openContenidoModal(null)" style="cursor:pointer;" class="banco-row banco-add-row">
-              <td colspan="9" style="padding:8px 14px;font-size:12px;color:var(--text-muted);">
-                <span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-size:16px;font-weight:300;line-height:1;">+</span> Nuevo contenido</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    ${all.length ? gruposHtml : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`}
+    ${archivados.length ? `
+      <div style="margin-top:24px;">
+        <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
+        <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+          ${archivados.map(c => `
+            <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${c.titulo}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</div>
+              <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="btn btn-secondary btn-sm" onclick="desarchivarContenido('${c.id}')">Restaurar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarContenidoDirecto('${c.id}')">🗑</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
-    </div>
+    ` : ''}
   `;
 }
 
@@ -1037,7 +1087,7 @@ function renderCalendario(container) {
 
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
-      const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr);
+      const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr && !c.archivado);
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -1086,7 +1136,7 @@ function renderKanbanContenidos(container) {
   ];
 
   container.innerHTML = `<div class="kanban-board" id="kanban-cont">${cols.map(col => {
-    const items = STATE.contenidos.filter(c => c.estado === col.key);
+    const items = STATE.contenidos.filter(c => c.estado === col.key && !c.archivado);
     return `
       <div class="kanban-col" data-col="${col.key}">
         <div class="kanban-col-header">
@@ -1116,7 +1166,7 @@ function renderKanbanContenidos(container) {
     `;
   }).join('')}</div>`;
 
-  initKanbanDrag('#kanban-cont', STATE.contenidos, async (id, newCol) => {
+  initKanbanDrag('#kanban-cont', STATE.contenidos.filter(c => !c.archivado), async (id, newCol) => {
     const c = STATE.contenidos.find(x => x.id === id);
     if (!c) return;
     c.estado = newCol;
@@ -1823,6 +1873,9 @@ window.openContenidoModal = function(defaults = {}) {
   if (editingContenido) marcarAsignacionVista(c, saveContenido, STATE.contenidos).then(() => renderAsignadoVisto('cont-asignado', c));
 
   document.getElementById('deleteContenidoBtn').style.display = editingContenido ? '' : 'none';
+  const archBtn = document.getElementById('archiveContenidoBtn');
+  archBtn.style.display = editingContenido ? '' : 'none';
+  archBtn.textContent = c.archivado ? 'Restaurar' : 'Archivar';
   renderComments('cont', c.comentarios || []);
   document.getElementById('cont-comment-input').value = '';
   document.getElementById('contenidoModal').classList.remove('hidden');
@@ -1961,6 +2014,32 @@ document.getElementById('deleteContenidoBtn').addEventListener('click', async ()
   closeContenidoModal();
   renderContTab(activeContTab);
 });
+document.getElementById('archiveContenidoBtn').addEventListener('click', async () => {
+  if (!editingContenido) return;
+  editingContenido.archivado = !editingContenido.archivado;
+  const saved = await saveContenido(clientId, editingContenido);
+  const i = STATE.contenidos.findIndex(c => c.id === editingContenido.id);
+  if (i > -1) STATE.contenidos[i] = saved;
+  closeContenidoModal();
+  renderContTab(activeContTab);
+});
+
+window.desarchivarContenido = async function(id) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  if (!c) return;
+  c.archivado = false;
+  const saved = await saveContenido(clientId, c);
+  const i = STATE.contenidos.findIndex(x => x.id === id);
+  if (i > -1) STATE.contenidos[i] = saved;
+  renderContTab(activeContTab);
+};
+
+window.eliminarContenidoDirecto = async function(id) {
+  if (!confirm('¿Eliminar este contenido?')) return;
+  await deleteContenido(clientId, id);
+  STATE.contenidos = STATE.contenidos.filter(c => c.id !== id);
+  renderContTab(activeContTab);
+};
 
 // ──────────────────────────────────────────────────────
 // IMPORTAR CONTENIDOS DESDE EXCEL
