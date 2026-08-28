@@ -35,6 +35,9 @@
       <button class="nav-item" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span>Gestión COSMART</span>
       </button>
+      <button class="nav-item" onclick="showSection('actividad')">
+        <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
+      </button>
       <button class="nav-item" onclick="showSection('informes')">
         <i data-lucide="mail-check" class="nav-icon"></i><span>Informes mensuales</span>
         <span class="badge" id="informesBadge" style="display:none;"></span>
@@ -159,6 +162,29 @@
         </div>
         <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Actividad -->
+      <div id="sec-actividad" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Actividad</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Tareas completadas, contenidos publicados y campañas nuevas en el rango elegido, por cliente y por colaborador. Sirve para medir productividad y como detalle para adjuntar a una factura.</p>
+        <div id="actividad-filtros" class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:16px;">
+          <label style="font-size:12px;color:var(--text-muted);">Desde:</label>
+          <input type="date" id="act-desde" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;">
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Hasta:</label>
+          <input type="date" id="act-hasta" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;">
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Colaborador:</label>
+          <select id="act-colaborador" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;"><option value="">Todos</option></select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
+          <select id="act-cliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;"><option value="">Todos</option></select>
+          <button class="btn btn-primary btn-sm" onclick="generarActividad()">Generar reporte</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Imprimir / Descargar PDF</button>
+        </div>
+        <div id="actividadResultados">
+          <div class="empty-state"><p>Elegí el rango y filtros, y apretá "Generar reporte".</p></div>
         </div>
       </div>
 
@@ -340,6 +366,7 @@
         <div id="in-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:6px;">
           <input type="text" id="in-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarInSubtarea();}">
+          <select id="in-subtarea-asignado" class="form-control" style="max-width:150px;flex-shrink:0;"></select>
           <button type="button" class="btn btn-secondary btn-sm" onclick="agregarInSubtarea()">+ Agregar</button>
         </div>
       </div>
@@ -762,7 +789,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getColaboradores, updateColaborador, getInformes, aprobarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
+  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -788,7 +815,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','informes','email-stats','config'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','informes','email-stats','actividad','config'].forEach(s => {
       document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -798,7 +825,14 @@
     if (sec === 'internas') loadInternas();
     if (sec === 'informes') loadInformes();
     if (sec === 'email-stats') loadEmailStats();
+    if (sec === 'actividad') loadActividadFiltros();
   };
+
+  function fmtDateAct(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
 
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -1050,6 +1084,8 @@
     document.getElementById('deleteInternaBtn').style.display = _editingInterna ? '' : 'none';
     const asignadoSel = document.getElementById('in-asignado');
     asignadoSel.innerHTML = '<option value="">Sin asignar</option>';
+    const subAsignadoSel = document.getElementById('in-subtarea-asignado');
+    subAsignadoSel.innerHTML = '<option value="">Sin asignar</option>';
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -1057,10 +1093,14 @@
         opt.value = c.email; opt.textContent = `${c.nombre} — ${c.email}`; opt.dataset.nombre = c.nombre;
         if (t.asignado?.email === c.email) opt.selected = true;
         asignadoSel.appendChild(opt);
+        const opt2 = document.createElement('option');
+        opt2.value = c.email; opt2.textContent = c.nombre; opt2.dataset.nombre = c.nombre;
+        subAsignadoSel.appendChild(opt2);
       });
     } catch (e) {}
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     document.getElementById('in-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
+    document.getElementById('in-subtarea-input').value = '';
     _inSubtareas = [...(t.subtareas || [])];
     renderInSubtareas();
     document.getElementById('internaModal').classList.remove('hidden');
@@ -1074,17 +1114,22 @@
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;">
         <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;" title="Eliminar">×</button>
+        ${s.asignado?.nombre ? `<span style="font-size:10px;color:var(--primary);font-weight:600;white-space:nowrap;">👤 ${s.asignado.nombre}</span>` : ''}
+        <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
   }
   window.agregarInSubtarea = function() {
     const input = document.getElementById('in-subtarea-input');
+    const asignadoSel = document.getElementById('in-subtarea-asignado');
     const titulo = input.value.trim();
     if (!titulo) return;
-    _inSubtareas.push({ titulo, done: false });
+    const email = asignadoSel.value;
+    const nombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    _inSubtareas.push({ titulo, done: false, asignado: email ? { email, nombre } : null });
     input.value = '';
     renderInSubtareas();
+    input.focus();
   };
   window.toggleInSubtarea = function(i) {
     if (!_inSubtareas[i]) return;
@@ -2511,6 +2556,116 @@
     } catch (e) {
       alert('Error al enviar: ' + (e.message || 'intentá de nuevo.'));
     }
+  };
+
+  // ── Actividad (reporte de productividad / detalle de factura) ──
+  let _actividadClientsCache = [];
+  async function loadActividadFiltros() {
+    const clients = _actividadClientsCache.length ? _actividadClientsCache : await getAllClients();
+    _actividadClientsCache = clients;
+    const clienteSel = document.getElementById('act-cliente');
+    if (!clienteSel.dataset.poblado) {
+      clienteSel.innerHTML = `<option value="">Todos los clientes</option><option value="_cosmart">COSMART (interno)</option><option value="_personal">Personal</option>${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
+      clienteSel.dataset.poblado = '1';
+    }
+    const colabSel = document.getElementById('act-colaborador');
+    if (!colabSel.dataset.poblado) {
+      const miEmail = (user.email || '').toLowerCase();
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colabSel.innerHTML = `<option value="">Todos</option><option value="${miEmail}">Yo (${user.name || user.email})</option>${colaboradores.filter(c => c.email.toLowerCase() !== miEmail).map(c => `<option value="${c.email.toLowerCase()}">${c.nombre}</option>`).join('')}`;
+      colabSel.dataset.poblado = '1';
+    }
+    const desdeEl = document.getElementById('act-desde');
+    const hastaEl = document.getElementById('act-hasta');
+    if (!desdeEl.value) {
+      const hoy = new Date();
+      desdeEl.value = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+      hastaEl.value = hoy.toISOString().split('T')[0];
+    }
+  }
+
+  window.generarActividad = async function() {
+    const desde = document.getElementById('act-desde').value;
+    const hasta = document.getElementById('act-hasta').value;
+    const colabFiltro = document.getElementById('act-colaborador').value;
+    const clienteFiltro = document.getElementById('act-cliente').value;
+    if (!desde || !hasta) { alert('Elegí el rango de fechas.'); return; }
+    const resEl = document.getElementById('actividadResultados');
+    resEl.innerHTML = `<div class="empty-state"><p>Generando...</p></div>`;
+
+    const clients = _actividadClientsCache.length ? _actividadClientsCache : await getAllClients();
+    const pseudo = [{ id: '_cosmart', nombre: 'COSMART (interno)' }, { id: '_personal', nombre: 'Personal' }];
+    const universo = (clienteFiltro ? [...clients, ...pseudo].filter(c => c.id === clienteFiltro) : [...clients, ...pseudo]);
+
+    const porCliente = {};
+    const porColaborador = {};
+
+    await Promise.all(universo.map(async (c) => {
+      const esPersonal = c.id === '_personal';
+      let tareas = [], contenidos = [], campanas = [];
+      try {
+        [tareas, contenidos, campanas] = await Promise.all([
+          getTareas(c.id),
+          esPersonal ? Promise.resolve([]) : getContenidos(c.id),
+          esPersonal ? Promise.resolve([]) : getCampanas(c.id),
+        ]);
+      } catch (e) { console.error('Actividad: error cargando', c.id, e); return; }
+
+      const nombreCliente = c.nombre || c.name || c.id;
+      const tareasCompletadas = (tareas || []).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn >= desde && t.completadoEn <= hasta && (!colabFiltro || (t.asignado?.email || '').toLowerCase() === colabFiltro));
+      const contenidosPublicados = (contenidos || []).filter(ct => ct.estado === 'Publicado' && ct.fechaPub && ct.fechaPub >= desde && ct.fechaPub <= hasta && (!colabFiltro || (ct.asignado?.email || '').toLowerCase() === colabFiltro));
+      const campanasNuevas = colabFiltro ? [] : (campanas || []).filter(cm => cm.fechaInicio && cm.fechaInicio >= desde && cm.fechaInicio <= hasta);
+
+      if (tareasCompletadas.length || contenidosPublicados.length || campanasNuevas.length) {
+        porCliente[c.id] = { nombre: nombreCliente, tareasCompletadas, contenidosPublicados, campanasNuevas };
+      }
+      tareasCompletadas.forEach(t => {
+        const email = (t.asignado?.email || '').toLowerCase();
+        const nombre = t.asignado?.nombre || 'Sin asignar';
+        const key = email || '_sin_asignar';
+        if (!porColaborador[key]) porColaborador[key] = { nombre, tareas: 0, contenidos: 0 };
+        porColaborador[key].tareas++;
+      });
+      contenidosPublicados.forEach(ct => {
+        const email = (ct.asignado?.email || '').toLowerCase();
+        const nombre = ct.asignado?.nombre || 'Sin asignar';
+        const key = email || '_sin_asignar';
+        if (!porColaborador[key]) porColaborador[key] = { nombre, tareas: 0, contenidos: 0 };
+        porColaborador[key].contenidos++;
+      });
+    }));
+
+    const clientesOrdenados = Object.entries(porCliente).sort((a, b) => a[1].nombre.localeCompare(b[1].nombre));
+    const colaboradoresOrdenados = Object.entries(porColaborador).sort((a, b) => (b[1].tareas + b[1].contenidos) - (a[1].tareas + a[1].contenidos));
+
+    const totalTareas = clientesOrdenados.reduce((n, [, v]) => n + v.tareasCompletadas.length, 0);
+    const totalContenidos = clientesOrdenados.reduce((n, [, v]) => n + v.contenidosPublicados.length, 0);
+    const totalCampanas = clientesOrdenados.reduce((n, [, v]) => n + v.campanasNuevas.length, 0);
+
+    resEl.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <h3 style="margin:0 0 4px;">Actividad del ${fmtDateAct(desde)} al ${fmtDateAct(hasta)}</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">${totalTareas} tarea${totalTareas !== 1 ? 's' : ''} completada${totalTareas !== 1 ? 's' : ''} · ${totalContenidos} contenido${totalContenidos !== 1 ? 's' : ''} publicado${totalContenidos !== 1 ? 's' : ''} · ${totalCampanas} campaña${totalCampanas !== 1 ? 's' : ''} nueva${totalCampanas !== 1 ? 's' : ''}</p>
+      </div>
+      <h4 style="font-size:14px;margin:0 0 8px;">Por colaborador</h4>
+      ${colaboradoresOrdenados.length ? `
+        <table class="data-table" style="margin-bottom:20px;">
+          <thead><tr><th>Colaborador</th><th>Tareas completadas</th><th>Contenidos publicados</th></tr></thead>
+          <tbody>${colaboradoresOrdenados.map(([, v]) => `<tr><td>${v.nombre}</td><td>${v.tareas}</td><td>${v.contenidos}</td></tr>`).join('')}</tbody>
+        </table>
+      ` : '<p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Sin actividad en el rango.</p>'}
+      <h4 style="font-size:14px;margin:0 0 8px;">Por cliente</h4>
+      ${clientesOrdenados.length ? clientesOrdenados.map(([, v]) => `
+        <div class="card" style="padding:14px;margin-bottom:10px;">
+          <div style="font-weight:700;margin-bottom:6px;">${v.nombre}</div>
+          <div style="font-size:13px;color:var(--text-muted);">
+            ${v.tareasCompletadas.length} tarea${v.tareasCompletadas.length !== 1 ? 's' : ''} completada${v.tareasCompletadas.length !== 1 ? 's' : ''} ·
+            ${v.contenidosPublicados.length} contenido${v.contenidosPublicados.length !== 1 ? 's' : ''} publicado${v.contenidosPublicados.length !== 1 ? 's' : ''} ·
+            ${v.campanasNuevas.length} campaña${v.campanasNuevas.length !== 1 ? 's' : ''} nueva${v.campanasNuevas.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      `).join('') : '<p style="color:var(--text-muted);font-size:13px;">Sin actividad en el rango.</p>'}
+    `;
   };
 
   loadClients();

@@ -696,21 +696,21 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fab-btn:active { transform: scale(.93); }
 
 /* ── Banco de contenidos — grupos por año/mes ── */
-.banco-anio-group { margin-bottom: 18px; }
-.banco-anio-group + .banco-anio-group { border-top: 2px solid var(--border-strong); padding-top: 16px; }
+.banco-anio-group { margin-bottom: 8px; }
+.banco-anio-group + .banco-anio-group { border-top: 2px solid var(--border-strong); padding-top: 8px; }
 .banco-anio-header {
   cursor: pointer; list-style: none; font-size: 16px; font-weight: 800; color: var(--text);
-  padding: 4px 0 10px; display: flex; align-items: center; gap: 8px; user-select: none;
+  padding: 2px 0 6px; display: flex; align-items: center; gap: 8px; user-select: none;
 }
 .banco-anio-header::-webkit-details-marker { display: none; }
 .banco-anio-header::before { content: '▸'; color: var(--text-muted); font-size: 12px; transition: transform .15s; }
 .banco-anio-group[open] > .banco-anio-header::before { transform: rotate(90deg); }
 .banco-anio-body { padding-left: 4px; }
-.banco-mes-group { margin-bottom: 18px; }
-.banco-mes-group + .banco-mes-group { border-top: 1px solid var(--border); padding-top: 14px; }
+.banco-mes-group { margin-bottom: 4px; }
+.banco-mes-group + .banco-mes-group { border-top: 1px solid var(--border); padding-top: 4px; }
 .banco-mes-header {
   cursor: pointer; list-style: none; font-size: 14px; font-weight: 700; color: var(--text);
-  padding: 6px 0; display: flex; align-items: center; gap: 8px; user-select: none;
+  padding: 3px 0; display: flex; align-items: center; gap: 8px; user-select: none;
 }
 .banco-mes-header::-webkit-details-marker { display: none; }
 .banco-mes-header::before { content: '▸'; color: var(--text-muted); font-size: 11px; transition: transform .15s; }
@@ -829,4 +829,11 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 @media (max-width: 900px) {
   .dash-layout { grid-template-columns: 1fr; }
   .dash-stat-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Impresión (reporte de Actividad) ── */
+@media print {
+  .sidebar, .topbar, #actividad-filtros, .nav-item, .btn { display: none !important; }
+  .main, .content { margin: 0 !important; padding: 0 !important; }
+  body { background: #fff !important; }
 }

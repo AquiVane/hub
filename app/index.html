@@ -605,12 +605,14 @@
         </div>
 
         <!-- Subtareas -->
-        <div class="form-group" style="grid-column:span 2;" id="subtareas-section" style="display:none;">
-          <label style="display:flex;align-items:center;justify-content:space-between;">
-            <span>Subtareas</span>
-            <button type="button" class="btn btn-secondary btn-sm" id="addSubtareaBtn">+ Agregar</button>
-          </label>
-          <div id="subtareas-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;"></div>
+        <div class="form-group" style="grid-column:span 2;" id="subtareas-section">
+          <label>Subtareas</label>
+          <div id="subtareas-list" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <input type="text" id="st-titulo-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarSubtareaInline();}">
+            <select id="st-asignado-input" class="form-control" style="max-width:150px;flex-shrink:0;"></select>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="agregarSubtareaInline()" style="flex-shrink:0;">+ Agregar</button>
+          </div>
         </div>
 
         <!-- Asignar -->
@@ -851,30 +853,6 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="closeTodoModal2">Cancelar</button>
       <button class="btn btn-primary" id="saveTodoBtn">Agregar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Agregar Subtarea -->
-<div id="subtareaModal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-header">
-      <h3>+ Agregar subtarea</h3>
-      <button class="modal-close" id="closeSubtareaModal">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>Título *</label>
-        <input type="text" id="st-titulo" class="form-control" placeholder="¿Qué hay que hacer?">
-      </div>
-      <div class="form-group">
-        <label>Fecha de vencimiento (opcional)</label>
-        <input type="date" id="st-vencimiento" class="form-control">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" id="closeSubtareaModal2">Cancelar</button>
-      <button class="btn btn-primary" id="saveSubtareaBtn">Agregar</button>
     </div>
   </div>
 </div>

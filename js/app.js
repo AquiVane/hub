@@ -2534,6 +2534,9 @@ window.openTareaModal = function(id, defaultEstado) {
 
   // Subtareas — disponibles también al crear una tarea nueva
   document.getElementById('subtareas-section').style.display = '';
+  const stAsignadoInput = document.getElementById('st-asignado-input');
+  if (stAsignadoInput) stAsignadoInput.innerHTML = getAsignarOptions('');
+  document.getElementById('st-titulo-input').value = '';
   _tareaSubtareasPendientes = t.subtareas ? [...t.subtareas] : [];
   renderSubtareas(_tareaSubtareasPendientes);
 
@@ -2552,11 +2555,24 @@ function renderSubtareas(subtareas) {
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${s.done?'#bbf7d0':'var(--border)'};">
       <input type="checkbox" ${s.done?'checked':''} onchange="toggleSubtarea(${i})" style="flex-shrink:0;">
       <span style="flex:1;font-size:13px;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">${s.titulo}</span>
-      ${s.vencimiento ? `<span style="font-size:10px;color:${new Date(s.vencimiento+'T00:00:00')<new Date()&&!s.done?'#dc2626':'var(--text-muted)'};">📅 ${s.vencimiento}</span>` : ''}
-      <button onclick="deleteSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;" title="Eliminar">×</button>
+      ${s.asignado?.nombre ? `<span style="font-size:10px;color:var(--primary);font-weight:600;white-space:nowrap;">👤 ${s.asignado.nombre}</span>` : ''}
+      <button onclick="deleteSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
     </div>
   `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
 }
+
+window.agregarSubtareaInline = function() {
+  const tituloEl = document.getElementById('st-titulo-input');
+  const asignadoEl = document.getElementById('st-asignado-input');
+  const titulo = tituloEl.value.trim();
+  if (!titulo) return;
+  const email = asignadoEl.value;
+  const nombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
+  _tareaSubtareasPendientes.push({ titulo, done: false, asignado: email ? { email, nombre } : null });
+  renderSubtareas(_tareaSubtareasPendientes);
+  tituloEl.value = '';
+  tituloEl.focus();
+};
 
 window.toggleSubtarea = function(idx) {
   if (!_tareaSubtareasPendientes[idx]) return;
@@ -2568,13 +2584,6 @@ window.deleteSubtarea = function(idx) {
   _tareaSubtareasPendientes.splice(idx, 1);
   renderSubtareas(_tareaSubtareasPendientes);
 };
-
-document.getElementById('addSubtareaBtn').addEventListener('click', () => {
-  document.getElementById('st-titulo').value = '';
-  document.getElementById('st-vencimiento').value = '';
-  document.getElementById('subtareaModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('st-titulo').focus(), 50);
-});
 
 function closeTareaModal() { document.getElementById('tareaModal').classList.add('hidden'); }
 document.getElementById('closeTareaModal').addEventListener('click', closeTareaModal);
@@ -3676,19 +3685,6 @@ document.getElementById('saveTodoBtn').addEventListener('click', async () => {
   updateBadges();
   if (currentSection === 'home') renderSection('home');
   else if (currentSection === 'tareas') refreshTareasView();
-});
-
-// ── Subtarea modal wiring ──────────────────────────────
-function closeSubtareaModal() { document.getElementById('subtareaModal').classList.add('hidden'); }
-document.getElementById('closeSubtareaModal').addEventListener('click', closeSubtareaModal);
-document.getElementById('closeSubtareaModal2').addEventListener('click', closeSubtareaModal);
-document.getElementById('saveSubtareaBtn').addEventListener('click', () => {
-  const titulo = document.getElementById('st-titulo').value.trim();
-  if (!titulo) { alert('El título es obligatorio.'); return; }
-  const vencimiento = document.getElementById('st-vencimiento').value || null;
-  _tareaSubtareasPendientes.push({ titulo, done: false, vencimiento });
-  renderSubtareas(_tareaSubtareasPendientes);
-  closeSubtareaModal();
 });
 
 // ── Link modal wiring ──────────────────────────────────
