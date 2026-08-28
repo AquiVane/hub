@@ -91,8 +91,8 @@
           <div class="flex gap-8">
             <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
             <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
-            <button id="misTareasViewLista" class="btn btn-primary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
-            <button id="misTareasViewKanban" class="btn btn-secondary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
+            <button id="misTareasViewLista" class="btn btn-secondary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
+            <button id="misTareasViewKanban" class="btn btn-primary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
             <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
           </div>
         </div>
@@ -1210,7 +1210,7 @@
   };
 
   let _misTareasCache = []; // [{clientId, clientNombre, tipo:'tarea'|'contenido', tarea}]
-  let _misTareasView = 'lista';
+  let _misTareasView = 'kanban';
   const ESTADOS_TAREA = ['Sin empezar', 'En progreso', 'Listo'];
   const ESTADOS_CONTENIDO = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
   const MESES_NOMBRE_JS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
