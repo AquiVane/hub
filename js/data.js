@@ -274,6 +274,11 @@ export async function getPlan(clientId) {
   return (plan && plan.html) ? plan : { html: '' };
 }
 
+export async function savePlan(clientId, html) {
+  if (DEMO_MODE) { alert('En modo demo no se puede guardar el plan real.'); return; }
+  return api('POST', `/data/${clientId}/plan`, { html });
+}
+
 // ── Ideas ─────────────────────────────────────────────────────
 
 export async function getIdeas(clientId) {

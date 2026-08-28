@@ -955,6 +955,30 @@
   </div>
 </div>
 
+<!-- Modal: Cargar/actualizar Plan de ejecución -->
+<div id="planModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Cargar plan de ejecución</h3>
+      <button class="modal-close" id="closePlanModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Subí el archivo .html del plan (el mismo que se genera/exporta con el diseño ya armado). Reemplaza el plan anterior de este cliente si ya había uno.
+      </p>
+      <div class="form-group">
+        <label>Archivo HTML *</label>
+        <input type="file" id="plan-file-input" class="form-control" accept=".html,text/html">
+        <div id="plan-file-name" style="font-size:12px;color:var(--primary);margin-top:6px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closePlanModal2">Cancelar</button>
+      <button class="btn btn-primary" id="planSaveBtn" disabled>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Cambio de contraseña obligatorio (primer login) -->
 <div id="mustChangePasswordModal" class="modal-overlay hidden" style="z-index:9999;">
   <div class="modal" style="max-width:420px;">

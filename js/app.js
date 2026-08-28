@@ -5,7 +5,7 @@ import {
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
-  getPlan
+  getPlan, savePlan
 } from './data.js';
 
 // ── Bootstrap ──────────────────────────────────────────
@@ -257,6 +257,13 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'plan') {
+    if (user.role !== 'client') {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.textContent = STATE.plan?.html ? '↻ Actualizar plan' : '+ Cargar plan';
+      btn.onclick = openPlanModal;
+      actions.appendChild(btn);
+    }
     renderPlan(content);
   }
   else if (sec === 'instrucciones') {
@@ -268,7 +275,7 @@ function renderSection(sec) {
 function renderPlan(container) {
   const html = (STATE.plan && STATE.plan.html) || '';
   if (!html) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>Todavía no hay un plan de ejecución para este cliente.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>${user.role !== 'client' ? 'Usá "+ Cargar plan" arriba para subir el HTML del plan de ejecución.' : 'Todavía no hay un plan de ejecución para este cliente.'}</p></div>`;
     return;
   }
   container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin"></iframe>`;
@@ -283,6 +290,46 @@ function renderPlan(container) {
     } catch (e) {}
   });
 }
+
+window.openPlanModal = function() {
+  document.getElementById('plan-file-input').value = '';
+  document.getElementById('plan-file-name').textContent = '';
+  document.getElementById('planSaveBtn').disabled = true;
+  window._planHtmlPendiente = null;
+  document.getElementById('planModal').classList.remove('hidden');
+};
+
+document.getElementById('plan-file-input')?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    window._planHtmlPendiente = reader.result;
+    document.getElementById('plan-file-name').textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+    document.getElementById('planSaveBtn').disabled = false;
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsText(file);
+});
+
+document.getElementById('closePlanModal')?.addEventListener('click', () => document.getElementById('planModal').classList.add('hidden'));
+document.getElementById('closePlanModal2')?.addEventListener('click', () => document.getElementById('planModal').classList.add('hidden'));
+document.getElementById('planSaveBtn')?.addEventListener('click', async () => {
+  if (!window._planHtmlPendiente) return;
+  const btn = document.getElementById('planSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await savePlan(clientId, window._planHtmlPendiente);
+    STATE.plan = { html: window._planHtmlPendiente };
+    document.getElementById('nav-plan').classList.remove('hidden');
+    document.getElementById('planModal').classList.add('hidden');
+    renderSection('plan');
+  } catch (e) {
+    alert('Error al guardar el plan: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+});
 
 // ──────────────────────────────────────────────────────
 // DASHBOARD EDITORIAL
