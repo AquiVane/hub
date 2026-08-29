@@ -518,9 +518,15 @@
           </select>
         </div>
 
+        <!-- Fecha de inicio (solo proyectos) -->
+        <div class="form-group hidden" id="tf-fecha-inicio-group">
+          <label>Fecha de inicio</label>
+          <input type="date" id="tf-fecha-inicio" class="form-control">
+        </div>
+
         <!-- Vencimiento + Recurrencia -->
         <div class="form-group">
-          <label>Fecha de vencimiento</label>
+          <label id="tf-vencimiento-label">Fecha de vencimiento</label>
           <input type="date" id="tf-vencimiento" class="form-control">
         </div>
         <div class="form-group">
@@ -633,7 +639,7 @@
 
         <div class="form-group" style="grid-column:span 2;">
           <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
-            <input type="checkbox" id="tf-es-proyecto">
+            <input type="checkbox" id="tf-es-proyecto" onchange="toggleTfEsProyecto()">
             🔷 Es un proyecto
           </label>
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en el tablero con una barra de progreso según las subtareas completadas.</span>

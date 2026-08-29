@@ -255,7 +255,11 @@
       </p>
       <div class="form-group">
         <label>Nombre *</label>
-        <input type="text" id="col-nombre" class="form-control" placeholder="Ej: Germán">
+        <input type="text" id="col-nombre" class="form-control" placeholder="Ej: Germán" oninput="if(!document.getElementById('col-codigo').dataset.tocado)document.getElementById('col-codigo').value=codigoDesdeNombre(this.value);">
+      </div>
+      <div class="form-group">
+        <label>Código para tareas</label>
+        <input type="text" id="col-codigo" class="form-control" placeholder="Ej: GC" maxlength="4" style="text-transform:uppercase;" oninput="this.dataset.tocado='1';this.value=this.value.toUpperCase();">
       </div>
       <div class="form-group">
         <label>Email de acceso *</label>
@@ -289,6 +293,10 @@
       <div class="form-group">
         <label>Nombre</label>
         <input type="text" id="ec-nombre" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Código para tareas</label>
+        <input type="text" id="ec-codigo" class="form-control" maxlength="4" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase();">
       </div>
       <div class="form-group">
         <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
@@ -351,8 +359,12 @@
           <option>Baja</option>
         </select>
       </div>
+      <div class="form-group hidden" id="in-fecha-inicio-group">
+        <label>Fecha de inicio</label>
+        <input type="date" id="in-fecha-inicio" class="form-control">
+      </div>
       <div class="form-group">
-        <label>Vencimiento</label>
+        <label id="in-vencimiento-label">Vencimiento</label>
         <input type="date" id="in-vencimiento" class="form-control">
       </div>
       <div class="form-group">
@@ -364,7 +376,7 @@
       <div id="in-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:-8px;margin-bottom:8px;"></div>
       <div class="form-group">
         <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
-          <input type="checkbox" id="in-es-proyecto">
+          <input type="checkbox" id="in-es-proyecto" onchange="toggleInEsProyecto()">
           🔷 Es un proyecto
         </label>
         <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en el tablero con una barra de progreso según las subtareas completadas.</span>
@@ -577,11 +589,16 @@
       <div class="form-grid">
         <div class="form-group">
           <label>Nombre del cliente *</label>
-          <input type="text" id="nc-nombre" class="form-control" placeholder="Ej: Slots!">
+          <input type="text" id="nc-nombre" class="form-control" placeholder="Ej: Slots!" oninput="sugerirCodigoCliente()">
         </div>
         <div class="form-group">
           <label>ID único *</label>
           <input type="text" id="nc-id" class="form-control" placeholder="ej: slots (sin espacios)">
+        </div>
+        <div class="form-group">
+          <label>Código para tareas</label>
+          <input type="text" id="nc-codigo" class="form-control" placeholder="Ej: GA" maxlength="4" style="text-transform:uppercase;" oninput="this.dataset.tocado='1';this.value=this.value.toUpperCase();">
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se usa para numerar sus tareas: #${CÓDIGO}-01, -02... Se sugiere solo al escribir el nombre.</span>
         </div>
         <div class="form-group">
           <label>Email de acceso *</label>
@@ -738,11 +755,15 @@
       <div class="form-grid">
         <div class="form-group">
           <label>Nombre del cliente *</label>
-          <input type="text" id="ec-nombre" class="form-control" placeholder="Ej: Slots!">
+          <input type="text" id="ecl-nombre" class="form-control" placeholder="Ej: Slots!">
+        </div>
+        <div class="form-group">
+          <label>Código para tareas</label>
+          <input type="text" id="ecl-codigo" class="form-control" placeholder="Ej: GA" maxlength="4" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase();">
         </div>
         <div class="form-group">
           <label>Estado</label>
-          <select id="ec-activo" class="form-control">
+          <select id="ecl-activo" class="form-control">
             <option value="true">Activo</option>
             <option value="false">Inactivo</option>
           </select>
@@ -863,6 +884,39 @@
   }
 
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // ── Códigos de tareas (cliente/vertical/persona) ────────────────
+  const VANEH_CODIGO = 'VH';
+  const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF' };
+  function codigoDesdeNombre(nombre) {
+    const palabras = (nombre || '').split(/[^a-zA-ZÀ-ÿ]+/).filter(Boolean);
+    if (!palabras.length) return '';
+    if (palabras.length === 1) return palabras[0].slice(0, 2).toUpperCase();
+    return (palabras[0][0] + palabras[1][0]).toUpperCase();
+  }
+  window.sugerirCodigoCliente = function() {
+    const el = document.getElementById('nc-codigo');
+    if (el.dataset.tocado === '1') return;
+    el.value = codigoDesdeNombre(document.getElementById('nc-nombre').value);
+  };
+  function codigoDeInterna(t) {
+    if (!t.numero) return '';
+    return `${VERTICAL_CODIGO[t.vertical] || 'CS'}-${String(t.numero).padStart(2, '0')}`;
+  }
+  function codigoDeColaborador(email, colaboradores) {
+    if ((email || '').toLowerCase() === (user.email || '').toLowerCase() && user.role === 'admin') return VANEH_CODIGO;
+    const col = (colaboradores || _colaboradoresCache).find(c => c.email.toLowerCase() === (email || '').toLowerCase());
+    return col?.codigo || codigoDesdeNombre(col?.nombre) || 'US';
+  }
+  let _misTareasClientsCache = [];
+  function codigoDeItem(item) {
+    if (item.tipo !== 'tarea' || !item.tarea.numero) return '';
+    if (item.clientId === '_cosmart') return codigoDeInterna(item.tarea);
+    if (item.clientId === '_personal') return `${codigoDeColaborador(item.asignadoEmail)}-${String(item.tarea.numero).padStart(2, '0')}`;
+    const cliente = _misTareasClientsCache.find(c => c.id === item.clientId);
+    const codigo = cliente?.codigo || codigoDesdeNombre(cliente?.nombre || item.clientNombre);
+    return `${codigo}-${String(item.tarea.numero).padStart(2, '0')}`;
+  }
 
   const NOMBRES_CAMPANIA = {
     'euforia': 'Euforia · secuencia bienvenida',
@@ -1139,7 +1193,7 @@
               <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
+                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${t.titulo}</div>
                 </div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
@@ -1194,13 +1248,15 @@
   window.openInternaModal = async function(id, defaultEstado) {
     _editingInterna = id ? _internasCache.find(t => t.id === id) : null;
     const t = _editingInterna || {};
-    document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + t.numero : ''}` : 'Nueva tarea interna';
+    document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + codigoDeInterna(t) : ''}` : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
     document.getElementById('in-vencimiento').value = t.vencimiento || '';
     document.getElementById('in-es-proyecto').checked = t.esProyecto === true;
+    document.getElementById('in-fecha-inicio').value = t.fechaInicio || '';
+    toggleInEsProyecto();
     document.getElementById('deleteInternaBtn').style.display = _editingInterna ? '' : 'none';
     const asignadoSel = document.getElementById('in-asignado');
     const subAsignadoSel = document.getElementById('in-subtarea-asignado');
@@ -1256,6 +1312,12 @@
     renderInSubtareas();
   };
 
+  window.toggleInEsProyecto = function() {
+    const checked = document.getElementById('in-es-proyecto').checked;
+    document.getElementById('in-fecha-inicio-group').classList.toggle('hidden', !checked);
+    document.getElementById('in-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+  };
+
   window.saveInterna = async function() {
     const titulo = document.getElementById('in-titulo').value.trim();
     if (!titulo) { alert('El título es obligatorio.'); return; }
@@ -1263,15 +1325,17 @@
     const asignadoEmail = asignadoEl.value;
     const asignadoNombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
     const inEstadoVal = document.getElementById('in-estado').value;
-    const numero = _editingInterna?.numero || (Math.max(0, ..._internasCache.map(t => t.numero || 0)) + 1);
+    const inVerticalVal = document.getElementById('in-vertical').value || null;
+    const numero = _editingInterna?.numero || (Math.max(0, ..._internasCache.filter(t => (t.vertical || null) === inVerticalVal).map(t => t.numero || 0)) + 1);
     const obj = {
       ...(_editingInterna || {}),
       numero,
       titulo,
-      vertical: document.getElementById('in-vertical').value || null,
+      vertical: inVerticalVal,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
+      fechaInicio: document.getElementById('in-es-proyecto').checked ? (document.getElementById('in-fecha-inicio').value || null) : null,
       asignado: asignadoEmail ? (asignadoEmail === (_editingInterna?.asignado?.email || '')
         ? { ...(_editingInterna.asignado), email: asignadoEmail, nombre: asignadoNombre }
         : { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.nombre || user.name || user.email } }) : null,
@@ -1405,6 +1469,7 @@
     if (!col) return;
     document.getElementById('ec-email-label').textContent = col.email;
     document.getElementById('ec-nombre').value = col.nombre || '';
+    document.getElementById('ec-codigo').value = col.codigo || codigoDesdeNombre(col.nombre);
     document.getElementById('ec-activo').checked = col.activo !== false;
     const list = document.getElementById('ec-clientes-list');
     list.innerHTML = _clientsCacheForColab.length
@@ -1421,10 +1486,11 @@
   window.saveEditColaborador = async function() {
     const email = document.getElementById('editColaboradorModal').dataset.email;
     const nombre = document.getElementById('ec-nombre').value.trim();
+    const codigo = (document.getElementById('ec-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase();
     const activo = document.getElementById('ec-activo').checked;
     const clientIds = Array.from(document.querySelectorAll('.ec-client-check:checked')).map(cb => cb.value);
     try {
-      await updateColaborador(email, { nombre, activo, clientIds });
+      await updateColaborador(email, { nombre, codigo, activo, clientIds });
       closeEditColaboradorModal();
       await loadColaboradores();
     } catch (e) {
@@ -1457,6 +1523,7 @@
     listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase();
     const clients = await getAllClients();
+    _misTareasClientsCache = clients;
     const items = [];
     const pseudoClients = [
       { id: '_cosmart', nombre: 'COSMART (interno)' },
@@ -1472,7 +1539,9 @@
         (tareas || []).forEach(t => {
           if (t.archivado) return;
           const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
-          if (esPersonal && asignadoEmail !== (user.email || '').toLowerCase()) return;
+          const uEmail = (user.email || '').toLowerCase();
+          const esGerViendoVaneh = uEmail === 'ger@cosmart.com.ar' && asignadoEmail === 'vaneh@cosmart.com.ar';
+          if (esPersonal && asignadoEmail !== uEmail && !esGerViendoVaneh) return;
           items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail });
         });
         (contenidos || []).forEach(t => {
@@ -1609,7 +1678,7 @@
         ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
         : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
+        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
@@ -1662,7 +1731,7 @@
             const atraso = !estaListo(item) ? diasDeAtraso(fecha) : 0;
             return `
             <div class="kanban-card" onclick="openMisTareaModal(${idx})" style="${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
-              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
+              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
               ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
@@ -1692,7 +1761,19 @@
     const porFecha = {};
     visiblesCal.forEach((item) => {
       const idx = _misTareasCache.indexOf(item);
-      const f = item.tarea.vencimiento || item.tarea.fechaPub;
+      const t = item.tarea;
+      if (item.tipo === 'tarea' && t.esProyecto && t.fechaInicio && t.vencimiento) {
+        let d = new Date(t.fechaInicio + 'T00:00:00');
+        const fin = new Date(t.vencimiento + 'T00:00:00');
+        while (d <= fin) {
+          const f = d.toISOString().split('T')[0];
+          if (!porFecha[f]) porFecha[f] = [];
+          porFecha[f].push(idx);
+          d.setDate(d.getDate() + 1);
+        }
+        return;
+      }
+      const f = t.vencimiento || t.fechaPub;
       if (!f) return;
       if (!porFecha[f]) porFecha[f] = [];
       porFecha[f].push(idx);
@@ -1708,9 +1789,11 @@
         ${idxs.map(idx => {
           const item = _misTareasCache[idx];
           const listo = item.tipo === 'tarea' ? item.tarea.estado === 'Listo' : ['Aprobado','Programado'].includes(item.tarea.estado);
+          const esProyecto = item.tipo === 'tarea' && item.tarea.esProyecto;
           const color = item.personal ? '#f59e0b' : '#3b82f6';
           const tituloCorto = item.tarea.titulo.length > 16 ? item.tarea.titulo.slice(0, 15) + '…' : item.tarea.titulo;
-          return `<div class="cal-event" style="background:${color}22;color:${color};${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.personal ? '🏠 Personal' : '💼 ' + item.clientNombre}: ${item.tarea.titulo}${item.tarea.hora ? ' (' + item.tarea.hora + ')' : ''}">${tituloCorto}</div>`;
+          const estiloBg = esProyecto ? 'background:var(--primary-dark);color:#fff;font-weight:600;' : `background:${color}22;color:${color};`;
+          return `<div class="cal-event" style="${estiloBg}${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.personal ? '🏠 Personal' : '💼 ' + item.clientNombre}: ${item.tarea.titulo}${item.tarea.hora ? ' (' + item.tarea.hora + ')' : ''}">${esProyecto ? '🔷 ' : ''}${tituloCorto}</div>`;
         }).join('')}
       </div>`;
     }
@@ -2370,8 +2453,14 @@
     const asignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
     let numero = 1;
     try {
-      const tareasCliente = await getTareas(clientId);
-      numero = Math.max(0, ...(tareasCliente || []).map(t => t.numero || 0)) + 1;
+      const tareasCliente = await getTareas(clientId) || [];
+      if (clientId === '_personal') {
+        numero = Math.max(0, ...tareasCliente.filter(t => (t.asignado?.email || '').toLowerCase() === asignadoEmail.toLowerCase()).map(t => t.numero || 0)) + 1;
+      } else if (clientId === '_cosmart') {
+        numero = Math.max(0, ...tareasCliente.filter(t => !t.vertical).map(t => t.numero || 0)) + 1;
+      } else {
+        numero = Math.max(0, ...tareasCliente.map(t => t.numero || 0)) + 1;
+      }
     } catch (e) {}
     const obj = {
       numero,
@@ -2445,12 +2534,13 @@
 
   window.openNewClientModal = async () => {
     // Limpiar todos los campos del formulario
-    ['nc-nombre','nc-id','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
+    ['nc-nombre','nc-id','nc-codigo','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
      'nc-fb','nc-tiktok','nc-youtube','nc-linkedin','nc-website','nc-website2',
      'nc-meta-bm','nc-notas','nc-eq-nombre','nc-eq-email'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    delete document.getElementById('nc-codigo').dataset.tocado;
     const rolEl = document.getElementById('nc-eq-rol');
     if (rolEl) rolEl.value = 'Usuario';
     _ncUsuarios = [];
@@ -2470,7 +2560,8 @@
   window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
 
   window.openNewColaboradorModal = async function() {
-    ['col-nombre','col-email','col-pass'].forEach(id => { document.getElementById(id).value = ''; });
+    ['col-nombre','col-email','col-pass','col-codigo'].forEach(id => { document.getElementById(id).value = ''; });
+    delete document.getElementById('col-codigo').dataset.tocado;
     const list = document.getElementById('col-clientes-list');
     list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Cargando clientes...</p>';
     document.getElementById('newColaboradorModal').classList.remove('hidden');
@@ -2488,12 +2579,13 @@
     const nombre = document.getElementById('col-nombre').value.trim();
     const email = document.getElementById('col-email').value.trim();
     const pass = document.getElementById('col-pass').value.trim();
+    const codigo = document.getElementById('col-codigo').value.trim().toUpperCase();
     const clientIds = Array.from(document.querySelectorAll('.col-client-check:checked')).map(cb => cb.value);
     if (!nombre || !email || !pass) { alert('Completá los campos obligatorios.'); return; }
     if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
     if (!clientIds.length) { alert('Asigná al menos un cliente.'); return; }
     try {
-      await createColaborador({ nombre, email, password: pass, clientIds });
+      await createColaborador({ nombre, email, password: pass, clientIds, codigo });
       await Promise.all(clientIds.map(async id => {
         try {
           const client = await getClientData(id);
@@ -2560,8 +2652,9 @@
     const client = await getClientData(clientId);
     if (!client) { alert('No se pudo cargar el cliente.'); return; }
 
-    document.getElementById('ec-nombre').value = client.nombre || client.name || '';
-    document.getElementById('ec-activo').value = client.activo === false ? 'false' : 'true';
+    document.getElementById('ecl-nombre').value = client.nombre || client.name || '';
+    document.getElementById('ecl-codigo').value = client.codigo || codigoDesdeNombre(client.nombre || client.name || clientId);
+    document.getElementById('ecl-activo').value = client.activo === false ? 'false' : 'true';
 
     const igs = client.instagrams && client.instagrams.length ? client.instagrams : [client.instagram || ''];
     document.getElementById('ec-ig1').value = igs[0] || '';
@@ -2584,7 +2677,7 @@
 
   window.saveEditClient = async function() {
     if (!_editClientId) return;
-    const nombre = document.getElementById('ec-nombre').value.trim();
+    const nombre = document.getElementById('ecl-nombre').value.trim();
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
     const ig1 = document.getElementById('ec-ig1').value.trim();
@@ -2595,7 +2688,8 @@
     try {
       await saveClientData(_editClientId, {
         nombre,
-        activo: document.getElementById('ec-activo').value === 'true',
+        codigo: (document.getElementById('ecl-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase(),
+        activo: document.getElementById('ecl-activo').value === 'true',
         instagram: ig1,
         instagrams,
         facebook: document.getElementById('ec-fb').value.trim(),
@@ -2617,6 +2711,7 @@
   window.createNewClient = async function() {
     const nombre = document.getElementById('nc-nombre').value.trim();
     const id = document.getElementById('nc-id').value.trim().toLowerCase().replace(/\s+/g,'');
+    const codigo = (document.getElementById('nc-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase();
     const email = document.getElementById('nc-email').value.trim();
     const pass = document.getElementById('nc-pass').value.trim();
     const notas = document.getElementById('nc-notas').value.trim();
@@ -2631,7 +2726,7 @@
 
     try {
       await createClient({
-        id, nombre, email, password: pass, notas, activo: true,
+        id, nombre, codigo, email, password: pass, notas, activo: true,
         instagram: ig1, // backwards compat
         instagrams,
         facebook: document.getElementById('nc-fb').value.trim(),

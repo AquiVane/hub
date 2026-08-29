@@ -126,6 +126,20 @@ function applyClientLogo(src) {
   if (hint) hint.style.display = 'none';
 }
 
+function codigoDesdeNombre(nombre) {
+  const palabras = (nombre || '').split(/[^a-zA-ZÀ-ÿ]+/).filter(Boolean);
+  if (!palabras.length) return '';
+  if (palabras.length === 1) return palabras[0].slice(0, 2).toUpperCase();
+  return (palabras[0][0] + palabras[1][0]).toUpperCase();
+}
+function codigoCliente() {
+  return STATE.client?.codigo || codigoDesdeNombre(STATE.client?.nombre || STATE.client?.name || clientId);
+}
+function codigoTarea(t) {
+  if (!t.numero) return '';
+  return `${codigoCliente()}-${String(t.numero).padStart(2, '0')}`;
+}
+
 function tareasVisibles(lista) {
   if (user.role !== 'client') return lista;
   return lista.filter(t => t.visibleParaCliente === true);
@@ -2349,7 +2363,7 @@ function renderTareas(container) {
             <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
               <div style="display:flex;align-items:flex-start;gap:8px;">
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
+                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
               </div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
@@ -2430,17 +2444,24 @@ function renderTareasCalendario(container) {
 
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
-      const dayTareas = tareasBase.filter(t => t.vencimiento === dateStr);
+      const dayProyectos = tareasBase.filter(t => t.esProyecto && t.fechaInicio && t.vencimiento && dateStr >= t.fechaInicio && dateStr <= t.vencimiento);
+      const dayTareas = tareasBase.filter(t => !t.esProyecto && t.vencimiento === dateStr);
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div class="cal-day-num">${cellDate.getDate()}</div>
           ${!isOther ? `<button onclick="openTareaModal(null)" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;border-radius:3px;" title="Nueva tarea" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'">+</button>` : ''}
         </div>
+        ${dayProyectos.map(t => `
+          <div class="cal-event" style="background:var(--primary-dark);color:#fff;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
+               onclick="openTareaModal('${t.id}')" title="${t.titulo}">
+            🔷 ${t.numero ? `#${codigoTarea(t)} ` : ''}${t.titulo}
+          </div>
+        `).join('')}
         ${dayTareas.map(t => `
           <div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
                onclick="openTareaModal('${t.id}')" title="${t.titulo}">
-            ✅ ${t.numero ? `#${t.numero} ` : ''}${t.titulo}
+            ✅ ${t.numero ? `#${codigoTarea(t)} ` : ''}${t.titulo}
           </div>
         `).join('')}
       </div>`;
@@ -2518,7 +2539,7 @@ window.openTareaModal = function(id, defaultEstado) {
   }
   editingTarea = id ? STATE.tareas.find(t => t.id === id) : null;
   const t = editingTarea || {};
-  document.getElementById('tarea-modal-title').textContent = editingTarea ? `Editar tarea${t.numero ? ' #' + t.numero : ''}` : 'Nueva tarea';
+  document.getElementById('tarea-modal-title').textContent = editingTarea ? `Editar tarea${t.numero ? ' #' + codigoTarea(t) : ''}` : 'Nueva tarea';
   document.getElementById('tf-titulo').value = t.titulo || '';
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
@@ -2532,6 +2553,8 @@ window.openTareaModal = function(id, defaultEstado) {
   }
   const tfEsProyecto = document.getElementById('tf-es-proyecto');
   if (tfEsProyecto) tfEsProyecto.checked = t.esProyecto === true;
+  document.getElementById('tf-fecha-inicio').value = t.fechaInicio || '';
+  toggleTfEsProyecto();
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
   document.getElementById('tf-link').value = t.linkRef || '';
   // Imágenes
@@ -2600,6 +2623,12 @@ window.agregarSubtareaInline = function() {
   tituloEl.focus();
 };
 
+window.toggleTfEsProyecto = function() {
+  const checked = document.getElementById('tf-es-proyecto').checked;
+  document.getElementById('tf-fecha-inicio-group').classList.toggle('hidden', !checked);
+  document.getElementById('tf-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Fecha de vencimiento';
+};
+
 window.toggleSubtarea = function(idx) {
   if (!_tareaSubtareasPendientes[idx]) return;
   _tareaSubtareasPendientes[idx].done = !_tareaSubtareasPendientes[idx].done;
@@ -2650,7 +2679,8 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: document.getElementById('tf-es-proyecto')?.checked === true };
+    const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
