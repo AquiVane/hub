@@ -434,6 +434,30 @@
         <input type="date" id="in-vencimiento" class="form-control">
       </div>
       <div class="form-group">
+        <label>🔁 Recurrencia</label>
+        <select id="in-recurrencia" class="form-control" onchange="toggleInRecurrencia()">
+          <option value="">Sin repetición</option>
+          <option value="diaria">↻ Todos los días</option>
+          <option value="semanal">↻ Semanal</option>
+          <option value="quincenal">↻ Cada 15 días</option>
+          <option value="mensual">↻ Mensual</option>
+          <option value="anual">↻ Anual</option>
+          <option value="dias-semana">↻ Días específicos…</option>
+        </select>
+      </div>
+      <div class="form-group" id="in-dias-semana-group" style="display:none;">
+        <label>¿Qué días se repite?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+          <label class="check-label"><input type="checkbox" value="1" class="in-dia-check"> Lunes</label>
+          <label class="check-label"><input type="checkbox" value="2" class="in-dia-check"> Martes</label>
+          <label class="check-label"><input type="checkbox" value="3" class="in-dia-check"> Miércoles</label>
+          <label class="check-label"><input type="checkbox" value="4" class="in-dia-check"> Jueves</label>
+          <label class="check-label"><input type="checkbox" value="5" class="in-dia-check"> Viernes</label>
+          <label class="check-label"><input type="checkbox" value="6" class="in-dia-check"> Sábado</label>
+          <label class="check-label"><input type="checkbox" value="0" class="in-dia-check"> Domingo</label>
+        </div>
+      </div>
+      <div class="form-group">
         <label>Asignar a</label>
         <select id="in-asignado" class="form-control">
           <option value="">Sin asignar</option>
@@ -509,6 +533,30 @@
         <div class="form-group">
           <label>Hora</label>
           <input type="time" id="mt-hora" class="form-control">
+        </div>
+      </div>
+      <div class="form-group" id="mt-recurrencia-group">
+        <label>🔁 Recurrencia</label>
+        <select id="mt-recurrencia" class="form-control" onchange="toggleMtRecurrencia()">
+          <option value="">Sin repetición</option>
+          <option value="diaria">↻ Todos los días</option>
+          <option value="semanal">↻ Semanal</option>
+          <option value="quincenal">↻ Cada 15 días</option>
+          <option value="mensual">↻ Mensual</option>
+          <option value="anual">↻ Anual</option>
+          <option value="dias-semana">↻ Días específicos…</option>
+        </select>
+      </div>
+      <div class="form-group" id="mt-dias-semana-group" style="display:none;">
+        <label>¿Qué días se repite?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+          <label class="check-label"><input type="checkbox" value="1" class="mt-dia-check"> Lunes</label>
+          <label class="check-label"><input type="checkbox" value="2" class="mt-dia-check"> Martes</label>
+          <label class="check-label"><input type="checkbox" value="3" class="mt-dia-check"> Miércoles</label>
+          <label class="check-label"><input type="checkbox" value="4" class="mt-dia-check"> Jueves</label>
+          <label class="check-label"><input type="checkbox" value="5" class="mt-dia-check"> Viernes</label>
+          <label class="check-label"><input type="checkbox" value="6" class="mt-dia-check"> Sábado</label>
+          <label class="check-label"><input type="checkbox" value="0" class="mt-dia-check"> Domingo</label>
         </div>
       </div>
       <div class="form-group">
@@ -592,6 +640,30 @@
         <div class="form-group">
           <label>Hora</label>
           <input type="time" id="nmt-hora" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🔁 Recurrencia</label>
+        <select id="nmt-recurrencia" class="form-control" onchange="toggleNmtRecurrencia()">
+          <option value="">Sin repetición</option>
+          <option value="diaria">↻ Todos los días</option>
+          <option value="semanal">↻ Semanal</option>
+          <option value="quincenal">↻ Cada 15 días</option>
+          <option value="mensual">↻ Mensual</option>
+          <option value="anual">↻ Anual</option>
+          <option value="dias-semana">↻ Días específicos…</option>
+        </select>
+      </div>
+      <div class="form-group" id="nmt-dias-semana-group" style="display:none;">
+        <label>¿Qué días se repite?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+          <label class="check-label"><input type="checkbox" value="1" class="nmt-dia-check"> Lunes</label>
+          <label class="check-label"><input type="checkbox" value="2" class="nmt-dia-check"> Martes</label>
+          <label class="check-label"><input type="checkbox" value="3" class="nmt-dia-check"> Miércoles</label>
+          <label class="check-label"><input type="checkbox" value="4" class="nmt-dia-check"> Jueves</label>
+          <label class="check-label"><input type="checkbox" value="5" class="nmt-dia-check"> Viernes</label>
+          <label class="check-label"><input type="checkbox" value="6" class="nmt-dia-check"> Sábado</label>
+          <label class="check-label"><input type="checkbox" value="0" class="nmt-dia-check"> Domingo</label>
         </div>
       </div>
       <div class="form-group">
@@ -1817,6 +1889,10 @@
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
     document.getElementById('in-vencimiento').value = t.vencimiento || '';
+    document.getElementById('in-recurrencia').value = t.recurrencia || '';
+    (t.diasSemana || []).forEach(d => { const cb = document.querySelector(`.in-dia-check[value="${d}"]`); if (cb) cb.checked = true; });
+    document.querySelectorAll('.in-dia-check').forEach(cb => { if (!(t.diasSemana || []).includes(cb.value)) cb.checked = false; });
+    toggleInRecurrencia();
     document.getElementById('in-es-proyecto').checked = t.esProyecto === true;
     document.getElementById('in-fecha-inicio').value = t.fechaInicio || '';
     toggleInEsProyecto();
@@ -1875,15 +1951,27 @@
     renderInSubtareas();
   };
 
+  window.toggleInRecurrencia = function() {
+    const v = document.getElementById('in-recurrencia').value;
+    document.getElementById('in-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
+  };
   window.toggleInEsProyecto = function() {
     const checked = document.getElementById('in-es-proyecto').checked;
     document.getElementById('in-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('in-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
   };
+  window.toggleMtRecurrencia = function() {
+    const v = document.getElementById('mt-recurrencia').value;
+    document.getElementById('mt-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
+  };
   window.toggleMtEsProyecto = function() {
     const checked = document.getElementById('mt-es-proyecto').checked;
     document.getElementById('mt-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('mt-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+  };
+  window.toggleNmtRecurrencia = function() {
+    const v = document.getElementById('nmt-recurrencia').value;
+    document.getElementById('nmt-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
   };
   window.toggleNmtEsProyecto = function() {
     const checked = document.getElementById('nmt-es-proyecto').checked;
@@ -1908,6 +1996,10 @@
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
+      recurrencia: document.getElementById('in-recurrencia').value || null,
+      diasSemana: document.getElementById('in-recurrencia').value === 'dias-semana'
+        ? Array.from(document.querySelectorAll('.in-dia-check:checked')).map(cb => cb.value)
+        : [],
       fechaInicio: document.getElementById('in-es-proyecto').checked ? (document.getElementById('in-fecha-inicio').value || null) : null,
       asignado: asignadoEmail ? (asignadoEmail === (_editingInterna?.asignado?.email || '')
         ? { ...(_editingInterna.asignado), email: asignadoEmail, nombre: asignadoNombre }
@@ -2436,6 +2528,10 @@
     document.getElementById('mt-url').value = t.url || '';
     document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
     document.getElementById('mt-hora').value = t.hora || '';
+    document.getElementById('mt-recurrencia-group').style.display = tipo === 'tarea' ? '' : 'none';
+    document.getElementById('mt-recurrencia').value = tipo === 'tarea' ? (t.recurrencia || '') : '';
+    document.querySelectorAll('.mt-dia-check').forEach(cb => { cb.checked = tipo === 'tarea' && (t.diasSemana || []).includes(cb.value); });
+    toggleMtRecurrencia();
     document.getElementById('mt-es-proyecto-group').style.display = tipo === 'tarea' ? '' : 'none';
     document.getElementById('mt-es-proyecto').checked = tipo === 'tarea' && t.esProyecto === true;
     document.getElementById('mt-fecha-inicio').value = t.fechaInicio || '';
@@ -2525,6 +2621,10 @@
       item.tarea.hora = document.getElementById('mt-hora').value || null;
       item.tarea.esProyecto = document.getElementById('mt-es-proyecto').checked;
       item.tarea.fechaInicio = item.tarea.esProyecto ? (document.getElementById('mt-fecha-inicio').value || null) : null;
+      item.tarea.recurrencia = document.getElementById('mt-recurrencia').value || null;
+      item.tarea.diasSemana = document.getElementById('mt-recurrencia').value === 'dias-semana'
+        ? Array.from(document.querySelectorAll('.mt-dia-check:checked')).map(cb => cb.value)
+        : [];
       item.tarea.subtareas = _mtSubtareas;
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
@@ -2549,6 +2649,9 @@
     document.getElementById('nmt-url').value = '';
     document.getElementById('nmt-vencimiento').value = '';
     document.getElementById('nmt-hora').value = '';
+    document.getElementById('nmt-recurrencia').value = '';
+    document.querySelectorAll('.nmt-dia-check').forEach(cb => { cb.checked = false; });
+    toggleNmtRecurrencia();
     document.getElementById('nmt-es-proyecto').checked = false;
     document.getElementById('nmt-fecha-inicio').value = '';
     toggleNmtEsProyecto();
@@ -3060,6 +3163,10 @@
       url: document.getElementById('nmt-url').value.trim() || null,
       vencimiento: document.getElementById('nmt-vencimiento').value || null,
       hora: document.getElementById('nmt-hora').value || null,
+      recurrencia: document.getElementById('nmt-recurrencia').value || null,
+      diasSemana: document.getElementById('nmt-recurrencia').value === 'dias-semana'
+        ? Array.from(document.querySelectorAll('.nmt-dia-check:checked')).map(cb => cb.value)
+        : [],
       esProyecto: esProyectoVal,
       fechaInicio: esProyectoVal ? (document.getElementById('nmt-fecha-inicio').value || null) : null,
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
