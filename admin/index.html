@@ -16,10 +16,10 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon-wrap">
-        <img src="../app/cosmart-logo.png" alt="COSMART" class="cosmart-logo-img">
+        <img src="../app/cosmart-logo.png" alt="COSMART" class="cosmart-logo-img" id="sidebarLogoImg">
       </div>
     </div>
-    <div class="sidebar-hub-label">Marketing Hub</div>
+    <div class="sidebar-hub-label" id="sidebarHubLabel">Marketing Hub</div>
     <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.5px;padding:0 16px 12px;margin-top:-8px;">Panel administrador</div>
     <nav class="nav-section">
       <div class="nav-section-label">Menú</div>
@@ -276,6 +276,17 @@
             </p>
             <div id="firebase-status" style="padding:10px 12px;border-radius:6px;font-size:13px;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Agencias (solo super-admin COSMART) -->
+      <div id="sec-agencias" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Agencias</h2>
+          <span class="text-muted text-sm">Cuentas que usan el Hub con su propia marca — activá/desactivá según el pago de la suscripción.</span>
+        </div>
+        <div id="agenciasList">
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -978,7 +989,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -990,6 +1001,34 @@
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
+  }
+
+  // Marca de la agencia: COSMART mantiene su logo/nombre de siempre.
+  // Cualquier otra agencia ve el nombre que puso al darse de alta (y su
+  // logo, si cargó uno) en vez de la marca COSMART.
+  const esCosmart = !user.agencyId || user.agencyId === 'cosmart';
+  if (!esCosmart) {
+    document.getElementById('sidebarHubLabel').textContent = user.agenciaNombre || 'Marketing Hub';
+    document.title = `${user.agenciaNombre || 'Marketing Hub'} — Admin`;
+    const logoImg = document.getElementById('sidebarLogoImg');
+    if (user.agenciaLogoUrl) {
+      logoImg.src = user.agenciaLogoUrl;
+      logoImg.alt = user.agenciaNombre || 'Logo';
+    } else {
+      logoImg.replaceWith(Object.assign(document.createElement('div'), {
+        textContent: (user.agenciaNombre || 'M')[0].toUpperCase(),
+        style: 'width:40px;height:40px;border-radius:8px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;',
+      }));
+    }
+  }
+  // "Agencias": solo lo ve el super-admin (el admin de COSMART, dueño del
+  // sistema) -- gestiona altas/bajas de las agencias que usan el Hub.
+  if (esCosmart && user.role === 'admin') {
+    const btnAgencias = document.createElement('button');
+    btnAgencias.className = 'nav-item';
+    btnAgencias.innerHTML = '<i data-lucide="building" class="nav-icon"></i><span>Agencias</span>';
+    btnAgencias.onclick = () => showSection('agencias');
+    document.querySelector('.nav-section').appendChild(btnAgencias);
   }
 
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
@@ -1005,8 +1044,8 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config'].forEach(s => {
-      document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias'].forEach(s => {
+      document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
@@ -1017,6 +1056,7 @@
     if (sec === 'informes') loadInformes();
     if (sec === 'email-stats') { loadEmailStats(); renderMetricasGenerales(); }
     if (sec === 'actividad') loadActividadFiltros();
+    if (sec === 'agencias') loadAgencias();
   };
 
   function fmtDateAct(iso) {
@@ -3036,6 +3076,44 @@
   };
 
   let _clientsCache = [];
+  window.loadAgencias = async function() {
+    const el = document.getElementById('agenciasList');
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Cargando...</p>';
+    try {
+      const agencias = await getAgencias();
+      if (!agencias.length) {
+        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏢</div><h3>Todavía no hay agencias</h3><p>Se van a ir sumando acá a medida que se registren en /signup.html.</p></div>`;
+        return;
+      }
+      const ESTADO_COLOR = { trial: '#f59e0b', activo: '#10b981', vencido: '#dc2626' };
+      el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">` + agencias.map(a => `
+        <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-weight:700;font-size:14px;">${a.nombre}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${a.emailAdmin} · alta ${a.createdAt ? new Date(a.createdAt).toLocaleDateString('es-AR') : ''}</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${ESTADO_COLOR[a.estado] || '#94a3b8'}22;color:${ESTADO_COLOR[a.estado] || '#94a3b8'};text-transform:uppercase;">${a.estado || 'trial'}</span>
+          <select class="form-control" style="width:auto;" onchange="cambiarEstadoAgencia('${a.id}', this.value)">
+            <option value="trial" ${a.estado === 'trial' ? 'selected' : ''}>Trial</option>
+            <option value="activo" ${a.estado === 'activo' ? 'selected' : ''}>Activo (paga)</option>
+            <option value="vencido" ${a.estado === 'vencido' ? 'selected' : ''}>Vencido (bloqueado)</option>
+          </select>
+        </div>
+      `).join('') + `</div>`;
+    } catch (e) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  };
+
+  window.cambiarEstadoAgencia = async function(agencyId, estado) {
+    try {
+      await updateAgencia(agencyId, { estado });
+      loadAgencias();
+    } catch (e) {
+      alert('No se pudo actualizar: ' + (e.message || ''));
+    }
+  };
+
   async function loadClients() {
     _clientsCache = await getAllClients();
     renderClientGrid();

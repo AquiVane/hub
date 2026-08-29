@@ -1,6 +1,8 @@
 # Instrucciones para Claude Code en este repo
 
-Este repo (`AquiVane/hub`) es el frontend del Marketing Hub de COSMART (Cloudflare Pages) — panel admin (`admin/index.html`) y panel de cliente (`app/index.html` + `js/app.js`), con datos vía `js/data.js`. Trabajás para Vaneh (COSMART). El backend vive en el repo hermano `AquiVane/cosmart-workers` (worker `marketing-hub`, KV `MH_DATA`/`MH_USERS`).
+Este repo (`AquiVane/hub`) es el frontend del Marketing Hub — panel admin (`admin/index.html`) y panel de cliente (`app/index.html` + `js/app.js`), con datos vía `js/data.js`. Trabajás para Vaneh (COSMART). El backend vive en el repo hermano `AquiVane/cosmart-workers` (worker `marketing-hub`, KV `MH_DATA`/`MH_USERS`).
+
+**Desde el 29/08 es multi-tenant**: COSMART es la agencia "dueña" del sistema, pero cualquier otra agencia puede darse de alta (`signup.html`) y usar el mismo Hub con sus propios clientes, totalmente aislada. Ver la sección "MULTI-TENANCY" al principio de `HANDOFF.md` antes de tocar nada que lea/escriba `_clients`, `_colaboradores`, datos de cliente o archivos — hay una regla dura de seguridad ahí (el `agencyId` sale siempre del usuario autenticado, nunca de la request) que no se puede romper.
 
 ## Al empezar cualquier sesión
 

@@ -2,6 +2,20 @@
 
 Actualizado: 2026-08-29. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## ⚠️ MULTI-TENANCY (agencias) — leer esto ANTES de tocar el backend
+
+Desde el 29/08 el Hub es multi-tenant de verdad: **cualquier agencia externa puede crear su propia cuenta** (`hub.cosmart.com.ar/signup.html` → `POST /agencia/signup`) y usa el Hub con sus propios clientes/colaboradores, totalmente aislado de COSMART y de cualquier otra agencia. Es la respuesta a "quiero venderle esto a otras agencias por USD 3/mes o 30/año" — decisión de Vaneh del 29/08, ver la sección de pendientes reales abajo.
+
+- **Todo el trabajo pesado de aislamiento está en el backend** (`cosmart-workers/workers/marketing-hub/src/index.js`) — cada usuario tiene un `agencyId`; COSMART es la agencia por default (`'cosmart'`) y sigue usando las claves de KV de siempre, sin prefijo (cero riesgo para los datos ya en producción); cualquier agencia nueva usa claves prefijadas `agencia_{id}:`. **Regla dura, no romper nunca**: el `agencyId` sale SIEMPRE del usuario ya autenticado (`requireAdmin`/`requireAdminOrColaborador`), nunca del body/query de la request — si se agrega un endpoint nuevo que toca `_clients`, `_colaboradores`, datos de cliente o archivos, tiene que leer el agencyId de ahí. Ver el comentario grande al principio del archivo del worker para el detalle completo.
+- El frontend (este repo) es el MISMO para todas las agencias — no hay branding por dominio. `js/auth.js` guarda `agencyId`/`agenciaNombre`/`agenciaLogoUrl` en la sesión al loguearse; `admin/index.html` swapea el logo/nombre del sidebar si `agencyId !== 'cosmart'` (ver el bloque justo después de `requireAuth` en el script de `admin/index.html`).
+- **"Agencias"**: nueva sección en el nav del admin, visible SOLO para el super-admin (el admin de la agencia COSMART, o sea Vaneh) — lista todas las agencias registradas y permite cambiar su `estado` (`trial` / `activo` / `vencido`). Una agencia en `vencido` no puede loguearse (bloqueado server-side en `handleLogin`) ni recibe los crons diarios/mensuales.
+- **Lo que NO está hecho todavía** (documentado para no reinventar ni prometerlo de nuevo sin avisar):
+  1. **Cobro real no está conectado.** El signup deja la agencia en `estado: 'trial'` — activar el cobro (Stripe/MercadoPago/PayPal suscripción a USD 3/mes o 30/año) y que el webhook mueva el estado a `activo` automáticamente es trabajo aparte, no armado. Por ahora Vaneh cambia el estado a mano desde "Agencias" en el admin.
+  2. **Blanqueo de marca parcial**: el sidebar del panel admin sí cambia (logo/nombre), pero **todos los emails automáticos** (bienvenida, informes, recordatorio de facturación, resumen mensual, tareas que vencen) siguen saliendo con el remitente/firma/logo de COSMART (`emailBase`, `FIRMA`, `FOOTER`, `SERVICIOS_BLOCK` en el worker) — solo el destinatario (`to`) y el nombre visible cambian por agencia, no el diseño del email en sí. Corregir esto a fondo (blanquear `emailBase` por agencia) es una tarea aparte, no trivial porque el remitente real (`info@cosmart.com.ar`) tiene que seguir siendo el dominio verificado en Brevo — no se puede mandar "de" cualquier email sin verificar el dominio.
+  3. **Métricas de email (Brevo cross-vertical)** quedan restringidas a COSMART únicamente (`handleEmailStats` devuelve 501 para otras agencias) — depende de tags propios de las verticales de COSMART, no generaliza sin que cada agencia conecte su propio Brevo.
+  4. La página de login (`login.html`) sigue mostrando la marca/verticales de COSMART siempre, incluso para agencias externas que entran a loguearse ahí — no se armó un login separado por agencia. `signup.html` sí es neutral/genérico.
+  5. No hay plan de features por tier (todas las agencias ven exactamente las mismas funciones que COSMART) — si en algún momento se quiere un plan más limitado, es trabajo aparte.
+
 ## Arquitectura
 
 - **Cloudflare Pages**, deploy automático al pushear a `main` (no hace falta ningún paso manual).
@@ -51,6 +65,10 @@ Botones ▲▼ en cada fila de Clientes (solo admin) que llaman a `POST /admin/c
 ## Procesos (sección nueva, interno)
 
 Nav "Procesos" — **solo colaboradores y admin, el cliente no tiene acceso ni lo ve en su panel** (confirmado explícitamente por Vaneh). Selector arriba para elegir cliente real o COSMART (con su propio desplegable de verticales, mismo listado que ya usa Gestión COSMART). Menú izquierdo tipo carpeta con los procesos de ese cliente/vertical — cada proceso puede tener subprocesos opcionales (submenú) — contenido a la derecha, 100% editable (nombre + texto libre), con crear/guardar/eliminar tanto de procesos como de subprocesos. Persistido vía el endpoint genérico `/data/:clientId/:type` que ya existía en el worker (tipo nuevo `procesos`, no hizo falta tocar el backend — no tiene whitelist de tipos). Para `_cosmart`, todos los procesos de todas las verticales viven en un único array (`_cosmart:procesos`), cada uno con un campo `vertical` opcional (null = "General") — mismo patrón que ya usan las tareas internas.
+
+## Presupuesto de pauta e importar procesos (29/08)
+
+En Procesos, arriba (solo para clientes reales, no `_cosmart`): presupuesto total manual + asignado por Meta/Google/TikTok/LinkedIn Ads + plataformas custom, guardado en `client.presupuesto = {total, porPlataforma, otras}`. Ese mismo dato se compara en el panel del cliente (Pauta Digital) contra la suma real de `presupuesto` de las campañas cargadas — si se pasan, aparece un aviso rojo ahí. Botón "Importar" en Procesos: pegar texto o subir `.txt` crea un proceso nuevo (Word: copiar/pegar el texto, no se parsea el `.docx` — decisión de alcance, no bug).
 
 ## Drag and drop en los tableros Kanban
 

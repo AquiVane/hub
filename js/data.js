@@ -476,3 +476,15 @@ export async function saveClientData(clientId, data) {
   }
   return api('POST', `/admin/clients/${clientId}`, data);
 }
+
+// ── Agencias (multi-tenant, solo super-admin COSMART) ───────────
+
+export async function getAgencias() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/superadmin/agencias');
+}
+
+export async function updateAgencia(agencyId, updates) {
+  if (DEMO_MODE) return;
+  return api('POST', `/superadmin/agencias/${agencyId}`, updates);
+}

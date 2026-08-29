@@ -41,7 +41,10 @@ export async function loginUser(email, password) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión.');
 
-  const userData = { email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name, mustChangePassword: data.mustChangePassword || false };
+  const userData = {
+    email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name, mustChangePassword: data.mustChangePassword || false,
+    agencyId: data.agencyId || 'cosmart', agenciaNombre: data.agenciaNombre || null, agenciaLogoUrl: data.agenciaLogoUrl || null,
+  };
   saveSession(data.token, userData);
   return userData;
 }
