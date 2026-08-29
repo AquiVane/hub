@@ -389,6 +389,11 @@ export async function getAllClients() {
   return api('GET', '/admin/clients');
 }
 
+export async function reorderClients(orden) {
+  if (DEMO_MODE) return;
+  return api('POST', '/admin/clients/reorder', { orden });
+}
+
 export async function createClient(clientData) {
   if (DEMO_MODE) {
     alert('Para crear clientes reales configurá el worker primero (editá js/firebase.js con la URL).');

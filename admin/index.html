@@ -849,6 +849,10 @@
             <option value="false">Inactivo</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Responsable de proyecto</label>
+          <select id="ecl-responsable" class="form-control"></select>
+        </div>
       </div>
 
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Redes sociales</p>
@@ -918,7 +922,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2687,20 +2691,32 @@
     }
   };
 
+  let _clientsCache = [];
   async function loadClients() {
-    const clients = await getAllClients();
+    _clientsCache = await getAllClients();
+    renderClientGrid();
+  }
+
+  function renderClientGrid() {
+    const clients = _clientsCache;
     document.getElementById('clientCount').textContent = `${clients.length} cliente${clients.length !== 1 ? 's' : ''}`;
     const grid = document.getElementById('clientGrid');
     if (!clients.length) {
       grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Sin clientes</h3><p>Creá tu primer cliente.</p></div>`;
       return;
     }
-    grid.innerHTML = clients.map(c => {
+    grid.innerHTML = clients.map((c, i) => {
       const nombre = c.nombre || c.name || c.id;
       return `
       <div class="client-row">
+        ${user.role === 'admin' ? `
+        <div style="display:flex;flex-direction:column;flex-shrink:0;">
+          <button onclick="moverCliente('${c.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Subir" style="border:none;background:#f1f5f9;cursor:pointer;font-size:9px;line-height:1;padding:2px 5px;border-radius:4px 4px 0 0;color:var(--text-muted);">▲</button>
+          <button onclick="moverCliente('${c.id}',1)" ${i === clients.length - 1 ? 'disabled' : ''} title="Bajar" style="border:none;background:#f1f5f9;cursor:pointer;font-size:9px;line-height:1;padding:2px 5px;border-radius:0 0 4px 4px;color:var(--text-muted);margin-top:1px;">▼</button>
+        </div>` : ''}
         <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
         <span class="client-row-name" title="${nombre}">${nombre}</span>
+        ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
         <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
         <div class="client-row-menu-wrap">
@@ -2716,6 +2732,23 @@
     `;
     }).join('');
   }
+
+  window.moverCliente = async function(id, delta) {
+    const idx = _clientsCache.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + delta;
+    if (newIdx < 0 || newIdx >= _clientsCache.length) return;
+    const arr = [..._clientsCache];
+    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+    _clientsCache = arr;
+    renderClientGrid();
+    try {
+      await reorderClients(arr.map(c => c.id));
+    } catch (e) {
+      alert('No se pudo guardar el nuevo orden: ' + (e.message || 'intentá de nuevo.'));
+      loadClients();
+    }
+  };
 
   window.toggleClientRowMenu = function(id, ev) {
     if (ev) ev.stopPropagation();
@@ -2860,6 +2893,18 @@
     document.getElementById('ecl-codigo').value = client.codigo || codigoDesdeNombre(client.nombre || client.name || clientId);
     document.getElementById('ecl-activo').value = client.activo === false ? 'false' : 'true';
 
+    const respSel = document.getElementById('ecl-responsable');
+    respSel.innerHTML = '<option value="">Sin asignar</option>';
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.email; opt.textContent = c.nombre;
+        respSel.appendChild(opt);
+      });
+    } catch (e) {}
+    respSel.value = client.responsable?.email || '';
+
     const igs = client.instagrams && client.instagrams.length ? client.instagrams : [client.instagram || ''];
     document.getElementById('ec-ig1').value = igs[0] || '';
     document.getElementById('ec-ig2').value = igs[1] || '';
@@ -2889,11 +2934,15 @@
     const ig3 = document.getElementById('ec-ig3').value.trim();
     const instagrams = [ig1, ig2, ig3].filter(Boolean);
 
+    const responsableSel = document.getElementById('ecl-responsable');
+    const responsableEmail = responsableSel.value;
+    const responsableNombre = responsableSel.selectedOptions[0]?.textContent || '';
     try {
       await saveClientData(_editClientId, {
         nombre,
         codigo: (document.getElementById('ecl-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase(),
         activo: document.getElementById('ecl-activo').value === 'true',
+        responsable: responsableEmail ? { email: responsableEmail, nombre: responsableNombre } : null,
         instagram: ig1,
         instagrams,
         facebook: document.getElementById('ec-fb').value.trim(),
@@ -2905,6 +2954,14 @@
         metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
         notas: document.getElementById('ec-notas').value.trim(),
       });
+      if (responsableEmail) {
+        try {
+          const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+          const colab = colaboradores.find(c => c.email === responsableEmail);
+          const clientIds = [...new Set([...(colab?.clientIds || []), _editClientId])];
+          await updateColaborador(responsableEmail, { clientIds });
+        } catch (e) { console.error('No se pudo asignar el responsable de proyecto', e); }
+      }
       closeEditClientModal();
       loadClients();
     } catch (e) {
@@ -2928,6 +2985,8 @@
     const ig3 = document.getElementById('nc-ig3').value.trim();
     const instagrams = [ig1, ig2, ig3].filter(Boolean);
 
+    const responsableEmail = document.getElementById('nc-responsable').value;
+    const responsableNombre = document.getElementById('nc-responsable').selectedOptions[0]?.textContent || '';
     try {
       await createClient({
         id, nombre, codigo, email, password: pass, notas, activo: true,
@@ -2941,8 +3000,8 @@
         website2: document.getElementById('nc-website2').value.trim(),
         metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
         usuarios: _ncUsuarios,
+        responsable: responsableEmail ? { email: responsableEmail, nombre: responsableNombre } : null,
       });
-      const responsableEmail = document.getElementById('nc-responsable').value;
       if (responsableEmail) {
         try {
           const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
