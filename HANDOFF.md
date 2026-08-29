@@ -44,6 +44,14 @@ Botón "🧾 Facturación" en el menú de cada cliente (admin, `☰` junto a cad
 
 En la sección "Métricas" (antes "Métricas de email"), arriba de las métricas de email reales hay tiles "Próximamente" para: Ventas, Nuevos clientes, Facturación actual, Potenciales clientes (leads de imanes/Método/Brújula). Al tocar un tile se abre un modal explicando qué va a mostrar cuando se sumen esos datos. Es solo estructura, no hay datos reales todavía.
 
+## Reordenar clientes y responsable de proyecto
+
+Botones ▲▼ en cada fila de Clientes (solo admin) que llaman a `POST /admin/clients/reorder` (reescribe el array `_clients` completo en el orden pedido). El "Responsable de proyecto" que ya existía al crear un cliente ahora también se guarda en el propio registro del cliente (`client.responsable = {email, nombre}`) — antes solo se usaba para darle acceso al colaborador y no quedaba nada persistido — y se muestra al lado del nombre en la fila. Editable también desde "Editar cliente".
+
+## Procesos (sección nueva, interno)
+
+Nav "Procesos" — **solo colaboradores y admin, el cliente no tiene acceso ni lo ve en su panel** (confirmado explícitamente por Vaneh). Selector arriba para elegir cliente real o COSMART (con su propio desplegable de verticales, mismo listado que ya usa Gestión COSMART). Menú izquierdo tipo carpeta con los procesos de ese cliente/vertical — cada proceso puede tener subprocesos opcionales (submenú) — contenido a la derecha, 100% editable (nombre + texto libre), con crear/guardar/eliminar tanto de procesos como de subprocesos. Persistido vía el endpoint genérico `/data/:clientId/:type` que ya existía en el worker (tipo nuevo `procesos`, no hizo falta tocar el backend — no tiene whitelist de tipos). Para `_cosmart`, todos los procesos de todas las verticales viven en un único array (`_cosmart:procesos`), cada uno con un campo `vertical` opcional (null = "General") — mismo patrón que ya usan las tareas internas.
+
 ## Drag and drop en los tableros Kanban
 
 Los tres Kanban (Tareas del panel cliente, Gestión COSMART, Mis Tareas admin) tienen `draggable` + listeners de `dragstart/dragover/drop` para mover tarjetas entre columnas. Se detectó y arregló un bug real: faltaba `e.dataTransfer.setData('text/plain', ...)` en el `dragstart` — sin eso Firefox no dispara el drag en absoluto (Chrome es más permisivo). Ya está aplicado en los tres.
