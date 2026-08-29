@@ -1312,29 +1312,32 @@
             <span class="col-count">${items.length}</span>
           </div>
           <div class="kanban-cards" data-col="${col.key}">
-            ${items.map(t => `
-              <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
+            ${items.map(t => {
+              const esProy = !!t.esProyecto;
+              const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
+              return `
+              <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${t.titulo}</div>
+                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${t.titulo}</div>
                 </div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
                   ${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
                 </div>
-                ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">📅 ${t.vencimiento}</div>` : ''}
-                ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:var(--primary);">👤 ${t.asignado.nombre}</div>` : ''}
+                ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${muted};">📅 ${t.vencimiento}</div>` : ''}
+                ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:${esProy ? '#93c5fd' : 'var(--primary)'};">👤 ${t.asignado.nombre}</div>` : ''}
                 ${t.subtareas?.length ? (() => {
                   const done = t.subtareas.filter(s => s.done).length;
                   const total = t.subtareas.length;
                   const pct = Math.round(done / total * 100);
                   return `<div style="margin-top:6px;">
-                    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
-                    <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:${t.esProyecto ? '#3b82f6' : '#10b981'};border-radius:2px;width:${pct}%;"></div></div>
+                    <div style="display:flex;justify-content:space-between;font-size:10px;color:${muted};margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
+                    <div style="height:3px;background:${esProy ? 'rgba(255,255,255,.25)' : '#e2e8f0'};border-radius:2px;"><div style="height:3px;background:${esProy ? '#60a5fa' : '#10b981'};border-radius:2px;width:${pct}%;"></div></div>
                   </div>`;
                 })() : ''}
               </div>
-            `).join('')}
+            `;}).join('')}
           </div>
           <button class="kanban-add-btn" onclick="openInternaModal(null,'${col.key}')">+ Agregar</button>
         </div>`;
@@ -1347,7 +1350,7 @@
     const board = document.getElementById('internasBoard');
     if (!board) return;
     board.querySelectorAll('.kanban-card[draggable]').forEach(card => {
-      card.addEventListener('dragstart', e => { draggingId = card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+      card.addEventListener('dragstart', e => { draggingId = card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.dataset.id); });
       card.addEventListener('dragend', () => card.classList.remove('dragging'));
     });
     board.querySelectorAll('.kanban-cards').forEach(zone => {
@@ -1364,6 +1367,33 @@
         t.completadoEn = zone.dataset.col === 'Listo' ? new Date().toISOString().split('T')[0] : null;
         renderInternasBoard();
         try { const saved = await saveTarea(INTERNAS_CLIENT_ID, t); const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; } catch (e) { console.error(e); }
+      });
+    });
+  }
+
+  function initMisTareasDrag() {
+    let draggingIdx = null;
+    const board = document.getElementById('misTareasList');
+    if (!board) return;
+    board.querySelectorAll('.kanban-card[draggable]').forEach(card => {
+      card.addEventListener('dragstart', e => { draggingIdx = card.dataset.idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.dataset.idx); });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+    board.querySelectorAll('.kanban-cards').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.parentElement.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.parentElement.classList.remove('drag-over'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.parentElement.classList.remove('drag-over');
+        if (draggingIdx === null) return;
+        const idx = Number(draggingIdx); draggingIdx = null;
+        const item = _misTareasCache[idx];
+        if (!item || item.tipo !== 'tarea' || item.tarea.estado === zone.dataset.col) return;
+        item.tarea.estado = zone.dataset.col;
+        if (zone.dataset.col === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; }
+        else item.tarea.completadoEn = null;
+        renderMisTareas();
+        try { item.tarea = await saveTarea(item.clientId, item.tarea); } catch (e) { console.error(e); }
       });
     });
   }
@@ -1795,14 +1825,16 @@
     const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    const esProy = tipo === 'tarea' && !!t.esProyecto;
+    const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
     return `
-    <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
+    <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : '')}">
       ${tipo === 'tarea'
         ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
         : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
+        <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+        <div style="font-size:11px;color:${muted};margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
       <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
@@ -1846,22 +1878,26 @@
           <span class="col-title">${col.key}</span>
           <span class="col-count">${items.length}</span>
         </div>
-        <div class="kanban-cards">
+        <div class="kanban-cards" data-col="${col.key}">
           ${items.map(item => {
             const idx = _misTareasCache.indexOf(item);
             const { t } = { t: item.tarea };
             const fecha = t.vencimiento || t.fechaPub || '';
             const atraso = !estaListo(item) ? diasDeAtraso(fecha) : 0;
+            const esProy = item.tipo === 'tarea' && !!t.esProyecto;
+            const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
+            const arrastrable = item.tipo === 'tarea';
             return `
-            <div class="kanban-card" onclick="openMisTareaModal(${idx})" style="${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
-              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
-              ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
+            <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : '')}">
+              <div class="kanban-card-title" style="${esProy ? 'color:#fff;' : ''}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+              <div style="font-size:11px;color:${muted};margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
+              ${atraso > 0 ? `<div style="font-size:10px;color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
           }).join('')}
         </div>
       </div>`;
     }).join('')}</div>`;
+    initMisTareasDrag();
   }
 
   let _misTareasCalYear = null, _misTareasCalMonth = null;

@@ -2359,24 +2359,29 @@ function renderTareas(container) {
           <span class="col-count">${items.length}</span>
         </div>
         <div class="kanban-cards" data-col="${col.key}">
-          ${items.map(t => `
-            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
+          ${items.map(t => {
+            const esProy = !!t.esProyecto;
+            const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
+            const vencido = t.vencimiento && new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo';
+            const vencColor = vencido ? (esProy ? '#fecdd3' : '#dc2626') : muted;
+            return `
+            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
               <div style="display:flex;align-items:flex-start;gap:8px;">
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
+                <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
               </div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
-              ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
-              ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+              ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
+              ${t.notas ? `<div style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#eff6ff;color:#3b82f6;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
-              ${t.linkRef ? `<a href="${t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.linkRef}</a>` : ''}
+              ${t.linkRef ? `<a href="${t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
                 const done = t.subtareas.filter(s=>s.done).length;
                 const total = t.subtareas.length;
                 const pct = Math.round(done/total*100);
                 return `<div style="margin-top:6px;">
-                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
-                  <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:${t.esProyecto ? '#3b82f6' : '#10b981'};border-radius:2px;width:${pct}%;"></div></div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:${muted};margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
+                  <div style="height:3px;background:${esProy ? 'rgba(255,255,255,.25)' : '#e2e8f0'};border-radius:2px;"><div style="height:3px;background:${esProy ? '#60a5fa' : '#10b981'};border-radius:2px;width:${pct}%;"></div></div>
                 </div>`;
               })() : ''}
               <div style="display:flex;gap:4px;margin-top:8px;">
@@ -2385,7 +2390,7 @@ function renderTareas(container) {
                 <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
               </div>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
         <button class="kanban-add-btn" onclick="openTareaModal(null,'${col.key}')">+ Agregar</button>
       </div>
@@ -3656,7 +3661,7 @@ function initKanbanDrag(boardSelector, items, onDrop) {
   if (!board) return;
 
   board.querySelectorAll('.kanban-card[draggable]').forEach(card => {
-    card.addEventListener('dragstart', e => { draggingId = card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    card.addEventListener('dragstart', e => { draggingId = card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.dataset.id); });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
   });
 
