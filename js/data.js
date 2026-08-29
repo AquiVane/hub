@@ -176,6 +176,16 @@ export async function saveTarea(clientId, tarea) {
   return tarea;
 }
 
+export async function saveTareasList(clientId, list) {
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    data.tareas = list;
+    saveDemoData(clientId, data);
+    return;
+  }
+  await api('POST', `/data/${clientId}/tareas`, list);
+}
+
 export async function deleteTarea(clientId, id) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);

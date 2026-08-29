@@ -204,7 +204,12 @@
 
       <!-- Métricas de email -->
       <div id="sec-email-stats" class="hidden">
-        <div class="mb-20 flex items-center gap-8">
+        <div class="mb-20">
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Métricas generales</h2>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Categorías preparadas para cuando sumemos los datos. Tocá una para ver qué va a mostrar.</p>
+          <div id="metricasGeneralesGrid" class="dash-stat-row-6"></div>
+        </div>
+        <div class="mb-20 flex items-center gap-8" style="margin-top:28px;">
           <h2 style="font-size:18px;font-weight:700;">Métricas de email</h2>
           <span class="text-muted text-sm" id="emailStatsRango"></span>
           <select id="emailStatsDias" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:auto;" onchange="loadEmailStats()">
@@ -226,6 +231,16 @@
 
       <div id="sec-config" class="hidden">
         <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Configuración</h2>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>Numeración de tareas</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+              Les asigna número (y por lo tanto código, ej. #GA-01) a las tareas que se crearon antes de tener numeración, agrupando por cliente, por vertical de COSMART interno y por persona en tareas personales. Las tareas que ya tienen número no se tocan. Se puede correr las veces que haga falta — solo numera lo que falte.
+            </p>
+            <button class="btn btn-secondary" onclick="migrarNumeracionTareas()">Numerar tareas existentes</button>
+            <div id="migracion-numeracion-resultado" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></div>
+          </div>
+        </div>
         <div class="card" style="max-width:600px;">
           <div class="card-header"><h2>Firebase</h2></div>
           <div class="card-body">
@@ -243,6 +258,20 @@
 </div>
 
 <!-- Modal nuevo colaborador -->
+<!-- Modal métrica general (placeholder) -->
+<div id="metricaGeneralModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 id="metricaGeneralModalTitle">Métrica</h3>
+      <button class="modal-close" onclick="closeMetricaGeneralModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);" id="metricaGeneralModalDesc"></p>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:14px;">Todavía no hay datos cargados para esta categoría — en cuanto sumemos la fuente, va a aparecer acá con sus propios gráficos.</p>
+    </div>
+  </div>
+</div>
+
 <div id="newColaboradorModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
@@ -744,6 +773,36 @@
   </div>
 </div>
 
+<!-- Modal facturación -->
+<div id="facturacionModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>Facturación — <span id="facturacion-cliente-nombre"></span></h3>
+      <button class="modal-close" onclick="document.getElementById('facturacionModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text-muted);">Año</label>
+        <select id="fact-anio" class="form-control" style="width:auto;" onchange="renderFacturacionTabla()"></select>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-strong);">
+            <th style="text-align:left;padding:6px 4px;">Mes</th>
+            <th style="text-align:center;padding:6px 4px;">Factura enviada</th>
+            <th style="text-align:center;padding:6px 4px;">Pago recibido</th>
+          </tr>
+        </thead>
+        <tbody id="facturacion-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('facturacionModal').classList.add('hidden')">Cerrar</button>
+      <button class="btn btn-primary" onclick="guardarFacturacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal editar cliente -->
 <div id="editClientModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:500px;">
@@ -837,7 +896,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
+  import { getAllClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -873,7 +932,7 @@
     if (sec === 'colaboradores') loadColaboradores();
     if (sec === 'internas') loadInternas();
     if (sec === 'informes') loadInformes();
-    if (sec === 'email-stats') loadEmailStats();
+    if (sec === 'email-stats') { loadEmailStats(); renderMetricasGenerales(); }
     if (sec === 'actividad') loadActividadFiltros();
   };
 
@@ -908,6 +967,46 @@
     const col = (colaboradores || _colaboradoresCache).find(c => c.email.toLowerCase() === (email || '').toLowerCase());
     return col?.codigo || codigoDesdeNombre(col?.nombre) || 'US';
   }
+  window.migrarNumeracionTareas = async function() {
+    if (!confirm('¿Numerar las tareas existentes que todavía no tienen número? No se puede deshacer.')) return;
+    const resultEl = document.getElementById('migracion-numeracion-resultado');
+    resultEl.textContent = 'Numerando...';
+    let totalNumeradas = 0;
+    try {
+      const clients = await getAllClients();
+      const pseudoClients = [{ id: '_cosmart' }, { id: '_personal' }];
+      const ordenId = (t) => { const m = /^t(\d+)/.exec(t.id || ''); return m ? Number(m[1]) : 0; };
+      for (const c of [...clients, ...pseudoClients]) {
+        const tareas = await getTareas(c.id);
+        if (!tareas || !tareas.length) continue;
+        const sinNumero = tareas.filter(t => !t.numero);
+        if (!sinNumero.length) continue;
+        const claveScope = (t) => {
+          if (c.id === '_cosmart') return t.vertical || '';
+          if (c.id === '_personal') return (t.asignado?.email || '').toLowerCase();
+          return '__whole__';
+        };
+        const maxPorScope = {};
+        tareas.forEach(t => {
+          if (!t.numero) return;
+          const k = claveScope(t);
+          maxPorScope[k] = Math.max(maxPorScope[k] || 0, t.numero);
+        });
+        sinNumero.sort((a, b) => ordenId(a) - ordenId(b));
+        sinNumero.forEach(t => {
+          const k = claveScope(t);
+          maxPorScope[k] = (maxPorScope[k] || 0) + 1;
+          t.numero = maxPorScope[k];
+          totalNumeradas++;
+        });
+        await saveTareasList(c.id, tareas);
+      }
+      resultEl.textContent = `Listo: se numeraron ${totalNumeradas} tarea${totalNumeradas !== 1 ? 's' : ''}.`;
+    } catch (e) {
+      resultEl.textContent = 'Error: ' + (e.message || 'intentá de nuevo.');
+    }
+  };
+
   let _misTareasClientsCache = [];
   function codigoDeItem(item) {
     if (item.tipo !== 'tarea' || !item.tarea.numero) return '';
@@ -1037,6 +1136,30 @@
   };
 
   const EMAIL_STATS_COLORS = ['#3A8FC7', '#1A4DAA', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#e02020', '#64748b'];
+
+  const METRICAS_GENERALES = [
+    { id: 'ventas', icono: '💰', label: 'Ventas', desc: 'Ingresos totales por período, comparados mes a mes, y desglosados por vertical de COSMART.' },
+    { id: 'nuevos-clientes', icono: '🆕', label: 'Nuevos clientes', desc: 'Clientes que se sumaron en el período, de dónde vinieron (referido, orgánico, lead magnet) y con qué servicio arrancaron.' },
+    { id: 'facturacion-actual', icono: '🧾', label: 'Facturación actual', desc: 'Estado de facturación del mes en curso: cuántos clientes tienen la factura enviada y el pago recibido, tomado directo de la sección de Facturación de cada cliente.' },
+    { id: 'leads', icono: '🎯', label: 'Potenciales clientes', desc: 'Leads captados por los imanes (lead magnets), Método y Brújula: cuántos entraron, cuántos siguieron abriendo la secuencia y cuántos terminaron convirtiendo.' },
+  ];
+  function renderMetricasGenerales() {
+    const el = document.getElementById('metricasGeneralesGrid');
+    if (!el) return;
+    el.innerHTML = METRICAS_GENERALES.map(m => `
+      <div class="dash-stat-pill" style="cursor:pointer;" onclick="verMetricaGeneral('${m.id}')">
+        <div class="dash-stat-pill-val" style="font-size:22px;color:var(--text-muted);">${m.icono}</div>
+        <div class="dash-stat-pill-label">${m.label}<br><span style="opacity:.7;">Próximamente</span></div>
+      </div>`).join('');
+  }
+  window.verMetricaGeneral = function(id) {
+    const m = METRICAS_GENERALES.find(x => x.id === id);
+    if (!m) return;
+    document.getElementById('metricaGeneralModalTitle').textContent = `${m.icono} ${m.label}`;
+    document.getElementById('metricaGeneralModalDesc').textContent = m.desc;
+    document.getElementById('metricaGeneralModal').classList.remove('hidden');
+  };
+  window.closeMetricaGeneralModal = () => document.getElementById('metricaGeneralModal').classList.add('hidden');
 
   function renderEmailStatsResumen(campanas) {
     const el = document.getElementById('emailStatsResumen');
@@ -2505,6 +2628,7 @@
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
             <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
+            <button onclick="openFacturacionModal('${c.id}')">🧾 Facturación</button>
             ${user.role === 'admin' ? `<button class="danger" onclick="deleteClient('${c.id}','${nombre}')">🗑 Eliminar</button>` : ''}
           </div>
         </div>
@@ -2802,6 +2926,53 @@
     await saveClientData(_equipoClienteId, { usuarios: _equipoUsuarios });
     document.getElementById('equipoClienteModal').classList.add('hidden');
     alert('Equipo guardado correctamente.');
+  };
+
+  let _facturacionClienteId = null;
+  let _facturacionData = {};
+
+  window.openFacturacionModal = async function(clientId) {
+    _facturacionClienteId = clientId;
+    const client = await getClientData(clientId);
+    _facturacionData = (client && client.facturacion) ? JSON.parse(JSON.stringify(client.facturacion)) : {};
+    document.getElementById('facturacion-cliente-nombre').textContent = client ? (client.nombre || client.name || clientId) : clientId;
+    const anioSel = document.getElementById('fact-anio');
+    const anioActual = new Date().getFullYear();
+    const anios = [anioActual - 1, anioActual, anioActual + 1];
+    anioSel.innerHTML = anios.map(a => `<option value="${a}" ${a === anioActual ? 'selected' : ''}>${a}</option>`).join('');
+    renderFacturacionTabla();
+    document.getElementById('facturacionModal').classList.remove('hidden');
+  };
+
+  window.renderFacturacionTabla = function() {
+    const anio = document.getElementById('fact-anio').value;
+    const datosAnio = _facturacionData[anio] || {};
+    const tbody = document.getElementById('facturacion-tbody');
+    tbody.innerHTML = MESES_NOMBRE_JS.map((mes, i) => {
+      const mesNum = i + 1;
+      const d = datosAnio[mesNum] || {};
+      return `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:6px 4px;">${mes}</td>
+        <td style="text-align:center;padding:6px 4px;"><input type="checkbox" id="fact-${anio}-${mesNum}-enviada" ${d.enviada ? 'checked' : ''}></td>
+        <td style="text-align:center;padding:6px 4px;"><input type="checkbox" id="fact-${anio}-${mesNum}-pago" ${d.pago ? 'checked' : ''}></td>
+      </tr>`;
+    }).join('');
+  };
+
+  window.guardarFacturacion = async function() {
+    if (!_facturacionClienteId) return;
+    const anio = document.getElementById('fact-anio').value;
+    const datosAnio = {};
+    for (let mesNum = 1; mesNum <= 12; mesNum++) {
+      const enviada = document.getElementById(`fact-${anio}-${mesNum}-enviada`).checked;
+      const pago = document.getElementById(`fact-${anio}-${mesNum}-pago`).checked;
+      if (enviada || pago) datosAnio[mesNum] = { enviada, pago };
+    }
+    _facturacionData[anio] = datosAnio;
+    await saveClientData(_facturacionClienteId, { facturacion: _facturacionData });
+    document.getElementById('facturacionModal').classList.add('hidden');
+    alert('Facturación guardada correctamente.');
   };
 
   let _informesCache = [];
