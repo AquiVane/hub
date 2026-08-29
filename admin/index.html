@@ -428,6 +428,10 @@
           <input type="time" id="mt-hora" class="form-control">
         </div>
       </div>
+      <div class="form-group">
+        <label>Asignar a</label>
+        <select id="mt-asignado" class="form-control"></select>
+      </div>
       <div class="form-group" id="mt-subtareas-group">
         <label>Subtareas</label>
         <div id="mt-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
@@ -1037,7 +1041,7 @@
               <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.titulo}</div>
+                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
                 </div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
@@ -1092,7 +1096,7 @@
   window.openInternaModal = async function(id, defaultEstado) {
     _editingInterna = id ? _internasCache.find(t => t.id === id) : null;
     const t = _editingInterna || {};
-    document.getElementById('interna-modal-title').textContent = _editingInterna ? 'Editar tarea interna' : 'Nueva tarea interna';
+    document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + t.numero : ''}` : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
@@ -1114,17 +1118,24 @@
   window.closeInternaModal = () => document.getElementById('internaModal').classList.add('hidden');
 
   let _inSubtareas = [];
-  function renderInSubtareas() {
+  async function renderInSubtareas() {
     const list = document.getElementById('in-subtareas-list');
-    list.innerHTML = _inSubtareas.map((s, i) => `
+    const filas = await Promise.all(_inSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;">
         <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        ${s.asignado?.nombre ? `<span style="font-size:10px;color:var(--primary);font-weight:600;white-space:nowrap;">👤 ${s.asignado.nombre}</span>` : ''}
+        <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
-    `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+    `));
+    list.innerHTML = filas.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
   }
+  window.reasignarInSubtarea = function(i, sel) {
+    if (!_inSubtareas[i]) return;
+    const email = sel.value;
+    const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
+    _inSubtareas[i].asignado = email ? { email, nombre } : null;
+  };
   window.agregarInSubtarea = function() {
     const input = document.getElementById('in-subtarea-input');
     const asignadoSel = document.getElementById('in-subtarea-asignado');
@@ -1154,8 +1165,10 @@
     const asignadoEmail = asignadoEl.value;
     const asignadoNombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
     const inEstadoVal = document.getElementById('in-estado').value;
+    const numero = _editingInterna?.numero || (Math.max(0, ..._internasCache.map(t => t.numero || 0)) + 1);
     const obj = {
       ...(_editingInterna || {}),
+      numero,
       titulo,
       vertical: document.getElementById('in-vertical').value || null,
       estado: inEstadoVal,
@@ -1202,19 +1215,22 @@
   let _clientsCacheForColab = [];
   let _nmtClientsCache = [];
 
-  async function poblarSelectConYoYColaboradores(sel, currentEmail) {
+  async function opcionesYoYColaboradoresHtml(currentEmail) {
     const miEmail = (user.email || '').toLowerCase();
-    sel.innerHTML = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}">Yo (${user.name || user.email})</option>`;
+    const cur = (currentEmail || '').toLowerCase();
+    let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
     try {
-      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-      colaboradores.forEach(c => {
+      if (!_colaboradoresCache.length) _colaboradoresCache = await getColaboradores();
+      _colaboradoresCache.forEach(c => {
         if (c.email.toLowerCase() === miEmail) return;
-        const opt = document.createElement('option');
-        opt.value = c.email; opt.textContent = `${c.nombre} — ${c.email}`; opt.dataset.nombre = c.nombre;
-        sel.appendChild(opt);
+        html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
       });
     } catch (e) {}
-    if (currentEmail && [...sel.options].some(o => o.value.toLowerCase() === currentEmail.toLowerCase())) sel.value = currentEmail.toLowerCase();
+    return html;
+  }
+
+  async function poblarSelectConYoYColaboradores(sel, currentEmail) {
+    sel.innerHTML = await opcionesYoYColaboradoresHtml(currentEmail);
   }
 
   async function poblarNmtAsignado(selectedClientId) {
@@ -1343,9 +1359,10 @@
           esPersonal ? Promise.resolve([]) : getContenidos(c.id),
         ]);
         (tareas || []).forEach(t => {
-          if (!t.archivado) {
-            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail: t.asignado?.email ? t.asignado.email.toLowerCase() : '' });
-          }
+          if (t.archivado) return;
+          const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
+          if (esPersonal && asignadoEmail !== (user.email || '').toLowerCase()) return;
+          items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail });
         });
         (contenidos || []).forEach(t => {
           if (t.asignado?.email && t.estado !== 'Publicado') {
@@ -1360,20 +1377,24 @@
     renderMisTareas();
   }
 
-  async function poblarMisTareasVerDe() {
+  async function poblarMisTareasVerDe(forzar) {
     const sel = document.getElementById('misTareasVerDe');
-    if (!sel || sel.dataset.poblado) return;
+    if (!sel || (sel.dataset.poblado && !forzar)) return;
     const miEmail = (user.email || '').toLowerCase();
-    let opciones = [`<option value="">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
-    try {
-      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-      colaboradores.forEach(c => {
-        if (c.email.toLowerCase() === miEmail) return;
-        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
-      });
-    } catch (e) {}
+    let opciones = [`<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    if (user.role === 'admin') {
+      opciones.unshift(`<option value="">Todos</option>`);
+      try {
+        const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+        colaboradores.forEach(c => {
+          if (c.email.toLowerCase() === miEmail) return;
+          opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+        });
+      } catch (e) {}
+    }
     sel.innerHTML = opciones.join('');
     sel.value = _misTareasVerDe;
+    sel.disabled = user.role !== 'admin';
     sel.dataset.poblado = '1';
   }
 
@@ -1477,7 +1498,7 @@
         ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
         : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${t.titulo}</div>
+        <div style="font-size:13px;font-weight:600;${listo ? 'text-decoration:line-through;color:var(--text-muted);' : ''}cursor:pointer;" onclick="openMisTareaModal(${idx})">${tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
@@ -1530,7 +1551,7 @@
             const atraso = !estaListo(item) ? diasDeAtraso(fecha) : 0;
             return `
             <div class="kanban-card" onclick="openMisTareaModal(${idx})" style="${atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : ''}">
-              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${t.titulo}</div>
+              <div class="kanban-card-title">${item.personal ? '🏠 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:var(--text-muted);font-weight:400;">#${t.numero}</span> ` : ''}${t.titulo}</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
               ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
@@ -1647,6 +1668,7 @@
     document.getElementById('mt-subtarea-input').value = '';
     poblarSelectConYoYColaboradores(document.getElementById('mt-subtarea-asignado'), '');
     renderMiSubtareas();
+    poblarSelectConYoYColaboradores(document.getElementById('mt-asignado'), t.asignado?.email || '');
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     document.getElementById('mt-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
     const abrirPanelLink = document.getElementById('mt-abrir-panel');
@@ -1660,17 +1682,24 @@
     _misTareaModalIdx = null;
   };
 
-  function renderMiSubtareas() {
+  async function renderMiSubtareas() {
     const list = document.getElementById('mt-subtareas-list');
-    list.innerHTML = _mtSubtareas.map((s, i) => `
+    const filas = await Promise.all(_mtSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;">
         <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        ${s.asignado?.nombre ? `<span style="font-size:10px;color:var(--primary);font-weight:600;white-space:nowrap;">👤 ${s.asignado.nombre}</span>` : ''}
+        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarMiSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
-    `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+    `));
+    list.innerHTML = filas.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
   }
+  window.reasignarMiSubtarea = function(i, sel) {
+    if (!_mtSubtareas[i]) return;
+    const email = sel.value;
+    const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
+    _mtSubtareas[i].asignado = email ? { email, nombre } : null;
+  };
   window.agregarMiSubtarea = function() {
     const input = document.getElementById('mt-subtarea-input');
     const asignadoSel = document.getElementById('mt-subtarea-asignado');
@@ -1704,6 +1733,15 @@
     const nuevoEstado = document.getElementById('mt-estado').value;
     const estadoPrevio = item.tarea.estado;
     item.tarea.estado = nuevoEstado;
+    const asignadoSel = document.getElementById('mt-asignado');
+    const nuevoAsignadoEmail = asignadoSel.value;
+    const nuevoAsignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    if (nuevoAsignadoEmail !== (item.tarea.asignado?.email || '')) {
+      item.tarea.asignado = nuevoAsignadoEmail
+        ? { ...(item.tarea.asignado || {}), email: nuevoAsignadoEmail, nombre: nuevoAsignadoNombre }
+        : null;
+    }
+    item.asignadoEmail = nuevoAsignadoEmail.toLowerCase();
     if (tipo === 'tarea') {
       item.tarea.prioridad = document.getElementById('mt-prioridad').value;
       item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
@@ -1738,7 +1776,7 @@
     const clients = await getAllClients();
     _nmtClientsCache = clients || [];
     clienteSel.innerHTML = `
-      <option value="_personal">🏠 Personal (Vaneh)</option>
+      <option value="_personal">🏠 Personal (${user.name || user.email})</option>
       <option value="_cosmart">COSMART (interno)</option>
       ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
 
@@ -1849,7 +1887,7 @@
   }
 
   function opcionesDestinoImport(seleccionado) {
-    const opts = [`<option value="">— Elegí destino —</option>`, `<option value="_personal">🏠 Personal (Vaneh)</option>`, `<option value="_cosmart">COSMART (interno)</option>`];
+    const opts = [`<option value="">— Elegí destino —</option>`, `<option value="_personal">🏠 Personal (${user.name || user.email})</option>`, `<option value="_cosmart">COSMART (interno)</option>`];
     _importarTareasClientesReales.forEach(c => opts.push(`<option value="${c.id}">${c.nombre || c.name || c.id}</option>`));
     return opts.join('').replace(`value="${seleccionado}"`, `value="${seleccionado}" selected`);
   }
@@ -2219,7 +2257,13 @@
     const asignadoSel = document.getElementById('nmt-asignado');
     const asignadoEmail = asignadoSel.value;
     const asignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    let numero = 1;
+    try {
+      const tareasCliente = await getTareas(clientId);
+      numero = Math.max(0, ...(tareasCliente || []).map(t => t.numero || 0)) + 1;
+    } catch (e) {}
     const obj = {
+      numero,
       titulo,
       estado: document.getElementById('nmt-estado').value,
       prioridad: document.getElementById('nmt-prioridad').value,
