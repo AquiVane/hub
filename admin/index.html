@@ -26,11 +26,11 @@
       <button class="nav-item active" onclick="showSection('clientes')">
         <i data-lucide="users" class="nav-icon"></i><span>Clientes</span>
       </button>
-      <button class="nav-item" onclick="showSection('mistareas')">
-        <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
-      </button>
       <button class="nav-item" onclick="showSection('colaboradores')">
         <i data-lucide="user-cog" class="nav-icon"></i><span>Colaboradores</span>
+      </button>
+      <button class="nav-item" onclick="showSection('mistareas')">
+        <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
       </button>
       <button class="nav-item" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span>Gestión COSMART</span>
@@ -39,11 +39,11 @@
         <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
       </button>
       <button class="nav-item" onclick="showSection('informes')">
-        <i data-lucide="mail-check" class="nav-icon"></i><span>Informes mensuales</span>
+        <i data-lucide="mail-check" class="nav-icon"></i><span>Informes clientes</span>
         <span class="badge" id="informesBadge" style="display:none;"></span>
       </button>
       <button class="nav-item" onclick="showSection('email-stats')">
-        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas de email</span>
+        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
       </button>
       <button class="nav-item" onclick="showSection('config')">
         <i data-lucide="settings" class="nav-icon"></i><span>Configuración</span>
@@ -646,6 +646,11 @@
           <label>Notas internas</label>
           <input type="text" id="nc-notas" class="form-control" placeholder="Notas sobre el cliente...">
         </div>
+        <div class="form-group">
+          <label>Responsable de proyecto</label>
+          <select id="nc-responsable" class="form-control"></select>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Vaneh queda siempre como administradora general del cliente, elijas o no un responsable acá.</span>
+        </div>
       </div>
 
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo inicial</p>
@@ -821,6 +826,7 @@
     document.getElementById('btnNuevoColaborador').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
+    document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
   }
 
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
@@ -1281,13 +1287,26 @@
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
             ${col.clientIds.length ? col.clientIds.map(id => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">${nombreCliente(id)}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted);font-style:italic;">Sin clientes asignados</span>'}
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')" style="width:100%;justify-content:center;">✏️ Editar</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')" style="flex:1;justify-content:center;">✏️ Editar</button>
+            <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${col.email}')" style="flex:1;justify-content:center;">📋 Ver tareas</button>
+          </div>
         </div>
       `).join('')}</div>`;
     } catch (e) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
     }
   }
+
+  window.verTareasDeColaborador = function(email) {
+    ['clientes','mistareas','colaboradores','internas','informes','email-stats','actividad','config'].forEach(s => {
+      document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== 'mistareas');
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelector('.nav-item[onclick*="mistareas"]')?.classList.add('active');
+    _misTareasVerDe = email.toLowerCase();
+    loadMisTareas().then(() => poblarMisTareasVerDe(true));
+  };
 
   window.openEditColaboradorModal = function(email) {
     const col = _colaboradoresCache.find(c => c.email === email);
@@ -2332,7 +2351,7 @@
     document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
   });
 
-  window.openNewClientModal = () => {
+  window.openNewClientModal = async () => {
     // Limpiar todos los campos del formulario
     ['nc-nombre','nc-id','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
      'nc-fb','nc-tiktok','nc-youtube','nc-linkedin','nc-website','nc-website2',
@@ -2344,6 +2363,16 @@
     if (rolEl) rolEl.value = 'Usuario';
     _ncUsuarios = [];
     renderNcUsuarios();
+    const respSel = document.getElementById('nc-responsable');
+    respSel.innerHTML = '<option value="">Sin asignar todavía</option>';
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.email; opt.textContent = c.nombre;
+        respSel.appendChild(opt);
+      });
+    } catch (e) {}
     document.getElementById('newClientModal').classList.remove('hidden');
   };
   window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
@@ -2522,6 +2551,15 @@
         metaBusinessId: document.getElementById('nc-meta-bm').value.trim(),
         usuarios: _ncUsuarios,
       });
+      const responsableEmail = document.getElementById('nc-responsable').value;
+      if (responsableEmail) {
+        try {
+          const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+          const colab = colaboradores.find(c => c.email === responsableEmail);
+          const clientIds = [...new Set([...(colab?.clientIds || []), id])];
+          await updateColaborador(responsableEmail, { clientIds });
+        } catch (e) { console.error('No se pudo asignar el responsable de proyecto', e); }
+      }
       closeNewClientModal();
       loadClients();
     } catch (e) {

@@ -48,21 +48,21 @@
       <button class="nav-item" data-section="contenidos">
         <i data-lucide="pen-line" class="nav-icon"></i><span>Contenidos</span>
       </button>
-      <button class="nav-item" data-section="tareas">
-        <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
-        <span class="badge" id="badge-tareas">0</span>
-      </button>
       <button class="nav-item" data-section="pauta">
         <i data-lucide="trending-up" class="nav-icon"></i><span>Pauta Digital</span>
-      </button>
-      <button class="nav-item" data-section="links">
-        <i data-lucide="link" class="nav-icon"></i><span>Links y Archivos</span>
       </button>
       <button class="nav-item" data-section="web">
         <i data-lucide="globe" class="nav-icon"></i><span>Sitio Web</span>
       </button>
+      <button class="nav-item" data-section="tareas">
+        <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
+        <span class="badge" id="badge-tareas">0</span>
+      </button>
       <button class="nav-item hidden" id="nav-plan" data-section="plan">
         <i data-lucide="file-text" class="nav-icon"></i><span>Plan de ejecución</span>
+      </button>
+      <button class="nav-item" data-section="links">
+        <i data-lucide="link" class="nav-icon"></i><span>Links y Archivos</span>
       </button>
       <button class="nav-item" data-section="instrucciones">
         <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
@@ -1034,8 +1034,16 @@
             <input type="text" id="eq-nombre" class="form-control" placeholder="Ej: Vaneh">
           </div>
           <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Apellido</label>
+            <input type="text" id="eq-apellido" class="form-control" placeholder="Ej: Gómez">
+          </div>
+          <div class="form-group" style="margin:0;">
             <label style="font-size:11px;">Email *</label>
             <input type="email" id="eq-email" class="form-control" placeholder="usuario@email.com">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Teléfono</label>
+            <input type="text" id="eq-telefono" class="form-control" placeholder="+54 9 11 ...">
           </div>
           <div class="form-group" style="margin:0;">
             <label style="font-size:11px;">Rol</label>
@@ -1047,10 +1055,38 @@
               <option>Otro</option>
             </select>
           </div>
-          <div style="display:flex;align-items:flex-end;">
-            <button class="btn btn-primary" style="width:100%;" onclick="agregarUsuarioEquipo()">+ Agregar</button>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Cargo</label>
+            <select id="eq-cargo" class="form-control">
+              <option value="">— Sin especificar —</option>
+              <option>Director/a</option>
+              <option>Gerente</option>
+              <option>Comercial</option>
+              <option>Diseñador/a</option>
+              <option>Responsable de Marketing</option>
+              <option>Community Manager</option>
+              <option>Administración</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Instagram</label>
+            <input type="text" id="eq-instagram" class="form-control" placeholder="@usuario">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">LinkedIn</label>
+            <input type="text" id="eq-linkedin" class="form-control" placeholder="linkedin.com/in/...">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">TikTok</label>
+            <input type="text" id="eq-tiktok" class="form-control" placeholder="@usuario">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:11px;">Facebook</label>
+            <input type="text" id="eq-facebook" class="form-control" placeholder="facebook.com/...">
           </div>
         </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="agregarUsuarioEquipo()">+ Agregar</button>
       </div>
     </div>
     <div class="modal-footer">

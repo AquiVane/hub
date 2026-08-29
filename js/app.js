@@ -4071,9 +4071,11 @@ setTimeout(() => {
 // ── Gestión de equipo ──────────────────────────────────
 window.openEquipoModal = function() {
   renderEquipoList();
-  document.getElementById('eq-nombre').value = '';
-  document.getElementById('eq-email').value = '';
+  ['eq-nombre','eq-apellido','eq-email','eq-telefono','eq-instagram','eq-linkedin','eq-tiktok','eq-facebook'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
   document.getElementById('eq-rol').value = 'Responsable COSMART';
+  document.getElementById('eq-cargo').value = '';
   document.getElementById('equipoModal').classList.remove('hidden');
 };
 
@@ -4085,12 +4087,19 @@ function renderEquipoList() {
     list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Sin usuarios agregados todavía.</p>';
     return;
   }
+  const redes = (u) => [
+    u.instagram ? `<a href="https://instagram.com/${u.instagram.replace(/^@/,'')}" target="_blank" style="color:var(--accent);">IG</a>` : '',
+    u.linkedin ? `<a href="${u.linkedin.startsWith('http') ? u.linkedin : 'https://' + u.linkedin}" target="_blank" style="color:var(--accent);">in</a>` : '',
+    u.tiktok ? `<a href="https://tiktok.com/${u.tiktok.startsWith('@') ? u.tiktok : '@' + u.tiktok}" target="_blank" style="color:var(--accent);">TT</a>` : '',
+    u.facebook ? `<a href="${u.facebook.startsWith('http') ? u.facebook : 'https://' + u.facebook}" target="_blank" style="color:var(--accent);">FB</a>` : '',
+  ].filter(Boolean).join(' · ');
   list.innerHTML = usuarios.map((u, i) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;">
       <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${u.nombre}</div>
-        <div style="font-size:11px;color:var(--text-muted);">${u.email} · <span style="color:var(--accent);">${u.rol||'Usuario'}</span></div>
+        <div style="font-weight:600;font-size:13px;">${u.nombre}${u.apellido ? ' ' + u.apellido : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${u.email}${u.telefono ? ' · ' + u.telefono : ''} · <span style="color:var(--accent);">${u.rol||'Usuario'}</span>${u.cargo ? ' · ' + u.cargo : ''}</div>
+        ${redes(u) ? `<div style="font-size:11px;margin-top:2px;">${redes(u)}</div>` : ''}
       </div>
       <button onclick="eliminarUsuarioEquipo(${i})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:2px 6px;" title="Eliminar">×</button>
     </div>
@@ -4099,16 +4108,25 @@ function renderEquipoList() {
 
 window.agregarUsuarioEquipo = async function() {
   const nombre = document.getElementById('eq-nombre').value.trim();
+  const apellido = document.getElementById('eq-apellido').value.trim();
   const email = document.getElementById('eq-email').value.trim();
+  const telefono = document.getElementById('eq-telefono').value.trim();
   const rol = document.getElementById('eq-rol').value;
+  const cargo = document.getElementById('eq-cargo').value;
+  const instagram = document.getElementById('eq-instagram').value.trim();
+  const linkedin = document.getElementById('eq-linkedin').value.trim();
+  const tiktok = document.getElementById('eq-tiktok').value.trim();
+  const facebook = document.getElementById('eq-facebook').value.trim();
   if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
   if (!STATE.client.usuarios) STATE.client.usuarios = [];
   if (STATE.client.usuarios.length >= 5) { alert('Límite alcanzado: podés tener hasta 5 miembros en tu equipo.'); return; }
   if (STATE.client.usuarios.find(u => u.email === email)) { alert('Ya existe un usuario con ese email.'); return; }
-  STATE.client.usuarios.push({ nombre, email, rol });
+  STATE.client.usuarios.push({ nombre, apellido, email, telefono, rol, cargo, instagram, linkedin, tiktok, facebook });
   await saveClientData(clientId, { usuarios: STATE.client.usuarios });
-  document.getElementById('eq-nombre').value = '';
-  document.getElementById('eq-email').value = '';
+  ['eq-nombre','eq-apellido','eq-email','eq-telefono','eq-instagram','eq-linkedin','eq-tiktok','eq-facebook'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('eq-cargo').value = '';
   renderEquipoList();
 };
 
