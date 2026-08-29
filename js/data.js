@@ -415,6 +415,16 @@ export async function aprobarInforme(id) {
   return api('POST', `/admin/informes/${encodeURIComponent(id)}/aprobar`);
 }
 
+export async function desaprobarInforme(id) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden desaprobar informes reales.'); return; }
+  return api('POST', `/admin/informes/${encodeURIComponent(id)}/desaprobar`);
+}
+
+export async function eliminarInforme(id) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden eliminar informes reales.'); return; }
+  return api('DELETE', `/admin/informes/${encodeURIComponent(id)}`);
+}
+
 export async function generarInformesManual(mes, anio) {
   if (DEMO_MODE) { alert('En modo demo no se pueden generar informes reales.'); return { generados: 0 }; }
   return api('POST', '/admin/informes/generar', { mes, anio });

@@ -550,6 +550,7 @@ function renderDashboard(container) {
         </div>
         <!-- Gráfico de torta por tipo -->
         ${buildPieChart(tipos, COLORS, tareasResumenHtml)}
+        ${renderTrabajoRealizado()}
       </div>
 
       <div>
@@ -567,8 +568,6 @@ function renderDashboard(container) {
         </div>
       </div>
     </div>
-
-    ${renderTrabajoRealizado()}
   `;
 }
 
@@ -2329,10 +2328,10 @@ function renderTareas(container) {
         </div>
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(t => `
-            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)">
+            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${t.esProyecto ? 'background:#eff6ff;border-color:#bfdbfe;' : ''}">
               <div style="display:flex;align-items:flex-start;gap:8px;">
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
+                <div class="kanban-card-title" style="${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.titulo}</div>
               </div>
               ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo' ? '#dc2626' : 'var(--text-muted)'};">📅 Vence: ${fmtDate(t.vencimiento)}</div>` : ''}
@@ -2345,7 +2344,7 @@ function renderTareas(container) {
                 const pct = Math.round(done/total*100);
                 return `<div style="margin-top:6px;">
                   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:3px;"><span>${done}/${total} subtareas</span><span>${pct}%</span></div>
-                  <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:#10b981;border-radius:2px;width:${pct}%;"></div></div>
+                  <div style="height:3px;background:#e2e8f0;border-radius:2px;"><div style="height:3px;background:${t.esProyecto ? '#3b82f6' : '#10b981'};border-radius:2px;width:${pct}%;"></div></div>
                 </div>`;
               })() : ''}
               <div style="display:flex;gap:4px;margin-top:8px;">
@@ -2513,6 +2512,8 @@ window.openTareaModal = function(id, defaultEstado) {
     const wrap = tfVisibleCliente.closest('.form-group');
     if (wrap) wrap.style.display = user.role === 'client' ? 'none' : '';
   }
+  const tfEsProyecto = document.getElementById('tf-es-proyecto');
+  if (tfEsProyecto) tfEsProyecto.checked = t.esProyecto === true;
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
   document.getElementById('tf-link').value = t.linkRef || '';
   // Imágenes
@@ -2623,7 +2624,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfEstadoVal = document.getElementById('tf-estado').value;
     const tfVisibleCliente = tfEstadoVal === 'Listo' ? true : (tfVisibleClienteEl ? tfVisibleClienteEl.checked : false);
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
-    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn };
+    const obj = { ...(editingTarea||{}), titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: document.getElementById('tf-es-proyecto')?.checked === true };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
@@ -3361,6 +3362,8 @@ window.openCampanaModal = function(id) {
   document.getElementById('pf-nombre').value = c.nombre||'';
   document.getElementById('pf-plataforma').value = c.plataforma||'Meta Ads';
   document.getElementById('pf-estado').value = c.estado||'Activa';
+  const pfAsignado = document.getElementById('pf-asignado');
+  if (pfAsignado) pfAsignado.innerHTML = getAsignarOptions(c.asignado?.email || '');
   document.getElementById('pf-presupuesto').value = c.presupuesto||'';
   document.getElementById('pf-gastado').value = c.gastado||'';
   document.getElementById('pf-inicio').value = c.fechaInicio||'';
@@ -3398,10 +3401,14 @@ document.getElementById('saveCampanaBtn').addEventListener('click', async () => 
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
   const gastado = +document.getElementById('pf-gastado').value||0;
   const ingresos = +document.getElementById('pf-ingresos').value||0;
+  const pfAsignadoSel = document.getElementById('pf-asignado');
+  const pfAsignadoEmail = pfAsignadoSel.value;
+  const pfAsignadoNombre = pfAsignadoSel.selectedOptions[0]?.dataset.nombre || '';
   const obj = {
     ...(editingCampana||{}), nombre,
     plataforma: document.getElementById('pf-plataforma').value,
     estado: document.getElementById('pf-estado').value,
+    asignado: pfAsignadoEmail ? { email: pfAsignadoEmail, nombre: pfAsignadoNombre } : null,
     presupuesto: +document.getElementById('pf-presupuesto').value||0,
     gastado, fechaInicio: document.getElementById('pf-inicio').value,
     fechaFin: document.getElementById('pf-fin').value,

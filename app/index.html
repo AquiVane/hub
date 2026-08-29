@@ -631,6 +631,14 @@
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto las tareas son internas del equipo COSMART. Tildá esto solo si el cliente tiene que verla.</span>
         </div>
 
+        <div class="form-group" style="grid-column:span 2;">
+          <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+            <input type="checkbox" id="tf-es-proyecto">
+            🔷 Es un proyecto
+          </label>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en el tablero con una barra de progreso según las subtareas completadas.</span>
+        </div>
+
         <!-- Comentarios tarea -->
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
           <label style="margin-bottom:8px;display:block;">💬 Comentarios</label>
@@ -730,6 +738,12 @@
             <option>Pausada</option>
             <option>Finalizada</option>
             <option>Borrador</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Asignar a</label>
+          <select id="pf-asignado" class="form-control">
+            <option value="">Sin asignar</option>
           </select>
         </div>
         <div class="form-group">
