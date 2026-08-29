@@ -460,9 +460,13 @@
         <label>URL</label>
         <input type="url" id="mt-url" class="form-control" placeholder="https://...">
       </div>
+      <div class="form-group hidden" id="mt-fecha-inicio-group">
+        <label>Fecha de inicio</label>
+        <input type="date" id="mt-fecha-inicio" class="form-control">
+      </div>
       <div class="form-grid">
         <div class="form-group">
-          <label>Vencimiento</label>
+          <label id="mt-vencimiento-label">Vencimiento</label>
           <input type="date" id="mt-vencimiento" class="form-control">
         </div>
         <div class="form-group">
@@ -473,6 +477,13 @@
       <div class="form-group">
         <label>Asignar a</label>
         <select id="mt-asignado" class="form-control"></select>
+      </div>
+      <div class="form-group" id="mt-es-proyecto-group">
+        <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="mt-es-proyecto" onchange="toggleMtEsProyecto()">
+          🔷 Es un proyecto
+        </label>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en azul marino y se muestra en su rango completo en el calendario.</span>
       </div>
       <div class="form-group" id="mt-subtareas-group">
         <label>Subtareas</label>
@@ -532,9 +543,13 @@
         <label>URL</label>
         <input type="url" id="nmt-url" class="form-control" placeholder="https://...">
       </div>
+      <div class="form-group hidden" id="nmt-fecha-inicio-group">
+        <label>Fecha de inicio</label>
+        <input type="date" id="nmt-fecha-inicio" class="form-control">
+      </div>
       <div class="form-grid">
         <div class="form-group">
-          <label>Vencimiento</label>
+          <label id="nmt-vencimiento-label">Vencimiento</label>
           <input type="date" id="nmt-vencimiento" class="form-control">
         </div>
         <div class="form-group">
@@ -545,6 +560,13 @@
       <div class="form-group">
         <label>Asignar a</label>
         <select id="nmt-asignado" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="nmt-es-proyecto" onchange="toggleNmtEsProyecto()">
+          🔷 Es un proyecto
+        </label>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en azul marino y se muestra en su rango completo en el calendario.</span>
       </div>
       <div class="form-group">
         <label>Subtareas</label>
@@ -1470,6 +1492,16 @@
     document.getElementById('in-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('in-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
   };
+  window.toggleMtEsProyecto = function() {
+    const checked = document.getElementById('mt-es-proyecto').checked;
+    document.getElementById('mt-fecha-inicio-group').classList.toggle('hidden', !checked);
+    document.getElementById('mt-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+  };
+  window.toggleNmtEsProyecto = function() {
+    const checked = document.getElementById('nmt-es-proyecto').checked;
+    document.getElementById('nmt-fecha-inicio-group').classList.toggle('hidden', !checked);
+    document.getElementById('nmt-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+  };
 
   window.saveInterna = async function() {
     const titulo = document.getElementById('in-titulo').value.trim();
@@ -2016,6 +2048,10 @@
     document.getElementById('mt-url').value = t.url || '';
     document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
     document.getElementById('mt-hora').value = t.hora || '';
+    document.getElementById('mt-es-proyecto-group').style.display = tipo === 'tarea' ? '' : 'none';
+    document.getElementById('mt-es-proyecto').checked = tipo === 'tarea' && t.esProyecto === true;
+    document.getElementById('mt-fecha-inicio').value = t.fechaInicio || '';
+    toggleMtEsProyecto();
     document.getElementById('mt-subtareas-group').style.display = tipo === 'tarea' ? '' : 'none';
     _mtSubtareas = tipo === 'tarea' ? [...(t.subtareas || [])] : [];
     document.getElementById('mt-subtarea-input').value = '';
@@ -2099,6 +2135,8 @@
       item.tarea.prioridad = document.getElementById('mt-prioridad').value;
       item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
       item.tarea.hora = document.getElementById('mt-hora').value || null;
+      item.tarea.esProyecto = document.getElementById('mt-es-proyecto').checked;
+      item.tarea.fechaInicio = item.tarea.esProyecto ? (document.getElementById('mt-fecha-inicio').value || null) : null;
       item.tarea.subtareas = _mtSubtareas;
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
@@ -2123,6 +2161,9 @@
     document.getElementById('nmt-url').value = '';
     document.getElementById('nmt-vencimiento').value = '';
     document.getElementById('nmt-hora').value = '';
+    document.getElementById('nmt-es-proyecto').checked = false;
+    document.getElementById('nmt-fecha-inicio').value = '';
+    toggleNmtEsProyecto();
 
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
@@ -2621,6 +2662,7 @@
         numero = Math.max(0, ...tareasCliente.map(t => t.numero || 0)) + 1;
       }
     } catch (e) {}
+    const esProyectoVal = document.getElementById('nmt-es-proyecto').checked;
     const obj = {
       numero,
       titulo,
@@ -2630,6 +2672,8 @@
       url: document.getElementById('nmt-url').value.trim() || null,
       vencimiento: document.getElementById('nmt-vencimiento').value || null,
       hora: document.getElementById('nmt-hora').value || null,
+      esProyecto: esProyectoVal,
+      fechaInicio: esProyectoVal ? (document.getElementById('nmt-fecha-inicio').value || null) : null,
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       subtareas: _nmtSubtareas,
       visibleParaCliente: false,
