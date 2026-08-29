@@ -214,6 +214,7 @@
           </select>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;" id="emailStatsAviso">Cargando datos reales de Brevo…</p>
+        <div id="emailStatsResumen" style="margin-bottom:24px;"></div>
         <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;">Por campaña — clic en una fila para ver el detalle día por día</h3>
         <div id="emailStatsTabla">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -898,6 +899,7 @@
     avisoEl.textContent = `Del ${d.rangoDesde} al ${d.rangoHasta} (${d.totalEventos} eventos). ${d.aviso || ''}`;
 
     const campanas = d.campanas || [];
+    renderEmailStatsResumen(campanas);
     if (!campanas.length) {
       tablaEl.innerHTML = '<div class="empty-state"><p>No hay eventos de email registrados con etiqueta en este rango.</p></div>';
     } else {
@@ -979,6 +981,96 @@
       seguimientoEl.innerHTML += `<p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${d.demografiaEuforia.error}</p>`;
     }
   };
+
+  const EMAIL_STATS_COLORS = ['#3A8FC7', '#1A4DAA', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#e02020', '#64748b'];
+
+  function renderEmailStatsResumen(campanas) {
+    const el = document.getElementById('emailStatsResumen');
+    if (!el) return;
+    if (!campanas.length) { el.innerHTML = ''; return; }
+
+    const t = campanas.reduce((a, c) => ({
+      enviados: a.enviados + (c.enviados || 0),
+      entregados: a.entregados + (c.entregados || 0),
+      abiertos: a.abiertos + (c.abiertos || 0),
+      aperturasUnicas: a.aperturasUnicas + (c.aperturasUnicas || 0),
+      clicks: a.clicks + (c.clicks || 0),
+      rebotes: a.rebotes + (c.rebotes || 0),
+      bloqueados: a.bloqueados + (c.bloqueados || 0),
+    }), { enviados: 0, entregados: 0, abiertos: 0, aperturasUnicas: 0, clicks: 0, rebotes: 0, bloqueados: 0 });
+
+    const pct = (n, base) => base ? Math.round(n / base * 100) : 0;
+
+    // ── Stat tiles ──
+    const tilesHtml = `
+      <div class="dash-stat-row-6">
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val">${t.enviados}</div><div class="dash-stat-pill-label">Enviados</div></div>
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#1A4DAA;">${t.entregados}</div><div class="dash-stat-pill-label">Entregados (${pct(t.entregados, t.enviados)}%)</div></div>
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3A8FC7;">${t.aperturasUnicas}</div><div class="dash-stat-pill-label">Aperturas únicas (${pct(t.aperturasUnicas, t.entregados)}%)</div></div>
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#10b981;">${t.clicks}</div><div class="dash-stat-pill-label">Clicks (${pct(t.clicks, t.entregados)}%)</div></div>
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#e02020;">${t.rebotes}</div><div class="dash-stat-pill-label">Rebotes (${pct(t.rebotes, t.enviados)}%)</div></div>
+        <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#64748b;">${t.bloqueados}</div><div class="dash-stat-pill-label">Bloqueados</div></div>
+      </div>`;
+
+    // ── Funnel (barras horizontales, % sobre Enviados) ──
+    const etapas = [
+      { label: 'Enviados', val: t.enviados, color: '#3A8FC7' },
+      { label: 'Entregados', val: t.entregados, color: '#1A4DAA' },
+      { label: 'Aperturas únicas', val: t.aperturasUnicas, color: '#10b981' },
+      { label: 'Clicks', val: t.clicks, color: '#f59e0b' },
+    ];
+    const funnelHtml = `
+      <div class="card" style="padding:16px;flex:1;min-width:280px;">
+        <div class="dash-card-title" style="margin-bottom:12px;">Embudo — % sobre enviados</div>
+        ${etapas.map(e => `
+          <div class="dash-bar-row">
+            <div class="dash-bar-label" style="width:110px;">${e.label}</div>
+            <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct(e.val, t.enviados)}%;background:${e.color};"></div></div>
+            <div class="dash-bar-val" style="width:auto;">${e.val} (${pct(e.val, t.enviados)}%)</div>
+          </div>
+        `).join('')}
+      </div>`;
+
+    // ── Donut: envíos por vertical ──
+    const porVertical = {};
+    campanas.forEach(c => { const v = c.vertical || 'Sin clasificar'; porVertical[v] = (porVertical[v] || 0) + (c.enviados || 0); });
+    const entradas = Object.entries(porVertical).sort((a, b) => b[1] - a[1]);
+    const totalVert = entradas.reduce((n, [, v]) => n + v, 0);
+    const R = 50, CIRC = 2 * Math.PI * R;
+    let acumulado = 0;
+    const segmentos = entradas.map(([nombre, val], i) => {
+      const frac = totalVert ? val / totalVert : 0;
+      const largo = frac * CIRC;
+      const offset = -acumulado * CIRC;
+      acumulado += frac;
+      const color = EMAIL_STATS_COLORS[i % EMAIL_STATS_COLORS.length];
+      return { nombre, val, frac, color, svg: `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="16" stroke-dasharray="${largo} ${CIRC - largo}" stroke-dashoffset="${offset}" transform="rotate(-90 60 60)"></circle>` };
+    });
+    const donutHtml = `
+      <div class="card" style="padding:16px;flex:1;min-width:280px;display:flex;gap:16px;align-items:center;">
+        <svg viewBox="0 0 120 120" width="120" height="120" style="flex-shrink:0;">
+          <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--border)" stroke-width="16"></circle>
+          ${segmentos.map(s => s.svg).join('')}
+        </svg>
+        <div style="flex:1;min-width:0;">
+          <div class="dash-card-title" style="margin-bottom:8px;">Envíos por vertical</div>
+          ${segmentos.map(s => `
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px;">
+              <span style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0;"></span>
+              <span style="flex:1;color:var(--text);">${s.nombre}</span>
+              <span style="color:var(--text-muted);font-weight:600;">${s.val} (${Math.round(s.frac * 100)}%)</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+
+    el.innerHTML = `
+      ${tilesHtml}
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;">
+        ${funnelHtml}
+        ${donutHtml}
+      </div>`;
+  }
 
   window.toggleClientesMenu = async function() {
     const dd = document.getElementById('clientesMenuDropdown');

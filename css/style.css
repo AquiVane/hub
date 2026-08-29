@@ -826,9 +826,15 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .dash-stat-pill-val { font-size: 22px; font-weight: 700; color: var(--primary); line-height: 1; }
 .dash-stat-pill-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
+.dash-stat-row-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+
 @media (max-width: 900px) {
   .dash-layout { grid-template-columns: 1fr; }
   .dash-stat-row { grid-template-columns: repeat(2, 1fr); }
+  .dash-stat-row-6 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+  .dash-stat-row-6 { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ── Impresión (reporte de Actividad) ── */
