@@ -35,6 +35,9 @@
       <button class="nav-item" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span>Gestión COSMART</span>
       </button>
+      <button class="nav-item" onclick="showSection('procesos')">
+        <i data-lucide="list-tree" class="nav-icon"></i><span>Procesos</span>
+      </button>
       <button class="nav-item" onclick="showSection('actividad')">
         <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
       </button>
@@ -162,6 +165,25 @@
         </div>
         <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Procesos -->
+      <div id="sec-procesos" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Procesos</h2>
+          <span class="text-muted text-sm">Solo lo ven colaboradores y admin — el cliente no tiene acceso</span>
+          <select id="proc-cliente-sel" class="form-control" style="width:auto;margin-left:auto;" onchange="cambiarProcesoCliente()"></select>
+          <select id="proc-vertical-sel" class="form-control hidden" style="width:auto;" onchange="cambiarProcesoVertical()"></select>
+        </div>
+        <div class="procesos-layout">
+          <div class="procesos-sidebar">
+            <div id="procesosLista"></div>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="crearProceso()">+ Nuevo proceso</button>
+          </div>
+          <div class="procesos-content" id="procesosContent">
+            <div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Elegí o creá un proceso</h3><p>Los procesos quedan agrupados por cliente (o por vertical, si elegiste COSMART).</p></div>
+          </div>
         </div>
       </div>
 
@@ -922,7 +944,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -949,7 +971,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','informes','email-stats','actividad','config'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config'].forEach(s => {
       document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -957,6 +979,7 @@
     if (sec === 'mistareas') loadMisTareas();
     if (sec === 'colaboradores') loadColaboradores();
     if (sec === 'internas') loadInternas();
+    if (sec === 'procesos') loadProcesosSection();
     if (sec === 'informes') loadInformes();
     if (sec === 'email-stats') { loadEmailStats(); renderMetricasGenerales(); }
     if (sec === 'actividad') loadActividadFiltros();
@@ -1423,6 +1446,179 @@
       });
     });
   }
+
+  // ── Procesos (interno: colaboradores + admin, el cliente no lo ve) ──
+  let _procClientesCache = [];
+  let _procClienteId = '';
+  let _procVertical = '';
+  let _procLista = [];
+  let _procSeleccion = null; // { procesoId, subprocesoId (opcional) }
+
+  window.loadProcesosSection = async function() {
+    const sel = document.getElementById('proc-cliente-sel');
+    if (!_procClientesCache.length) {
+      try { _procClientesCache = await getAllClients(); } catch (e) { _procClientesCache = []; }
+    }
+    sel.innerHTML = `<option value="_cosmart">🏢 COSMART (interno)</option>` +
+      _procClientesCache.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('');
+    if (!_procClienteId) _procClienteId = '_cosmart';
+    sel.value = _procClienteId;
+    await cambiarProcesoCliente();
+  };
+
+  window.cambiarProcesoCliente = async function() {
+    _procClienteId = document.getElementById('proc-cliente-sel').value;
+    const vertSel = document.getElementById('proc-vertical-sel');
+    if (_procClienteId === '_cosmart') {
+      vertSel.innerHTML = `<option value="">General (sin vertical)</option>` +
+        Object.keys(VERTICAL_CODIGO).map(v => `<option value="${v}">${v}</option>`).join('');
+      vertSel.value = _procVertical;
+      vertSel.classList.remove('hidden');
+    } else {
+      vertSel.classList.add('hidden');
+      _procVertical = '';
+    }
+    _procSeleccion = null;
+    await cargarProcesos();
+  };
+
+  window.cambiarProcesoVertical = function() {
+    _procVertical = document.getElementById('proc-vertical-sel').value;
+    _procSeleccion = null;
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+
+  async function cargarProcesos() {
+    document.getElementById('procesosLista').innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Cargando...</p>';
+    try {
+      _procLista = await getProcesos(_procClienteId) || [];
+    } catch (e) { _procLista = []; }
+    renderProcesosLista();
+    renderProcesoContent();
+  }
+
+  function procesosFiltrados() {
+    if (_procClienteId !== '_cosmart') return _procLista;
+    return _procLista.filter(p => (p.vertical || '') === _procVertical);
+  }
+
+  function renderProcesosLista() {
+    const el = document.getElementById('procesosLista');
+    const lista = procesosFiltrados();
+    if (!lista.length) {
+      el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Sin procesos todavía.</p>';
+      return;
+    }
+    el.innerHTML = lista.map(p => `
+      <div class="procesos-item">
+        <button class="procesos-item-btn ${_procSeleccion?.procesoId === p.id && !_procSeleccion?.subprocesoId ? 'active' : ''}" onclick="seleccionarProceso('${p.id}')">
+          ${p.nombre || 'Sin nombre'}
+        </button>
+        ${(p.subprocesos || []).map(s => `
+          <button class="procesos-subitem-btn ${_procSeleccion?.procesoId === p.id && _procSeleccion?.subprocesoId === s.id ? 'active' : ''}" onclick="seleccionarSubproceso('${p.id}','${s.id}')">
+            ${s.nombre || 'Sin nombre'}
+          </button>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  window.seleccionarProceso = function(id) {
+    _procSeleccion = { procesoId: id };
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+  window.seleccionarSubproceso = function(procesoId, subId) {
+    _procSeleccion = { procesoId, subprocesoId: subId };
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+
+  function encontrarProceso() {
+    if (!_procSeleccion) return null;
+    const p = _procLista.find(x => x.id === _procSeleccion.procesoId);
+    if (!p) return null;
+    if (!_procSeleccion.subprocesoId) return { obj: p, esSub: false, padre: null };
+    const s = (p.subprocesos || []).find(x => x.id === _procSeleccion.subprocesoId);
+    return s ? { obj: s, esSub: true, padre: p } : null;
+  }
+
+  function renderProcesoContent() {
+    const el = document.getElementById('procesosContent');
+    const encontrado = encontrarProceso();
+    if (!encontrado) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Elegí o creá un proceso</h3><p>Los procesos quedan agrupados por cliente (o por vertical, si elegiste COSMART).</p></div>`;
+      return;
+    }
+    const { obj, esSub, padre } = encontrado;
+    el.innerHTML = `
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="proc-nombre" class="form-control" style="font-size:16px;font-weight:700;">
+      </div>
+      <div class="form-group">
+        <label>Contenido</label>
+        <textarea id="proc-contenido" class="form-control" rows="16" style="white-space:pre-wrap;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="guardarProcesoActual()">Guardar</button>
+        ${!esSub ? `<button class="btn btn-secondary" onclick="crearSubproceso('${obj.id}')">+ Agregar subproceso</button>` : ''}
+        <button class="btn btn-danger" style="margin-left:auto;" onclick="eliminarProcesoActual()">🗑 Eliminar</button>
+      </div>
+      ${!esSub && (obj.subprocesos || []).length ? `<p style="font-size:11px;color:var(--text-muted);margin-top:14px;">Este proceso tiene ${obj.subprocesos.length} subproceso(s) en el menú de la izquierda.</p>` : ''}
+    `;
+    document.getElementById('proc-nombre').value = obj.nombre || '';
+    document.getElementById('proc-contenido').value = obj.contenido || '';
+  }
+
+  window.crearProceso = async function() {
+    const nuevo = { id: 'proc' + Date.now(), nombre: 'Nuevo proceso', contenido: '', subprocesos: [], vertical: _procClienteId === '_cosmart' ? (_procVertical || null) : undefined };
+    _procLista.push(nuevo);
+    try { await saveProcesos(_procClienteId, _procLista); } catch (e) { alert('No se pudo crear: ' + (e.message || '')); return; }
+    _procSeleccion = { procesoId: nuevo.id };
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+
+  window.crearSubproceso = async function(procesoId) {
+    const p = _procLista.find(x => x.id === procesoId);
+    if (!p) return;
+    if (!p.subprocesos) p.subprocesos = [];
+    const nuevo = { id: 'sub' + Date.now(), nombre: 'Nuevo subproceso', contenido: '' };
+    p.subprocesos.push(nuevo);
+    try { await saveProcesos(_procClienteId, _procLista); } catch (e) { alert('No se pudo crear: ' + (e.message || '')); return; }
+    _procSeleccion = { procesoId, subprocesoId: nuevo.id };
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+
+  window.guardarProcesoActual = async function() {
+    const encontrado = encontrarProceso();
+    if (!encontrado) return;
+    encontrado.obj.nombre = document.getElementById('proc-nombre').value.trim() || 'Sin nombre';
+    encontrado.obj.contenido = document.getElementById('proc-contenido').value;
+    try {
+      await saveProcesos(_procClienteId, _procLista);
+      renderProcesosLista();
+      alert('Guardado.');
+    } catch (e) { alert('No se pudo guardar: ' + (e.message || '')); }
+  };
+
+  window.eliminarProcesoActual = async function() {
+    const encontrado = encontrarProceso();
+    if (!encontrado) return;
+    if (!confirm(`¿Eliminar "${encontrado.obj.nombre}"? No se puede deshacer.`)) return;
+    if (encontrado.esSub) {
+      encontrado.padre.subprocesos = (encontrado.padre.subprocesos || []).filter(s => s.id !== encontrado.obj.id);
+    } else {
+      _procLista = _procLista.filter(p => p.id !== encontrado.obj.id);
+    }
+    _procSeleccion = null;
+    try { await saveProcesos(_procClienteId, _procLista); } catch (e) { alert('No se pudo guardar el borrado: ' + (e.message || '')); }
+    renderProcesosLista();
+    renderProcesoContent();
+  };
 
   window.openInternaModal = async function(id, defaultEstado) {
     _editingInterna = id ? _internasCache.find(t => t.id === id) : null;

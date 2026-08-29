@@ -297,6 +297,19 @@ input, select, textarea { font-family: inherit; }
 .drive-link { color: var(--primary); text-decoration: none; font-size: 12px; max-width: 120px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drive-link:hover { text-decoration: underline; }
 
+/* ── PROCESOS (menú lateral + contenido) ── */
+.procesos-layout { display: flex; gap: 20px; align-items: flex-start; }
+.procesos-sidebar { width: 260px; flex-shrink: 0; background: #f9fafb; border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px; }
+.procesos-item { border-radius: 8px; margin-bottom: 2px; }
+.procesos-item-btn { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; border: none; padding: 9px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text); }
+.procesos-item-btn:hover { background: #eef2f7; }
+.procesos-item-btn.active { background: var(--primary); color: #fff; }
+.procesos-subitem-btn { display: block; width: 100%; text-align: left; background: none; border: none; padding: 7px 10px 7px 26px; border-radius: 8px; font-size: 12.5px; cursor: pointer; color: var(--text-muted); }
+.procesos-subitem-btn:hover { background: #eef2f7; }
+.procesos-subitem-btn.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+.procesos-content { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--border-strong); border-radius: 10px; padding: 24px; min-height: 320px; }
+@media (max-width: 800px) { .procesos-layout { flex-direction: column; } .procesos-sidebar { width: 100%; } }
+
 /* ── KANBAN ── */
 .kanban-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
 .kanban-col {

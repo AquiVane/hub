@@ -152,6 +152,18 @@ export async function deleteContenido(clientId, id) {
   await api('POST', `/data/${clientId}/contenidos`, list.filter(c => c.id !== id));
 }
 
+// ── Procesos ──────────────────────────────────────────────────
+
+export async function getProcesos(clientId) {
+  if (DEMO_MODE) return [];
+  return api('GET', `/data/${clientId}/procesos`);
+}
+
+export async function saveProcesos(clientId, lista) {
+  if (DEMO_MODE) return;
+  await api('POST', `/data/${clientId}/procesos`, lista);
+}
+
 // ── Tareas ────────────────────────────────────────────────────
 
 export async function getTareas(clientId) {
