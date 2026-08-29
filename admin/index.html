@@ -176,10 +176,14 @@
           <select id="proc-cliente-sel" class="form-control" style="width:auto;margin-left:auto;" onchange="cambiarProcesoCliente()"></select>
           <select id="proc-vertical-sel" class="form-control hidden" style="width:auto;" onchange="cambiarProcesoVertical()"></select>
         </div>
+        <div id="procesosPresupuesto" style="margin-bottom:16px;"></div>
         <div class="procesos-layout">
           <div class="procesos-sidebar">
             <div id="procesosLista"></div>
-            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="crearProceso()">+ Nuevo proceso</button>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="crearProceso()">+ Nuevo</button>
+              <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="abrirImportarProceso()">📥 Importar</button>
+            </div>
           </div>
           <div class="procesos-content" id="procesosContent">
             <div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Elegí o creá un proceso</h3><p>Los procesos quedan agrupados por cliente (o por vertical, si elegiste COSMART).</p></div>
@@ -847,6 +851,36 @@
   </div>
 </div>
 
+<!-- Modal importar proceso -->
+<div id="importarProcesoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>Importar proceso</h3>
+      <button class="modal-close" onclick="document.getElementById('importarProcesoModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Pegá el texto (de un chat con Claude, un Word, un .txt, lo que sea) o subí un archivo .txt directamente. Crea un proceso nuevo con este contenido — después lo podés dividir en subprocesos a mano si hace falta.</p>
+      <div class="form-group">
+        <label>Nombre del proceso</label>
+        <input type="text" id="imp-proc-nombre" class="form-control" placeholder="Ej: Onboarding de cliente nuevo">
+      </div>
+      <div class="form-group">
+        <label>Archivo .txt (opcional)</label>
+        <input type="file" id="imp-proc-file" class="form-control" accept=".txt" onchange="cargarArchivoImportarProceso(event)">
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Para Word: abrilo, Ctrl+A, Ctrl+C, y pegalo directo en el texto de abajo — no hace falta subir el .docx.</span>
+      </div>
+      <div class="form-group">
+        <label>Texto</label>
+        <textarea id="imp-proc-contenido" class="form-control" rows="10"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('importarProcesoModal').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarImportarProceso()">Crear proceso</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal editar cliente -->
 <div id="editClientModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:500px;">
@@ -1453,6 +1487,8 @@
   let _procVertical = '';
   let _procLista = [];
   let _procSeleccion = null; // { procesoId, subprocesoId (opcional) }
+  let _procPresupuesto = null;
+  const PLATAFORMAS_ADS = ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
 
   window.loadProcesosSection = async function() {
     const sel = document.getElementById('proc-cliente-sel');
@@ -1479,7 +1515,85 @@
       _procVertical = '';
     }
     _procSeleccion = null;
+    if (_procClienteId === '_cosmart') {
+      _procPresupuesto = null;
+      document.getElementById('procesosPresupuesto').innerHTML = '';
+    } else {
+      try {
+        const client = await getClientData(_procClienteId);
+        _procPresupuesto = client?.presupuesto || { total: 0, porPlataforma: {}, otras: [] };
+      } catch (e) { _procPresupuesto = { total: 0, porPlataforma: {}, otras: [] }; }
+      renderPresupuestoPanel();
+    }
     await cargarProcesos();
+  };
+
+  function renderPresupuestoPanel() {
+    const el = document.getElementById('procesosPresupuesto');
+    if (!_procPresupuesto) { el.innerHTML = ''; return; }
+    const p = _procPresupuesto;
+    const asignado = PLATAFORMAS_ADS.reduce((s, pl) => s + (Number(p.porPlataforma?.[pl]) || 0), 0)
+      + (p.otras || []).reduce((s, o) => s + (Number(o.monto) || 0), 0);
+    const excedido = p.total > 0 && asignado > p.total;
+    el.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <strong style="font-size:13px;">💰 Presupuesto de pauta</strong>
+          <span style="font-size:12px;color:var(--text-muted);">Total:</span>
+          <input type="number" id="pres-total" class="form-control" style="width:120px;" value="${p.total || ''}" placeholder="0" onchange="cambiarPresupuestoTotal(this.value)">
+          <span style="font-size:12px;font-weight:700;${excedido ? 'color:#dc2626;' : 'color:var(--text-muted);'}margin-left:auto;">Asignado: $${asignado.toLocaleString('es-AR')}${p.total ? ' de $' + Number(p.total).toLocaleString('es-AR') : ''}</span>
+        </div>
+        ${excedido ? `<p style="font-size:12px;color:#dc2626;font-weight:600;margin-bottom:12px;">⚠️ Estás asignando más presupuesto por plataforma del que tenés como total.</p>` : ''}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+          ${PLATAFORMAS_ADS.map(pl => `
+            <div class="form-group" style="margin:0;">
+              <label style="font-size:11px;">${pl}</label>
+              <input type="number" class="form-control" value="${p.porPlataforma?.[pl] || ''}" placeholder="0" onchange="cambiarPresupuestoPlataforma('${pl}', this.value)">
+            </div>
+          `).join('')}
+        </div>
+        <div id="presOtras" style="margin-top:10px;">
+          ${(p.otras || []).map((o, i) => `
+            <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+              <input type="text" class="form-control" style="flex:1;" value="${o.nombre || ''}" placeholder="Otra plataforma" onchange="cambiarPresupuestoOtra(${i},'nombre',this.value)">
+              <input type="number" class="form-control" style="width:120px;" value="${o.monto || ''}" placeholder="0" onchange="cambiarPresupuestoOtra(${i},'monto',this.value)">
+              <button class="btn btn-danger btn-sm" onclick="eliminarPresupuestoOtra(${i})">×</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="agregarPresupuestoOtra()">+ Otra plataforma</button>
+      </div>`;
+  }
+
+  async function guardarPresupuesto() {
+    try { await saveClientData(_procClienteId, { presupuesto: _procPresupuesto }); }
+    catch (e) { alert('No se pudo guardar el presupuesto: ' + (e.message || '')); }
+  }
+  window.cambiarPresupuestoTotal = function(v) {
+    _procPresupuesto.total = Number(v) || 0;
+    guardarPresupuesto();
+    renderPresupuestoPanel();
+  };
+  window.cambiarPresupuestoPlataforma = function(pl, v) {
+    if (!_procPresupuesto.porPlataforma) _procPresupuesto.porPlataforma = {};
+    _procPresupuesto.porPlataforma[pl] = Number(v) || 0;
+    guardarPresupuesto();
+    renderPresupuestoPanel();
+  };
+  window.agregarPresupuestoOtra = function() {
+    if (!_procPresupuesto.otras) _procPresupuesto.otras = [];
+    _procPresupuesto.otras.push({ nombre: '', monto: 0 });
+    renderPresupuestoPanel();
+  };
+  window.cambiarPresupuestoOtra = function(i, campo, v) {
+    _procPresupuesto.otras[i][campo] = campo === 'monto' ? (Number(v) || 0) : v;
+    guardarPresupuesto();
+    renderPresupuestoPanel();
+  };
+  window.eliminarPresupuestoOtra = function(i) {
+    _procPresupuesto.otras.splice(i, 1);
+    guardarPresupuesto();
+    renderPresupuestoPanel();
   };
 
   window.cambiarProcesoVertical = function() {
@@ -1589,6 +1703,40 @@
     p.subprocesos.push(nuevo);
     try { await saveProcesos(_procClienteId, _procLista); } catch (e) { alert('No se pudo crear: ' + (e.message || '')); return; }
     _procSeleccion = { procesoId, subprocesoId: nuevo.id };
+    renderProcesosLista();
+    renderProcesoContent();
+  };
+
+  window.abrirImportarProceso = function() {
+    document.getElementById('imp-proc-nombre').value = '';
+    document.getElementById('imp-proc-contenido').value = '';
+    document.getElementById('imp-proc-file').value = '';
+    document.getElementById('importarProcesoModal').classList.remove('hidden');
+  };
+  window.cargarArchivoImportarProceso = function(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      document.getElementById('imp-proc-contenido').value = reader.result;
+      if (!document.getElementById('imp-proc-nombre').value.trim()) {
+        document.getElementById('imp-proc-nombre').value = file.name.replace(/\.txt$/i, '');
+      }
+    };
+    reader.readAsText(file);
+  };
+  window.confirmarImportarProceso = async function() {
+    const nombre = document.getElementById('imp-proc-nombre').value.trim();
+    const contenido = document.getElementById('imp-proc-contenido').value;
+    if (!nombre) { alert('Ponele un nombre al proceso.'); return; }
+    if (!contenido.trim()) { alert('Pegá o subí el contenido primero.'); return; }
+    const nuevo = { id: 'proc' + Date.now(), nombre, contenido, subprocesos: [], vertical: _procClienteId === '_cosmart' ? (_procVertical || null) : undefined };
+    _procLista.push(nuevo);
+    try {
+      await saveProcesos(_procClienteId, _procLista);
+    } catch (e) { alert('No se pudo importar: ' + (e.message || '')); return; }
+    document.getElementById('importarProcesoModal').classList.add('hidden');
+    _procSeleccion = { procesoId: nuevo.id };
     renderProcesosLista();
     renderProcesoContent();
   };
@@ -2905,11 +3053,6 @@
       const nombre = c.nombre || c.name || c.id;
       return `
       <div class="client-row">
-        ${user.role === 'admin' ? `
-        <div style="display:flex;flex-direction:column;flex-shrink:0;">
-          <button onclick="moverCliente('${c.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Subir" style="border:none;background:#f1f5f9;cursor:pointer;font-size:9px;line-height:1;padding:2px 5px;border-radius:4px 4px 0 0;color:var(--text-muted);">▲</button>
-          <button onclick="moverCliente('${c.id}',1)" ${i === clients.length - 1 ? 'disabled' : ''} title="Bajar" style="border:none;background:#f1f5f9;cursor:pointer;font-size:9px;line-height:1;padding:2px 5px;border-radius:0 0 4px 4px;color:var(--text-muted);margin-top:1px;">▼</button>
-        </div>` : ''}
         <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
         <span class="client-row-name" title="${nombre}">${nombre}</span>
         ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
@@ -2924,6 +3067,11 @@
             ${user.role === 'admin' ? `<button class="danger" onclick="deleteClient('${c.id}','${nombre}')">🗑 Eliminar</button>` : ''}
           </div>
         </div>
+        ${user.role === 'admin' ? `
+        <div style="display:flex;flex-direction:column;flex-shrink:0;gap:1px;">
+          <button onclick="moverCliente('${c.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Subir" style="border:none;background:none;cursor:pointer;font-size:9px;line-height:1;padding:1px 3px;color:#cbd5e1;">▲</button>
+          <button onclick="moverCliente('${c.id}',1)" ${i === clients.length - 1 ? 'disabled' : ''} title="Bajar" style="border:none;background:none;cursor:pointer;font-size:9px;line-height:1;padding:1px 3px;color:#cbd5e1;">▼</button>
+        </div>` : ''}
       </div>
     `;
     }).join('');
@@ -2979,7 +3127,7 @@
     _ncUsuarios = [];
     renderNcUsuarios();
     const respSel = document.getElementById('nc-responsable');
-    respSel.innerHTML = '<option value="">Sin asignar todavía</option>';
+    respSel.innerHTML = `<option value="">Sin asignar todavía</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -3090,7 +3238,7 @@
     document.getElementById('ecl-activo').value = client.activo === false ? 'false' : 'true';
 
     const respSel = document.getElementById('ecl-responsable');
-    respSel.innerHTML = '<option value="">Sin asignar</option>';
+    respSel.innerHTML = `<option value="">Sin asignar</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -3132,7 +3280,7 @@
 
     const responsableSel = document.getElementById('ecl-responsable');
     const responsableEmail = responsableSel.value;
-    const responsableNombre = responsableSel.selectedOptions[0]?.textContent || '';
+    const responsableNombre = responsableEmail === user.email ? (user.name || user.email) : (responsableSel.selectedOptions[0]?.textContent || '');
     try {
       await saveClientData(_editClientId, {
         nombre,
@@ -3150,7 +3298,7 @@
         metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
         notas: document.getElementById('ec-notas').value.trim(),
       });
-      if (responsableEmail) {
+      if (responsableEmail && responsableEmail !== user.email) {
         try {
           const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
           const colab = colaboradores.find(c => c.email === responsableEmail);
@@ -3182,7 +3330,7 @@
     const instagrams = [ig1, ig2, ig3].filter(Boolean);
 
     const responsableEmail = document.getElementById('nc-responsable').value;
-    const responsableNombre = document.getElementById('nc-responsable').selectedOptions[0]?.textContent || '';
+    const responsableNombre = responsableEmail === user.email ? (user.name || user.email) : (document.getElementById('nc-responsable').selectedOptions[0]?.textContent || '');
     try {
       await createClient({
         id, nombre, codigo, email, password: pass, notas, activo: true,
@@ -3198,7 +3346,7 @@
         usuarios: _ncUsuarios,
         responsable: responsableEmail ? { email: responsableEmail, nombre: responsableNombre } : null,
       });
-      if (responsableEmail) {
+      if (responsableEmail && responsableEmail !== user.email) {
         try {
           const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
           const colab = colaboradores.find(c => c.email === responsableEmail);

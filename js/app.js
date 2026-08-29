@@ -2755,10 +2755,20 @@ function renderPauta(container) {
   const activas = filtered.filter(c => c.estado === 'Activa').length;
   const roasTotal = gastado ? filtered.reduce((s,c)=>s+(c.ingresos||0),0) / gastado : 0;
 
+  // Presupuesto asignado a mano desde el panel admin (sección Procesos) --
+  // avisa si las campañas cargadas suman más de lo que se asignó.
+  const presupuesto = STATE.client?.presupuesto;
+  const asignado = activePautaTab === 'todas' ? presupuesto?.total : presupuesto?.porPlataforma?.[activePautaTab];
+  const excedeAsignado = asignado > 0 && total > asignado;
+
   container.innerHTML = `
     <div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
       ${plats.map(p => `<button class="tab-btn ${activePautaTab===(p==='Todas'?'todas':p)?'active':''}" data-tab="${p==='Todas'?'todas':p}">${p}</button>`).join('')}
     </div>
+
+    ${excedeAsignado ? `<div class="card" style="padding:12px 16px;margin-bottom:16px;background:#fef2f2;border-color:#fecaca;">
+      <p style="font-size:13px;color:#dc2626;font-weight:600;margin:0;">⚠️ Las campañas ${activePautaTab === 'todas' ? '' : `de ${activePautaTab} `}suman $${fmtNum(total)} de presupuesto, pero el presupuesto asignado es de $${fmtNum(asignado)}.</p>
+    </div>` : ''}
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
