@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marketing Hub — Creá tu cuenta</title>
-  <link rel="icon" type="image/png" href="app/favicon-cosmart.png">
+  <link rel="icon" type="image/png" href="app/favicon-cosmart.png?v=2">
   <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="css/style.css">
   <style>
@@ -115,8 +115,8 @@
 
 <!-- Paso 2: activar la suscripción (se muestra recién después de crear la cuenta) -->
 <div class="signup-box" id="paso2Box" style="display:none;">
-  <div class="signup-title">Activá tu suscripción</div>
-  <div class="signup-subtitle" id="paso2Subtitle">Un paso más y tu Hub queda funcionando sin límites.</div>
+  <div class="signup-title">Activá tus 7 días gratis</div>
+  <div class="signup-subtitle" id="paso2Subtitle">Cargá los datos de pago ahora — no te cobramos nada hasta el día 8.</div>
 
   <div class="ciclo-tabs">
     <button type="button" class="ciclo-tab active" id="ciclo-mensual" onclick="elegirCiclo('mensual')">Mensual</button>
@@ -164,7 +164,7 @@
         <input type="text" id="mp-docnum" class="form-control" placeholder="Sin puntos" inputmode="numeric">
       </div>
     </div>
-    <button type="button" class="btn-signup" id="mpSuscribirBtn" onclick="suscribirseMP()">Suscribirme con Mercado Pago</button>
+    <button type="button" class="btn-signup" id="mpSuscribirBtn" onclick="suscribirseMP()">Empezar mis 7 días gratis</button>
     <div class="mp-msg" id="mpmsg"></div>
   </div>
 
@@ -192,10 +192,10 @@
       const res = await fetch(WORKER_URL + '/precio-vigente');
       precios = await res.json();
       document.getElementById('planNote').textContent =
-        `💳 USD ${precios.mensualUSD}/mes o USD ${precios.anualUSD}/año, precio congelado por 6 meses. Promo válida hasta el ${precios.hastaTexto} — después sube.`;
+        `🎁 7 días gratis. Después, USD ${precios.mensualUSD}/mes o USD ${precios.anualUSD}/año, precio congelado por 6 meses. Promo válida hasta el ${precios.hastaTexto} — después sube.`;
       renderPrecio();
     } catch (e) {
-      document.getElementById('planNote').textContent = '💳 Suscripción mensual o anual. Tu cuenta arranca en modo prueba.';
+      document.getElementById('planNote').textContent = '🎁 7 días gratis. Después, suscripción mensual o anual.';
     }
   }
   cargarPrecio();
@@ -265,7 +265,7 @@
       setTimeout(() => { window.location.href = '/admin/index.html'; }, 1800);
     } catch (e) {
       msg.style.color = '#E02020'; msg.textContent = e.message || 'No se pudo procesar el pago. Revisá los datos.';
-      btn.disabled = false; btn.textContent = 'Suscribirme con Mercado Pago';
+      btn.disabled = false; btn.textContent = 'Empezar mis 7 días gratis';
     }
   };
 
