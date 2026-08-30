@@ -61,23 +61,34 @@
     .btn-signup:hover { background: #1A4DAA; }
     .btn-signup:disabled { opacity: .6; cursor: not-allowed; }
     .signup-error { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; display: none; }
-    .signup-success { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; border-radius: 8px; padding: 14px; font-size: 13px; margin-bottom: 12px; display: none; line-height: 1.6; }
     .signup-footer { margin-top: 18px; text-align: center; font-size: 12px; color: #64748b; }
     .signup-footer a { color: #3A8FC7; text-decoration: none; font-weight: 600; }
     .signup-footer a:hover { text-decoration: underline; }
     .plan-note { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px; }
+
+    /* ── Paso 2: suscripción ── */
+    .ciclo-tabs, .pago-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .ciclo-tab, .pago-tab {
+      flex: 1; text-align: center; padding: 10px 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+      font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer; background: #fff; font-family: inherit;
+    }
+    .ciclo-tab.active, .pago-tab.active { border-color: #0D2B6B; color: #0D2B6B; background: #eef2ff; }
+    .precio-grande { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 700; color: #0D2B6B; text-align: center; margin-bottom: 2px; }
+    .precio-detalle { font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 18px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mp-msg, .pp-msg { font-size: 12.5px; text-align: center; margin-top: 10px; min-height: 16px; }
+    .skip-link { display: block; text-align: center; font-size: 12px; color: #94a3b8; margin-top: 14px; }
   </style>
 </head>
 <body>
 
-<div class="signup-box">
+<div class="signup-box" id="paso1Box">
   <div class="signup-title">Creá tu Marketing Hub</div>
   <div class="signup-subtitle">Un panel propio para gestionar clientes, tareas, contenidos y campañas — con tu marca, aislado de cualquier otra cuenta.</div>
 
-  <div class="plan-note">💳 USD 3/mes o USD 30/año. Tu cuenta arranca en modo prueba — te contactamos para activar el pago.</div>
+  <div class="plan-note" id="planNote">💳 Cargando precio vigente…</div>
 
   <div id="signup-error" class="signup-error"></div>
-  <div id="signup-success" class="signup-success"></div>
 
   <form id="signupForm">
     <div class="form-group">
@@ -102,8 +113,209 @@
   <div class="signup-footer">¿Ya tenés cuenta? <a href="/login.html">Iniciar sesión</a></div>
 </div>
 
+<!-- Paso 2: activar la suscripción (se muestra recién después de crear la cuenta) -->
+<div class="signup-box" id="paso2Box" style="display:none;">
+  <div class="signup-title">Activá tu suscripción</div>
+  <div class="signup-subtitle" id="paso2Subtitle">Un paso más y tu Hub queda funcionando sin límites.</div>
+
+  <div class="ciclo-tabs">
+    <button type="button" class="ciclo-tab active" id="ciclo-mensual" onclick="elegirCiclo('mensual')">Mensual</button>
+    <button type="button" class="ciclo-tab" id="ciclo-anual" onclick="elegirCiclo('anual')">Anual (2 meses gratis)</button>
+  </div>
+  <div class="precio-grande" id="precioGrande">—</div>
+  <div class="precio-detalle" id="precioDetalle"></div>
+
+  <div class="pago-tabs">
+    <button type="button" class="pago-tab active" id="tab-mp" onclick="switchPagoTab('mp')">💳 Mercado Pago</button>
+    <button type="button" class="pago-tab" id="tab-pp" onclick="switchPagoTab('pp')">🅿️ PayPal (USD)</button>
+  </div>
+
+  <div id="mp-section">
+    <div class="form-group">
+      <label>Número de tarjeta</label>
+      <input type="text" id="mp-numero" class="form-control" placeholder="•••• •••• •••• ••••" inputmode="numeric" maxlength="19">
+    </div>
+    <div class="form-group">
+      <label>Nombre del titular</label>
+      <input type="text" id="mp-nombre" class="form-control" placeholder="Como figura en la tarjeta">
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Vencimiento (MM/AA)</label>
+        <input type="text" id="mp-venc" class="form-control" placeholder="MM/AA" maxlength="5">
+      </div>
+      <div class="form-group">
+        <label>Código de seguridad</label>
+        <input type="text" id="mp-cvv" class="form-control" placeholder="CVV" inputmode="numeric" maxlength="4">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Tipo de documento</label>
+        <select id="mp-doctype" class="form-control">
+          <option value="DNI">DNI</option>
+          <option value="CI">CI</option>
+          <option value="LC">LC</option>
+          <option value="LE">LE</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Número de documento</label>
+        <input type="text" id="mp-docnum" class="form-control" placeholder="Sin puntos" inputmode="numeric">
+      </div>
+    </div>
+    <button type="button" class="btn-signup" id="mpSuscribirBtn" onclick="suscribirseMP()">Suscribirme con Mercado Pago</button>
+    <div class="mp-msg" id="mpmsg"></div>
+  </div>
+
+  <div id="pp-section" style="display:none;">
+    <p style="font-size:12.5px;color:#64748b;margin-bottom:12px;">Se cobra en dólares. Aprobás la suscripción sin salir de esta página.</p>
+    <div id="paypal_container"></div>
+    <div class="pp-msg" id="ppmsg"></div>
+  </div>
+
+  <a href="/login.html" class="skip-link">Seguir en modo prueba por ahora →</a>
+</div>
+
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=AYuQX3JJShvSkgNn0C195h3GEHGiKNtx44X3wd_5PEoBI1iinpysmDzNRqdZ7blNuZvFWIwcwhc9qiOP&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
 <script type="module">
   import { WORKER_URL } from './js/firebase.js';
+  import { loginUser, getSessionToken } from './js/auth.js';
+
+  const mp = new MercadoPago('APP_USR-057d290b-5af9-4b00-8a08-6753dc47aec4', { locale: 'es-AR' });
+  let precios = null;
+  let ciclo = 'mensual';
+
+  async function cargarPrecio() {
+    try {
+      const res = await fetch(WORKER_URL + '/precio-vigente');
+      precios = await res.json();
+      document.getElementById('planNote').textContent =
+        `💳 USD ${precios.mensualUSD}/mes o USD ${precios.anualUSD}/año, precio congelado por 6 meses. Promo válida hasta el ${precios.hastaTexto} — después sube.`;
+      renderPrecio();
+    } catch (e) {
+      document.getElementById('planNote').textContent = '💳 Suscripción mensual o anual. Tu cuenta arranca en modo prueba.';
+    }
+  }
+  cargarPrecio();
+
+  window.elegirCiclo = function(c) {
+    ciclo = c;
+    document.getElementById('ciclo-mensual').classList.toggle('active', c === 'mensual');
+    document.getElementById('ciclo-anual').classList.toggle('active', c === 'anual');
+    renderPrecio();
+    ppInitialized = false;
+    if (document.getElementById('pp-section').style.display !== 'none') initPayPal();
+  };
+
+  function renderPrecio() {
+    if (!precios) return;
+    const activeTab = document.getElementById('tab-pp').classList.contains('active') ? 'pp' : 'mp';
+    if (activeTab === 'pp') {
+      const monto = ciclo === 'anual' ? precios.anualUSD : precios.mensualUSD;
+      document.getElementById('precioGrande').textContent = `US$ ${monto}`;
+      document.getElementById('precioDetalle').textContent = ciclo === 'anual' ? 'por año, vía PayPal' : 'por mes, vía PayPal';
+    } else {
+      const monto = ciclo === 'anual' ? precios.anualARS : precios.mensualARS;
+      document.getElementById('precioGrande').textContent = `$ ${Number(monto).toLocaleString('es-AR')}`;
+      document.getElementById('precioDetalle').textContent = ciclo === 'anual' ? 'por año, vía Mercado Pago' : 'por mes, vía Mercado Pago';
+    }
+  }
+
+  window.switchPagoTab = function(tab) {
+    document.getElementById('tab-mp').classList.toggle('active', tab === 'mp');
+    document.getElementById('tab-pp').classList.toggle('active', tab === 'pp');
+    document.getElementById('mp-section').style.display = tab === 'mp' ? 'block' : 'none';
+    document.getElementById('pp-section').style.display = tab === 'pp' ? 'block' : 'none';
+    renderPrecio();
+    if (tab === 'pp') initPayPal();
+  };
+
+  window.suscribirseMP = async function() {
+    const msg = document.getElementById('mpmsg');
+    const btn = document.getElementById('mpSuscribirBtn');
+    const [mm, yy] = (document.getElementById('mp-venc').value || '').split('/').map(s => s.trim());
+    if (!document.getElementById('mp-numero').value || !mm || !yy || !document.getElementById('mp-cvv').value || !document.getElementById('mp-docnum').value) {
+      msg.style.color = '#E02020'; msg.textContent = 'Completá todos los campos de la tarjeta.'; return;
+    }
+    btn.disabled = true; btn.textContent = 'Procesando…';
+    msg.style.color = '#64748b'; msg.textContent = 'Validando tarjeta…';
+    try {
+      const tokenResp = await mp.createCardToken({
+        cardNumber: document.getElementById('mp-numero').value.replace(/\s/g, ''),
+        cardholderName: document.getElementById('mp-nombre').value.trim(),
+        cardExpirationMonth: mm,
+        cardExpirationYear: yy.length === 2 ? `20${yy}` : yy,
+        securityCode: document.getElementById('mp-cvv').value,
+        identificationType: document.getElementById('mp-doctype').value,
+        identificationNumber: document.getElementById('mp-docnum').value.trim(),
+      });
+      const res = await fetch(WORKER_URL + '/agencia/suscripcion/mp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          cardToken: tokenResp.id, ciclo,
+          docType: document.getElementById('mp-doctype').value, docNumber: document.getElementById('mp-docnum').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo activar la suscripción.');
+      msg.style.color = '#16a34a'; msg.textContent = '✅ ¡Suscripción activada! Entrando a tu Hub…';
+      setTimeout(() => { window.location.href = '/admin/index.html'; }, 1800);
+    } catch (e) {
+      msg.style.color = '#E02020'; msg.textContent = e.message || 'No se pudo procesar el pago. Revisá los datos.';
+      btn.disabled = false; btn.textContent = 'Suscribirme con Mercado Pago';
+    }
+  };
+
+  let ppInitialized = false;
+  function initPayPal() {
+    if (ppInitialized) return;
+    if (typeof paypal === 'undefined') {
+      document.getElementById('ppmsg').style.color = '#E02020';
+      document.getElementById('ppmsg').textContent = 'No se pudo cargar PayPal. Revisá tu conexión.';
+      return;
+    }
+    ppInitialized = true;
+    document.getElementById('paypal_container').innerHTML = '';
+    paypal.Buttons({
+      style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'subscribe', height: 45 },
+      createSubscription: async function() {
+        const res = await fetch(WORKER_URL + '/agencia/suscripcion/paypal/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getSessionToken()}` },
+          body: JSON.stringify({ ciclo }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.planId) throw new Error(data.error || 'No se pudo preparar el plan.');
+        return data.planId;
+      },
+      onApprove: async function(data) {
+        const msg = document.getElementById('ppmsg');
+        msg.style.color = '#64748b'; msg.textContent = 'Confirmando suscripción…';
+        try {
+          const res = await fetch(WORKER_URL + '/agencia/suscripcion/paypal/confirmar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getSessionToken()}` },
+            body: JSON.stringify({ subscriptionID: data.subscriptionID, ciclo }),
+          });
+          const j = await res.json();
+          if (!res.ok) throw new Error(j.error || 'No se pudo confirmar la suscripción.');
+          msg.style.color = '#16a34a'; msg.textContent = '✅ ¡Suscripción activada! Entrando a tu Hub…';
+          setTimeout(() => { window.location.href = '/admin/index.html'; }, 1800);
+        } catch (e) {
+          msg.style.color = '#E02020'; msg.textContent = e.message || 'No se pudo confirmar el pago.';
+        }
+      },
+      onError: function() {
+        document.getElementById('ppmsg').style.color = '#E02020';
+        document.getElementById('ppmsg').textContent = 'Error al procesar con PayPal. Intentá de nuevo.';
+        ppInitialized = false;
+      },
+      onCancel: function() { ppInitialized = false; },
+    }).render('#paypal_container');
+  }
 
   document.getElementById('signupForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -113,9 +325,7 @@
     const password = document.getElementById('password').value;
     const btn = document.getElementById('signupBtn');
     const errEl = document.getElementById('signup-error');
-    const sucEl = document.getElementById('signup-success');
     errEl.style.display = 'none';
-    sucEl.style.display = 'none';
     if (password.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
     btn.disabled = true;
     btn.textContent = 'Creando cuenta...';
@@ -127,10 +337,11 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'No se pudo crear la cuenta.');
-      document.getElementById('signupForm').style.display = 'none';
-      sucEl.textContent = `¡Listo, ${nombre}! Tu Hub para ${agenciaNombre} ya está creado. Iniciá sesión con ${email} para empezar a cargar tus clientes.`;
-      sucEl.style.display = 'block';
-      setTimeout(() => { window.location.href = '/login.html'; }, 3500);
+
+      await loginUser(email, password);
+      document.getElementById('paso2Subtitle').textContent = `¡Listo, ${nombre}! Tu Hub para ${agenciaNombre} ya está creado. Activá la suscripción para dejarlo funcionando sin límites.`;
+      document.getElementById('paso1Box').style.display = 'none';
+      document.getElementById('paso2Box').style.display = 'block';
     } catch (err) {
       errEl.textContent = err.message || 'No se pudo crear la cuenta. Intentá de nuevo.';
       errEl.style.display = 'block';

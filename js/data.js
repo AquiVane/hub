@@ -488,3 +488,13 @@ export async function updateAgencia(agencyId, updates) {
   if (DEMO_MODE) return;
   return api('POST', `/superadmin/agencias/${agencyId}`, updates);
 }
+
+export async function getPrecioMP() {
+  if (DEMO_MODE) return { mensualARS: 0, anualARS: 0 };
+  return api('GET', '/superadmin/precio-mp');
+}
+
+export async function setPrecioMP(mensualARS, anualARS) {
+  if (DEMO_MODE) return;
+  return api('POST', '/superadmin/precio-mp', { mensualARS, anualARS });
+}

@@ -278,8 +278,8 @@
       <button class="btn-login" id="resetBtn">Enviar link de recuperación</button>
     </div>
 
-    <div class="login-footer"><strong style="color:#0D2B6B;">COSMART</strong> · Marketing Hub</div>
-    <div class="login-footer">¿Sos una agencia y querés tu propio Hub? <a href="/signup.html" style="color:#3A8FC7;">Creá tu cuenta →</a></div>
+    <div class="login-footer">Sistema de gestión de <a href="/gestion-de-clientes-para-agencias.html" style="color:#3A8FC7;font-weight:700;">COSMART</a></div>
+    <div class="login-footer">¿Sos una agencia y querés tu propio Hub? <a href="/gestion-de-clientes-para-agencias.html" style="color:#3A8FC7;">Conocé más →</a></div>
   </div>
 
   <!-- VERTICALES -->
@@ -356,6 +356,24 @@
 <script type="module">
   import { loginUser } from './js/auth.js';
   import { WORKER_URL } from './js/firebase.js';
+
+  // Si viene ?agencia=slug (link de login propio de una agencia), le
+  // mostramos SOLO su logo antes de loguearse -- el resto de la página
+  // (tagline, verticales, cursos) sigue siendo el mismo para todos.
+  (async () => {
+    const agenciaSlug = new URLSearchParams(window.location.search).get('agencia');
+    if (!agenciaSlug) return;
+    try {
+      const res = await fetch(`${WORKER_URL}/agencia-publica/${encodeURIComponent(agenciaSlug)}`);
+      if (!res.ok) return;
+      const a = await res.json();
+      if (a.logoUrl) {
+        const img = document.querySelector('.login-logo img');
+        img.src = a.logoUrl;
+        img.alt = a.nombre || 'Logo';
+      }
+    } catch (e) {}
+  })();
 
   document.getElementById('showReset').addEventListener('click', e => {
     e.preventDefault();

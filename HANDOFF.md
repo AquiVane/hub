@@ -1,6 +1,6 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-08-29. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-08-30. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
 ## ⚠️ MULTI-TENANCY (agencias) — leer esto ANTES de tocar el backend
 
@@ -10,11 +10,25 @@ Desde el 29/08 el Hub es multi-tenant de verdad: **cualquier agencia externa pue
 - El frontend (este repo) es el MISMO para todas las agencias — no hay branding por dominio. `js/auth.js` guarda `agencyId`/`agenciaNombre`/`agenciaLogoUrl` en la sesión al loguearse; `admin/index.html` swapea el logo/nombre del sidebar si `agencyId !== 'cosmart'` (ver el bloque justo después de `requireAuth` en el script de `admin/index.html`).
 - **"Agencias"**: nueva sección en el nav del admin, visible SOLO para el super-admin (el admin de la agencia COSMART, o sea Vaneh) — lista todas las agencias registradas y permite cambiar su `estado` (`trial` / `activo` / `vencido`). Una agencia en `vencido` no puede loguearse (bloqueado server-side en `handleLogin`) ni recibe los crons diarios/mensuales.
 - **Lo que NO está hecho todavía** (documentado para no reinventar ni prometerlo de nuevo sin avisar):
-  1. **Cobro real no está conectado.** El signup deja la agencia en `estado: 'trial'` — activar el cobro (Stripe/MercadoPago/PayPal suscripción a USD 3/mes o 30/año) y que el webhook mueva el estado a `activo` automáticamente es trabajo aparte, no armado. Por ahora Vaneh cambia el estado a mano desde "Agencias" en el admin.
-  2. **Blanqueo de marca parcial**: el sidebar del panel admin sí cambia (logo/nombre), pero **todos los emails automáticos** (bienvenida, informes, recordatorio de facturación, resumen mensual, tareas que vencen) siguen saliendo con el remitente/firma/logo de COSMART (`emailBase`, `FIRMA`, `FOOTER`, `SERVICIOS_BLOCK` en el worker) — solo el destinatario (`to`) y el nombre visible cambian por agencia, no el diseño del email en sí. Corregir esto a fondo (blanquear `emailBase` por agencia) es una tarea aparte, no trivial porque el remitente real (`info@cosmart.com.ar`) tiene que seguir siendo el dominio verificado en Brevo — no se puede mandar "de" cualquier email sin verificar el dominio.
-  3. **Métricas de email (Brevo cross-vertical)** quedan restringidas a COSMART únicamente (`handleEmailStats` devuelve 501 para otras agencias) — depende de tags propios de las verticales de COSMART, no generaliza sin que cada agencia conecte su propio Brevo.
-  4. La página de login (`login.html`) sigue mostrando la marca/verticales de COSMART siempre, incluso para agencias externas que entran a loguearse ahí — no se armó un login separado por agencia. `signup.html` sí es neutral/genérico.
-  5. No hay plan de features por tier (todas las agencias ven exactamente las mismas funciones que COSMART) — si en algún momento se quiere un plan más limitado, es trabajo aparte.
+  1. **Blanqueo de marca parcial**: el sidebar del panel admin sí cambia (logo/nombre) y el login muestra el logo de la agencia si se entra por `login.html?agencia=slug` (ver sección de suscripción más abajo), pero **todos los emails automáticos** (bienvenida, informes, recordatorio de facturación, resumen mensual, tareas que vencen) siguen saliendo con el remitente/firma/logo de COSMART (`emailBase`, `FIRMA`, `FOOTER`, `SERVICIOS_BLOCK` en el worker) — solo el destinatario (`to`) y el nombre visible cambian por agencia, no el diseño del email en sí. Corregir esto a fondo (blanquear `emailBase` por agencia, sacar el bloque "también hacemos esto" para no-COSMART) es una tarea aparte y grande — hay ~10 templates (`tplBienvenida`, `tplArranque`, `tplReporte`, etc.) que habría que parametrizar con la agencia, no trivial porque el remitente real (`info@cosmart.com.ar`) tiene que seguir siendo el dominio verificado en Brevo — no se puede mandar "de" cualquier email sin verificar el dominio.
+  2. **Métricas de email (Brevo cross-vertical)** quedan restringidas a COSMART únicamente (`handleEmailStats` devuelve 501 para otras agencias) — depende de tags propios de las verticales de COSMART, no generaliza sin que cada agencia conecte su propio Brevo.
+  3. `login.html` sigue mostrando siempre la marca/verticales/cursos de COSMART como contenido de la página — lo único que cambia por agencia es el logo del box de login cuando se entra con `?agencia=slug` (ver abajo). Es a propósito: la página sigue siendo un buen escaparate de COSMART para cualquiera que aterrice ahí.
+  4. No hay plan de features por tier (todas las agencias ven exactamente las mismas funciones que COSMART) — si en algún momento se quiere un plan más limitado, es trabajo aparte.
+
+## 💳 Suscripción de agencias — cobro automático (30/08)
+
+Ya no hace falta que Vaneh active/desactive agencias a mano. Landing de venta en `gestion-de-clientes-para-agencias.html` (persuasiva, con precio dinámico) → `signup.html` (Paso 1: alta de cuenta → Paso 2, en la misma página sin salir: elegir mensual/anual y pagar con Mercado Pago o PayPal). Al confirmarse el pago, el backend pone `estado: 'activo'` solo.
+
+- **Precio vigente**: `precioVigente()` en el worker decide el escalón USD según la fecha del servidor — USD 3/mes hasta el 31/08/2026, se extiende a USD 3/mes hasta el 30/09/2026, y desde octubre sube a USD 5/mes (anual siempre USD 30, fijo). Esto es SOLO el precio que ve alguien nuevo — una agencia que ya se suscribió sigue pagando el monto que tenía hasta que Vaneh lo cambie a mano. `GET /precio-vigente` (público) lo expone para la landing y el signup.
+- **Mercado Pago cobra en ARS** (igual que `training`: sin cotización en vivo, precio fijo que Vaneh edita ella misma desde Panel admin → Agencias → "Precio de Mercado Pago (ARS)", sin tocar código). Se usa `preapproval` de la API de MP con `card_token_id` (tokenizado en el browser con `mp.createCardToken()`, igual que en `training/carrito.html` pero con un form propio ya que no hay Brick de suscripciones) — nunca sale de la página. **PayPal cobra en USD** vía Plans + Subscriptions (`paypal.Buttons({createSubscription...})`, embebido, sin redirect) — el Product/Plan de PayPal se crean solos la primera vez que hace falta cada escalón de precio (`obtenerPlanPaypal`), no hay que crearlos a mano en el dashboard.
+- **Webhooks**: `POST /webhook/mp-suscripcion` y `POST /webhook/paypal-suscripcion` — ninguno de los dos confía en el body del evento; ambos vuelven a pedirle el estado real a la API del proveedor antes de tocar `estado`. El de PayPal además verifica la firma del webhook contra `PAYPAL_WEBHOOK_ID` — si ese secret no está seteado, el endpoint devuelve 501 en vez de aceptar cualquier cosa sin verificar.
+- **Requiere acción de Vaneh antes de que esto funcione en producción** (no lo puede hacer Claude, son credenciales/dashboard):
+  1. Agregar a los secrets del worker `marketing-hub` (Cloudflare dashboard o `wrangler secret put`, NUNCA en `wrangler.toml`): `MP_ACCESS_TOKEN`, `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` — son los mismos valores que ya están cargados en el worker `cosmart-training`, se pueden copiar de ahí.
+  2. En el dashboard de Mercado Pago, registrar el webhook de "preapproval" apuntando a `https://marketing-hub.conglomeradocosmart.workers.dev/webhook/mp-suscripcion`.
+  3. En el dashboard de PayPal (Apps & Credentials → la misma app que ya usa `training` → Webhooks), crear un webhook apuntando a `https://marketing-hub.conglomeradocosmart.workers.dev/webhook/paypal-suscripcion`, suscripto como mínimo a `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.EXPIRED`, `PAYMENT.SALE.COMPLETED`. PayPal va a dar un Webhook ID — cargarlo como secret `PAYPAL_WEBHOOK_ID`.
+  4. Cargar el precio de Mercado Pago (ARS) desde Panel admin → Agencias — arranca con una semilla de $3.000/mes y $30.000/año que hay que ajustar.
+  5. Hacer una suscripción de prueba real de punta a punta (con una tarjeta propia, y cancelarla después) antes de confiar en el flujo — nunca se probó contra credenciales reales porque Claude no tiene acceso a las cuentas de MP/PayPal de COSMART.
+- **Login con logo de agencia antes de loguearse**: `login.html?agencia=slug` pega a `GET /agencia-publica/:id` (público, solo devuelve nombre/logo) y reemplaza el logo del box de login — el resto de la página (tagline, verticales, cursos) queda igual para todos, a propósito.
 
 ## Arquitectura
 
@@ -49,6 +63,8 @@ Una tarea marcada como proyecto tiene además `fechaInicio` (además de `vencimi
 - Tarjetas Kanban y de Lista en las tres superficies: Tareas (panel cliente), Gestión COSMART, Mis Tareas (admin, tanto Kanban como Lista).
 
 El checkbox "🔷 Es un proyecto" + campo "Fecha de inicio" existe en **todos** los modales de tarea: `tf-*` (panel cliente, `app/index.html`/`js/app.js`), `in-*` (Gestión COSMART), y — agregado 29/08 tras un reclamo explícito de Vaneh porque faltaba — `mt-*` (editar desde Mis Tareas) y `nmt-*` (Nueva tarea desde Mis Tareas). Los cuatro usan el mismo patrón: checkbox `onchange="toggleXEsProyecto()"` que muestra/oculta el grupo de fecha de inicio y renombra el label de vencimiento.
+
+Mismo patrón aplicado el 30/08 al selector de **Recurrencia** (`recurrencia`/`diasSemana`, ya existía solo en `tf-*`): ahora también está en `in-*`, `mt-*` (solo si `tipo === 'tarea'`, igual que "Es un proyecto") y `nmt-*`, con `toggleXRecurrencia()` mostrando/ocultando el grupo de días específicos.
 
 ## Facturación
 

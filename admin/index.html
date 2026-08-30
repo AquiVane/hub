@@ -283,7 +283,23 @@
       <div id="sec-agencias" class="hidden">
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Agencias</h2>
-          <span class="text-muted text-sm">Cuentas que usan el Hub con su propia marca — activá/desactivá según el pago de la suscripción.</span>
+          <span class="text-muted text-sm">Cuentas que usan el Hub con su propia marca. Se activan/desactivan solas con el pago automático (Mercado Pago o PayPal) — usá los botones de acá solo para casos especiales.</span>
+        </div>
+        <div class="card mb-20" style="padding:16px 18px;">
+          <div style="font-size:13px;font-weight:700;color:var(--primary-dark);margin-bottom:10px;">💳 Precio de Mercado Pago (ARS)</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">PayPal cobra en USD según el precio vigente (ver landing de venta). Mercado Pago cobra en pesos — no hay cotización en vivo, así que este monto lo actualizás vos a mano cuando quieras ajustarlo.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="margin:0;">
+              <label style="font-size:11px;">Mensual (ARS)</label>
+              <input type="number" id="precioMpMensual" class="form-control" style="width:140px;" min="0">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label style="font-size:11px;">Anual (ARS)</label>
+              <input type="number" id="precioMpAnual" class="form-control" style="width:140px;" min="0">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="guardarPrecioMP()">Guardar</button>
+            <span id="precioMpMsg" style="font-size:12px;color:#10b981;"></span>
+          </div>
         </div>
         <div id="agenciasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -1061,7 +1077,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -3186,6 +3202,7 @@
   window.loadAgencias = async function() {
     const el = document.getElementById('agenciasList');
     el.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Cargando...</p>';
+    cargarPrecioMP();
     try {
       const agencias = await getAgencias();
       if (!agencias.length) {
@@ -3193,11 +3210,13 @@
         return;
       }
       const ESTADO_COLOR = { trial: '#f59e0b', activo: '#10b981', vencido: '#dc2626' };
+      const METODO = { ARS: '💳 Mercado Pago', USD: '🅿️ PayPal' };
       el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">` + agencias.map(a => `
         <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
             <div style="font-weight:700;font-size:14px;">${a.nombre}</div>
             <div style="font-size:12px;color:var(--text-muted);">${a.emailAdmin} · alta ${a.createdAt ? new Date(a.createdAt).toLocaleDateString('es-AR') : ''}</div>
+            ${a.precio ? `<div style="font-size:12px;color:var(--text-muted);">${METODO[a.moneda] || ''} · ${a.plan === 'anual' ? 'Anual' : 'Mensual'} · ${a.moneda === 'ARS' ? '$' : 'US$'}${a.precio}${a.proximaFacturacion ? ' · próximo cobro ' + a.proximaFacturacion : ''}</div>` : ''}
           </div>
           <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${ESTADO_COLOR[a.estado] || '#94a3b8'}22;color:${ESTADO_COLOR[a.estado] || '#94a3b8'};text-transform:uppercase;">${a.estado || 'trial'}</span>
           <select class="form-control" style="width:auto;" onchange="cambiarEstadoAgencia('${a.id}', this.value)">
@@ -3209,6 +3228,27 @@
       `).join('') + `</div>`;
     } catch (e) {
       el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  };
+
+  async function cargarPrecioMP() {
+    try {
+      const p = await getPrecioMP();
+      document.getElementById('precioMpMensual').value = p.mensualARS || '';
+      document.getElementById('precioMpAnual').value = p.anualARS || '';
+    } catch (e) {}
+  }
+  window.guardarPrecioMP = async function() {
+    const mensualARS = Number(document.getElementById('precioMpMensual').value);
+    const anualARS = Number(document.getElementById('precioMpAnual').value);
+    if (!mensualARS || !anualARS) { alert('Completá los dos montos.'); return; }
+    try {
+      await setPrecioMP(mensualARS, anualARS);
+      const msg = document.getElementById('precioMpMsg');
+      msg.textContent = '✓ Guardado';
+      setTimeout(() => { msg.textContent = ''; }, 2500);
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
     }
   };
 
