@@ -114,6 +114,14 @@
             <option value="">Todas</option>
             <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
             <option>Talent</option><option>Shows</option><option>Euforia</option><option>Training</option><option>MPG</option>
+            <option>Home COSMART</option><option>Hub</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Prioridad:</label>
+          <select id="misTareasFiltroPrioridad" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('prioridad', this.value)">
+            <option value="">Todas</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
           </select>
           <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
           <select id="misTareasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasOrden(this.value)">
@@ -159,6 +167,8 @@
             <option>Euforia</option>
             <option>Training</option>
             <option>MPG</option>
+            <option>Home COSMART</option>
+            <option>Hub</option>
           </select>
           <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
           <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
@@ -411,6 +421,10 @@
         <input type="text" id="in-titulo" class="form-control">
       </div>
       <div class="form-group">
+        <label>Descripción</label>
+        <textarea id="in-descripcion" class="form-control" rows="2" placeholder="Mini descripción (opcional)"></textarea>
+      </div>
+      <div class="form-group">
         <label>Vertical</label>
         <select id="in-vertical" class="form-control">
           <option value="">General (sin vertical)</option>
@@ -423,6 +437,8 @@
           <option>Euforia</option>
           <option>Training</option>
           <option>MPG</option>
+          <option>Home COSMART</option>
+          <option>Hub</option>
         </select>
       </div>
       <div class="form-group">
@@ -615,6 +631,23 @@
       <div class="form-group">
         <label>Cliente *</label>
         <select id="nmt-cliente" class="form-control" onchange="cambiarNmtCliente()"></select>
+      </div>
+      <div class="form-group hidden" id="nmt-vertical-group">
+        <label>Vertical</label>
+        <select id="nmt-vertical" class="form-control">
+          <option value="">General (sin vertical)</option>
+          <option>Brújula</option>
+          <option>Rumbo Voraz</option>
+          <option>Design</option>
+          <option>ComuniCOS</option>
+          <option>Talent</option>
+          <option>Shows</option>
+          <option>Euforia</option>
+          <option>Training</option>
+          <option>MPG</option>
+          <option>Home COSMART</option>
+          <option>Hub</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Título *</label>
@@ -1157,7 +1190,7 @@
 
   // ── Códigos de tareas (cliente/vertical/persona) ────────────────
   const VANEH_CODIGO = 'VH';
-  const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF' };
+  const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF', 'Home COSMART': 'HOME', 'Hub': 'HUB' };
   function codigoDesdeNombre(nombre) {
     const palabras = (nombre || '').split(/[^a-zA-ZÀ-ÿ]+/).filter(Boolean);
     if (!palabras.length) return '';
@@ -1901,6 +1934,7 @@
     const t = _editingInterna || {};
     document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + codigoDeInterna(t) : ''}` : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
+    document.getElementById('in-descripcion').value = t.descripcion || '';
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
@@ -2008,6 +2042,7 @@
       ...(_editingInterna || {}),
       numero,
       titulo,
+      descripcion: document.getElementById('in-descripcion').value.trim() || null,
       vertical: inVerticalVal,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
@@ -2101,7 +2136,10 @@
     if (prevValue && [...asignadoSel.options].some(o => o.value === prevValue)) asignadoSel.value = prevValue;
   }
   window.cambiarNmtCliente = function() {
-    poblarNmtAsignado(document.getElementById('nmt-cliente').value);
+    const clientId = document.getElementById('nmt-cliente').value;
+    document.getElementById('nmt-vertical-group').classList.toggle('hidden', clientId !== '_cosmart');
+    if (clientId !== '_cosmart') document.getElementById('nmt-vertical').value = '';
+    poblarNmtAsignado(clientId);
   };
   async function loadColaboradores() {
     const listEl = document.getElementById('colabList');
@@ -2189,6 +2227,7 @@
   let _misTareasVerDe = '';
   let _misTareasFiltroCliente = '';
   let _misTareasFiltroVertical = '';
+  let _misTareasFiltroPrioridad = '';
   let _misTareasOrden = 'fecha';
 
   function diasDeAtraso(fecha) {
@@ -2282,6 +2321,7 @@
   window.cambiarMisTareasFiltro = function(tipo, valor) {
     if (tipo === 'cliente') _misTareasFiltroCliente = valor;
     if (tipo === 'vertical') _misTareasFiltroVertical = valor;
+    if (tipo === 'prioridad') _misTareasFiltroPrioridad = valor;
     renderMisTareas();
   };
 
@@ -2313,7 +2353,8 @@
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
       (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
-      (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical)
+      (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
+      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad)
     );
   }
 
@@ -2681,6 +2722,8 @@
       <option value="_cosmart">COSMART (interno)</option>
       ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
 
+    document.getElementById('nmt-vertical').value = '';
+    document.getElementById('nmt-vertical-group').classList.toggle('hidden', clienteSel.value !== '_cosmart');
     await poblarNmtAsignado(clienteSel.value);
     document.getElementById('nmt-subtarea-input').value = '';
     _nmtSubtareas = [];
@@ -2694,17 +2737,24 @@
   };
 
   let _nmtSubtareas = [];
-  function renderNmtSubtareas() {
+  async function renderNmtSubtareas() {
     const list = document.getElementById('nmt-subtareas-list');
-    list.innerHTML = _nmtSubtareas.map((s, i) => `
+    const filas = await Promise.all(_nmtSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleNmtSubtarea(${i})" style="flex-shrink:0;">
         <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        ${s.asignado?.nombre ? `<span style="font-size:10px;color:var(--primary);font-weight:600;white-space:nowrap;">👤 ${s.asignado.nombre}</span>` : ''}
+        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarNmtSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
-    `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+    `));
+    list.innerHTML = filas.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
   }
+  window.reasignarNmtSubtarea = function(i, sel) {
+    if (!_nmtSubtareas[i]) return;
+    const email = sel.value;
+    const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
+    _nmtSubtareas[i].asignado = email ? { email, nombre } : null;
+  };
   window.agregarNmtSubtarea = function() {
     const input = document.getElementById('nmt-subtarea-input');
     const asignadoSel = document.getElementById('nmt-subtarea-asignado');
@@ -3158,13 +3208,14 @@
     const asignadoSel = document.getElementById('nmt-asignado');
     const asignadoEmail = asignadoSel.value;
     const asignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    const verticalVal = clientId === '_cosmart' ? (document.getElementById('nmt-vertical').value || null) : null;
     let numero = 1;
     try {
       const tareasCliente = await getTareas(clientId) || [];
       if (clientId === '_personal') {
         numero = Math.max(0, ...tareasCliente.filter(t => (t.asignado?.email || '').toLowerCase() === asignadoEmail.toLowerCase()).map(t => t.numero || 0)) + 1;
       } else if (clientId === '_cosmart') {
-        numero = Math.max(0, ...tareasCliente.filter(t => !t.vertical).map(t => t.numero || 0)) + 1;
+        numero = Math.max(0, ...tareasCliente.filter(t => (t.vertical || null) === verticalVal).map(t => t.numero || 0)) + 1;
       } else {
         numero = Math.max(0, ...tareasCliente.map(t => t.numero || 0)) + 1;
       }
@@ -3173,6 +3224,7 @@
     const obj = {
       numero,
       titulo,
+      vertical: verticalVal,
       estado: document.getElementById('nmt-estado').value,
       prioridad: document.getElementById('nmt-prioridad').value,
       descripcion: document.getElementById('nmt-descripcion').value.trim() || null,
