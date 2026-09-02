@@ -57,9 +57,15 @@
     </div>
   </aside>
 
+  <!-- Mobile sidebar overlay -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
   <!-- Main -->
   <div class="main">
     <div class="topbar">
+      <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Menú">
+        <i data-lucide="menu" style="width:22px;height:22px;stroke-width:1.75;"></i>
+      </button>
       <div>
         <div class="topbar-title">Panel Admin</div>
         <div class="topbar-sub" id="adminName"></div>
@@ -1154,6 +1160,20 @@
 
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
+  // ── Mobile sidebar toggle (faltaba acá -- ya existía en app/index.html) ──
+  const _sidebarEl = document.querySelector('.sidebar');
+  const _sidebarOverlayEl = document.getElementById('sidebar-overlay');
+  const _sidebarToggleEl = document.getElementById('sidebar-toggle');
+  function openMobileSidebar() { _sidebarEl.classList.add('open'); _sidebarOverlayEl.classList.add('active'); }
+  function closeMobileSidebar() { _sidebarEl.classList.remove('open'); _sidebarOverlayEl.classList.remove('active'); }
+  _sidebarToggleEl?.addEventListener('click', () => {
+    _sidebarEl.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+  });
+  _sidebarOverlayEl?.addEventListener('click', closeMobileSidebar);
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
+  });
+
   // Worker status
   const fsEl = document.getElementById('firebase-status');
   if (DEMO_MODE) {
@@ -1650,6 +1670,25 @@
   let _procSeleccion = null; // { procesoId, subprocesoId (opcional) }
   let _procPresupuesto = null;
   const PLATAFORMAS_ADS = ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
+
+  // Entrada directa a los procesos de un cliente puntual desde su fila en
+  // Clientes (pedido de Vaneh: no puede ser solo una página global con un
+  // desplegable, tiene que poder entrarse "desde adentro" del cliente).
+  // No reusa showSection() a propósito: esa función depende del `event`
+  // del click en el propio ítem del nav (event.currentTarget) para marcar
+  // el activo, y acá se llama desde el menú de la fila del cliente, no
+  // desde el nav -- llamarla igual rompería silenciosamente esa parte.
+  window.irAProcesosDeCliente = function(clientId) {
+    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+    _procClienteId = clientId;
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias'].forEach(s => {
+      document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== 'procesos');
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    const navProcesos = [...document.querySelectorAll('.nav-item')].find(b => b.textContent.trim() === 'Procesos');
+    if (navProcesos) navProcesos.classList.add('active');
+    loadProcesosSection();
+  };
 
   window.loadProcesosSection = async function() {
     const sel = document.getElementById('proc-cliente-sel');
@@ -3341,6 +3380,7 @@
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
             <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
             <button onclick="openFacturacionModal('${c.id}')">🧾 Facturación</button>
+            <button onclick="irAProcesosDeCliente('${c.id}')">🗂️ Procesos</button>
             ${user.role === 'admin' ? `<button class="danger" onclick="deleteClient('${c.id}','${nombre}')">🗑 Eliminar</button>` : ''}
           </div>
         </div>
