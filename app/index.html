@@ -492,6 +492,10 @@
       <button class="modal-close" id="closeTareaModal">×</button>
     </div>
     <div class="modal-body">
+      <div id="tarea-borrador-aviso" style="display:none;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;">
+        <span style="flex:1;">📝 Se restauró un borrador con cambios sin guardar de la última vez que abriste esta tarea.</span>
+        <button type="button" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Descartar borrador</button>
+      </div>
       <div class="form-grid" style="grid-template-columns:1fr 1fr;">
 
         <!-- Título -->
@@ -621,7 +625,7 @@
           <label>📎 Archivos adjuntos</label>
           <div id="tarea-archivos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
           <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('tarea-archivo-input').click()">📎 Adjuntar archivo</button>
-          <input type="file" id="tarea-archivo-input" style="display:none;" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+          <input type="file" id="tarea-archivo-input" style="display:none;">
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">Se guarda en "Links y Archivos" -- desde acá queda solo el acceso directo. Máximo 50 MB.</span>
         </div>
 

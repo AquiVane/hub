@@ -110,6 +110,7 @@
           </div>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
           <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
           <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
           <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
@@ -1581,7 +1582,7 @@
               const esProy = !!t.esProyecto;
               const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
               return `
-              <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
+              <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                   <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${t.titulo}</div>
@@ -2269,6 +2270,7 @@
   let _misTareasFiltroCliente = '';
   let _misTareasFiltroVertical = '';
   let _misTareasFiltroPrioridad = '';
+  let _misTareasBusqueda = '';
   let _misTareasOrden = 'fecha';
 
   function diasDeAtraso(fecha) {
@@ -2374,6 +2376,7 @@
     if (tipo === 'cliente') _misTareasFiltroCliente = valor;
     if (tipo === 'vertical') _misTareasFiltroVertical = valor;
     if (tipo === 'prioridad') _misTareasFiltroPrioridad = valor;
+    if (tipo === 'busqueda') _misTareasBusqueda = valor.trim().toLowerCase();
     renderMisTareas();
   };
 
@@ -2424,20 +2427,23 @@
       (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
-      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad)
+      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
+      (!_misTareasBusqueda || (i.tarea.titulo || '').toLowerCase().includes(_misTareasBusqueda))
     );
   }
 
   // Mismos filtros que misTareasFiltradas (cliente/vertical/prioridad/tab
   // heredados de la tarea PADRE) pero mirando el asignado de la subtarea,
-  // no el de la tarea.
+  // no el de la tarea. La búsqueda mira el título de la SUBTAREA, no el
+  // de la tarea padre.
   function misSubtareasFiltradas() {
     return _misSubtareasCache.filter(i =>
       (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
       (!_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
-      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad)
+      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
+      (!_misTareasBusqueda || (i.sub.titulo || '').toLowerCase().includes(_misTareasBusqueda))
     );
   }
 
@@ -2615,7 +2621,7 @@
             const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
             const arrastrable = item.tipo === 'tarea';
             return `
-            <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : '')}">
+            <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : '')}">
               <div class="kanban-card-title" style="${esProy ? 'color:#fff;' : ''}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
               <div style="font-size:11px;color:${muted};margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
               ${atraso > 0 ? `<div style="font-size:10px;color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}

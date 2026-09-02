@@ -20,6 +20,7 @@ if (!clientId) { window.location.href = '../admin/index.html'; }
 let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
 let _tareasView = 'kanban';
+let _tareasBusqueda = '';
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -214,6 +215,14 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'tareas') {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control';
+    searchInput.placeholder = '🔎 Buscar tarea...';
+    searchInput.style.cssText = 'width:160px;font-size:12px;padding:6px 10px;';
+    searchInput.value = _tareasBusqueda;
+    searchInput.oninput = (e) => { _tareasBusqueda = e.target.value.trim().toLowerCase(); refreshTareasView(); };
+    actions.appendChild(searchInput);
     const viewKanbanBtn = document.createElement('button');
     viewKanbanBtn.className = 'btn btn-sm ' + (_tareasView === 'kanban' ? 'btn-primary' : 'btn-secondary');
     viewKanbanBtn.innerHTML = '<i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban';
@@ -2346,7 +2355,8 @@ function renderTareas(container) {
     { key: 'En progreso', label: 'En progreso', color: '#3b82f6' },
     { key: 'Listo', label: 'Listo', color: '#10b981' },
   ];
-  const tareasBase = tareasVisibles(STATE.tareas);
+  let tareasBase = tareasVisibles(STATE.tareas);
+  if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
   const archivadas = tareasBase.filter(t => t.archivado);
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
@@ -2365,7 +2375,7 @@ function renderTareas(container) {
             const vencido = t.vencimiento && new Date(t.vencimiento+'T00:00:00') < new Date() && t.estado !== 'Listo';
             const vencColor = vencido ? (esProy ? '#fecdd3' : '#dc2626') : muted;
             return `
-            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=false" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
+            <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : ''}">
               <div style="display:flex;align-items:flex-start;gap:8px;">
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                 <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
@@ -2428,7 +2438,8 @@ function renderTareas(container) {
 function renderTareasCalendario(container) {
   const hoy = new Date();
   let viewYear = hoy.getFullYear(), viewMonth = hoy.getMonth();
-  const tareasBase = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
+  let tareasBase = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
+  if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
 
   function drawCal() {
     const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -2648,8 +2659,62 @@ window.openTareaModal = function(id, defaultEstado) {
   if (_tnote) _tnote.style.display = editingTarea ? 'none' : '';
   const _tinputWrap = document.getElementById('tarea-comment-input-wrap');
   if (_tinputWrap) _tinputWrap.style.display = editingTarea ? '' : 'none';
+  const avisoBorrador = document.getElementById('tarea-borrador-aviso');
+  if (avisoBorrador) avisoBorrador.style.display = 'none';
   document.getElementById('tareaModal').classList.remove('hidden');
+  restaurarBorradorTarea(id || null);
 };
+
+// ── Borrador de tarea (localStorage) ─────────────────────────
+// Título, descripción y el comentario que se esté escribiendo se pierden
+// si se cierra el modal sin tocar "Guardar" -- Vaneh lo reportó
+// explícitamente (02/09). No es un autoguardado real contra el servidor
+// (eso ya existe para subtareas/archivos, ver más arriba); esto es un
+// borrador LOCAL del navegador, para no perder lo tipeado si se cierra
+// el modal sin querer o se aprieta "Cancelar".
+function tareaDraftKey(id) { return `hub_draft_tarea_${clientId}_${id || 'nueva'}`; }
+
+function guardarBorradorTarea() {
+  const modal = document.getElementById('tareaModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  const draft = {
+    titulo: document.getElementById('tf-titulo').value,
+    notas: document.getElementById('tf-notas').innerHTML,
+    comentario: document.getElementById('tarea-comment-input')?.value || '',
+  };
+  try { localStorage.setItem(tareaDraftKey(editingTarea?.id), JSON.stringify(draft)); } catch (e) {}
+}
+
+function limpiarBorradorTarea(id) {
+  try { localStorage.removeItem(tareaDraftKey(id)); } catch (e) {}
+}
+
+function restaurarBorradorTarea(id) {
+  let draft;
+  try {
+    const raw = localStorage.getItem(tareaDraftKey(id));
+    if (!raw) return;
+    draft = JSON.parse(raw);
+  } catch (e) { return; }
+  const tituloEl = document.getElementById('tf-titulo');
+  const notasEl = document.getElementById('tf-notas');
+  const comentEl = document.getElementById('tarea-comment-input');
+  let cambios = false;
+  if (draft.titulo && draft.titulo !== tituloEl.value) { tituloEl.value = draft.titulo; cambios = true; }
+  if (draft.notas && draft.notas !== notasEl.innerHTML) { notasEl.innerHTML = draft.notas; cambios = true; }
+  if (comentEl && draft.comentario) { comentEl.value = draft.comentario; cambios = true; }
+  if (!cambios) return;
+  const aviso = document.getElementById('tarea-borrador-aviso');
+  if (aviso) {
+    aviso.style.display = 'flex';
+    aviso.querySelector('button').onclick = () => { limpiarBorradorTarea(id); openTareaModal(id || null); };
+  }
+}
+
+['tf-titulo', 'tarea-comment-input'].forEach(idEl => {
+  document.getElementById(idEl)?.addEventListener('input', guardarBorradorTarea);
+});
+document.getElementById('tf-notas')?.addEventListener('input', guardarBorradorTarea);
 
 function renderSubtareas(subtareas) {
   const list = document.getElementById('subtareas-list');
@@ -2745,6 +2810,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
   if (btn.disabled) return;
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
+  const draftIdAlGuardar = editingTarea?.id || null;
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     const recurrencia = document.getElementById('tf-recurrencia').value;
@@ -2772,6 +2838,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
     else STATE.tareas.push(saved);
     notifyAsignacion('tarea', saved, prevTfAsignadoEmail);
+    limpiarBorradorTarea(draftIdAlGuardar);
     closeTareaModal();
     updateBadges();
     if (currentSection === 'tareas') refreshTareasView();
@@ -2786,6 +2853,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
 document.getElementById('deleteTareaBtn').addEventListener('click', async () => {
   if (!editingTarea || !confirm('¿Eliminar esta tarea?')) return;
   await deleteTarea(clientId, editingTarea.id);
+  limpiarBorradorTarea(editingTarea.id);
   STATE.tareas = STATE.tareas.filter(t => t.id !== editingTarea.id);
   closeTareaModal();
   updateBadges();
@@ -3026,41 +3094,198 @@ function tipoDesdeArchivo(filename) {
   return 'Otro';
 }
 
+// Carpetas -- un solo nivel (sin subcarpetas anidadas), a propósito: es
+// para "mayor organización" de una lista que se hace larga, no un
+// explorador de archivos completo. STATE.home.archivoCarpetas guarda los
+// NOMBRES (para que una carpeta pueda existir vacía); archivo.carpeta
+// guarda a cuál pertenece cada archivo ('' / null = raíz).
+let _archivoCarpetaActual = '';
+let _archivoBusqueda = '';
+
+function carpetasDisponibles() {
+  const set = new Set(STATE.home.archivoCarpetas || []);
+  (STATE.home.archivos || []).forEach(a => { if (a.carpeta) set.add(a.carpeta); });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function archivosToolbarHtml() {
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <input type="text" value="${_archivoBusqueda}" oninput="buscarArchivos(this.value)" placeholder="🔎 Buscar archivo..." class="form-control" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;">
+      ${!_archivoBusqueda ? `<button class="btn btn-secondary btn-sm" onclick="crearCarpetaArchivo()" title="Nueva carpeta">📁+</button>` : ''}
+    </div>
+    ${!_archivoBusqueda && _archivoCarpetaActual ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📁 ${_archivoCarpetaActual}</div>` : ''}
+  `;
+}
+
+// Menú "⋮" tipo Windows -- mismas clases que .client-row-menu (ya usadas
+// en el panel admin para el menú de cada cliente), así no hace falta CSS
+// nuevo y se ve consistente con el resto del Hub.
+function archivoCardHtml(a) {
+  const abrir = a.subido ? `abrirArchivoSubido('${a.id}')` : `window.open('${(a.url || '').replace(/'/g, "\\'")}','_blank')`;
+  return `
+    <div class="link-card" onclick="${abrir}" style="cursor:pointer;">
+      <div class="link-card-icon">
+        <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.titulo}</div>
+        <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}${a.subido ? ' · Subido' : ''}${_archivoBusqueda && a.carpeta ? ` · 📁 ${a.carpeta}` : ''}</div>
+        ${a.desc ? `<div class="link-card-desc">${a.desc}</div>` : ''}
+      </div>
+      <div class="client-row-menu-wrap" onclick="event.stopPropagation();" style="flex-shrink:0;">
+        <button class="client-row-menu-btn" onclick="toggleArchivoMenu('${a.id}', event)" title="Más opciones">⋮</button>
+        <div class="client-row-menu hidden" id="armenu-${a.id}">
+          <button onclick="toggleArchivoMenu('${a.id}');${abrir}">Abrir</button>
+          <button onclick="toggleArchivoMenu('${a.id}');openArchivoModal('${a.id}')">✏️ Editar</button>
+          <button onclick="moverArchivoModal('${a.id}')">📁 Mover a carpeta</button>
+          <button class="danger" onclick="eliminarArchivoDirecto('${a.id}')">🗑 Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderArchivos(container) {
-  const archivos = STATE.home.archivos || [];
-  container.innerHTML = archivos.length ? `
+  const todos = STATE.home.archivos || [];
+
+  if (_archivoBusqueda) {
+    const encontrados = todos.filter(a =>
+      (a.titulo || '').toLowerCase().includes(_archivoBusqueda) || (a.desc || '').toLowerCase().includes(_archivoBusqueda));
+    container.innerHTML = archivosToolbarHtml() + (encontrados.length
+      ? `<div class="links-grid">${encontrados.map(archivoCardHtml).join('')}</div>`
+      : `<div class="empty-state"><p>Sin resultados para "${_archivoBusqueda}".</p></div>`);
+    setTimeout(refreshIcons, 30);
+    return;
+  }
+
+  const carpetas = carpetasDisponibles();
+  const enCarpetaActual = todos.filter(a => (a.carpeta || '') === _archivoCarpetaActual);
+  const enRaiz = !_archivoCarpetaActual;
+
+  if (!todos.length && !carpetas.length) {
+    container.innerHTML = archivosToolbarHtml() + `
+      <div class="empty-state">
+        <i data-lucide="folder-open" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
+        <h3>Sin archivos guardados</h3>
+        <p>Subí un archivo directamente o pegá un link (Drive, Dropbox, etc.)</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="openArchivoModal(null)">+ Agregar primer archivo</button>
+      </div>`;
+    setTimeout(refreshIcons, 30);
+    return;
+  }
+
+  container.innerHTML = archivosToolbarHtml() + `
     <div class="links-grid">
-      ${archivos.map(a => `
-        <div class="link-card" onclick="${a.subido ? `abrirArchivoSubido('${a.id}')` : `window.open('${(a.url||'').replace(/'/g,"\\'")}','_blank')`}" style="cursor:pointer;">
-          <div class="link-card-icon">
-            <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+      ${!enRaiz ? `
+        <div class="link-card" onclick="entrarCarpetaArchivo('')" style="cursor:pointer;justify-content:center;gap:6px;background:transparent;border-style:dashed;">
+          <span style="font-size:13px;color:var(--primary);font-weight:600;">⬅ Volver a la raíz</span>
+        </div>
+      ` : carpetas.map(c => {
+        const n = todos.filter(a => a.carpeta === c).length;
+        return `
+        <div class="link-card" onclick="entrarCarpetaArchivo('${c.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+          <div class="link-card-icon" style="background:#FEF3C7;">
+            <i data-lucide="folder" style="width:14px;height:14px;color:#b45309;stroke-width:1.75;"></i>
           </div>
           <div style="flex:1;min-width:0;">
-            <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.titulo}</div>
-            <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}${a.subido ? ' · Subido' : ''}</div>
-            ${a.desc ? `<div class="link-card-desc">${a.desc}</div>` : ''}
+            <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:1px;">${n} archivo${n !== 1 ? 's' : ''}</div>
           </div>
-          <button class="link-card-edit" onclick="event.stopPropagation();openArchivoModal('${a.id}')" title="Editar">
-            <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
-          </button>
-        </div>
-      `).join('')}
+          <button onclick="event.stopPropagation();eliminarCarpetaArchivo('${c.replace(/'/g, "\\'")}')" title="Eliminar carpeta (solo si está vacía)" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;flex-shrink:0;padding:0 2px;">×</button>
+        </div>`;
+      }).join('')}
+      ${enCarpetaActual.map(archivoCardHtml).join('')}
       <div class="link-card" onclick="openArchivoModal(null)"
         style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
         <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
         <span style="font-size:13px;color:var(--text-muted);">Agregar archivo</span>
       </div>
     </div>
-  ` : `
-    <div class="empty-state">
-      <i data-lucide="folder-open" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
-      <h3>Sin archivos guardados</h3>
-      <p>Subí un archivo directamente o pegá un link (Drive, Dropbox, etc.)</p>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="openArchivoModal(null)">+ Agregar primer archivo</button>
-    </div>
   `;
   setTimeout(refreshIcons, 30);
 }
+
+window.buscarArchivos = function(valor) {
+  _archivoBusqueda = valor.trim().toLowerCase();
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.entrarCarpetaArchivo = function(nombre) {
+  _archivoCarpetaActual = nombre;
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.crearCarpetaArchivo = async function() {
+  const nombre = prompt('Nombre de la carpeta nueva:');
+  if (!nombre || !nombre.trim()) return;
+  const limpio = nombre.trim();
+  if (!STATE.home.archivoCarpetas) STATE.home.archivoCarpetas = [];
+  if (!STATE.home.archivoCarpetas.includes(limpio)) {
+    STATE.home.archivoCarpetas.push(limpio);
+    try { await saveHomeData(clientId, STATE.home); } catch (e) { alert('No se pudo crear la carpeta: ' + e.message); return; }
+  }
+  _archivoCarpetaActual = limpio;
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.eliminarCarpetaArchivo = async function(nombre) {
+  const enUso = (STATE.home.archivos || []).some(a => a.carpeta === nombre);
+  if (enUso) { alert('Esta carpeta tiene archivos adentro -- movélos o borralos primero.'); return; }
+  if (!confirm(`¿Eliminar la carpeta "${nombre}"?`)) return;
+  STATE.home.archivoCarpetas = (STATE.home.archivoCarpetas || []).filter(c => c !== nombre);
+  try { await saveHomeData(clientId, STATE.home); } catch (e) { alert('No se pudo eliminar: ' + e.message); return; }
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.moverArchivoModal = function(id) {
+  toggleArchivoMenu(id);
+  const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
+  if (!a) return;
+  const opciones = ['(Raíz)', ...carpetasDisponibles()];
+  const eleccion = prompt(`¿A qué carpeta mover "${a.titulo}"?\n\nOpciones existentes: ${opciones.join(', ')}\n\nEscribí el nombre exacto (podés escribir uno nuevo), o "(Raíz)" para sacarlo de cualquier carpeta.`, a.carpeta || '(Raíz)');
+  if (eleccion === null) return;
+  const destino = eleccion.trim();
+  moverArchivoA(id, destino === '(Raíz)' || !destino ? '' : destino);
+};
+
+window.moverArchivoA = async function(id, carpeta) {
+  const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
+  if (!a) return;
+  a.carpeta = carpeta || null;
+  if (carpeta) {
+    if (!STATE.home.archivoCarpetas) STATE.home.archivoCarpetas = [];
+    if (!STATE.home.archivoCarpetas.includes(carpeta)) STATE.home.archivoCarpetas.push(carpeta);
+  }
+  try { await saveHomeData(clientId, STATE.home); } catch (e) { alert('No se pudo mover: ' + e.message); return; }
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.eliminarArchivoDirecto = async function(id) {
+  const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
+  if (!a || !confirm(`¿Eliminar "${a.titulo}"?`)) return;
+  STATE.home.archivos = (STATE.home.archivos || []).filter(x => String(x.id) !== String(id));
+  try { await saveHomeData(clientId, STATE.home); } catch (e) { alert('No se pudo eliminar: ' + e.message); return; }
+  renderArchivos(document.getElementById('archivos-col-body'));
+};
+
+window.toggleArchivoMenu = function(id, ev) {
+  if (ev) ev.stopPropagation();
+  document.querySelectorAll('.client-row-menu').forEach(m => { if (m.id !== `armenu-${id}`) m.classList.add('hidden'); });
+  const menu = document.getElementById(`armenu-${id}`);
+  if (!menu) return;
+  const abrir = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden');
+  if (abrir && ev && ev.currentTarget) {
+    const rect = ev.currentTarget.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + 4}px`;
+    let left = rect.right - menu.offsetWidth;
+    if (left < 4) left = 4;
+    menu.style.left = `${left}px`;
+  }
+};
+document.addEventListener('click', () => {
+  document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+});
 
 window.abrirArchivoSubido = async function(id) {
   const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
@@ -3144,6 +3369,7 @@ document.getElementById('saveArchivoBtn').addEventListener('click', async () => 
         id: Date.now(), titulo, desc: document.getElementById('af-desc').value.trim(),
         tipo: tipoDesdeArchivo(subido.filename), subido: true,
         key: subido.key, filename: subido.filename, size: subido.size,
+        carpeta: _archivoCarpetaActual || null,
       };
       STATE.home.archivos.push(obj);
     } catch (e) {
@@ -3162,6 +3388,7 @@ document.getElementById('saveArchivoBtn').addEventListener('click', async () => 
       ...(_editingArchivo || {}), id: _editingArchivo?.id || Date.now(),
       titulo, url, tipo: document.getElementById('af-tipo').value,
       desc: document.getElementById('af-desc').value.trim(),
+      carpeta: _editingArchivo ? (_editingArchivo.carpeta || null) : (_archivoCarpetaActual || null),
     };
     if (_editingArchivo) {
       const i = STATE.home.archivos.findIndex(a => a.id === obj.id);
