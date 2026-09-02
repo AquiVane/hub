@@ -625,8 +625,13 @@
         <div class="form-group" style="grid-column:span 2;">
           <label>📎 Archivos adjuntos</label>
           <div id="tarea-archivos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('tarea-archivo-input').click()">📎 Adjuntar archivo</button>
+          <div id="tarea-archivo-folder-status" style="font-size:11px;color:var(--primary);margin-bottom:4px;"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('tarea-archivo-input').click()">📎 Adjuntar archivo</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('tarea-archivo-folder-input').click()">📁⬆ Subir carpeta</button>
+          </div>
           <input type="file" id="tarea-archivo-input" style="display:none;">
+          <input type="file" id="tarea-archivo-folder-input" webkitdirectory multiple style="display:none;">
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">Se guarda en "Links y Archivos" -- desde acá queda solo el acceso directo. Máximo 50 MB.</span>
         </div>
 

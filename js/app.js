@@ -2608,6 +2608,52 @@ document.getElementById('tarea-archivo-input')?.addEventListener('change', async
   }
 });
 
+// Subir una carpeta entera desde una tarea -- mismo mecanismo que el botón
+// de Links y Archivos (sube TODO a STATE.home.archivos, agrupado en una
+// carpeta con el nombre elegido), pero además deja los accesos directos
+// enganchados a esta tarea, igual que "Adjuntar archivo" con uno solo.
+document.getElementById('tarea-archivo-folder-input')?.addEventListener('change', async (e) => {
+  const files = [...e.target.files].filter(f => !f.name.startsWith('.'));
+  e.target.value = '';
+  if (!files.length) return;
+  const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || 'Carpeta subida';
+  const statusEl = document.getElementById('tarea-archivo-folder-status');
+  if (!STATE.home.archivos) STATE.home.archivos = [];
+  if (!STATE.home.archivoCarpetas) STATE.home.archivoCarpetas = [];
+  if (!STATE.home.archivoCarpetas.includes(folderName)) STATE.home.archivoCarpetas.push(folderName);
+
+  let ok = 0, saltados = 0;
+  const nuevosIds = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (statusEl) statusEl.textContent = `Subiendo ${i + 1}/${files.length}: ${file.name}…`;
+    if (file.size > 50 * 1024 * 1024) { saltados++; continue; }
+    try {
+      const subido = await uploadArchivo(clientId, file);
+      const obj = {
+        id: Date.now() + i, titulo: file.name, desc: '',
+        tipo: tipoDesdeArchivo(subido.filename), subido: true,
+        key: subido.key, filename: subido.filename, size: subido.size,
+        carpeta: folderName,
+      };
+      STATE.home.archivos.push(obj);
+      nuevosIds.push(obj.id);
+      ok++;
+    } catch (err) { saltados++; }
+  }
+  if (statusEl) statusEl.textContent = 'Guardando...';
+  try {
+    await saveHomeData(clientId, STATE.home);
+  } catch (err) {
+    alert('Se subieron los archivos pero no se pudo guardar la lista: ' + err.message);
+  }
+  _tareaArchivosPendientes.push(...nuevosIds);
+  if (statusEl) statusEl.textContent = '';
+  renderTareaArchivosChips();
+  if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+  if (saltados) alert(`Se subieron ${ok} archivo${ok !== 1 ? 's' : ''}. ${saltados} se saltearon (pesan más de 50 MB o falló la subida).`);
+});
+
 window.openTareaModal = function(id, defaultEstado) {
   if (id && user.role === 'client') {
     const tCheck = STATE.tareas.find(t => t.id === id);
