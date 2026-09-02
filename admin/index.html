@@ -2403,9 +2403,14 @@
   };
 
   function misTareasFiltradas(ignorarTab) {
+    // OJO: "|| !i.asignadoEmail" se sacó a propósito -- con eso puesto,
+    // CUALQUIER tarea sin asignar de un cliente le aparecía a TODOS los
+    // colaboradores al mirar "Ver tareas" de cualquiera de ellos (bug
+    // reportado por Vaneh, 02/09). Ver de un colaborador puntual tiene
+    // que mostrar SOLO lo que está asignado a esa persona.
     return _misTareasCache.filter(i =>
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
-      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail) &&
+      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
       (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad)
@@ -2480,8 +2485,8 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
-    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
     if (_misTareasView === 'subtareas') renderMisSubtareasView();
