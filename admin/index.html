@@ -139,6 +139,7 @@
           <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
           <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
         </div>
+        <div id="misSubtareasBox"></div>
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
@@ -2257,6 +2258,7 @@
   };
 
   let _misTareasCache = []; // [{clientId, clientNombre, tipo:'tarea'|'contenido', tarea}]
+  let _misSubtareasCache = []; // [{clientId, clientNombre, tarea (padre), subIndex, sub, personal, subAsignadoEmail}] -- solo subtareas pendientes con asignado
   let _misTareasView = 'kanban';
   const ESTADOS_TAREA = ['Sin empezar', 'En progreso', 'Listo'];
   const ESTADOS_CONTENIDO = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
@@ -2284,6 +2286,7 @@
     const clients = await getAllClients();
     _misTareasClientsCache = clients;
     const items = [];
+    const subtareasItems = [];
     const pseudoClients = [
       { id: '_cosmart', nombre: 'COSMART (interno)' },
       { id: '_personal', nombre: 'Personal' },
@@ -2300,6 +2303,15 @@
           const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
           const uEmail = (user.email || '').toLowerCase();
           const esGerViendoVaneh = uEmail === 'ger@cosmart.com.ar' && asignadoEmail === 'vaneh@cosmart.com.ar';
+          // Las subtareas se listan aparte (ver "Subtareas asignadas a mí" en
+          // Mis tareas) para que un colaborador vea lo suyo aunque la tarea
+          // PADRE esté asignada a otra persona -- por eso esto va antes del
+          // filtro de "tarea personal ajena" de más abajo, que solo aplica a
+          // la tarea en sí, no a sus subtareas.
+          (t.subtareas || []).forEach((s, si) => {
+            if (s.done || !s.asignado?.email) return;
+            subtareasItems.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t, subIndex: si, sub: s, personal: esPersonal, subAsignadoEmail: s.asignado.email.toLowerCase() });
+          });
           if (esPersonal && asignadoEmail !== uEmail && !esGerViendoVaneh) return;
           items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail });
         });
@@ -2311,6 +2323,7 @@
       } catch (e) { console.error('No se pudieron cargar tareas/contenidos de', c.id, e); }
     }));
     _misTareasCache = items;
+    _misSubtareasCache = subtareasItems;
     await poblarMisTareasVerDe();
     poblarMisTareasFiltroCliente();
     renderMisTareas();
@@ -2397,6 +2410,46 @@
     );
   }
 
+  // Mismos filtros que misTareasFiltradas (cliente/vertical/prioridad/tab
+  // heredados de la tarea PADRE) pero mirando el asignado de la subtarea,
+  // no el de la tarea.
+  function misSubtareasFiltradas() {
+    return _misSubtareasCache.filter(i =>
+      (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
+      (!_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
+      (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
+      (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
+      (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad)
+    );
+  }
+
+  window.toggleMiSubtareaPendiente = async function(clientId, tareaId, subIndex) {
+    const item = _misSubtareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.subIndex === subIndex);
+    if (!item) return;
+    item.sub.done = true; // esta caja solo lista pendientes -- tildarla la saca de acá sola
+    await saveTarea(clientId, item.tarea);
+    renderMisTareas();
+  };
+
+  function renderMisSubtareasBox() {
+    const box = document.getElementById('misSubtareasBox');
+    if (!box) return;
+    const visibles = misSubtareasFiltradas();
+    if (!visibles.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `
+      <div class="card" style="padding:14px 16px;margin-bottom:14px;background:#FFFBEB;border:1px solid #fde68a;">
+        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px;">🧩 Subtareas asignadas a mí (${visibles.length})</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          ${visibles.map(i => `
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#1a1a2e;cursor:pointer;">
+              <input type="checkbox" onchange="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" style="margin-top:2px;flex-shrink:0;">
+              <span>${i.sub.titulo}<span style="color:var(--text-muted);"> — de "${i.tarea.titulo}" (${i.personal ? '🏠 Personal' : i.clientNombre})</span></span>
+            </label>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
   const PRIO_ORDEN = { Alta: 0, Media: 1, Baja: 2 };
   function ordenarMisTareas(lista, estaListo) {
     return [...lista].sort((a, b) => {
@@ -2419,7 +2472,9 @@
     const pendientes = visibles.filter(i => !estaListo(i));
     const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
     const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
-    countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total`;
+    const subPendientes = misSubtareasFiltradas().length;
+    countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
+    renderMisSubtareasBox();
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else if (_misTareasView === 'kanban') renderMisTareasKanban();
     else renderMisTareasLista();
