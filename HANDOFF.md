@@ -1,6 +1,15 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-08-30. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-09-02. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## Tareas y Archivos — varios pedidos de Vaneh (02/09)
+
+- **Subtareas**: viven mezcladas con las tareas normales en Kanban/Lista de "Mis tareas" (admin) y del dashboard del cliente -- mismas tarjetas, verde clarito (rosa si vencidas) + etiqueta "SUBTAREA". "Solo subtareas" es un filtro, no una vista aparte. Tildar una subtarea autoguarda al toque (server-side) y si quedan TODAS hechas, la tarea padre pasa sola a "Listo" -- así se refleja en el resumen "Tareas" del Home del cliente, que cuenta por `estado` de la tarea, no mira subtareas.
+- **Drag-and-drop** en los 3 kanban (Mis tareas, Gestión COSMART, Tareas del cliente) estaba roto por un bug real: el guard anti-reapertura del modal tenía `ondragstart="this._dragged=false"` (al revés, debía ser `true`) -- corregido en los 3 lugares. Si en algún momento se copia este patrón de nuevo (`kanban-card` con `draggable`+`onclick` guardado por `_dragged`), OJO con esto.
+- **Buscador de tareas**: por título, en "Mis tareas" (admin, `misTareasBuscar`) y en "Tareas" del cliente (barra superior de esa sección).
+- **Archivos adjuntos en tareas**: el input ya no restringe tipo de archivo (antes bloqueaba .html y otros).
+- **"Links y Archivos" del cliente**: ahora tiene carpetas de UN SOLO NIVEL (`STATE.home.archivoCarpetas` + `archivo.carpeta`, no hay subcarpetas anidadas a propósito), un buscador de archivos (busca en todas las carpetas), un menú "⋮" por archivo (mismo patrón visual que `.client-row-menu` del admin) con Abrir/Editar/Mover a carpeta/Eliminar, y un botón "📁⬆ Subir carpeta" que usa el selector nativo de carpetas del sistema operativo (`<input webkitdirectory>`) -- sube TODOS los archivos de la carpeta elegida (aplanando subcarpetas, porque acá solo hay un nivel) y los agrupa en una carpeta nueva con el nombre de la carpeta original. "Mover a carpeta" usa un `prompt()` simple, no un selector visual -- si Vaneh pide algo más prolijo ahí, es la próxima mejora obvia.
+- **Borrador local de tareas** (dashboard del cliente, `js/app.js`): título, descripción, el comentario sin enviar Y las subtareas que se estén armando/editando se guardan en `localStorage` y se restauran solas si se reabre la tarea sin haber guardado -- pedido explícito porque perder subtareas ya tipeadas era "una paja". Es SOLO local al navegador (no es un draft server-side ni sincroniza entre dispositivos), se borra solo al guardar o eliminar la tarea, o si se aprieta "Descartar borrador" en el cartel que aparece. Los mismos modales del admin (`in-*`/`mt-*`/`nmt-*` en `admin/index.html`) NO tienen este borrador todavía -- si se pide ahí también, replicar el mismo patrón (`tareaDraftKey`/`guardarBorradorTarea`/`restaurarBorradorTarea` en `js/app.js`).
 
 ## ⚠️ MULTI-TENANCY (agencias) — leer esto ANTES de tocar el backend
 

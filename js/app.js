@@ -2681,6 +2681,7 @@ function guardarBorradorTarea() {
     titulo: document.getElementById('tf-titulo').value,
     notas: document.getElementById('tf-notas').innerHTML,
     comentario: document.getElementById('tarea-comment-input')?.value || '',
+    subtareas: _tareaSubtareasPendientes,
   };
   try { localStorage.setItem(tareaDraftKey(editingTarea?.id), JSON.stringify(draft)); } catch (e) {}
 }
@@ -2703,6 +2704,11 @@ function restaurarBorradorTarea(id) {
   if (draft.titulo && draft.titulo !== tituloEl.value) { tituloEl.value = draft.titulo; cambios = true; }
   if (draft.notas && draft.notas !== notasEl.innerHTML) { notasEl.innerHTML = draft.notas; cambios = true; }
   if (comentEl && draft.comentario) { comentEl.value = draft.comentario; cambios = true; }
+  if (Array.isArray(draft.subtareas) && JSON.stringify(draft.subtareas) !== JSON.stringify(_tareaSubtareasPendientes)) {
+    _tareaSubtareasPendientes = draft.subtareas;
+    renderSubtareas(_tareaSubtareasPendientes);
+    cambios = true;
+  }
   if (!cambios) return;
   const aviso = document.getElementById('tarea-borrador-aviso');
   if (aviso) {
@@ -2733,6 +2739,7 @@ window.reasignarSubtarea = function(idx, sel) {
   const email = sel.value;
   const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
   _tareaSubtareasPendientes[idx].asignado = email ? { email, nombre } : null;
+  guardarBorradorTarea();
 };
 
 window.agregarSubtareaInline = function() {
@@ -2744,6 +2751,7 @@ window.agregarSubtareaInline = function() {
   const nombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
   _tareaSubtareasPendientes.push({ titulo, done: false, asignado: email ? { email, nombre } : null });
   renderSubtareas(_tareaSubtareasPendientes);
+  guardarBorradorTarea();
   tituloEl.value = '';
   tituloEl.focus();
 };
@@ -2758,6 +2766,7 @@ window.toggleSubtarea = async function(idx) {
   if (!_tareaSubtareasPendientes[idx]) return;
   _tareaSubtareasPendientes[idx].done = !_tareaSubtareasPendientes[idx].done;
   renderSubtareas(_tareaSubtareasPendientes);
+  guardarBorradorTarea();
   if (!editingTarea) return; // tarea nueva, todavía sin guardar -- nada que persistir aún
   // Autoguardado: si esto esperara al botón "Guardar" de toda la tarea,
   // tildar una subtarea se perdía en cuanto se cerraba el modal sin
@@ -2787,6 +2796,7 @@ window.toggleSubtarea = async function(idx) {
 window.deleteSubtarea = function(idx) {
   _tareaSubtareasPendientes.splice(idx, 1);
   renderSubtareas(_tareaSubtareasPendientes);
+  guardarBorradorTarea();
 };
 
 function closeTareaModal() { document.getElementById('tareaModal').classList.add('hidden'); }
@@ -3112,9 +3122,13 @@ function archivosToolbarHtml() {
   return `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <input type="text" value="${_archivoBusqueda}" oninput="buscarArchivos(this.value)" placeholder="🔎 Buscar archivo..." class="form-control" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;">
-      ${!_archivoBusqueda ? `<button class="btn btn-secondary btn-sm" onclick="crearCarpetaArchivo()" title="Nueva carpeta">📁+</button>` : ''}
+      ${!_archivoBusqueda ? `
+        <button class="btn btn-secondary btn-sm" onclick="crearCarpetaArchivo()" title="Nueva carpeta">📁+</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('af-folder-input').click()" title="Subir una carpeta entera de la compu, con todos los archivos que tenga adentro">📁⬆ Subir carpeta</button>
+      ` : ''}
     </div>
     ${!_archivoBusqueda && _archivoCarpetaActual ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📁 ${_archivoCarpetaActual}</div>` : ''}
+    <div id="af-folder-status" style="font-size:12px;color:var(--primary);margin-bottom:8px;"></div>
   `;
 }
 
@@ -3285,6 +3299,48 @@ window.toggleArchivoMenu = function(id, ev) {
 };
 document.addEventListener('click', () => {
   document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+});
+
+// Subir una carpeta entera de la compu (selector nativo de carpetas vía
+// webkitdirectory) -- como acá las carpetas son de un solo nivel, TODO lo
+// que traiga la carpeta elegida (subcarpetas incluidas) se aplana adentro
+// de una sola carpeta con el nombre de la carpeta raíz elegida.
+document.getElementById('af-folder-input')?.addEventListener('change', async (e) => {
+  const files = [...e.target.files].filter(f => !f.name.startsWith('.'));
+  e.target.value = '';
+  if (!files.length) return;
+  const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || 'Carpeta subida';
+  const statusEl = document.getElementById('af-folder-status');
+  if (!STATE.home.archivos) STATE.home.archivos = [];
+  if (!STATE.home.archivoCarpetas) STATE.home.archivoCarpetas = [];
+  if (!STATE.home.archivoCarpetas.includes(folderName)) STATE.home.archivoCarpetas.push(folderName);
+
+  let ok = 0, saltados = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (statusEl) statusEl.textContent = `Subiendo ${i + 1}/${files.length}: ${file.name}…`;
+    if (file.size > 50 * 1024 * 1024) { saltados++; continue; }
+    try {
+      const subido = await uploadArchivo(clientId, file);
+      STATE.home.archivos.push({
+        id: Date.now() + i, titulo: file.name, desc: '',
+        tipo: tipoDesdeArchivo(subido.filename), subido: true,
+        key: subido.key, filename: subido.filename, size: subido.size,
+        carpeta: folderName,
+      });
+      ok++;
+    } catch (err) { saltados++; }
+  }
+  if (statusEl) statusEl.textContent = 'Guardando...';
+  try {
+    await saveHomeData(clientId, STATE.home);
+  } catch (err) {
+    alert('Se subieron los archivos pero no se pudo guardar la lista: ' + err.message);
+  }
+  _archivoCarpetaActual = folderName;
+  _archivoBusqueda = '';
+  renderArchivos(document.getElementById('archivos-col-body'));
+  if (saltados) alert(`Se subieron ${ok} archivo${ok !== 1 ? 's' : ''}. ${saltados} se saltearon (pesan más de 50 MB o falló la subida).`);
 });
 
 window.abrirArchivoSubido = async function(id) {
