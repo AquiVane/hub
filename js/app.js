@@ -2689,10 +2689,34 @@ window.toggleTfEsProyecto = function() {
   document.getElementById('tf-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Fecha de vencimiento';
 };
 
-window.toggleSubtarea = function(idx) {
+window.toggleSubtarea = async function(idx) {
   if (!_tareaSubtareasPendientes[idx]) return;
   _tareaSubtareasPendientes[idx].done = !_tareaSubtareasPendientes[idx].done;
   renderSubtareas(_tareaSubtareasPendientes);
+  if (!editingTarea) return; // tarea nueva, todavía sin guardar -- nada que persistir aún
+  // Autoguardado: si esto esperara al botón "Guardar" de toda la tarea,
+  // tildar una subtarea se perdía en cuanto se cerraba el modal sin
+  // acordarse de guardar (reportado por Vaneh, 02/09 -- "marqué una
+  // subtarea hecha y no aparece en el listado del cliente"). Además, si
+  // con este cambio quedaron TODAS las subtareas hechas, la tarea pasa
+  // sola a "Listo" para que se refleje en el resumen de Tareas del Home.
+  editingTarea.subtareas = [..._tareaSubtareasPendientes];
+  const todasHechas = editingTarea.subtareas.length > 0 && editingTarea.subtareas.every(s => s.done);
+  if (todasHechas) {
+    editingTarea.estado = 'Listo';
+    editingTarea.visibleParaCliente = true;
+    editingTarea.completadoEn = editingTarea.completadoEn || new Date().toISOString().split('T')[0];
+    const estadoSel = document.getElementById('tf-estado');
+    if (estadoSel) estadoSel.value = 'Listo';
+  }
+  try {
+    const saved = await saveTarea(clientId, editingTarea);
+    const i = STATE.tareas.findIndex(t => t.id === saved.id);
+    if (i > -1) STATE.tareas[i] = saved;
+    editingTarea = saved;
+    updateBadges();
+    if (currentSection === 'tareas') refreshTareasView();
+  } catch (e) { /* si falla la conexión, el check sigue visible en el modal y se reintenta al guardar la tarea entera */ }
 };
 
 window.deleteSubtarea = function(idx) {

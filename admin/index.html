@@ -106,7 +106,7 @@
             <button id="misTareasViewLista" class="btn btn-secondary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
             <button id="misTareasViewKanban" class="btn btn-primary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
             <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
-            <button id="misTareasViewSubtareas" class="btn btn-secondary btn-sm" onclick="setMisTareasView('subtareas')"><i data-lucide="corner-down-right" style="width:14px;height:14px;"></i> Subtareas</button>
+            <button id="misTareasSoloSubtareas" class="btn btn-secondary btn-sm" onclick="toggleSoloSubtareas()"><i data-lucide="corner-down-right" style="width:14px;height:14px;"></i> Solo subtareas</button>
           </div>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
@@ -2394,11 +2394,22 @@
     const btnLista = document.getElementById('misTareasViewLista');
     const btnKanban = document.getElementById('misTareasViewKanban');
     const btnCal = document.getElementById('misTareasViewCal');
-    const btnSub = document.getElementById('misTareasViewSubtareas');
     btnLista.className = 'btn btn-sm ' + (v === 'lista' ? 'btn-primary' : 'btn-secondary');
     btnKanban.className = 'btn btn-sm ' + (v === 'kanban' ? 'btn-primary' : 'btn-secondary');
     btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
-    btnSub.className = 'btn btn-sm ' + (v === 'subtareas' ? 'btn-primary' : 'btn-secondary');
+    renderMisTareas();
+  };
+
+  // "Solo subtareas" es un FILTRO, no una vista aparte -- las subtareas
+  // siempre se ven mezcladas con las tareas normales (mismas tarjetas,
+  // teñidas de verde clarito + etiqueta "SUBTAREA"), tanto en Kanban como
+  // en Lista. Este botón solo oculta las tareas normales para dejar
+  // nada más que las subtareas puestas.
+  let _misTareasSoloSubtareas = false;
+  window.toggleSoloSubtareas = function() {
+    _misTareasSoloSubtareas = !_misTareasSoloSubtareas;
+    const btn = document.getElementById('misTareasSoloSubtareas');
+    btn.className = 'btn btn-sm ' + (_misTareasSoloSubtareas ? 'btn-primary' : 'btn-secondary');
     renderMisTareas();
   };
 
@@ -2433,36 +2444,56 @@
   window.toggleMiSubtareaPendiente = async function(clientId, tareaId, subIndex) {
     const item = _misSubtareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.subIndex === subIndex);
     if (!item) return;
-    item.sub.done = true; // esta caja solo lista pendientes -- tildarla la saca de acá sola
+    item.sub.done = true; // esta lista solo muestra pendientes -- tildarla la saca de acá sola
+    // Si con esta ya quedaron TODAS las subtareas de la tarea hechas, la
+    // tarea pasa sola a "Listo" -- si no, marcar subtareas nunca se ve
+    // reflejado en ningún lado si nadie entra a cambiar el estado a mano
+    // (pedido de Vaneh: que se refleje en el dashboard del cliente).
+    if ((item.tarea.subtareas || []).every(s => s.done)) {
+      item.tarea.estado = 'Listo';
+      item.tarea.visibleParaCliente = true;
+      item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+    }
     await saveTarea(clientId, item.tarea);
     renderMisTareas();
   };
 
-  // Vista aparte (botón "Subtareas" al lado de Lista/Kanban/Calendario) --
-  // mismo estilo de tarjeta que tareaCardHtml, pero teñida de verde clarito
-  // + etiqueta "SUBTAREA" para no confundirla con una tarea real (pedido
-  // explícito de Vaneh: la primera versión metía todo en un choclo de texto
-  // arriba del kanban, sin distinguirse -- esto reemplaza esa caja).
-  function renderMisSubtareasView() {
-    const listEl = document.getElementById('misTareasList');
-    const visibles = misSubtareasFiltradas();
-    if (!visibles.length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🧩</div><h3>Sin subtareas asignadas</h3><p>Cuando te asignen una subtarea dentro de una tarea (aunque la tarea sea de otra persona), va a aparecer acá.</p></div>`;
-      return;
-    }
-    listEl.innerHTML = visibles.map(i => {
-      const idxPadre = _misTareasCache.findIndex(x => x.clientId === i.clientId && x.tarea.id === i.tarea.id);
-      const clickPadre = idxPadre > -1 ? ` onclick="openMisTareaModal(${idxPadre})"` : '';
-      return `
-      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#F0FDF4;border-color:#bbf7d0;">
-        <button onclick="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" title="Marcar como hecha" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid #10b981;background:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;"></button>
-        <div style="flex:1;min-width:160px;${clickPadre ? 'cursor:pointer;' : ''}"${clickPadre}>
-          <div style="font-size:13px;font-weight:600;">${i.sub.titulo}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"</div>
-        </div>
-        <span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;flex-shrink:0;">SUBTAREA</span>
-      </div>`;
-    }).join('');
+  // Las subtareas se ven MEZCLADAS con las tareas normales, no en una vista
+  // aparte -- mismo tamaño/layout de tarjeta que tareaCardHtml/kanban-card,
+  // pero teñidas de verde clarito (rosa si están vencidas, igual que una
+  // tarea vencida) + etiqueta "SUBTAREA". El botón "Solo subtareas" filtra
+  // en vez de cambiar de vista (ver toggleSoloSubtareas).
+  function subtareaCardHtml(i) {
+    const idxPadre = _misTareasCache.findIndex(x => x.clientId === i.clientId && x.tarea.id === i.tarea.id);
+    const clickPadre = idxPadre > -1 ? ` onclick="openMisTareaModal(${idxPadre})"` : '';
+    const fecha = i.tarea.vencimiento || i.tarea.fechaPub || '';
+    const atraso = diasDeAtraso(fecha);
+    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    const bg = atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : 'background:#F0FDF4;border-color:#bbf7d0;';
+    return `
+    <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${bg}">
+      <button onclick="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" title="Marcar como hecha" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid #10b981;background:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;"></button>
+      <div style="flex:1;min-width:160px;${clickPadre ? 'cursor:pointer;' : ''}"${clickPadre}>
+        <div style="font-size:13px;font-weight:600;">${i.sub.titulo}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
+      </div>
+      ${i.tarea.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[i.tarea.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${i.tarea.prioridad}</span>` : ''}
+      <span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;flex-shrink:0;">SUBTAREA</span>
+    </div>`;
+  }
+
+  function subtareaKanbanCardHtml(i) {
+    const idxPadre = _misTareasCache.findIndex(x => x.clientId === i.clientId && x.tarea.id === i.tarea.id);
+    const fecha = i.tarea.vencimiento || i.tarea.fechaPub || '';
+    const atraso = diasDeAtraso(fecha);
+    const bg = atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : 'background:#F0FDF4;border-color:#bbf7d0;';
+    return `
+    <div class="kanban-card" ${idxPadre > -1 ? `onclick="openMisTareaModal(${idxPadre})" style="cursor:pointer;${bg}"` : `style="${bg}"`}>
+      <div class="kanban-card-title">${i.personal ? '🏠 ' : ''}${i.sub.titulo}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}</div>
+      ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
+      <div style="margin-top:6px;"><span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">SUBTAREA</span></div>
+    </div>`;
   }
 
   const PRIO_ORDEN = { Alta: 0, Media: 1, Baja: 2 };
@@ -2489,8 +2520,7 @@
     const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
-    if (_misTareasView === 'subtareas') renderMisSubtareasView();
-    else if (_misTareasView === 'calendario') renderMisTareasCalendario();
+    if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else if (_misTareasView === 'kanban') renderMisTareasKanban();
     else renderMisTareasLista();
   }
@@ -2525,20 +2555,36 @@
   function renderMisTareasLista() {
     const listEl = document.getElementById('misTareasList');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
-    const visibles = misTareasFiltradas();
-    if (!visibles.length) {
+    const visibles = _misTareasSoloSubtareas ? [] : misTareasFiltradas();
+    const subVisibles = misSubtareasFiltradas();
+    if (!visibles.length && !subVisibles.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo${_misTareasTab === 'personal' ? ' personal' : ' de un cliente o de COSMART'}, va a aparecer acá.</p></div>`;
       return;
     }
+    // Las subtareas (siempre pendientes -- una hecha se saca sola del
+    // caché) van agrupadas junto con las tareas pendientes, antes de las
+    // ya hechas, para no romper el orden "lo pendiente primero" existente.
     const ordenados = ordenarMisTareas(visibles, estaListo);
-    listEl.innerHTML = ordenados.map((item) => tareaCardHtml(item, _misTareasCache.indexOf(item), estaListo)).join('');
+    const pendientesHtml = ordenados.filter(i => !estaListo(i)).map((item) => tareaCardHtml(item, _misTareasCache.indexOf(item), estaListo)).join('');
+    const listosHtml = ordenados.filter(i => estaListo(i)).map((item) => tareaCardHtml(item, _misTareasCache.indexOf(item), estaListo)).join('');
+    const subsHtml = [...subVisibles].sort((a, b) => {
+      if (_misTareasOrden === 'prioridad') {
+        const diff = (PRIO_ORDEN[a.tarea.prioridad] ?? 3) - (PRIO_ORDEN[b.tarea.prioridad] ?? 3);
+        if (diff !== 0) return diff;
+      }
+      const aFecha = (a.tarea.vencimiento || '9999') + 'T' + (a.tarea.hora || '00:00');
+      const bFecha = (b.tarea.vencimiento || '9999') + 'T' + (b.tarea.hora || '00:00');
+      return aFecha > bFecha ? 1 : -1;
+    }).map(subtareaCardHtml).join('');
+    listEl.innerHTML = pendientesHtml + subsHtml + listosHtml;
   }
 
   function renderMisTareasKanban() {
     const listEl = document.getElementById('misTareasList');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
-    const visibles = misTareasFiltradas();
-    if (!visibles.length) {
+    const visibles = _misTareasSoloSubtareas ? [] : misTareasFiltradas();
+    const subVisibles = misSubtareasFiltradas();
+    if (!visibles.length && !subVisibles.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas ${_misTareasTab === 'personal' ? 'personales' : 'laborales'}</h3><p>Cuando te asignen algo, va a aparecer acá.</p></div>`;
       return;
     }
@@ -2549,12 +2595,15 @@
     ];
     listEl.innerHTML = `<div class="kanban-board">${cols.map(col => {
       const items = ordenarMisTareas(visibles.filter(col.match), estaListo);
+      // Una subtarea no tiene "estado" propio -- se ubica en la misma
+      // columna en la que está su tarea padre en este momento.
+      const subs = subVisibles.filter(i => (i.tarea.estado || 'Sin empezar') === col.key);
       return `
       <div class="kanban-col" style="flex:1;max-width:none;">
         <div class="kanban-col-header">
           <span class="kanban-col-dot" style="background:${col.color};"></span>
           <span class="col-title">${col.key}</span>
-          <span class="col-count">${items.length}</span>
+          <span class="col-count">${items.length + subs.length}</span>
         </div>
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(item => {
@@ -2572,6 +2621,7 @@
               ${atraso > 0 ? `<div style="font-size:10px;color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
           }).join('')}
+          ${subs.map(subtareaKanbanCardHtml).join('')}
         </div>
       </div>`;
     }).join('')}</div>`;
