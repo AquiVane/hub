@@ -614,6 +614,17 @@
           </div>
         </div>
 
+        <!-- Archivos adjuntos -- se suben directo a "Links y Archivos", acá
+             solo queda un acceso directo (evita duplicar el mismo archivo
+             pegado en cada tarea, y queda centralizado para el cliente). -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>📎 Archivos adjuntos</label>
+          <div id="tarea-archivos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('tarea-archivo-input').click()">📎 Adjuntar archivo</button>
+          <input type="file" id="tarea-archivo-input" style="display:none;" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">Se guarda en "Links y Archivos" -- desde acá queda solo el acceso directo. Máximo 50 MB.</span>
+        </div>
+
         <!-- Subtareas -->
         <div class="form-group" style="grid-column:span 2;" id="subtareas-section">
           <label>Subtareas</label>

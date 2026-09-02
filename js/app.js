@@ -2496,6 +2496,7 @@ function renderTareasCalendario(container) {
 // ── Rich Text Editor helpers ──
 let _tareaImgList = [];
 let _tareaSubtareasPendientes = [];
+let _tareaArchivosPendientes = []; // ids de STATE.home.archivos adjuntados a esta tarea
 
 window.rteCmd = function(cmd) {
   if (/^h[1-3]$/.test(cmd)) {
@@ -2537,6 +2538,56 @@ function addTareaImgFromFile(file) {
   reader.readAsDataURL(file);
 }
 
+// \u2500\u2500 Archivos adjuntos de una tarea -- viven en STATE.home.archivos (la
+// misma lista que "Links y Archivos"), ac\u00e1 solo se guarda el id. Subir un
+// archivo lo guarda YA en Archivos (persiste al toque, no espera a que se
+// guarde la tarea) -- as\u00ed queda centralizado y no duplicado por tarea.
+function renderTareaArchivosChips() {
+  const box = document.getElementById('tarea-archivos-list');
+  if (!box) return;
+  const archivos = STATE.home.archivos || [];
+  box.innerHTML = _tareaArchivosPendientes.map((id, i) => {
+    const a = archivos.find(x => String(x.id) === String(id));
+    if (!a) return '';
+    const abrir = a.subido ? `abrirArchivoSubido('${a.id}')` : `window.open('${(a.url || '').replace(/'/g, "\\'")}','_blank')`;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="${abrir}">${a.titulo}</span>
+      <button type="button" onclick="quitarTareaArchivo(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar de esta tarea (el archivo sigue en Links y Archivos)">\u00d7</button>
+    </div>`;
+  }).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin archivos adjuntos.</p>';
+  setTimeout(refreshIcons, 30);
+}
+
+window.quitarTareaArchivo = function(i) {
+  _tareaArchivosPendientes.splice(i, 1);
+  renderTareaArchivosChips();
+};
+
+document.getElementById('tarea-archivo-input')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > 50 * 1024 * 1024) { alert('El archivo supera los 50 MB. Para archivos m\u00e1s pesados us\u00e1 un link de Drive/Dropbox desde "Links y Archivos".'); return; }
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    if (!STATE.home.archivos) STATE.home.archivos = [];
+    const obj = {
+      id: Date.now(), titulo: file.name, desc: '',
+      tipo: tipoDesdeArchivo(subido.filename), subido: true,
+      key: subido.key, filename: subido.filename, size: subido.size,
+    };
+    STATE.home.archivos.push(obj);
+    await saveHomeData(clientId, STATE.home);
+    _tareaArchivosPendientes.push(obj.id);
+    renderTareaArchivosChips();
+    if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+  } catch (err) {
+    alert('Error al subir el archivo: ' + err.message);
+  }
+});
+
 window.openTareaModal = function(id, defaultEstado) {
   if (id && user.role === 'client') {
     const tCheck = STATE.tareas.find(t => t.id === id);
@@ -2566,6 +2617,9 @@ window.openTareaModal = function(id, defaultEstado) {
   // Imágenes
   _tareaImgList = t.imagenes ? [...t.imagenes] : [];
   renderTareaImgThumbs();
+  // Archivos adjuntos (referencias a STATE.home.archivos, no el archivo en sí)
+  _tareaArchivosPendientes = t.archivosAdjuntos ? [...t.archivosAdjuntos] : [];
+  renderTareaArchivosChips();
   document.getElementById('deleteTareaBtn').style.display = editingTarea ? '' : 'none';
   document.getElementById('archiveTareaBtn').style.display = editingTarea ? '' : 'none';
   const tfAsignado = document.getElementById('tf-asignado');
@@ -2686,7 +2740,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
