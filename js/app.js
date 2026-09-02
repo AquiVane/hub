@@ -21,6 +21,7 @@ let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [],
 let currentSection = 'home';
 let _tareasView = 'kanban';
 let _tareasBusqueda = '';
+let _tareasFiltroAsignado = ''; // '' = todos, '_sin_asignar' = sin asignar, o el email de un colaborador/usuario del equipo
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -223,6 +224,13 @@ function renderSection(sec) {
     searchInput.value = _tareasBusqueda;
     searchInput.oninput = (e) => { _tareasBusqueda = e.target.value.trim().toLowerCase(); refreshTareasView(); };
     actions.appendChild(searchInput);
+    const filtroAsignado = document.createElement('select');
+    filtroAsignado.className = 'form-control';
+    filtroAsignado.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
+    filtroAsignado.innerHTML = '<option value="">👤 Todos</option>' + opcionesFiltroAsignadoTareas() + '<option value="_sin_asignar">Sin asignar</option>';
+    filtroAsignado.value = _tareasFiltroAsignado;
+    filtroAsignado.onchange = (e) => { _tareasFiltroAsignado = e.target.value; refreshTareasView(); };
+    actions.appendChild(filtroAsignado);
     const viewKanbanBtn = document.createElement('button');
     viewKanbanBtn.className = 'btn btn-sm ' + (_tareasView === 'kanban' ? 'btn-primary' : 'btn-secondary');
     viewKanbanBtn.innerHTML = '<i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban';
@@ -2385,6 +2393,8 @@ function renderTareas(container) {
   ];
   let tareasBase = tareasVisibles(STATE.tareas);
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
+  if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
+    _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
   const archivadas = tareasBase.filter(t => t.archivado);
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
@@ -2468,6 +2478,8 @@ function renderTareasCalendario(container) {
   let viewYear = hoy.getFullYear(), viewMonth = hoy.getMonth();
   let tareasBase = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
+  if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
+    _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
 
   function drawCal() {
     const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -4482,6 +4494,23 @@ function getAsignarOptions(currentEmail) {
   return '<option value="">Sin asignar</option>' + unique.map(u =>
     `<option value="${u.email}" data-nombre="${u.nombre}" ${currentEmail === u.email ? 'selected' : ''}>${u.nombre} — ${u.email}</option>`
   ).join('');
+}
+
+// Mismo equipo que getAsignarOptions (cliente + colaboradores agregados
+// en "Equipo") pero para el filtro de Tareas -- sin el "Sin asignar" de
+// arriba (ese es la opción por defecto al asignar; acá va aparte, al
+// final, como filtro explícito).
+function opcionesFiltroAsignadoTareas() {
+  const options = [];
+  if (STATE.client.email) options.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  (STATE.client.usuarios || []).forEach(u => options.push(u));
+  const seen = new Set();
+  const unique = options.filter(u => {
+    if (!u.email || seen.has(u.email.toLowerCase())) return false;
+    seen.add(u.email.toLowerCase());
+    return true;
+  });
+  return unique.map(u => `<option value="${u.email}">${u.nombre}</option>`).join('');
 }
 
 function getMentionUsers() {
