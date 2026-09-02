@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="../app/favicon-cosmart.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/style.css?v=2">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -2005,10 +2005,10 @@
   async function renderInSubtareas() {
     const list = document.getElementById('in-subtareas-list');
     const filas = await Promise.all(_inSubtareas.map(async (s, i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
-        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;">
-        <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
+        <span style="flex:1;min-width:0;font-size:13px;word-break:break-word;overflow-wrap:anywhere;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
+        <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -2784,10 +2784,10 @@
   async function renderMiSubtareas() {
     const list = document.getElementById('mt-subtareas-list');
     const filas = await Promise.all(_mtSubtareas.map(async (s, i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
-        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;">
-        <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
+        <span style="flex:1;min-width:0;font-size:13px;word-break:break-word;overflow-wrap:anywhere;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
+        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarMiSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -2912,10 +2912,10 @@
   async function renderNmtSubtareas() {
     const list = document.getElementById('nmt-subtareas-list');
     const filas = await Promise.all(_nmtSubtareas.map(async (s, i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
-        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleNmtSubtarea(${i})" style="flex-shrink:0;">
-        <span style="flex:1;font-size:13px;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+        <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleNmtSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
+        <span style="flex:1;min-width:0;font-size:13px;word-break:break-word;overflow-wrap:anywhere;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
+        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarNmtSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
