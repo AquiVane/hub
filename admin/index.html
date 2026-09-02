@@ -2451,6 +2451,10 @@
     const item = _misSubtareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.subIndex === subIndex);
     if (!item) return;
     item.sub.done = true; // esta lista solo muestra pendientes -- tildarla la saca de acá sola
+    // completadoEn en la subtarea es lo que la hace aparecer en "Trabajo
+    // realizado" del mes en el Home del cliente (ver getTrabajoRealizadoMes
+    // en js/app.js) -- sin fecha no hay forma de saber en qué mes se hizo.
+    item.sub.completadoEn = new Date().toISOString().split('T')[0];
     // Si con esta ya quedaron TODAS las subtareas de la tarea hechas, la
     // tarea pasa sola a "Listo" -- si no, marcar subtareas nunca se ve
     // reflejado en ningún lado si nadie entra a cambiar el estado a mano
@@ -2810,6 +2814,9 @@
   window.toggleMiSubtarea = function(i) {
     if (!_mtSubtareas[i]) return;
     _mtSubtareas[i].done = !_mtSubtareas[i].done;
+    // completadoEn es lo que hace que la subtarea aparezca en "Trabajo
+    // realizado" del mes en el Home del cliente.
+    _mtSubtareas[i].completadoEn = _mtSubtareas[i].done ? new Date().toISOString().split('T')[0] : null;
     renderMiSubtareas();
   };
   window.eliminarMiSubtarea = function(i) {
@@ -2935,6 +2942,7 @@
   window.toggleNmtSubtarea = function(i) {
     if (!_nmtSubtareas[i]) return;
     _nmtSubtareas[i].done = !_nmtSubtareas[i].done;
+    _nmtSubtareas[i].completadoEn = _nmtSubtareas[i].done ? new Date().toISOString().split('T')[0] : null;
     renderNmtSubtareas();
   };
   window.eliminarNmtSubtarea = function(i) {

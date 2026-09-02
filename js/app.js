@@ -617,8 +617,17 @@ function getTrabajoRealizadoMes(year, month) {
   const inicioMes = new Date(year, month, 1);
   const finMes = new Date(year, month + 1, 0);
   const items = [];
-  tareasVisibles(STATE.tareas).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
+  const tareasBase = tareasVisibles(STATE.tareas);
+  tareasBase.filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
     items.push({ tipo: 'Tarea', icon: '✅', titulo: t.titulo, fecha: t.completadoEn }));
+  // Subtareas completadas -- avance parcial de una tarea que puede seguir
+  // abierta (no hace falta esperar a que TODA la tarea cierre para que el
+  // cliente vea que se está avanzando), pedido explícito de Vaneh.
+  tareasBase.forEach(t => (t.subtareas || []).forEach(s => {
+    if (s.done && s.completadoEn && s.completadoEn.startsWith(prefix)) {
+      items.push({ tipo: 'Subtarea', icon: '✅', titulo: `${s.titulo} — de "${t.titulo}"`, fecha: s.completadoEn });
+    }
+  }));
   (STATE.home.webTareas || []).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
     items.push({ tipo: 'Sitio web', icon: '🌐', titulo: t.titulo, fecha: t.completadoEn }));
   STATE.contenidos.filter(c => c.estado === 'Publicado' && c.fechaPub && c.fechaPub.startsWith(prefix)).forEach(c =>
@@ -2764,7 +2773,12 @@ window.toggleTfEsProyecto = function() {
 
 window.toggleSubtarea = async function(idx) {
   if (!_tareaSubtareasPendientes[idx]) return;
-  _tareaSubtareasPendientes[idx].done = !_tareaSubtareasPendientes[idx].done;
+  const s = _tareaSubtareasPendientes[idx];
+  s.done = !s.done;
+  // completadoEn en la subtarea (no solo el booleano "done") es lo que
+  // permite que aparezca en "Trabajo realizado" del mes en el Home del
+  // cliente -- sin fecha no hay forma de saber en qué mes se hizo.
+  s.completadoEn = s.done ? new Date().toISOString().split('T')[0] : null;
   renderSubtareas(_tareaSubtareasPendientes);
   guardarBorradorTarea();
   if (!editingTarea) return; // tarea nueva, todavía sin guardar -- nada que persistir aún
