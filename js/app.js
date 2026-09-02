@@ -622,8 +622,13 @@ function getTrabajoRealizadoMes(year, month) {
     items.push({ tipo: 'Tarea', icon: '✅', titulo: t.titulo, fecha: t.completadoEn }));
   // Subtareas completadas -- avance parcial de una tarea que puede seguir
   // abierta (no hace falta esperar a que TODA la tarea cierre para que el
-  // cliente vea que se está avanzando), pedido explícito de Vaneh.
-  tareasBase.forEach(t => (t.subtareas || []).forEach(s => {
+  // cliente vea que se está avanzando), pedido explícito de Vaneh. A
+  // propósito NO usa tareasBase/tareasVisibles acá: una tarea interna
+  // (visibleParaCliente=false) puede seguir sin mostrarse entera, pero el
+  // avance de sus subtareas sí tiene que verse -- si no, marcar una
+  // subtarea de una tarea todavía no marcada "visible para el cliente"
+  // nunca aparecía en Trabajo realizado.
+  STATE.tareas.filter(t => !t.archivado).forEach(t => (t.subtareas || []).forEach(s => {
     if (s.done && s.completadoEn && s.completadoEn.startsWith(prefix)) {
       items.push({ tipo: 'Subtarea', icon: '✅', titulo: `${s.titulo} — de "${t.titulo}"`, fecha: s.completadoEn });
     }
@@ -2736,7 +2741,15 @@ function guardarBorradorTarea() {
     titulo: document.getElementById('tf-titulo').value,
     notas: document.getElementById('tf-notas').innerHTML,
     comentario: document.getElementById('tarea-comment-input')?.value || '',
-    subtareas: _tareaSubtareasPendientes,
+    // Las subtareas de una tarea EXISTENTE ya se autoguardan solas contra
+    // el servidor apenas se tildan (ver toggleSubtarea) -- el servidor
+    // manda. Guardarlas también acá era contraproducente: un borrador
+    // viejo de una sesión de prueba anterior (nunca se borra hasta
+    // apretar "Guardar") terminaba PISANDO el progreso real ya guardado
+    // apenas se reabría la tarea (bug reportado por Vaneh, 02/09 -- las
+    // subtareas volvían a aparecer sin tildar). Para una tarea NUEVA (sin
+    // guardar todavía) sí hace falta, porque ahí no hay nada persistido.
+    subtareas: editingTarea ? undefined : _tareaSubtareasPendientes,
   };
   try { localStorage.setItem(tareaDraftKey(editingTarea?.id), JSON.stringify(draft)); } catch (e) {}
 }
@@ -2759,7 +2772,10 @@ function restaurarBorradorTarea(id) {
   if (draft.titulo && draft.titulo !== tituloEl.value) { tituloEl.value = draft.titulo; cambios = true; }
   if (draft.notas && draft.notas !== notasEl.innerHTML) { notasEl.innerHTML = draft.notas; cambios = true; }
   if (comentEl && draft.comentario) { comentEl.value = draft.comentario; cambios = true; }
-  if (Array.isArray(draft.subtareas) && JSON.stringify(draft.subtareas) !== JSON.stringify(_tareaSubtareasPendientes)) {
+  // Solo para una tarea NUEVA -- en una existente las subtareas ya viven
+  // guardadas en el servidor (autoguardado), restaurar acá un borrador
+  // viejo pisaría progreso real ya persistido. Ver guardarBorradorTarea.
+  if (!id && Array.isArray(draft.subtareas) && JSON.stringify(draft.subtareas) !== JSON.stringify(_tareaSubtareasPendientes)) {
     _tareaSubtareasPendientes = draft.subtareas;
     renderSubtareas(_tareaSubtareasPendientes);
     cambios = true;
