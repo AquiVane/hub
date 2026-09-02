@@ -618,8 +618,20 @@ function getTrabajoRealizadoMes(year, month) {
   const finMes = new Date(year, month + 1, 0);
   const items = [];
   const tareasBase = tareasVisibles(STATE.tareas);
-  tareasBase.filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
-    items.push({ tipo: 'Tarea', icon: '✅', titulo: t.titulo, fecha: t.completadoEn }));
+  // Una tarea recurrente ya reactivada (ver reactivarTareasRecurrentes en
+  // el worker) vuelve a tener completadoEn en null -- el completado de
+  // este mes puede vivir en historialCompletados en vez del campo "en
+  // vivo". Pedido de Vaneh: ese historial tiene que verse acá y en el
+  // informe mensual, si no "no hay cómo mostrarlo" una vez que se
+  // reactiva. El historial no se filtra por visibleParaCliente porque es
+  // un hecho pasado (si se completó, en su momento sí se mostró).
+  tareasBase.forEach(t => {
+    const fechas = [];
+    if (t.estado === 'Listo' && t.completadoEn) fechas.push(t.completadoEn);
+    (t.historialCompletados || []).forEach(f => fechas.push(f));
+    fechas.filter(f => f && f.startsWith(prefix)).forEach(f =>
+      items.push({ tipo: 'Tarea', icon: '✅', titulo: t.titulo, fecha: f }));
+  });
   // Subtareas completadas -- avance parcial de una tarea que puede seguir
   // abierta (no hace falta esperar a que TODA la tarea cierre para que el
   // cliente vea que se está avanzando), pedido explícito de Vaneh. A
@@ -629,9 +641,11 @@ function getTrabajoRealizadoMes(year, month) {
   // subtarea de una tarea todavía no marcada "visible para el cliente"
   // nunca aparecía en Trabajo realizado.
   STATE.tareas.filter(t => !t.archivado).forEach(t => (t.subtareas || []).forEach(s => {
-    if (s.done && s.completadoEn && s.completadoEn.startsWith(prefix)) {
-      items.push({ tipo: 'Subtarea', icon: '✅', titulo: `${s.titulo} — de "${t.titulo}"`, fecha: s.completadoEn });
-    }
+    const fechasSub = [];
+    if (s.done && s.completadoEn) fechasSub.push(s.completadoEn);
+    (s.historialCompletados || []).forEach(f => fechasSub.push(f));
+    fechasSub.filter(f => f && f.startsWith(prefix)).forEach(f =>
+      items.push({ tipo: 'Subtarea', icon: '✅', titulo: `${s.titulo} — de "${t.titulo}"`, fecha: f }));
   }));
   (STATE.home.webTareas || []).filter(t => t.estado === 'Listo' && t.completadoEn && t.completadoEn.startsWith(prefix)).forEach(t =>
     items.push({ tipo: 'Sitio web', icon: '🌐', titulo: t.titulo, fecha: t.completadoEn }));
