@@ -4103,18 +4103,30 @@ document.getElementById('confirmImportCampanaBtn').addEventListener('click', asy
 // ──────────────────────────────────────────────────────
 // KANBAN DRAG & DROP
 // ──────────────────────────────────────────────────────
-// Auto-scroll de la página mientras se arrastra una tarjeta cerca del
-// borde de la pantalla -- sin esto, para mover una tarjeta a otra
-// columna hacía falta scrollear a mano hasta que ambas entraran en
-// pantalla a la vez (pedido de Vaneh, 02/09). Se registra UNA sola vez
-// acá (no adentro de initKanbanDrag, que se llama en cada render) para
-// no acumular listeners.
+// Auto-scroll mientras se arrastra una tarjeta cerca del borde -- sin
+// esto, para mover una tarjeta a otra columna hacía falta scrollear a
+// mano hasta que ambas entraran en pantalla a la vez (pedido de Vaneh,
+// 02/09). OJO: el layout de esta app NO scrollea la ventana -- .layout
+// tiene overflow:hidden y el que scrollea de verdad es .content (ver
+// css/style.css), así que window.scrollBy() no hacía nada (primer
+// intento fallido). Hay que mover .content (vertical) y .kanban-board
+// (horizontal, cuando hay más columnas de las que entran en pantalla).
+// Se registra UNA sola vez acá (no adentro de initKanbanDrag, que se
+// llama en cada render) para no acumular listeners.
 (function habilitarAutoScrollKanban() {
   const MARGEN = 70, VELOCIDAD = 16;
   document.addEventListener('dragover', (e) => {
-    if (!e.target.closest?.('.kanban-cards')) return;
-    if (e.clientY < MARGEN) window.scrollBy(0, -VELOCIDAD);
-    else if (e.clientY > window.innerHeight - MARGEN) window.scrollBy(0, VELOCIDAD);
+    const board = e.target.closest?.('.kanban-board');
+    if (!board) return;
+    const scroller = board.closest('.content') || document.scrollingElement;
+    if (scroller) {
+      const r = scroller.getBoundingClientRect();
+      if (e.clientY < r.top + MARGEN) scroller.scrollTop -= VELOCIDAD;
+      else if (e.clientY > r.bottom - MARGEN) scroller.scrollTop += VELOCIDAD;
+    }
+    const br = board.getBoundingClientRect();
+    if (e.clientX < br.left + MARGEN) board.scrollLeft -= VELOCIDAD;
+    else if (e.clientX > br.right - MARGEN) board.scrollLeft += VELOCIDAD;
   });
 })();
 
