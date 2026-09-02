@@ -106,6 +106,7 @@
             <button id="misTareasViewLista" class="btn btn-secondary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
             <button id="misTareasViewKanban" class="btn btn-primary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
             <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
+            <button id="misTareasViewSubtareas" class="btn btn-secondary btn-sm" onclick="setMisTareasView('subtareas')"><i data-lucide="corner-down-right" style="width:14px;height:14px;"></i> Subtareas</button>
           </div>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
@@ -139,7 +140,6 @@
           <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
           <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
         </div>
-        <div id="misSubtareasBox"></div>
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
@@ -2394,9 +2394,11 @@
     const btnLista = document.getElementById('misTareasViewLista');
     const btnKanban = document.getElementById('misTareasViewKanban');
     const btnCal = document.getElementById('misTareasViewCal');
+    const btnSub = document.getElementById('misTareasViewSubtareas');
     btnLista.className = 'btn btn-sm ' + (v === 'lista' ? 'btn-primary' : 'btn-secondary');
     btnKanban.className = 'btn btn-sm ' + (v === 'kanban' ? 'btn-primary' : 'btn-secondary');
     btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
+    btnSub.className = 'btn btn-sm ' + (v === 'subtareas' ? 'btn-primary' : 'btn-secondary');
     renderMisTareas();
   };
 
@@ -2431,23 +2433,31 @@
     renderMisTareas();
   };
 
-  function renderMisSubtareasBox() {
-    const box = document.getElementById('misSubtareasBox');
-    if (!box) return;
+  // Vista aparte (botón "Subtareas" al lado de Lista/Kanban/Calendario) --
+  // mismo estilo de tarjeta que tareaCardHtml, pero teñida de verde clarito
+  // + etiqueta "SUBTAREA" para no confundirla con una tarea real (pedido
+  // explícito de Vaneh: la primera versión metía todo en un choclo de texto
+  // arriba del kanban, sin distinguirse -- esto reemplaza esa caja).
+  function renderMisSubtareasView() {
+    const listEl = document.getElementById('misTareasList');
     const visibles = misSubtareasFiltradas();
-    if (!visibles.length) { box.innerHTML = ''; return; }
-    box.innerHTML = `
-      <div class="card" style="padding:14px 16px;margin-bottom:14px;background:#FFFBEB;border:1px solid #fde68a;">
-        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px;">🧩 Subtareas asignadas a mí (${visibles.length})</div>
-        <div style="display:flex;flex-direction:column;gap:7px;">
-          ${visibles.map(i => `
-            <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#1a1a2e;cursor:pointer;">
-              <input type="checkbox" onchange="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" style="margin-top:2px;flex-shrink:0;">
-              <span>${i.sub.titulo}<span style="color:var(--text-muted);"> — de "${i.tarea.titulo}" (${i.personal ? '🏠 Personal' : i.clientNombre})</span></span>
-            </label>
-          `).join('')}
+    if (!visibles.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🧩</div><h3>Sin subtareas asignadas</h3><p>Cuando te asignen una subtarea dentro de una tarea (aunque la tarea sea de otra persona), va a aparecer acá.</p></div>`;
+      return;
+    }
+    listEl.innerHTML = visibles.map(i => {
+      const idxPadre = _misTareasCache.findIndex(x => x.clientId === i.clientId && x.tarea.id === i.tarea.id);
+      const clickPadre = idxPadre > -1 ? ` onclick="openMisTareaModal(${idxPadre})"` : '';
+      return `
+      <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#F0FDF4;border-color:#bbf7d0;">
+        <button onclick="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" title="Marcar como hecha" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid #10b981;background:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;"></button>
+        <div style="flex:1;min-width:160px;${clickPadre ? 'cursor:pointer;' : ''}"${clickPadre}>
+          <div style="font-size:13px;font-weight:600;">${i.sub.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"</div>
         </div>
+        <span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;flex-shrink:0;">SUBTAREA</span>
       </div>`;
+    }).join('');
   }
 
   const PRIO_ORDEN = { Alta: 0, Media: 1, Baja: 2 };
@@ -2474,8 +2484,8 @@
     const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe || !i.asignadoEmail)).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
-    renderMisSubtareasBox();
-    if (_misTareasView === 'calendario') renderMisTareasCalendario();
+    if (_misTareasView === 'subtareas') renderMisSubtareasView();
+    else if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else if (_misTareasView === 'kanban') renderMisTareasKanban();
     else renderMisTareasLista();
   }
