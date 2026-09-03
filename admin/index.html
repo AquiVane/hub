@@ -362,6 +362,20 @@
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🤖 Asistente Claude</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Conectá tu propia cuenta de Claude (Anthropic) para tener un asistente disponible en todo el Hub, con el uso pagado por vos -- se usa solo la clave de tu agencia, nunca una compartida. Conseguila en <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="form-group" style="margin:0;flex:1;min-width:220px;">
+                <label style="font-size:11px;">API key (empieza con sk-ant-)</label>
+                <input type="password" id="claudeApiKeyInput" class="form-control" placeholder="sk-ant-...">
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="guardarClaudeApiKey()">Guardar</button>
+            </div>
+            <p id="claude-config-status" style="font-size:12px;margin-top:10px;"></p>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>Numeración de tareas</h2></div>
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
@@ -1316,7 +1330,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1427,6 +1441,7 @@
     if (sec === 'agencias') loadAgencias();
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
+    if (sec === 'config') cargarClaudeConfigStatus();
   };
 
   function fmtDateAct(iso) {
@@ -4963,6 +4978,77 @@
     if (user.role === 'admin') loadColaboradores().catch(() => {});
   }
 
+  // ── Asistente Claude (propio de cada agencia) ────────────────────
+  async function cargarClaudeConfigStatus() {
+    const el = document.getElementById('claude-config-status');
+    if (!el) return;
+    try {
+      const { configurada } = await getClaudeConfig();
+      el.textContent = configurada ? '✓ Conectado' : 'Todavía no conectaste tu clave.';
+      el.style.color = configurada ? '#10b981' : 'var(--text-muted)';
+    } catch (e) {}
+  }
+  window.guardarClaudeApiKey = async function() {
+    const input = document.getElementById('claudeApiKeyInput');
+    const apiKey = input.value.trim();
+    if (!apiKey) { alert('Pegá tu API key.'); return; }
+    try {
+      await setClaudeApiKey(apiKey);
+      input.value = '';
+      await cargarClaudeConfigStatus();
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  // Widget flotante -- disponible en cualquier sección del admin, no
+  // solo en Configuración. Historial solo en memoria (se pierde al
+  // recargar la página), a propósito simple para esta primera versión.
+  let _claudeChatHistorial = [];
+  function crearWidgetClaude() {
+    if (document.getElementById('claude-widget-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'claude-widget-btn';
+    btn.title = 'Preguntale a Claude';
+    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
+    btn.textContent = '💬';
+    btn.onclick = () => document.getElementById('claude-widget-panel').classList.toggle('hidden');
+    document.body.appendChild(btn);
+
+    const panel = document.createElement('div');
+    panel.id = 'claude-widget-panel';
+    panel.className = 'hidden';
+    panel.style.cssText = 'position:fixed;bottom:82px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.innerHTML = `
+      <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">🤖 Asistente Claude</div>
+      <div id="claude-widget-msgs" style="flex:1;overflow-y:auto;padding:12px;font-size:13px;"></div>
+      <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);">
+        <input type="text" id="claude-widget-input" class="form-control" placeholder="Escribí tu pregunta..." style="font-size:12px;padding:6px 8px;" onkeydown="if(event.key==='Enter')enviarMensajeClaudeWidget();">
+        <button class="btn btn-primary btn-sm" onclick="enviarMensajeClaudeWidget()">➤</button>
+      </div>`;
+    document.body.appendChild(panel);
+  }
+  window.enviarMensajeClaudeWidget = async function() {
+    const input = document.getElementById('claude-widget-input');
+    const mensaje = input.value.trim();
+    if (!mensaje) return;
+    input.value = '';
+    const msgs = document.getElementById('claude-widget-msgs');
+    msgs.innerHTML += `<div style="margin-bottom:10px;text-align:right;"><span style="background:var(--primary-light);color:var(--primary-dark);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;">${escapeHtml(mensaje)}</span></div>`;
+    msgs.innerHTML += `<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">Pensando...</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    try {
+      const { respuesta } = await preguntarClaude(mensaje, _claudeChatHistorial);
+      _claudeChatHistorial.push({ role: 'user', content: mensaje }, { role: 'assistant', content: respuesta });
+      document.getElementById('claude-widget-loading')?.remove();
+      msgs.innerHTML += `<div style="margin-bottom:10px;"><span style="background:#f1f5f9;color:var(--text);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(respuesta)}</span></div>`;
+    } catch (e) {
+      document.getElementById('claude-widget-loading')?.remove();
+      msgs.innerHTML += `<div style="margin-bottom:10px;font-size:12px;color:#dc2626;">${escapeHtml(e.message || 'Error al consultar.')}</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  };
+
   if (user.mustChangePassword) {
     showMustChangePasswordModalAdmin();
   } else {
@@ -4970,6 +5056,7 @@
     if (user.role === 'admin') loadInformes();
     setTimeout(precargarSeccionesComunes, 300);
     setTimeout(() => iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY), 600);
+    crearWidgetClaude();
   }
   if (window.lucide) lucide.createIcons();
 </script>

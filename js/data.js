@@ -531,3 +531,19 @@ export async function setPrecioMP(mensualARS, anualARS, porColaboradorARS) {
   if (DEMO_MODE) return;
   return api('POST', '/superadmin/precio-mp', { mensualARS, anualARS, porColaboradorARS });
 }
+
+// ── Asistente Claude (propio de cada agencia) ────────────────────
+export async function getClaudeConfig() {
+  if (DEMO_MODE) return { configurada: false };
+  return api('GET', '/admin/claude-config');
+}
+
+export async function setClaudeApiKey(apiKey) {
+  if (DEMO_MODE) { alert('En modo demo no se puede guardar la clave real.'); return { configurada: false }; }
+  return api('POST', '/admin/claude-config', { apiKey });
+}
+
+export async function preguntarClaude(mensaje, historial) {
+  if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
+  return api('POST', '/ai/preguntar', { mensaje, historial });
+}
