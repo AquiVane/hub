@@ -33,7 +33,7 @@
         <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
       </button>
       <button class="nav-item" onclick="showSection('internas')">
-        <i data-lucide="building-2" class="nav-icon"></i><span>Gestión COSMART</span>
+        <i data-lucide="building-2" class="nav-icon"></i><span id="navGestionInternaLabel">Gestión COSMART</span>
       </button>
       <button class="nav-item" onclick="showSection('procesos')">
         <i data-lucide="list-tree" class="nav-icon"></i><span>Procesos</span>
@@ -165,7 +165,7 @@
       <!-- Tareas internas COSMART (no atadas a ningún cliente) -->
       <div id="sec-internas" class="hidden">
         <div class="mb-20 flex items-center gap-8">
-          <h2 style="font-size:18px;font-weight:700;">Gestión COSMART</h2>
+          <h2 style="font-size:18px;font-weight:700;" id="secGestionInternaLabel">Gestión COSMART</h2>
           <span class="text-muted text-sm">No atadas a ningún cliente</span>
           <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
           <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
@@ -1214,6 +1214,11 @@
   if (!esCosmart) {
     document.getElementById('sidebarHubLabel').textContent = user.agenciaNombre || 'Marketing Hub';
     document.title = `${user.agenciaNombre || 'Marketing Hub'} — Admin`;
+    // "Gestión COSMART" es el nombre de la sección de tareas internas
+    // (sin cliente) -- tiene sentido solo para la agencia COSMART. Para
+    // cualquier otra agencia se llama simplemente "Gestión interna".
+    document.getElementById('navGestionInternaLabel').textContent = 'Gestión interna';
+    document.getElementById('secGestionInternaLabel').textContent = 'Gestión interna';
     const logoImg = document.getElementById('sidebarLogoImg');
     if (user.agenciaLogoUrl) {
       logoImg.src = user.agenciaLogoUrl;
@@ -1642,12 +1647,16 @@
 
   async function loadInternas() {
     const board = document.getElementById('internasBoard');
-    board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    // Mismo criterio que Mis Tareas: si ya había datos cargados en esta
+    // sesión se muestran al toque y se refresca atrás, en vez de tapar
+    // todo con "Cargando..." cada vez que se reentra a la sección.
+    if (_internasCache.length) renderInternasBoard();
+    else board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
       renderInternasBoard();
     } catch (e) {
-      board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+      if (!_internasCache.length) board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
     }
   }
 
@@ -2419,7 +2428,12 @@
 
   async function loadMisTareas() {
     const listEl = document.getElementById('misTareasList');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    // Si ya se había cargado antes en esta sesión, se muestra esa versión
+    // al toque en vez de tapar todo con "Cargando..." de nuevo cada vez
+    // que se vuelve a esta sección -- y se refresca atrás, sin bloquear
+    // (pedido de Vaneh: "Gestión COSMART, Mis tareas, tardan en cargar").
+    if (_misTareasCache.length) renderMisTareas();
+    else listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase();
     const clients = await getAllClients();
     _misTareasClientsCache = clients;
@@ -2522,6 +2536,14 @@
     _misTareasFiltroPrioridad = '';
     _misTareasBusqueda = '';
     _misTareasSoloSubtareas = false;
+    // "Ver de" nunca se resetaba acá -- un admin que había elegido ver las
+    // tareas de un colaborador puntual se quedaba trabado ahí para
+    // siempre. Un colaborador no tiene "Todos" (el select viene
+    // deshabilitado, solo puede verse a sí mismo), así que para ese rol
+    // vuelve a su propio email -- es su equivalente de "sin filtro".
+    _misTareasVerDe = user.role === 'admin' ? '' : (user.email || '').toLowerCase();
+    const verDeSel = document.getElementById('misTareasVerDe');
+    if (verDeSel) verDeSel.value = _misTareasVerDe;
     document.getElementById('misTareasBuscar').value = '';
     document.getElementById('misTareasFiltroCliente').value = '';
     document.getElementById('misTareasFiltroVertical').value = '';

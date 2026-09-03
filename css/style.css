@@ -50,8 +50,11 @@ input, select, textarea { font-family: inherit; }
 }
 /* Panel admin en celeste, panel de cliente en navy -- para que se
    distingan de un vistazo (pedido de Vaneh, "la interfaz es muy
-   parecida"). Redefine la variable, no toca nada más del sidebar. */
-.admin-shell { --sidebar-bg: #1A4DAA; }
+   parecida"). El celeste es el mismo que ya se usaba para marcar el
+   ítem seleccionado (--sidebar-active); el ítem seleccionado pasa
+   entonces al navy original, para que siga notándose cuál es. */
+.admin-shell { --sidebar-bg: var(--sidebar-active); }
+.admin-shell .nav-item.active { background: var(--primary-dark); }
 .sidebar-logo {
   padding: 18px 16px 14px;
   color: #fff;
