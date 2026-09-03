@@ -3195,7 +3195,11 @@
     const primerDia = new Date(year, month, 1);
     const ultimoDia = new Date(year, month + 1, 0);
     const offset = primerDia.getDay();
-    const visiblesCal = misTareasFiltradas(true); // unificado: ignora el tab laboral/personal
+    // Antes ignoraba el tab Laborales/Personales a propósito (calendario
+    // "unificado") -- Vaneh lo reportó como bug: en la pestaña
+    // Personales seguían viéndose los proyectos/tareas laborales. Ahora
+    // respeta el tab igual que Kanban y Lista.
+    const visiblesCal = misTareasFiltradas();
     const porFecha = {};
     visiblesCal.forEach((item) => {
       const idx = _misTareasCache.indexOf(item);
@@ -4486,12 +4490,16 @@
   let _informesCache = [];
   async function loadInformes() {
     const listEl = document.getElementById('informesList');
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    // Mismo criterio que Mis Tareas/Gestión COSMART/Colaboradores: si ya
+    // había datos cargados en esta sesión se muestran al toque y se
+    // refresca atrás, en vez de tapar todo con "Cargando..." de nuevo.
+    if (_informesCache.length) renderInformes();
+    else listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
     try {
       _informesCache = await getInformes();
       renderInformes();
     } catch (e) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+      if (!_informesCache.length) listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
     }
   }
 

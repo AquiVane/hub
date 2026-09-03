@@ -4597,6 +4597,13 @@ window.rechazarContenido = async function(id) {
 };
 
 // ── Comentarios ────────────────────────────────────────
+window.transformarComentarioEnTarea = function(idx) {
+  const c = (editingTarea?.comentarios || [])[idx];
+  if (!c) return;
+  openTareaModal(null);
+  document.getElementById('tf-titulo').value = (c.texto || '').slice(0, 120);
+};
+
 function renderComments(ctx, comments) {
   const prefix = ctx === 'cont' ? 'cont' : 'tarea';
   const listEl = document.getElementById(`${prefix}-comments-list`);
@@ -4620,9 +4627,12 @@ function renderComments(ctx, comments) {
           <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
         </div>
         <p style="font-size:13px;margin:0 0 4px;color:var(--text);">${textoHtml}</p>
-        <button onclick="toggleCommentSeen('${ctx}',${idx})" title="${vistoTitle}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">
-          ✓ ${vistoPor.length ? vistoTitle : 'Visto'}
-        </button>
+        <div style="display:flex;align-items:center;">
+          <button onclick="toggleCommentSeen('${ctx}',${idx})" title="${vistoTitle}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">
+            ✓ ${vistoPor.length ? vistoTitle : 'Visto'}
+          </button>
+          ${ctx === 'tarea' ? `<button onclick="transformarComentarioEnTarea(${idx})" title="Transformar este comentario en una tarea nueva" style="background:none;border:none;cursor:pointer;padding:0;margin-left:auto;font-size:11px;color:#cbd5e1;">+ Nueva tarea</button>` : ''}
+        </div>
       </div>
     </div>`;
   }).join('');
