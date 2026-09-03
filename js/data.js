@@ -527,7 +527,7 @@ export async function getPrecioMP() {
   return api('GET', '/superadmin/precio-mp');
 }
 
-export async function setPrecioMP(mensualARS, anualARS) {
+export async function setPrecioMP(mensualARS, anualARS, porColaboradorARS) {
   if (DEMO_MODE) return;
-  return api('POST', '/superadmin/precio-mp', { mensualARS, anualARS });
+  return api('POST', '/superadmin/precio-mp', { mensualARS, anualARS, porColaboradorARS });
 }
