@@ -22,6 +22,7 @@ let currentSection = 'home';
 let _tareasView = 'kanban';
 let _tareasBusqueda = '';
 let _tareasFiltroAsignado = ''; // '' = todos, '_sin_asignar' = sin asignar, o el email de un colaborador/usuario del equipo
+let _tareasFiltroPrioridad = '';
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -238,6 +239,21 @@ function renderSection(sec) {
     filtroAsignado.value = _tareasFiltroAsignado;
     filtroAsignado.onchange = (e) => { _tareasFiltroAsignado = e.target.value; refreshTareasView(); };
     actions.appendChild(filtroAsignado);
+    const filtroPrioridad = document.createElement('select');
+    filtroPrioridad.className = 'form-control';
+    filtroPrioridad.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
+    filtroPrioridad.innerHTML = '<option value="">Prioridad: todas</option><option>Alta</option><option>Media</option><option>Baja</option>';
+    filtroPrioridad.value = _tareasFiltroPrioridad;
+    filtroPrioridad.onchange = (e) => { _tareasFiltroPrioridad = e.target.value; refreshTareasView(); };
+    actions.appendChild(filtroPrioridad);
+    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad) {
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'btn btn-secondary btn-sm';
+      clearBtn.title = 'Limpiar todos los filtros';
+      clearBtn.textContent = '✕ Limpiar filtros';
+      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; renderSection('tareas'); };
+      actions.appendChild(clearBtn);
+    }
     const viewKanbanBtn = document.createElement('button');
     viewKanbanBtn.className = 'btn btn-sm ' + (_tareasView === 'kanban' ? 'btn-primary' : 'btn-secondary');
     viewKanbanBtn.innerHTML = '<i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban';
@@ -2530,6 +2546,7 @@ function renderTareas(container) {
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
+  if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
   const archivadas = tareasBase.filter(t => t.archivado);
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
@@ -2615,6 +2632,7 @@ function renderTareasCalendario(container) {
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
+  if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
 
   function drawCal() {
     const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
