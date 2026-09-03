@@ -32,11 +32,14 @@
       <button class="nav-item" onclick="showSection('mistareas')">
         <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
       </button>
-      <button class="nav-item" onclick="showSection('internas')">
+      <button class="nav-item" id="navInternasBtn" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span id="navGestionInternaLabel">Gestión COSMART</span>
       </button>
       <button class="nav-item" onclick="showSection('procesos')">
         <i data-lucide="list-tree" class="nav-icon"></i><span>Procesos</span>
+      </button>
+      <button class="nav-item" onclick="showSection('ideas')">
+        <i data-lucide="lightbulb" class="nav-icon"></i><span>Ideas</span>
       </button>
       <button class="nav-item" onclick="showSection('actividad')">
         <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
@@ -241,6 +244,18 @@
               <div class="link-card-desc">Modelo vacío para cargar el calendario de contenidos de un cliente</div>
             </div>
           </a>
+        </div>
+      </div>
+
+      <!-- Ideas -->
+      <div id="sec-ideas" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Ideas</h2>
+          <span class="text-muted text-sm">Todo lo que se te ocurra, sin plan todavía -- cuando esté madura, transformala en proyecto</span>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openIdeaAdminModal(null)">+ Nueva idea</button>
+        </div>
+        <div id="ideasAdminList">
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
 
@@ -1044,6 +1059,31 @@
   </div>
 </div>
 
+<!-- Modal Idea (admin) -->
+<div id="ideaAdminModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3 id="idea-admin-modal-title">Nueva idea</h3>
+      <button class="modal-close" onclick="document.getElementById('ideaAdminModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título</label>
+        <input type="text" id="ia-titulo" class="form-control" placeholder="¿Qué se te ocurrió?">
+      </div>
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea id="ia-descripcion" class="form-control" rows="4" placeholder="Contala como te la imaginás, no hace falta que esté resuelta todavía"></textarea>
+      </div>
+      <div id="ia-autor" style="font-size:12px;color:var(--text-muted);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('ideaAdminModal').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarIdeaAdmin()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal importar proceso -->
 <div id="importarProcesoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:600px;">
@@ -1171,7 +1211,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1267,7 +1307,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1280,6 +1320,7 @@
     if (sec === 'email-stats') { loadEmailStats(); renderMetricasGenerales(); }
     if (sec === 'actividad') loadActividadFiltros();
     if (sec === 'agencias') loadAgencias();
+    if (sec === 'ideas') loadIdeasAdmin();
   };
 
   function fmtDateAct(iso) {
@@ -2259,6 +2300,130 @@
     _internasCache = _internasCache.filter(t => t.id !== _editingInterna.id);
     closeInternaModal();
     renderInternasBoard();
+  };
+
+  // ── Ideas (admin) ────────────────────────────────────────────
+  // Reusa el mismo backend que "Ideas de contenido" del cliente
+  // (getIdeas/saveIdea/deleteIdea, endpoint genérico /data/:id/ideas) pero
+  // guardadas en el pseudo-cliente '_cosmart' -- mismo criterio que Mis
+  // Tareas/Gestión COSMART, cero cambios de backend necesarios.
+  let _ideasAdminCache = [];
+  let _editingIdeaAdmin = null;
+
+  async function loadIdeasAdmin() {
+    const listEl = document.getElementById('ideasAdminList');
+    if (_ideasAdminCache.length) renderIdeasAdmin();
+    else listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    try {
+      _ideasAdminCache = await getIdeas(INTERNAS_CLIENT_ID) || [];
+      // Primera vez que se entra (nunca hubo ninguna idea todavía): se
+      // siembra la primera idea de Vaneh (pedido explícito, 03/09) para
+      // que la sección no arranque vacía.
+      if (!_ideasAdminCache.length) {
+        const semilla = {
+          id: 'i' + Date.now(),
+          titulo: 'Venderle a empresas "Creá tu propio sistema de gestión con IA"',
+          descripcion: 'Enseñarle a otras empresas a construir su propio sistema de gestión con IA, como se hizo este mismo Hub.',
+          autor: { email: user.email, nombre: user.name || user.email },
+          fecha: new Date().toISOString().split('T')[0],
+        };
+        const guardada = await saveIdea(INTERNAS_CLIENT_ID, semilla);
+        _ideasAdminCache = [guardada];
+      }
+      renderIdeasAdmin();
+    } catch (e) {
+      if (!_ideasAdminCache.length) listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
+    }
+  }
+
+  function renderIdeasAdmin() {
+    const listEl = document.getElementById('ideasAdminList');
+    if (!_ideasAdminCache.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💡</div><h3>Sin ideas todavía</h3><p>Anotá lo que se te vaya ocurriendo, sin necesidad de tener un plan armado.</p></div>`;
+      return;
+    }
+    listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${_ideasAdminCache.map(i => `
+        <div class="card" style="padding:14px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px;">${escapeHtml(i.titulo)}</div>
+          ${i.descripcion ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;white-space:pre-wrap;">${escapeHtml(i.descripcion)}</div>` : ''}
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">💡 ${escapeHtml(i.autor?.nombre || 'Alguien del equipo')} · ${fmtDateAct(i.fecha) || ''}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="transformarIdeaEnProyecto('${i.id}')">🚀 Transformar en proyecto</button>
+            <button class="btn btn-secondary btn-sm" onclick="openIdeaAdminModal('${i.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarIdeaAdmin('${i.id}')" title="Eliminar">🗑</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  window.openIdeaAdminModal = function(id) {
+    _editingIdeaAdmin = id ? _ideasAdminCache.find(i => i.id === id) : null;
+    const i = _editingIdeaAdmin || {};
+    document.getElementById('idea-admin-modal-title').textContent = _editingIdeaAdmin ? 'Editar idea' : 'Nueva idea';
+    document.getElementById('ia-titulo').value = i.titulo || '';
+    document.getElementById('ia-descripcion').value = i.descripcion || '';
+    document.getElementById('ia-autor').textContent = i.autor?.nombre ? `Anotada por ${i.autor.nombre}` : '';
+    document.getElementById('ideaAdminModal').classList.remove('hidden');
+  };
+
+  window.guardarIdeaAdmin = async function() {
+    const titulo = document.getElementById('ia-titulo').value.trim();
+    if (!titulo) { alert('El título es obligatorio.'); return; }
+    const obj = {
+      ...(_editingIdeaAdmin || {}),
+      titulo,
+      descripcion: document.getElementById('ia-descripcion').value.trim() || null,
+      autor: _editingIdeaAdmin?.autor || { email: user.email, nombre: user.name || user.email },
+      fecha: _editingIdeaAdmin?.fecha || new Date().toISOString().split('T')[0],
+    };
+    const saved = await saveIdea(INTERNAS_CLIENT_ID, obj);
+    if (_editingIdeaAdmin) { const i = _ideasAdminCache.findIndex(x => x.id === saved.id); _ideasAdminCache[i] = saved; }
+    else _ideasAdminCache.push(saved);
+    document.getElementById('ideaAdminModal').classList.add('hidden');
+    renderIdeasAdmin();
+  };
+
+  window.eliminarIdeaAdmin = async function(id) {
+    if (!confirm('¿Eliminar esta idea?')) return;
+    await deleteIdea(INTERNAS_CLIENT_ID, id);
+    _ideasAdminCache = _ideasAdminCache.filter(i => i.id !== id);
+    renderIdeasAdmin();
+  };
+
+  // El corazón del pedido: de una idea sin desarrollar a una tarea/proyecto
+  // real en Gestión COSMART -- se crea de una (con lo que ya se escribió
+  // como título/descripción) y se abre directo el modal de edición para
+  // terminar de armarla (subtareas = los pasos para llevarla a cabo).
+  window.transformarIdeaEnProyecto = async function(id) {
+    const idea = _ideasAdminCache.find(i => i.id === id);
+    if (!idea) return;
+    const numero = Math.max(0, ..._internasCache.filter(t => !t.vertical).map(t => t.numero || 0)) + 1;
+    const obj = {
+      numero,
+      titulo: idea.titulo,
+      descripcion: idea.descripcion || null,
+      vertical: null,
+      estado: 'Sin empezar',
+      prioridad: 'Media',
+      esProyecto: true,
+      asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
+      subtareas: [],
+    };
+    const saved = await saveTarea(INTERNAS_CLIENT_ID, obj);
+    _internasCache.push(saved);
+    _ideasAdminCache = _ideasAdminCache.filter(i => i.id !== id);
+    await deleteIdea(INTERNAS_CLIENT_ID, id).catch(() => {});
+    // Navega a Gestión COSMART y abre de una el modal de la tarea recién
+    // creada para que termine de completarla con las subtareas/procesos.
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas'].forEach(s => {
+      document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== 'internas');
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('navInternasBtn')?.classList.add('active');
+    renderInternasBoard();
+    openInternaModal(saved.id);
   };
 
   window.toggleInternaListo = async function(id) {
