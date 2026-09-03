@@ -2995,7 +2995,7 @@ function renderSubtareas(subtareas) {
   list.innerHTML = subtareas.map((s, i) => `
     <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${s.done?'#bbf7d0':'var(--border)'};">
       <input type="checkbox" ${s.done?'checked':''} onchange="toggleSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
-      <span style="flex:1;min-width:0;font-size:13px;word-break:break-word;overflow-wrap:anywhere;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">${s.titulo}</span>
+      <input type="text" value="${escapeHtml(s.titulo).replace(/"/g,'&quot;')}" onchange="renombrarSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">
       <select onchange="reasignarSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${getAsignarOptions(s.asignado?.email || '')}</select>
       <button onclick="deleteSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
     </div>
@@ -3064,6 +3064,23 @@ window.toggleSubtarea = async function(idx) {
     updateBadges();
     if (currentSection === 'tareas') refreshTareasView();
   } catch (e) { /* si falla la conexión, el check sigue visible en el modal y se reintenta al guardar la tarea entera */ }
+};
+
+window.renombrarSubtarea = async function(idx, nuevoTitulo) {
+  if (!_tareaSubtareasPendientes[idx]) return;
+  const titulo = nuevoTitulo.trim();
+  if (!titulo) { renderSubtareas(_tareaSubtareasPendientes); return; } // no permitir vaciarla
+  _tareaSubtareasPendientes[idx].titulo = titulo;
+  guardarBorradorTarea();
+  if (!editingTarea) return;
+  editingTarea.subtareas = [..._tareaSubtareasPendientes];
+  try {
+    const saved = await saveTarea(clientId, editingTarea);
+    const i = STATE.tareas.findIndex(t => t.id === saved.id);
+    if (i > -1) STATE.tareas[i] = saved;
+    editingTarea = saved;
+    if (currentSection === 'tareas') refreshTareasView();
+  } catch (e) { /* se reintenta al guardar la tarea entera */ }
 };
 
 window.deleteSubtarea = function(idx) {
