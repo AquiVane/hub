@@ -1,6 +1,16 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-09-02. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## Importar Excel de Contenidos: ahora sí detecta duplicados, y Copy/Texto en pantalla son campos separados (03/09)
+
+Vaneh reportó que el import de Excel "iba a filtrar si los contenidos eran los mismos, actualizar lo que no concordaba, y dar la opción de omitir o reemplazar" -- pero **eso nunca estuvo implementado**: `saveContenidosBulk` siempre creaba contenidos NUEVOS con un id fresco, sin buscar si ya existían (confirmado leyendo el código, no era un bug de regresión, la función nunca existió). Se construyó de cero en `js/app.js`:
+- `importClasificarFilas()` matchea cada fila del Excel contra `STATE.contenidos` por **Título + Cuenta** normalizados (no por fecha, porque reprogramar no debería crear un duplicado) y la clasifica en `nuevo` / `igual` (sin diferencias) / `cambio`.
+- Para las `cambio`, `importDiffContenido()` compara campo por campo (`IMPORT_DIFF_FIELDS`) y el modal de importación muestra el antes/después de cada campo que difiere, con un `<select>` por fila: **Reemplazar** (default) u **Omitir**.
+- Al confirmar: los `nuevo` van por `saveContenidosBulk` (igual que antes), los `cambio`+Reemplazar van por `updateContenidosBulk` (nueva función en `js/data.js`, un solo GET+POST para todo el lote) que solo pisa los campos que vienen del Excel -- comentarios/asignado/imágenes del contenido existente quedan intactos.
+- **Nuevo campo `textoPantalla`**, separado de `copy`: antes "Copy / Texto del post" era un solo campo que mezclaba la descripción del posteo (copy) con el texto que va escrito DENTRO de la pieza gráfica -- son cosas distintas, pedido explícito de Vaneh. Nuevo textarea "Texto en pantalla" en el modal "Nuevo contenido" (`app/index.html`), nueva columna "Texto en pantalla" en el Excel (`IMPORT_HEADER_MAP`), compat hacia atrás: la columna vieja "Copy / Texto del post" de plantillas anteriores se sigue leyendo como `copy` (no como `textoPantalla`).
+- **Plantilla nueva** en `hub/plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx` (vacía, con 1 fila de ejemplo, columnas Copy y Texto en pantalla separadas, instrucciones actualizadas explicando el comportamiento de reemplazar/omitir) -- descargable desde un botón nuevo "📄 Plantilla Excel" al lado de "Importar Excel" en la sección Contenidos del cliente.
+- Sin probar todavía con datos reales -- pedirle a Vaneh que suba el mismo Excel dos veces (la segunda con algún campo editado) para confirmar que ahora sí detecta el duplicado y muestra el diff.
 
 ## Tareas y Archivos — varios pedidos de Vaneh (02/09)
 

@@ -141,6 +141,29 @@ export async function saveContenidosBulk(clientId, contenidos) {
   return withIds;
 }
 
+// Actualiza contenidos EXISTENTES de una (usado por la importación de
+// Excel cuando detecta que una fila ya existe y cambió algo) -- un solo
+// GET + POST para todo el lote, en vez de una vuelta al servidor por
+// contenido como haría llamar a saveContenido() en loop.
+export async function updateContenidosBulk(clientId, actualizaciones) {
+  if (DEMO_MODE) {
+    const data = getDemoData(clientId);
+    actualizaciones.forEach(u => {
+      const idx = data.contenidos.findIndex(c => c.id === u.id);
+      if (idx >= 0) data.contenidos[idx] = { ...data.contenidos[idx], ...u };
+    });
+    saveDemoData(clientId, data);
+    return data.contenidos.filter(c => actualizaciones.some(u => u.id === c.id));
+  }
+  const list = await api('GET', `/data/${clientId}/contenidos`);
+  actualizaciones.forEach(u => {
+    const idx = list.findIndex(c => c.id === u.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...u };
+  });
+  await api('POST', `/data/${clientId}/contenidos`, list);
+  return list.filter(c => actualizaciones.some(u => u.id === c.id));
+}
+
 export async function deleteContenido(clientId, id) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);

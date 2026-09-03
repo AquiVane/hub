@@ -1,6 +1,6 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
 import {
-  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk,
+  getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
@@ -202,6 +202,13 @@ function renderSection(sec) {
     rptBtn.textContent = '📊 Reporte';
     rptBtn.onclick = () => openReporteModal();
     actions.appendChild(rptBtn);
+    const plantillaBtn = document.createElement('a');
+    plantillaBtn.className = 'btn btn-secondary';
+    plantillaBtn.textContent = '📄 Plantilla Excel';
+    plantillaBtn.href = '../plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx';
+    plantillaBtn.setAttribute('download', 'Plantilla_Contenidos_Hub_COSMART.xlsx');
+    plantillaBtn.title = 'Descargar la plantilla vacía para cargar el calendario de contenidos';
+    actions.appendChild(plantillaBtn);
     const importBtn = document.createElement('button');
     importBtn.className = 'btn btn-secondary';
     importBtn.textContent = '📥 Importar Excel';
@@ -1912,6 +1919,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
+  document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
   document.getElementById('cf-notas').value = c.notas || '';
   setTimeout(() => {
     const df = document.getElementById('cf-duracion');
@@ -2071,6 +2079,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     tipo: document.getElementById('cf-tipo').value,
     objetivo: document.getElementById('cf-objetivo').value,
     copy: document.getElementById('cf-copy').value,
+    textoPantalla: document.getElementById('cf-texto-pantalla').value,
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
@@ -2166,9 +2175,11 @@ const IMPORT_HEADER_MAP = {
   'tipo de contenido': 'tipo',
   tipo: 'tipo',
   objetivo: 'objetivo',
-  'copy / texto del post': 'copy',
+  'copy / texto del post': 'copy', // compat con plantillas viejas (una sola columna) -- se sube como copy
   'copy texto del post': 'copy',
   copy: 'copy',
+  'texto en pantalla': 'textoPantalla',
+  'texto pantalla': 'textoPantalla',
   pauta: 'pauta',
   'link pieza terminada': 'linkDrive',
   'link material de referencia': 'linkDriveRef',
@@ -2211,7 +2222,63 @@ function importParsePauta(val) {
   return IMPORT_PAUTA_MAP[norm] || 'organico';
 }
 
-let _importRows = []; // filas parseadas y válidas, listas para importar
+// ── Importar Excel: detectar si una fila ya existe y qué cambió ──────
+// Pedido explícito de Vaneh: al volver a subir el mismo calendario (con
+// alguna fila editada), el import tiene que reconocer que ese contenido
+// ya está cargado -- no duplicarlo -- mostrar qué campos cambiaron, y
+// dejar elegir por fila si se reemplaza o se omite. Se matchea por
+// título + cuenta (normalizados) porque el título solo puede repetirse
+// entre cuentas distintas, y la fecha puede cambiar sin que sea "otro"
+// contenido (reprogramar no debería crear un duplicado).
+const IMPORT_DIFF_FIELDS = [
+  { key: 'fechaPub', label: 'Fecha de publicación' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'plataformas', label: 'Plataformas', arr: true },
+  { key: 'ubicacion', label: 'Ubicación', arr: true },
+  { key: 'formato', label: 'Formato', arr: true },
+  { key: 'dimensiones', label: 'Dimensiones', arr: true },
+  { key: 'eje', label: 'Eje de comunicación' },
+  { key: 'tipo', label: 'Tipo de contenido' },
+  { key: 'objetivo', label: 'Objetivo' },
+  { key: 'copy', label: 'Copy' },
+  { key: 'textoPantalla', label: 'Texto en pantalla' },
+  { key: 'pauta', label: 'Pauta' },
+  { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
+  { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
+  { key: 'notas', label: 'Notas internas' },
+];
+
+function normImportTexto(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+function importValoresIguales(a, b, esArray) {
+  if (esArray) {
+    const A = (a || []).map(x => normImportTexto(x)).filter(Boolean).sort();
+    const B = (b || []).map(x => normImportTexto(x)).filter(Boolean).sort();
+    return A.length === B.length && A.every((v, i) => v === B[i]);
+  }
+  return normImportTexto(a) === normImportTexto(b);
+}
+
+function importDiffContenido(existente, entrante) {
+  return IMPORT_DIFF_FIELDS.filter(f => !importValoresIguales(existente[f.key], entrante[f.key], f.arr));
+}
+
+// Clasifica cada fila válida contra STATE.contenidos: 'nuevo' (no existe
+// todavía), 'igual' (existe y no cambió nada) o 'cambio' (existe pero
+// algún campo difiere -- acá se decide por fila, default "reemplazar").
+function importClasificarFilas(filas) {
+  return filas.map(row => {
+    const match = STATE.contenidos.find(c =>
+      normImportTexto(c.titulo) === normImportTexto(row.titulo) &&
+      normImportTexto(c.cuenta) === normImportTexto(row.cuenta));
+    if (!match) return { tipo: 'nuevo', row };
+    const cambios = importDiffContenido(match, row);
+    if (!cambios.length) return { tipo: 'igual', row, match };
+    return { tipo: 'cambio', row, match, cambios, accion: 'reemplazar' };
+  });
+}
+
+let _importRows = []; // filas clasificadas ({tipo, row, match?, cambios?, accion?}), listas para importar
 
 function openImportModal() {
   _importRows = [];
@@ -2303,6 +2370,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         tipo: String(obj.tipo || '').trim(),
         objetivo: String(obj.objetivo || '').trim(),
         copy: String(obj.copy || '').trim(),
+        textoPantalla: String(obj.textoPantalla || '').trim(),
         pauta: importParsePauta(obj.pauta),
         linkDrive: importSplitMulti(obj.linkDrive),
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
@@ -2312,32 +2380,99 @@ document.getElementById('import-file-input').addEventListener('change', async (e
       });
     }
 
-    _importRows = valid;
-    statusEl.textContent = `${valid.length} contenido(s) listos para importar${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
-
-    previewEl.innerHTML = `
-      ${valid.length ? `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
-        <thead><tr><th>Fecha</th><th>Título</th><th>Plataformas</th><th>Estado</th><th>Cuenta</th></tr></thead>
-        <tbody>
-          ${valid.map(c => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`).join('')}
-        </tbody>
-      </table></div>` : ''}
-      ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
-    `;
-    confirmBtn.disabled = !valid.length;
+    _importRows = importClasificarFilas(valid);
+    renderImportPreview(errores);
+    confirmBtn.disabled = !importHayAccion();
   } catch (err) {
     console.error(err);
     statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
   }
 });
 
+function importHayAccion() {
+  return _importRows.some(r => r.tipo === 'nuevo' || (r.tipo === 'cambio' && r.accion === 'reemplazar'));
+}
+
+function formatoImportValor(v, esArray) {
+  if (esArray) return (v || []).join(', ');
+  const s = String(v || '');
+  return s.length > 60 ? s.slice(0, 60) + '…' : s;
+}
+
+window.cambiarAccionImport = function(idx, valor) {
+  if (!_importRows[idx]) return;
+  _importRows[idx].accion = valor;
+  document.getElementById('confirmImportBtn').disabled = !importHayAccion();
+};
+
+function renderImportPreview(errores) {
+  const statusEl = document.getElementById('import-status');
+  const previewEl = document.getElementById('import-preview');
+  const nuevos = _importRows.filter(r => r.tipo === 'nuevo');
+  const cambios = _importRows.filter(r => r.tipo === 'cambio');
+  const iguales = _importRows.filter(r => r.tipo === 'igual');
+  statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
+
+  const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`;
+
+  previewEl.innerHTML = `
+    ${nuevos.length ? `
+      <div style="font-size:12px;font-weight:700;color:#166534;margin:10px 0 6px;">🆕 Nuevos (${nuevos.length})</div>
+      <div class="table-wrapper table-scroll-wrap"><table class="data-table">
+        <thead><tr><th>Fecha</th><th>Título</th><th>Plataformas</th><th>Estado</th><th>Cuenta</th></tr></thead>
+        <tbody>${nuevos.map(r => filaHtml(r.row)).join('')}</tbody>
+      </table></div>
+    ` : ''}
+    ${cambios.length ? `
+      <div style="font-size:12px;font-weight:700;color:#b45309;margin:14px 0 6px;">🔄 Ya existen (mismo título + cuenta) pero cambiaron (${cambios.length})</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${cambios.map(r => `
+          <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:10px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div style="font-size:13px;font-weight:600;">${r.row.titulo}</div>
+              <select onchange="cambiarAccionImport(${_importRows.indexOf(r)}, this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);">
+                <option value="reemplazar" ${r.accion === 'reemplazar' ? 'selected' : ''}>Reemplazar</option>
+                <option value="omitir" ${r.accion === 'omitir' ? 'selected' : ''}>Omitir (dejar como está)</option>
+              </select>
+            </div>
+            <div style="font-size:11px;color:#92400e;margin-top:6px;line-height:1.6;">
+              ${r.cambios.map(f => `<div><strong>${f.label}:</strong> ${formatoImportValor(r.match[f.key], f.arr) || '—'} → ${formatoImportValor(r.row[f.key], f.arr) || '—'}</div>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    ${iguales.length ? `<div style="font-size:12px;color:var(--text-muted);margin-top:14px;">✅ ${iguales.length} ya estaban cargados igual, no hace falta tocarlos.</div>` : ''}
+    ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
+  `;
+}
+
 document.getElementById('confirmImportBtn').addEventListener('click', async () => {
-  if (!_importRows.length) return;
+  const nuevos = _importRows.filter(r => r.tipo === 'nuevo').map(r => r.row);
+  const aActualizar = _importRows.filter(r => r.tipo === 'cambio' && r.accion === 'reemplazar');
+  if (!nuevos.length && !aActualizar.length) return;
   const btn = document.getElementById('confirmImportBtn');
   btn.disabled = true; btn.textContent = 'Importando…';
   try {
-    const saved = await saveContenidosBulk(clientId, _importRows);
-    STATE.contenidos.push(...saved);
+    if (nuevos.length) {
+      const saved = await saveContenidosBulk(clientId, nuevos);
+      STATE.contenidos.push(...saved);
+    }
+    if (aActualizar.length) {
+      // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS)
+      // -- comentarios/asignado/imágenes del contenido existente quedan
+      // intactos, no son parte de la plantilla.
+      const actualizaciones = aActualizar.map(r => {
+        const u = { id: r.match.id };
+        IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = r.row[f.key]; });
+        return u;
+      });
+      const actualizados = await updateContenidosBulk(clientId, actualizaciones);
+      actualizados.forEach(c => {
+        const i = STATE.contenidos.findIndex(x => x.id === c.id);
+        if (i > -1) STATE.contenidos[i] = c;
+      });
+    }
     closeImportModal();
     renderContTab(activeContTab);
     if (currentSection === 'home') renderSection('home');
