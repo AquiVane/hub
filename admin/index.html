@@ -578,6 +578,12 @@
         <label>URL</label>
         <input type="url" id="mt-url" class="form-control" placeholder="https://...">
       </div>
+      <div class="form-group hidden" id="mt-visible-cliente-group">
+        <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="mt-visible-cliente">
+          Visible para el cliente
+        </label>
+      </div>
       <div class="form-group hidden" id="mt-fecha-inicio-group">
         <label>Fecha de inicio</label>
         <input type="date" id="mt-fecha-inicio" class="form-control">
@@ -2875,6 +2881,8 @@
     const esPseudoCliente = ['_cosmart', '_personal'].includes(item.clientId);
     abrirPanelLink.style.display = esPseudoCliente ? 'none' : '';
     if (!esPseudoCliente) abrirPanelLink.href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
+    document.getElementById('mt-visible-cliente-group').classList.toggle('hidden', esPseudoCliente || tipo !== 'tarea');
+    document.getElementById('mt-visible-cliente').checked = !!t.visibleParaCliente;
     document.getElementById('misTareaModal').classList.remove('hidden');
   };
   window.closeMisTareaModal = function() {
@@ -2978,11 +2986,13 @@
         ? Array.from(document.querySelectorAll('.mt-dia-check:checked')).map(cb => cb.value)
         : [];
       item.tarea.subtareas = _mtSubtareas;
+      const esPseudoClienteSave = ['_cosmart', '_personal'].includes(item.clientId);
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
         if (estadoPrevio !== 'Listo') item.tarea.completadoEn = new Date().toISOString().split('T')[0];
       } else {
         item.tarea.completadoEn = null;
+        if (!esPseudoClienteSave) item.tarea.visibleParaCliente = document.getElementById('mt-visible-cliente').checked;
       }
       item.tarea = await saveTarea(item.clientId, item.tarea);
     } else {
