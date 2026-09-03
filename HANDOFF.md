@@ -2,6 +2,34 @@
 
 Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Quinta tanda del mismo día (03/09): bugs reales + recorrido guiado
+
+Commits entre `a6b04da` y `85456e5`:
+
+- **Bug real**: subtareas quedaban truncadas en una sola línea al hacerlas editables (regresión de la tanda anterior, `<input>` no wrappea) -- se cambió a `<textarea rows="1">` con auto-grow (`autoGrowTextarea`, duplicado en `js/app.js` y `admin/index.html`) en los 3 lugares.
+- **Bug real**: `getMentionUsers()` (arroba en comentarios, panel cliente) nunca incluía al contacto principal del cliente, solo al usuario logueado y al "equipo" -- no se podía arrobar al cliente. Corregido con el mismo criterio que `getAsignarOptions`.
+- **Bug real**: la vista Calendario de Mis Tareas ignoraba a propósito el tab Laborales/Personales ("unificado") -- ahora lo respeta como Kanban/Lista.
+- Informes clientes: mismo criterio de caché-entre-navegaciones que el resto de las secciones.
+- Sidebar admin: "Marketing Hub" había quedado en blanco al aclarar el fondo -- pasa a azul oscuro. Proyectos suma buscador + filtro cliente + filtro prioridad + limpiar filtros.
+- Botón "+ Nueva tarea" chiquito bajo cada comentario de una tarea (panel cliente) -- abre "Nueva tarea" con el texto del comentario precargado como título.
+- **Recorrido guiado real** (admin y cliente, primer login) -- ver sección dedicada abajo.
+- Bug de backend corregido en `cosmart-workers`: "Enviar resumen a equipo ahora" daba "Not found", el endpoint nunca se había implementado.
+
+### Recorrido guiado (onboarding)
+
+Motor propio sin dependencias (`iniciarTour(steps, storageKey)`, spotlight + tarjeta), duplicado entre `admin/index.html` y `js/app.js` porque son scripts separados. Se dispara solo una vez por navegador (`localStorage`, keys `hub_tour_admin_v1`/`hub_tour_cliente_v1`) -- **no es por cuenta**, así que en otro dispositivo/navegador se vuelve a mostrar. Si en algún momento hace falta que sea realmente "una vez por usuario", habría que persistir el flag en el usuario del lado del backend (`mustChangePassword` ya tiene el patrón para eso). Botón para volver a verlo: "Ver recorrido de nuevo" en Configuración (admin) / "Ver recorrido guiado de nuevo" en Instrucciones (cliente).
+
+`cosmart-workers` complementa esto: al darse de alta una agencia nueva (`handleSignupAgencia`) se le crea un "Cliente Demo" con datos de ejemplo (`crearClienteDemo`), para que el tour tenga algo real que mostrar y no un panel vacío.
+
+### Todavía sin hacer de esta tanda (pedido nuevo del 03/09, para no prometerlo de nuevo)
+
+- **CRM de leads potenciales**: seleccionar manualmente qué secuencias de email evergreen son leads potenciales (Brújula, Método, imán de cursos) + a qué vertical corresponden, más poder agregar leads a mano. No empezado -- es una feature grande, need to definir el modelo de datos con Vaneh antes de construir (¿vive en `hub` o en `cosmart-workers`? ¿es una tabla nueva o se deriva de los suscriptores de newsletter que ya existen?).
+- Asignación de contenidos hacia el cliente desde la importación de Excel.
+- Reportes de tareas por vertical.
+- Preview del "resumen de equipo" antes de enviarlo -- **ambigüedad sin resolver**: Vaneh lo describió como "el informe de cada colaborador", pero `enviarResumenMensualCualitativo` manda UN solo mail a Vaneh (cc Ger), no uno individual por colaborador. Antes de construir el preview hay que confirmar con ella si quiere que sea per-colaborador de verdad (bastante más trabajo) o alcanza con previsualizar el mail único que ya existe.
+- Permisos por tarea (colaborador ve todo por default, quien crea puede restringir) + historial de cambios (qué/cuándo/quién) -- Vaneh ya dio la especificación completa en el chat, queda pendiente de construir.
+- Modo oscuro, menú de filtros compacto en mobile, Presupuesto de Pauta Digital (ver tandas anteriores).
+
 ## Cuarta tanda del mismo día (03/09): sidebar clarito, perf de guardado, Ideas horizontal, Proyectos
 
 Commits entre `df25a9e` y `7ee48f7` (ver mensajes de commit para el detalle completo):
