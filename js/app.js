@@ -9,6 +9,24 @@ import {
   uploadArchivo, abrirArchivo
 } from './data.js';
 
+// ── Helpers de texto ────────────────────────────────────
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// Convierte URLs sueltas en <a> clickeables. Funciona tanto sobre texto
+// plano ya escapado como sobre HTML del editor de notas -- no vuelve a
+// envolver algo que ya está dentro de un <a>.
+function linkify(html) {
+  if (!html) return '';
+  return html.replace(/(<a\b[^>]*>[\s\S]*?<\/a>)|((?:https?:\/\/|www\.)[^\s<>"']+)/gi, (m, alreadyLink, url) => {
+    if (alreadyLink) return alreadyLink;
+    const clean = url.replace(/[.,;:!?)\]]+$/, '');
+    const trail = url.slice(clean.length);
+    const href = clean.startsWith('http') ? clean : 'https://' + clean;
+    return `<a href="${href}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">${clean}</a>${trail}`;
+  });
+}
+
 // ── Bootstrap ──────────────────────────────────────────
 const user = requireAuth();
 if (!user) throw new Error('No auth');
@@ -2851,7 +2869,7 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
   document.getElementById('tf-hora').value = t.hora || '';
-  document.getElementById('tf-notas').innerHTML = t.notas || '';
+  document.getElementById('tf-notas').innerHTML = linkify(t.notas || '');
   const tfVisibleCliente = document.getElementById('tf-visible-cliente');
   if (tfVisibleCliente) {
     tfVisibleCliente.checked = t.visibleParaCliente === true;
@@ -4560,7 +4578,7 @@ function renderComments(ctx, comments) {
   }
   listEl.innerHTML = comments.map((c, idx) => {
     const inicial = (c.autor || '?')[0].toUpperCase();
-    const textoHtml = (c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+    const textoHtml = linkify(escapeHtml(c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>'));
     const vistoPor = c.vistoPor || [];
     const yoLoVi = vistoPor.some(v => v.email === user.email);
     const vistoTitle = vistoPor.length ? `Visto por ${vistoPor.map(v => v.nombre).join(', ')}` : 'Marcar como visto';
