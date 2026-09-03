@@ -1154,6 +1154,28 @@
 
   const user = requireAuth(['admin', 'colaborador']);
   if (!user) throw new Error('No auth');
+
+  // Auto-scroll al arrastrar tarjetas cerca del borde de cualquier kanban
+  // del admin (Mis Tareas, Gestión COSMART) -- sin esto había que soltar el
+  // drag e ir manualmente hasta arriba para poder tirar la tarjeta en otra
+  // columna. Ya existía este mismo fix en el panel del cliente (js/app.js)
+  // pero nunca se portó acá, que es un script aparte.
+  (function habilitarAutoScrollKanbanAdmin() {
+    const MARGEN = 70, VELOCIDAD = 16;
+    document.addEventListener('dragover', (e) => {
+      const board = e.target.closest?.('.kanban-board');
+      if (!board) return;
+      const scroller = board.closest('.content') || document.scrollingElement;
+      if (scroller) {
+        const r = scroller.getBoundingClientRect();
+        if (e.clientY < r.top + MARGEN) scroller.scrollTop -= VELOCIDAD;
+        else if (e.clientY > r.bottom - MARGEN) scroller.scrollTop += VELOCIDAD;
+      }
+      const br = board.getBoundingClientRect();
+      if (e.clientX < br.left + MARGEN) board.scrollLeft -= VELOCIDAD;
+      else if (e.clientX > br.right - MARGEN) board.scrollLeft += VELOCIDAD;
+    });
+  })();
   document.getElementById('adminName').textContent = user.name || user.email;
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
