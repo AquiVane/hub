@@ -4714,11 +4714,18 @@ function opcionesFiltroAsignadoTareas() {
 }
 
 function getMentionUsers() {
-  const usuarios = STATE.client.usuarios || [];
-  return [
-    { nombre: user.name || user.email.split('@')[0], email: user.email },
-    ...usuarios
-  ];
+  const lista = [{ nombre: user.name || user.email.split('@')[0], email: user.email }];
+  // El contacto principal del cliente (STATE.client.email/nombre) nunca
+  // se incluía acá -- solo el "equipo" (usuarios) agregado aparte. Mismo
+  // criterio que ya usa getAsignarOptions para el desplegable de asignar.
+  if (STATE.client.email) lista.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  lista.push(...(STATE.client.usuarios || []));
+  const seen = new Set();
+  return lista.filter(u => {
+    if (!u.email || seen.has(u.email.toLowerCase())) return false;
+    seen.add(u.email.toLowerCase());
+    return true;
+  });
 }
 
 function setupMentionAutocomplete(inputId, dropdownId) {

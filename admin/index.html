@@ -268,6 +268,21 @@
           <h2 style="font-size:18px;font-weight:700;">Proyectos</h2>
           <span class="text-muted text-sm">Todas las tareas marcadas "Es un proyecto" -- de Gestión COSMART, Mis Tareas y clientes</span>
         </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <input type="text" id="proyectosBuscar" class="form-control" placeholder="🔎 Buscar proyecto..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="filtrarProyectos('busqueda', this.value)">
+          <label style="font-size:12px;color:var(--text-muted);">Cliente:</label>
+          <select id="proyectosFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarProyectos('cliente', this.value)">
+            <option value="">Todos</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Prioridad:</label>
+          <select id="proyectosFiltroPrioridad" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarProyectos('prioridad', this.value)">
+            <option value="">Todas</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="limpiarProyectosFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
+        </div>
         <div id="proyectosList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
@@ -2536,13 +2551,49 @@
   // Reusa el mismo caché de Mis Tareas (ya trae mezclados Gestión
   // COSMART + Personal + todos los clientes) filtrando por
   // esProyecto:true, en vez de duplicar la lógica de fetch entera.
+  let _proyectosBusqueda = '';
+  let _proyectosFiltroCliente = '';
+  let _proyectosFiltroPrioridad = '';
+  window.filtrarProyectos = function(tipo, valor) {
+    if (tipo === 'busqueda') _proyectosBusqueda = valor.trim().toLowerCase();
+    if (tipo === 'cliente') _proyectosFiltroCliente = valor;
+    if (tipo === 'prioridad') _proyectosFiltroPrioridad = valor;
+    renderProyectos();
+  };
+  window.limpiarProyectosFiltros = function() {
+    _proyectosBusqueda = ''; _proyectosFiltroCliente = ''; _proyectosFiltroPrioridad = '';
+    document.getElementById('proyectosBuscar').value = '';
+    document.getElementById('proyectosFiltroCliente').value = '';
+    document.getElementById('proyectosFiltroPrioridad').value = '';
+    renderProyectos();
+  };
+  function poblarProyectosFiltroCliente(proyectos) {
+    const sel = document.getElementById('proyectosFiltroCliente');
+    if (!sel) return;
+    const vistos = new Set();
+    const opciones = [`<option value="">Todos</option>`];
+    proyectos.forEach(i => {
+      if (vistos.has(i.clientId)) return;
+      vistos.add(i.clientId);
+      opciones.push(`<option value="${i.clientId}">${escapeHtml(i.clientNombre)}</option>`);
+    });
+    const valorActual = sel.value;
+    sel.innerHTML = opciones.join('');
+    sel.value = valorActual;
+  }
   async function loadProyectos() {
     if (!_misTareasCache.length) await loadMisTareas();
     renderProyectos();
   }
   function renderProyectos() {
     const listEl = document.getElementById('proyectosList');
-    const proyectos = _misTareasCache.filter(i => i.tipo === 'tarea' && i.tarea.esProyecto);
+    const todos = _misTareasCache.filter(i => i.tipo === 'tarea' && i.tarea.esProyecto);
+    poblarProyectosFiltroCliente(todos);
+    const proyectos = todos.filter(i =>
+      (!_proyectosFiltroCliente || i.clientId === _proyectosFiltroCliente) &&
+      (!_proyectosFiltroPrioridad || i.tarea.prioridad === _proyectosFiltroPrioridad) &&
+      (!_proyectosBusqueda || (i.tarea.titulo || '').toLowerCase().includes(_proyectosBusqueda))
+    );
     if (!proyectos.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔷</div><h3>Sin proyectos todavía</h3><p>Marcá una tarea como "Es un proyecto" para que aparezca acá, o transformá una idea.</p></div>`;
       return;

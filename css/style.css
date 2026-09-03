@@ -57,6 +57,7 @@ input, select, textarea { font-family: inherit; }
    seleccionado usa el navy original de fondo con texto blanco, para
    que se siga notando cuál es aun con todo lo demás en textos oscuros. */
 .admin-shell { --sidebar-bg: #dbeafe; }
+.admin-shell .sidebar-hub-label { color: var(--primary-dark); }
 .admin-shell .nav-section-label { color: rgba(13,43,107,.55); }
 .admin-shell .nav-item { color: var(--primary-dark); }
 .admin-shell .nav-item:hover { background: rgba(13,43,107,.08); color: var(--primary-dark); }
