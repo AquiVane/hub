@@ -11,7 +11,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
-<div class="layout">
+<div class="layout admin-shell">
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
@@ -19,8 +19,8 @@
         <img src="../app/cosmart-logo.png" alt="COSMART" class="cosmart-logo-img" id="sidebarLogoImg">
       </div>
     </div>
-    <div class="sidebar-hub-label" id="sidebarHubLabel">Marketing Hub</div>
-    <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.5px;padding:0 16px 12px;margin-top:-8px;">Panel administrador</div>
+    <div class="sidebar-hub-label" id="sidebarHubLabel" style="border-bottom:none;padding-bottom:2px;">Marketing Hub</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.5px;padding:0 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);">Panel administrador</div>
     <nav class="nav-section">
       <div class="nav-section-label">Menú</div>
       <button class="nav-item active" onclick="showSection('clientes')">
@@ -136,6 +136,7 @@
             <option value="fecha">Fecha</option>
             <option value="prioridad">Prioridad</option>
           </select>
+          <button class="btn btn-secondary btn-sm" onclick="limpiarMisTareasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
         </div>
         <div class="tabs" style="margin-bottom:14px;">
           <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
@@ -433,6 +434,10 @@
         <textarea id="in-descripcion" class="form-control" rows="2" placeholder="Mini descripción (opcional)"></textarea>
       </div>
       <div class="form-group">
+        <label>Link</label>
+        <input type="url" id="in-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group">
         <label>Vertical</label>
         <select id="in-vertical" class="form-control">
           <option value="">General (sin vertical)</option>
@@ -622,7 +627,8 @@
       <div id="mt-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
-      <a id="mt-abrir-panel" href="#" target="_blank" class="btn btn-secondary btn-sm" style="margin-right:auto;text-decoration:none;">Abrir en panel del cliente</a>
+      <button class="btn btn-danger btn-sm" id="deleteMisTareaBtn" style="margin-right:auto;" onclick="deleteMisTareaModal()">Eliminar</button>
+      <a id="mt-abrir-panel" href="#" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Abrir en panel del cliente</a>
       <button class="btn btn-secondary" onclick="closeMisTareaModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveMisTareaModal()">Guardar</button>
     </div>
@@ -684,6 +690,13 @@
       <div class="form-group">
         <label>URL</label>
         <input type="url" id="nmt-url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group hidden" id="nmt-visible-cliente-group">
+        <label class="check-label" style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="nmt-visible-cliente">
+          Visible para el cliente
+        </label>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto las tareas son internas del equipo. Tildá esto solo si el cliente tiene que verla ya.</span>
       </div>
       <div class="form-group hidden" id="nmt-fecha-inicio-group">
         <label>Fecha de inicio</label>
@@ -1118,7 +1131,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2005,6 +2018,7 @@
     document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + codigoDeInterna(t) : ''}` : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
     document.getElementById('in-descripcion').value = t.descripcion || '';
+    document.getElementById('in-url').value = t.url || '';
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
@@ -2113,6 +2127,7 @@
       numero,
       titulo,
       descripcion: document.getElementById('in-descripcion').value.trim() || null,
+      url: document.getElementById('in-url').value.trim() || null,
       vertical: inVerticalVal,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
@@ -2209,6 +2224,9 @@
     const clientId = document.getElementById('nmt-cliente').value;
     document.getElementById('nmt-vertical-group').classList.toggle('hidden', clientId !== '_cosmart');
     if (clientId !== '_cosmart') document.getElementById('nmt-vertical').value = '';
+    const esClienteReal = !['_cosmart', '_personal'].includes(clientId);
+    document.getElementById('nmt-visible-cliente-group').classList.toggle('hidden', !esClienteReal);
+    if (!esClienteReal) document.getElementById('nmt-visible-cliente').checked = false;
     poblarNmtAsignado(clientId);
   };
   async function loadColaboradores() {
@@ -2406,6 +2424,21 @@
     if (tipo === 'vertical') _misTareasFiltroVertical = valor;
     if (tipo === 'prioridad') _misTareasFiltroPrioridad = valor;
     if (tipo === 'busqueda') _misTareasBusqueda = valor.trim().toLowerCase();
+    renderMisTareas();
+  };
+
+  window.limpiarMisTareasFiltros = function() {
+    _misTareasFiltroCliente = '';
+    _misTareasFiltroVertical = '';
+    _misTareasFiltroPrioridad = '';
+    _misTareasBusqueda = '';
+    _misTareasSoloSubtareas = false;
+    document.getElementById('misTareasBuscar').value = '';
+    document.getElementById('misTareasFiltroCliente').value = '';
+    document.getElementById('misTareasFiltroVertical').value = '';
+    document.getElementById('misTareasFiltroPrioridad').value = '';
+    const btnSub = document.getElementById('misTareasSoloSubtareas');
+    if (btnSub) btnSub.className = 'btn btn-sm btn-secondary';
     renderMisTareas();
   };
 
@@ -2779,7 +2812,7 @@
     document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
     document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
     if (tipo === 'tarea') document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
-    document.getElementById('mt-descripcion').value = t.descripcion || '';
+    document.getElementById('mt-descripcion').value = t.notas || t.descripcion || '';
     document.getElementById('mt-url').value = t.url || '';
     document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
     document.getElementById('mt-hora').value = t.hora || '';
@@ -2808,6 +2841,18 @@
   window.closeMisTareaModal = function() {
     document.getElementById('misTareaModal').classList.add('hidden');
     _misTareaModalIdx = null;
+  };
+
+  window.deleteMisTareaModal = async function() {
+    if (_misTareaModalIdx === null) return;
+    const item = _misTareasCache[_misTareaModalIdx];
+    if (!item) return;
+    if (!confirm(`¿Eliminar "${item.tarea.titulo}"? Esto no se puede deshacer.`)) return;
+    if (item.tipo === 'tarea') await deleteTarea(item.clientId, item.tarea.id);
+    else await deleteContenido(item.clientId, item.tarea.id);
+    _misTareasCache = _misTareasCache.filter(i => i !== item);
+    closeMisTareaModal();
+    renderMisTareas();
   };
 
   async function renderMiSubtareas() {
@@ -2859,7 +2904,11 @@
     if (!item) return;
     const { tipo } = item;
     item.tarea.titulo = document.getElementById('mt-titulo').value.trim() || item.tarea.titulo;
-    item.tarea.descripcion = document.getElementById('mt-descripcion').value.trim() || null;
+    // El campo "Descripción" de acá ES la misma "Descripción / Notas" que ve
+    // el cliente (t.notas) -- antes guardaba en un campo aparte
+    // (t.descripcion) que el cliente nunca veía. Se sigue leyendo t.descripcion
+    // como fallback por compatibilidad con tareas viejas.
+    item.tarea.notas = document.getElementById('mt-descripcion').value.trim() || null;
     item.tarea.url = document.getElementById('mt-url').value.trim() || null;
     const nuevoEstado = document.getElementById('mt-estado').value;
     const estadoPrevio = item.tarea.estado;
@@ -2905,6 +2954,7 @@
     document.getElementById('nmt-prioridad').value = 'Media';
     document.getElementById('nmt-descripcion').value = '';
     document.getElementById('nmt-url').value = '';
+    document.getElementById('nmt-visible-cliente').checked = false;
     document.getElementById('nmt-vencimiento').value = '';
     document.getElementById('nmt-hora').value = '';
     document.getElementById('nmt-recurrencia').value = '';
@@ -2919,9 +2969,14 @@
     const clients = await getAllClients();
     _nmtClientsCache = clients || [];
     clienteSel.innerHTML = `
-      <option value="_personal">🏠 Personal (${user.name || user.email})</option>
       <option value="_cosmart">COSMART (interno)</option>
+      <option value="_personal">🏠 Personal (${user.name || user.email})</option>
       ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
+    // Por defecto queda en "COSMART (interno)" (antes era "Personal") para
+    // que el desplegable de Verticales se vea de una al abrir el modal, sin
+    // tener que elegir manualmente COSMART primero -- pedido varias veces
+    // por Vaneh.
+    clienteSel.value = '_cosmart';
 
     document.getElementById('nmt-vertical').value = '';
     document.getElementById('nmt-vertical-group').classList.toggle('hidden', clienteSel.value !== '_cosmart');
@@ -3429,7 +3484,7 @@
       vertical: verticalVal,
       estado: document.getElementById('nmt-estado').value,
       prioridad: document.getElementById('nmt-prioridad').value,
-      descripcion: document.getElementById('nmt-descripcion').value.trim() || null,
+      notas: document.getElementById('nmt-descripcion').value.trim() || null, // mismo campo "Descripción/Notas" que ve el cliente
       url: document.getElementById('nmt-url').value.trim() || null,
       vencimiento: document.getElementById('nmt-vencimiento').value || null,
       hora: document.getElementById('nmt-hora').value || null,
@@ -3441,7 +3496,7 @@
       fechaInicio: esProyectoVal ? (document.getElementById('nmt-fecha-inicio').value || null) : null,
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       subtareas: _nmtSubtareas,
-      visibleParaCliente: false,
+      visibleParaCliente: !['_cosmart', '_personal'].includes(clientId) && document.getElementById('nmt-visible-cliente').checked,
     };
     try {
       await saveTarea(clientId, obj);

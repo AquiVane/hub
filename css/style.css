@@ -48,6 +48,10 @@ input, select, textarea { font-family: inherit; }
   overflow-y: auto;
   z-index: 10;
 }
+/* Panel admin en celeste, panel de cliente en navy -- para que se
+   distingan de un vistazo (pedido de Vaneh, "la interfaz es muy
+   parecida"). Redefine la variable, no toca nada más del sidebar. */
+.admin-shell { --sidebar-bg: #1A4DAA; }
 .sidebar-logo {
   padding: 18px 16px 14px;
   color: #fff;
