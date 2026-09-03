@@ -3285,7 +3285,22 @@ function renderPauta(container) {
   const asignado = activePautaTab === 'todas' ? presupuesto?.total : presupuesto?.porPlataforma?.[activePautaTab];
   const excedeAsignado = asignado > 0 && total > asignado;
 
+  const CUENTAS_PUB_PLAT = [
+    { key: 'meta', label: 'Meta Ads' }, { key: 'google', label: 'Google Ads' },
+    { key: 'tiktok', label: 'TikTok Ads' }, { key: 'linkedin', label: 'LinkedIn Ads' },
+  ];
+  const cuentasPub = STATE.client?.cuentasPublicitarias || {};
+  const cuentasConfiguradas = CUENTAS_PUB_PLAT.filter(p => cuentasPub[p.key]?.accountId);
+
   container.innerHTML = `
+    ${cuentasConfiguradas.length ? `
+    <div class="card" style="padding:12px 16px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">📢 Cuenta publicitaria asociada</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        ${cuentasConfiguradas.map(p => `<div style="font-size:12px;"><strong>${p.label}:</strong> ${cuentasPub[p.key].accountId}</div>`).join('')}
+      </div>
+    </div>` : ''}
+
     <div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
       ${plats.map(p => `<button class="tab-btn ${activePautaTab===(p==='Todas'?'todas':p)?'active':''}" data-tab="${p==='Todas'?'todas':p}">${p}</button>`).join('')}
     </div>

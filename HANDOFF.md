@@ -21,11 +21,20 @@ Motor propio sin dependencias (`iniciarTour(steps, storageKey)`, spotlight + tar
 
 `cosmart-workers` complementa esto: al darse de alta una agencia nueva (`handleSignupAgencia`) se le crea un "Cliente Demo" con datos de ejemplo (`crearClienteDemo`), para que el tour tenga algo real que mostrar y no un panel vacío.
 
-### Todavía sin hacer de esta tanda (pedido nuevo del 03/09, para no prometerlo de nuevo)
+## Sexta tanda del mismo día (03/09): botón "ver tareas" por cliente + cuentas publicitarias + webhook CRM
 
-- **CRM de leads potenciales**: seleccionar manualmente qué secuencias de email evergreen son leads potenciales (Brújula, Método, imán de cursos) + a qué vertical corresponden, más poder agregar leads a mano. No empezado -- es una feature grande, need to definir el modelo de datos con Vaneh antes de construir (¿vive en `hub` o en `cosmart-workers`? ¿es una tabla nueva o se deriva de los suscriptores de newsletter que ya existen?).
+- **Botón "📋 Tareas" en cada fila de cliente** (Clientes, admin): abre `clienteTareasModal` con conteo de tareas y contenidos pendientes + lista de tareas pendientes ordenada por vencimiento. Carga on-demand al hacer click (no hay conteo precargado en la fila -- a propósito, para no repetir el mismo problema de tandas de pedidos simultáneos que ya rompió `loadClients()` una vez, ver más abajo).
+- **Cuentas publicitarias (Meta/Google/TikTok/LinkedIn)**: nueva card "Cuentas publicitarias propias" en Configuración (cuenta de la agencia, para sus propias campañas) + nuevos campos en "Editar cliente" (cuenta de ESE cliente, por plataforma) que se ven de solo lectura en la sección Pauta Digital del panel del cliente. Contraparte de backend documentada en el HANDOFF de `cosmart-workers`. Carga manual -- sin OAuth todavía.
+- **Webhook saliente hacia CRM propio**: card "Webhook hacia tu CRM" en Configuración, URL editable por agencia. Backend en `cosmart-workers` dispara eventos (`cliente_creado`, `campana_creada`, `contenido_publicado`, `tarea_completada`).
+- Confirmado que ya estaba resuelto de una tanda anterior (Vaneh preguntó si seguía pendiente): el modal de tarea ya resetea el scroll al abrir en los 4 lugares (`tareaModal` en `js/app.js`, `internaModal`/`misTareaModal`/`nuevaMiTareaModal` en `admin/index.html`) -- no hacía falta tocar nada.
+
+### Todavía sin hacer (para no prometerlo de nuevo)
+
+- **CRM de leads potenciales**: seleccionar manualmente qué secuencias de email evergreen son leads potenciales (Brújula, Método, imán de cursos) + a qué vertical/cliente corresponden, visible tanto en admin como en el panel del cliente, más poder agregar leads a mano. No empezado -- es una feature grande, hace falta definir el modelo de datos con Vaneh antes de construir (¿vive en `hub` o en `cosmart-workers`? ¿es una tabla nueva o se deriva de los suscriptores de newsletter que ya existen en Brevo?).
 - Asignación de contenidos hacia el cliente desde la importación de Excel.
-- Reportes de tareas por vertical.
+- Reportes de tareas por vertical (Gestión COSMART ya tiene el filtro por vertical -- falta la vista agregada tipo informe).
+- **"Oferta irresistible" (urgencia/escasez) en todos los productos de COSMART**: Vaneh pidió primero un documento propuesta (relevar todos los productos de todas las verticales con su precio real vs. "precio de lista" tachado) antes de tocar ningún HTML -- todavía no se armó ese documento.
+- **Asignar tareas a Claude/agencias tipo JIRA**, para que se ejecuten solas en el día/horario de la tarjeta: idea nueva de Vaneh, no evaluada todavía -- necesita definición de alcance (qué tipo de tareas son "ejecutables" automáticamente, con qué límites de seguridad) antes de estimar.
 - Preview del "resumen de equipo" antes de enviarlo -- **ambigüedad sin resolver**: Vaneh lo describió como "el informe de cada colaborador", pero `enviarResumenMensualCualitativo` manda UN solo mail a Vaneh (cc Ger), no uno individual por colaborador. Antes de construir el preview hay que confirmar con ella si quiere que sea per-colaborador de verdad (bastante más trabajo) o alcanza con previsualizar el mail único que ya existe.
 - Permisos por tarea (colaborador ve todo por default, quien crea puede restringir) + historial de cambios (qué/cuándo/quién) -- Vaneh ya dio la especificación completa en el chat, queda pendiente de construir.
 - Modo oscuro, menú de filtros compacto en mobile, Presupuesto de Pauta Digital (ver tandas anteriores).

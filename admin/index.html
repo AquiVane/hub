@@ -376,6 +376,29 @@
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>📢 Cuentas publicitarias propias</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">La cuenta publicitaria de <strong id="cpa-nombre-agencia">tu agencia</strong> en cada plataforma, para tus propias campañas internas (distintas de las de tus clientes, que se cargan desde la ficha de cada cliente). Carga manual por ahora — la conexión automática vía Meta/Google/TikTok/LinkedIn está pendiente.</p>
+            <div id="cpa-plataformas" style="display:flex;flex-direction:column;gap:10px;"></div>
+            <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="guardarCuentasPubAgencia()">Guardar</button>
+            <span id="cpa-msg" style="font-size:12px;color:#10b981;margin-left:8px;"></span>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🔗 Webhook hacia tu CRM</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Pegá acá la URL de tu propio CRM y el Hub le va a mandar un aviso (POST con JSON) cada vez que pase algo relevante: cliente nuevo, tarea completada, contenido publicado o campaña creada. Así conectás el Hub con el CRM que ya uses, sin pasos manuales.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="form-group" style="margin:0;flex:1;min-width:220px;">
+                <label style="font-size:11px;">URL del webhook</label>
+                <input type="url" id="webhookUrlInput" class="form-control" placeholder="https://tu-crm.com/webhooks/cosmart-hub">
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="guardarWebhookConfig()">Guardar</button>
+            </div>
+            <p id="webhook-config-status" style="font-size:12px;margin-top:10px;"></p>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>Numeración de tareas</h2></div>
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
@@ -1318,6 +1341,8 @@
           <input type="text" id="ec-notas" class="form-control" placeholder="Notas sobre el cliente...">
         </div>
       </div>
+      <p style="font-size:11px;color:var(--text-muted);margin:6px 0 8px;">Cuenta publicitaria de este cliente en cada plataforma (carga manual — se ve reflejado en el panel del cliente, sección Pauta Digital).</p>
+      <div id="ec-cuentas-pub" style="display:flex;flex-direction:column;gap:8px;"></div>
 
       <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">Para cambiar el email de acceso o la contraseña, pedile a COSMART (dev) que lo actualice desde el backend — por ahora esto edita solo los datos del negocio.</p>
     </div>
@@ -1328,9 +1353,35 @@
   </div>
 </div>
 
+<!-- Modal preview de tareas/contenidos pendientes de un cliente -->
+<div id="clienteTareasModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 id="ct-modal-title">Tareas</h3>
+      <button class="modal-close" onclick="closeClienteTareasModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:16px;margin-bottom:16px;">
+        <div class="card" style="flex:1;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--primary-dark);" id="ct-count-tareas">—</div>
+          <div style="font-size:12px;color:var(--text-muted);">Tareas pendientes</div>
+        </div>
+        <div class="card" style="flex:1;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--primary-dark);" id="ct-count-contenidos">—</div>
+          <div style="font-size:12px;color:var(--text-muted);">Contenidos pendientes</div>
+        </div>
+      </div>
+      <div id="ct-lista-tareas"></div>
+    </div>
+    <div class="modal-footer">
+      <a id="ct-ver-panel-link" href="#" target="_blank" class="btn btn-secondary" style="text-decoration:none;">Ver panel completo del cliente</a>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1441,7 +1492,7 @@
     if (sec === 'agencias') loadAgencias();
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
-    if (sec === 'config') cargarClaudeConfigStatus();
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
   };
 
   function fmtDateAct(iso) {
@@ -4150,6 +4201,7 @@
         ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
         <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
@@ -4356,10 +4408,52 @@
     document.getElementById('ec-meta-bm').value = client.metaBusinessId || '';
     document.getElementById('ec-notas').value = client.notas || '';
 
+    const cuentasPub = client.cuentasPublicitarias || {};
+    document.getElementById('ec-cuentas-pub').innerHTML = PLATAFORMAS_PAUTA.map(p => `
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:600;width:160px;flex-shrink:0;">${p.label}</span>
+        <input type="text" id="ec-cp-${p.key}" class="form-control" style="flex:1;min-width:140px;" placeholder="ID de cuenta publicitaria" value="${(cuentasPub[p.key]?.accountId || '').replace(/"/g,'&quot;')}">
+      </div>
+    `).join('');
+
     document.getElementById('editClientModal').classList.remove('hidden');
   };
 
   window.closeEditClientModal = () => document.getElementById('editClientModal').classList.add('hidden');
+
+  window.openClienteTareasModal = async function(clientId, nombre) {
+    document.getElementById('ct-modal-title').textContent = `Tareas — ${nombre}`;
+    document.getElementById('ct-ver-panel-link').href = `../app/index.html?client=${clientId}`;
+    document.getElementById('ct-count-tareas').textContent = '—';
+    document.getElementById('ct-count-contenidos').textContent = '—';
+    document.getElementById('ct-lista-tareas').innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Cargando...</p>';
+    document.getElementById('clienteTareasModal').classList.remove('hidden');
+
+    try {
+      const [tareas, contenidos] = await Promise.all([getTareas(clientId), getContenidos(clientId)]);
+      const pendientes = (tareas || []).filter(t => t.estado !== 'Listo');
+      const contPendientes = (contenidos || []).filter(c => c.estado !== 'Publicado');
+      document.getElementById('ct-count-tareas').textContent = pendientes.length;
+      document.getElementById('ct-count-contenidos').textContent = contPendientes.length;
+
+      const lista = document.getElementById('ct-lista-tareas');
+      if (!pendientes.length) {
+        lista.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Sin tareas pendientes.</p>';
+      } else {
+        const ordenadas = [...pendientes].sort((a, b) => (a.vencimiento || '9999').localeCompare(b.vencimiento || '9999'));
+        lista.innerHTML = ordenadas.map(t => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${t.estado==='En progreso'?'#fef3c7':'#f1f5f9'};color:${t.estado==='En progreso'?'#92400e':'#64748b'};flex-shrink:0;">${t.estado || 'Sin empezar'}</span>
+            <span style="font-size:13px;flex:1;">${(t.titulo || '').replace(/</g,'&lt;')}</span>
+            ${t.vencimiento ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">${t.vencimiento}</span>` : ''}
+          </div>
+        `).join('');
+      }
+    } catch (e) {
+      document.getElementById('ct-lista-tareas').innerHTML = `<p style="font-size:13px;color:#ef4444;">No se pudo cargar: ${e.message || 'reintentá.'}</p>`;
+    }
+  };
+  window.closeClienteTareasModal = () => document.getElementById('clienteTareasModal').classList.add('hidden');
 
   window.saveEditClient = async function() {
     if (!_editClientId) return;
@@ -4390,6 +4484,11 @@
         website2: document.getElementById('ec-website2').value.trim(),
         metaBusinessId: document.getElementById('ec-meta-bm').value.trim(),
         notas: document.getElementById('ec-notas').value.trim(),
+        cuentasPublicitarias: PLATAFORMAS_PAUTA.reduce((acc, p) => {
+          const id = document.getElementById(`ec-cp-${p.key}`)?.value.trim();
+          if (id) acc[p.key] = { accountId: id };
+          return acc;
+        }, {}),
       });
       if (responsableEmail && responsableEmail !== user.email) {
         try {
@@ -5013,6 +5112,67 @@
       await cargarClaudeConfigStatus();
     } catch (e) {
       alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  // ── Cuentas publicitarias propias de la agencia ──────────────────
+  const PLATAFORMAS_PAUTA = [
+    { key: 'meta', label: 'Meta Ads (Facebook/Instagram)' },
+    { key: 'google', label: 'Google Ads' },
+    { key: 'tiktok', label: 'TikTok Ads' },
+    { key: 'linkedin', label: 'LinkedIn Ads' },
+  ];
+  async function cargarCuentasPubAgencia() {
+    const wrap = document.getElementById('cpa-plataformas');
+    if (!wrap) return;
+    document.getElementById('cpa-nombre-agencia').textContent = (user.agenciaNombre || 'COSMART');
+    let cuentas = {};
+    try { cuentas = await getCuentasPubAgencia(); } catch (e) {}
+    wrap.innerHTML = PLATAFORMAS_PAUTA.map(p => `
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:600;width:160px;flex-shrink:0;">${p.label}</span>
+        <input type="text" id="cpa-${p.key}-id" class="form-control" style="flex:1;min-width:140px;" placeholder="ID de cuenta" value="${(cuentas[p.key]?.accountId || '').replace(/"/g,'&quot;')}">
+        <input type="text" id="cpa-${p.key}-nombre" class="form-control" style="flex:1;min-width:140px;" placeholder="Nombre (opcional)" value="${(cuentas[p.key]?.accountName || '').replace(/"/g,'&quot;')}">
+      </div>
+    `).join('');
+  }
+  window.guardarCuentasPubAgencia = async function() {
+    const cuentas = {};
+    PLATAFORMAS_PAUTA.forEach(p => {
+      const id = document.getElementById(`cpa-${p.key}-id`).value.trim();
+      const nombre = document.getElementById(`cpa-${p.key}-nombre`).value.trim();
+      if (id || nombre) cuentas[p.key] = { accountId: id, accountName: nombre };
+    });
+    try {
+      await setCuentasPubAgencia(cuentas);
+      const msg = document.getElementById('cpa-msg');
+      msg.textContent = '✓ Guardado';
+      setTimeout(() => msg.textContent = '', 2500);
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  // ── Webhook hacia el CRM propio de la agencia ─────────────────────
+  async function cargarWebhookConfig() {
+    const input = document.getElementById('webhookUrlInput');
+    if (!input) return;
+    try {
+      const { webhookUrl } = await getWebhookConfig();
+      input.value = webhookUrl || '';
+    } catch (e) {}
+  }
+  window.guardarWebhookConfig = async function() {
+    const input = document.getElementById('webhookUrlInput');
+    const status = document.getElementById('webhook-config-status');
+    try {
+      await setWebhookConfig(input.value.trim());
+      status.textContent = '✓ Guardado';
+      status.style.color = '#10b981';
+      setTimeout(() => status.textContent = '', 2500);
+    } catch (e) {
+      status.textContent = 'Error: ' + (e.message || 'intentá de nuevo.');
+      status.style.color = '#ef4444';
     }
   };
 

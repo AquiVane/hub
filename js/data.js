@@ -547,3 +547,25 @@ export async function preguntarClaude(mensaje, historial) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
   return api('POST', '/ai/preguntar', { mensaje, historial });
 }
+
+// ── Cuentas publicitarias propias de la agencia (Meta/Google/TikTok/LinkedIn) ──
+export async function getCuentasPubAgencia() {
+  if (DEMO_MODE) return {};
+  return api('GET', '/admin/cuentas-publicitarias');
+}
+
+export async function setCuentasPubAgencia(cuentas) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/admin/cuentas-publicitarias', cuentas);
+}
+
+// ── Webhook saliente hacia el CRM propio de la agencia ────────────
+export async function getWebhookConfig() {
+  if (DEMO_MODE) return { webhookUrl: '' };
+  return api('GET', '/admin/webhook-config');
+}
+
+export async function setWebhookConfig(webhookUrl) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/admin/webhook-config', { webhookUrl });
+}
