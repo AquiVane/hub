@@ -164,8 +164,14 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Gestión COSMART</h2>
           <span class="text-muted text-sm">No atadas a ningún cliente</span>
-          <select id="internasVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:12px;" onchange="filtrarInternasPorVertical(this.value)">
-            <option value="">Todas las verticales</option>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <input type="text" id="internasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="filtrarInternasPorBusqueda(this.value)">
+          <label style="font-size:12px;color:var(--text-muted);">Vertical:</label>
+          <select id="internasVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorVertical(this.value)">
+            <option value="">Todas</option>
             <option value="_general">General (sin vertical)</option>
             <option>Brújula</option>
             <option>Rumbo Voraz</option>
@@ -179,8 +185,14 @@
             <option>Home COSMART</option>
             <option>Hub</option>
           </select>
-          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
-          <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Prioridad:</label>
+          <select id="internasPrioridadFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorPrioridad(this.value)">
+            <option value="">Todas</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="limpiarInternasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
         </div>
         <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -1553,9 +1565,28 @@
   let _internasCache = [];
   let _editingInterna = null;
   let _internasVerticalFiltro = '';
+  let _internasPrioridadFiltro = '';
+  let _internasBusqueda = '';
   const VERTICAL_COLOR = { 'Brújula':'#0ea5e9', 'Rumbo Voraz':'#e02020', 'Design':'#a855f7', 'ComuniCOS':'#3b82f6', 'Talent':'#f59e0b', 'Shows':'#ec4899', 'Euforia':'#10b981', 'Training':'#8b5cf6', 'MPG':'#06b6d4' };
   window.filtrarInternasPorVertical = function(v) {
     _internasVerticalFiltro = v;
+    renderInternasBoard();
+  };
+  window.filtrarInternasPorPrioridad = function(v) {
+    _internasPrioridadFiltro = v;
+    renderInternasBoard();
+  };
+  window.filtrarInternasPorBusqueda = function(v) {
+    _internasBusqueda = v.trim().toLowerCase();
+    renderInternasBoard();
+  };
+  window.limpiarInternasFiltros = function() {
+    _internasVerticalFiltro = '';
+    _internasPrioridadFiltro = '';
+    _internasBusqueda = '';
+    document.getElementById('internasVerticalFiltro').value = '';
+    document.getElementById('internasPrioridadFiltro').value = '';
+    document.getElementById('internasBuscar').value = '';
     renderInternasBoard();
   };
 
@@ -1578,9 +1609,11 @@
       { key: 'Listo', color: '#10b981' },
     ];
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
-    const cacheFiltrado = _internasVerticalFiltro
-      ? _internasCache.filter(t => _internasVerticalFiltro === '_general' ? !t.vertical : t.vertical === _internasVerticalFiltro)
-      : _internasCache;
+    const cacheFiltrado = _internasCache.filter(t =>
+      (!_internasVerticalFiltro || (_internasVerticalFiltro === '_general' ? !t.vertical : t.vertical === _internasVerticalFiltro)) &&
+      (!_internasPrioridadFiltro || t.prioridad === _internasPrioridadFiltro) &&
+      (!_internasBusqueda || (t.titulo || '').toLowerCase().includes(_internasBusqueda))
+    );
     board.innerHTML = cols.map(col => {
       const items = cacheFiltrado.filter(t => t.estado === col.key && !t.archivado);
       return `
