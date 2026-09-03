@@ -569,3 +569,19 @@ export async function setWebhookConfig(webhookUrl) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/webhook-config', { webhookUrl });
 }
+
+// ── CRM de leads potenciales ───────────────────────────────────────
+export async function getLeads() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/admin/leads');
+}
+
+export async function saveLead(lead) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/admin/leads', lead);
+}
+
+export async function deleteLead(id) {
+  if (DEMO_MODE) return { ok: true };
+  return api('DELETE', `/admin/leads/${id}`);
+}

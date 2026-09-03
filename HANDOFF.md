@@ -21,6 +21,11 @@ Motor propio sin dependencias (`iniciarTour(steps, storageKey)`, spotlight + tar
 
 `cosmart-workers` complementa esto: al darse de alta una agencia nueva (`handleSignupAgencia`) se le crea un "Cliente Demo" con datos de ejemplo (`crearClienteDemo`), para que el tour tenga algo real que mostrar y no un panel vacío.
 
+## Séptima tanda del mismo día (03/09): CRM de leads + tareas asignadas a "Claude IA"
+
+- **Sección "CRM Leads" nueva en el admin**: tablero kanban (Potencial → Email Marketing / WhatsApp → Nuevo Cliente → Seguimiento), filtro por vertical + buscador, alta manual con modal. Backend documentado en el HANDOFF de `cosmart-workers` -- ahí también está la lista de qué fuentes automáticas faltan conectar todavía (solo Training/carrito abandonado está enganchado por ahora).
+- **"Claude IA" como asignado de tarea**: aparece en los combos "Asignar a" de tareas internas y Mis Tareas (`CLAUDE_IA_EMAIL`, constante que tiene que coincidir con la de `cosmart-workers`). Al asignarle una tarea con vencimiento, el cron diario del backend la ejecuta sola y deja el resultado como comentario -- no respeta la hora exacta de la tarjeta, solo el día (ver el porqué en el HANDOFF de `cosmart-workers`).
+
 ## Sexta tanda del mismo día (03/09): botón "ver tareas" por cliente + cuentas publicitarias + webhook CRM
 
 - **Botón "📋 Tareas" en cada fila de cliente** (Clientes, admin): abre `clienteTareasModal` con conteo de tareas y contenidos pendientes + lista de tareas pendientes ordenada por vencimiento. Carga on-demand al hacer click (no hay conteo precargado en la fila -- a propósito, para no repetir el mismo problema de tandas de pedidos simultáneos que ya rompió `loadClients()` una vez, ver más abajo).

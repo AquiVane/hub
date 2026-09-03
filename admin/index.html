@@ -44,6 +44,9 @@
       <button class="nav-item" onclick="showSection('ideas')">
         <i data-lucide="lightbulb" class="nav-icon"></i><span>Ideas</span>
       </button>
+      <button class="nav-item" onclick="showSection('crm')">
+        <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
+      </button>
       <button class="nav-item" onclick="showSection('actividad')">
         <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
       </button>
@@ -204,6 +207,35 @@
           <button class="btn btn-secondary btn-sm" onclick="limpiarInternasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
         </div>
         <div id="internasBoard" class="kanban-board">
+          <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- CRM de leads potenciales -->
+      <div id="sec-crm" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">CRM Leads</h2>
+          <span class="text-muted text-sm">Potenciales clientes de todas las verticales, en un solo tablero</span>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openLeadModal()">+ Agregar lead</button>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <input type="text" id="leadsBuscar" class="form-control" placeholder="🔎 Buscar nombre, email o empresa..." style="width:220px;font-size:12px;padding:4px 8px;" oninput="filtrarLeadsPorBusqueda(this.value)">
+          <label style="font-size:12px;color:var(--text-muted);">Vertical:</label>
+          <select id="leadsVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarLeadsPorVertical(this.value)">
+            <option value="">Todas</option>
+            <option>Brújula</option>
+            <option>Rumbo Voraz</option>
+            <option>Design</option>
+            <option>ComuniCOS</option>
+            <option>Talent</option>
+            <option>Shows</option>
+            <option>Euforia</option>
+            <option>Training</option>
+            <option>MPG</option>
+            <option>Hub</option>
+          </select>
+        </div>
+        <div id="leadsBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
@@ -1379,9 +1411,70 @@
   </div>
 </div>
 
+<!-- Modal agregar/editar lead del CRM -->
+<div id="leadModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 id="lead-modal-title">Nuevo lead</h3>
+      <button class="modal-close" onclick="closeLeadModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" id="lead-nombre" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Apellido</label>
+          <input type="text" id="lead-apellido" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="lead-email" class="form-control">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="lead-telefono" class="form-control" placeholder="Con código de país si es WhatsApp">
+        </div>
+        <div class="form-group">
+          <label>Empresa</label>
+          <input type="text" id="lead-empresa" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Vertical</label>
+        <select id="lead-vertical" class="form-control">
+          <option value="">Sin especificar</option>
+          <option>Brújula</option>
+          <option>Rumbo Voraz</option>
+          <option>Design</option>
+          <option>ComuniCOS</option>
+          <option>Talent</option>
+          <option>Shows</option>
+          <option>Euforia</option>
+          <option>Training</option>
+          <option>MPG</option>
+          <option>Hub</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea id="lead-notas" class="form-control" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deleteLeadBtn" style="margin-right:auto;display:none;" onclick="deleteLeadActual()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeLeadModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarLead()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1492,6 +1585,7 @@
     if (sec === 'agencias') loadAgencias();
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
+    if (sec === 'crm') loadLeadsAdmin();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
   };
 
@@ -2740,6 +2834,12 @@
   let _clientsCacheForColab = [];
   let _nmtClientsCache = [];
 
+  // Pseudo-asignado especial -- una tarea asignada a esta "persona" la
+  // ejecuta Claude solo, en el día/hora que diga la tarjeta (ver cron
+  // `ejecutarTareasClaude` en cosmart-workers). Mismo email fijo para
+  // cualquier agencia, no es una cuenta real.
+  const CLAUDE_IA_EMAIL = 'claude-ia@cosmart.internal';
+
   async function opcionesYoYColaboradoresHtml(currentEmail) {
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
@@ -2751,6 +2851,7 @@
         html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
       });
     } catch (e) {}
+    html += `<option value="${CLAUDE_IA_EMAIL}" data-nombre="Claude IA"${cur === CLAUDE_IA_EMAIL ? ' selected' : ''}>🤖 Claude IA (la ejecuta sola)</option>`;
     return html;
   }
 
@@ -2780,6 +2881,9 @@
         asignadoSel.appendChild(opt);
       });
     }
+    const optClaude = document.createElement('option');
+    optClaude.value = CLAUDE_IA_EMAIL; optClaude.textContent = '🤖 Claude IA (la ejecuta sola)'; optClaude.dataset.nombre = 'Claude IA';
+    asignadoSel.appendChild(optClaude);
     if (prevValue && [...asignadoSel.options].some(o => o.value === prevValue)) asignadoSel.value = prevValue;
   }
   window.cambiarNmtCliente = function() {
@@ -5174,6 +5278,142 @@
       status.textContent = 'Error: ' + (e.message || 'intentá de nuevo.');
       status.style.color = '#ef4444';
     }
+  };
+
+  // ── CRM de leads potenciales ──────────────────────────────────────
+  let _leadsCache = [];
+  let _leadsVerticalFiltro = '';
+  let _leadsBusqueda = '';
+  let _editingLeadId = null;
+  const LEADS_COLS = [
+    { key: 'potencial', label: 'Potencial', color: '#94a3b8' },
+    { key: 'email-marketing', label: 'Email Marketing', color: '#0ea5e9' },
+    { key: 'whatsapp', label: 'WhatsApp', color: '#10b981' },
+    { key: 'nuevo-cliente', label: 'Nuevo Cliente', color: '#1A4DAA' },
+    { key: 'seguimiento', label: 'Seguimiento', color: '#a855f7' },
+  ];
+
+  window.filtrarLeadsPorVertical = function(v) { _leadsVerticalFiltro = v; renderLeadsBoard(); };
+  window.filtrarLeadsPorBusqueda = function(v) { _leadsBusqueda = v.trim().toLowerCase(); renderLeadsBoard(); };
+
+  async function loadLeadsAdmin() {
+    const board = document.getElementById('leadsBoard');
+    if (_leadsCache.length) renderLeadsBoard();
+    else board.innerHTML = `<div class="empty-state"><p>Cargando...</p></div>`;
+    try {
+      _leadsCache = await getLeads();
+      renderLeadsBoard();
+    } catch (e) {
+      if (!_leadsCache.length) board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p><button class="btn btn-primary" style="margin-top:12px;" onclick="loadLeadsAdmin()">Reintentar</button></div>`;
+    }
+  }
+
+  function renderLeadsBoard() {
+    const board = document.getElementById('leadsBoard');
+    const filtrados = _leadsCache.filter(l =>
+      (!_leadsVerticalFiltro || l.vertical === _leadsVerticalFiltro) &&
+      (!_leadsBusqueda || `${l.nombre} ${l.apellido} ${l.email} ${l.empresa}`.toLowerCase().includes(_leadsBusqueda))
+    );
+    board.innerHTML = LEADS_COLS.map(col => {
+      const items = filtrados.filter(l => l.columna === col.key).sort((a,b) => (b.actualizadoEn||'').localeCompare(a.actualizadoEn||''));
+      return `
+        <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
+          <div class="kanban-col-header">
+            <span class="kanban-col-dot" style="background:${col.color};"></span>
+            <span class="col-title">${col.label}</span>
+            <span class="col-count">${items.length}</span>
+          </div>
+          <div class="kanban-cards" data-col="${col.key}">
+            ${items.map(l => `
+              <div class="kanban-card" draggable="true" data-id="${l.id}" onclick="if(!this._dragged)openLeadModal('${l.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)">
+                <div class="kanban-card-title">${[l.nombre, l.apellido].filter(Boolean).join(' ') || l.email || l.telefono || 'Sin nombre'}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                  ${l.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[l.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[l.vertical] || '#64748b'};font-weight:700;">${l.vertical}</span>` : ''}
+                  ${l.empresa ? `<span style="font-size:10px;color:var(--text-muted);">🏢 ${l.empresa}</span>` : ''}
+                </div>
+                ${l.email ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">✉️ ${l.email}</div>` : ''}
+                ${l.telefono ? `<div style="font-size:11px;margin-top:2px;color:var(--text-muted);">📱 ${l.telefono}</div>` : ''}
+                ${l.origen ? `<div style="font-size:10.5px;margin-top:4px;color:var(--text-muted);font-style:italic;">${l.origen}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <button class="kanban-add-btn" onclick="openLeadModal(null,'${col.key}')">+ Agregar</button>
+        </div>`;
+    }).join('');
+    initLeadsDrag();
+  }
+
+  function initLeadsDrag() {
+    let draggingId = null;
+    const board = document.getElementById('leadsBoard');
+    if (!board) return;
+    board.querySelectorAll('.kanban-card[draggable]').forEach(card => {
+      card.addEventListener('dragstart', e => { draggingId = card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.dataset.id); });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+    board.querySelectorAll('.kanban-cards').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.parentElement.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.parentElement.classList.remove('drag-over'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.parentElement.classList.remove('drag-over');
+        if (!draggingId) return;
+        const id = draggingId; draggingId = null;
+        const l = _leadsCache.find(x => x.id === id);
+        if (!l || l.columna === zone.dataset.col) return;
+        l.columna = zone.dataset.col;
+        renderLeadsBoard();
+        try { await saveLead({ id: l.id, columna: l.columna }); } catch (e) { alert('No se pudo mover: ' + (e.message || 'reintentá.')); loadLeadsAdmin(); }
+      });
+    });
+  }
+
+  window.openLeadModal = function(id, columnaNueva) {
+    _editingLeadId = id || null;
+    const l = id ? _leadsCache.find(x => x.id === id) : null;
+    document.getElementById('lead-modal-title').textContent = l ? 'Editar lead' : 'Nuevo lead';
+    document.getElementById('lead-nombre').value = l?.nombre || '';
+    document.getElementById('lead-apellido').value = l?.apellido || '';
+    document.getElementById('lead-email').value = l?.email || '';
+    document.getElementById('lead-telefono').value = l?.telefono || '';
+    document.getElementById('lead-empresa').value = l?.empresa || '';
+    document.getElementById('lead-vertical').value = l?.vertical || '';
+    document.getElementById('lead-notas').value = l?.notas || '';
+    document.getElementById('deleteLeadBtn').style.display = l ? '' : 'none';
+    document.getElementById('leadModal').dataset.colNueva = columnaNueva || '';
+    document.getElementById('leadModal').classList.remove('hidden');
+  };
+  window.closeLeadModal = () => document.getElementById('leadModal').classList.add('hidden');
+
+  window.guardarLead = async function() {
+    const nombre = document.getElementById('lead-nombre').value.trim();
+    const email = document.getElementById('lead-email').value.trim();
+    const telefono = document.getElementById('lead-telefono').value.trim();
+    if (!nombre && !email && !telefono) { alert('Cargá al menos un nombre, email o teléfono.'); return; }
+    const modal = document.getElementById('leadModal');
+    const body = {
+      nombre, apellido: document.getElementById('lead-apellido').value.trim(),
+      email, telefono, empresa: document.getElementById('lead-empresa').value.trim(),
+      vertical: document.getElementById('lead-vertical').value,
+      notas: document.getElementById('lead-notas').value.trim(),
+    };
+    if (_editingLeadId) body.id = _editingLeadId;
+    else if (modal.dataset.colNueva) body.columna = modal.dataset.colNueva;
+    try {
+      await saveLead(body);
+      closeLeadModal();
+      await loadLeadsAdmin();
+    } catch (e) { alert('Error al guardar: ' + (e.message || 'intentá de nuevo.')); }
+  };
+
+  window.deleteLeadActual = async function() {
+    if (!_editingLeadId) return;
+    if (!confirm('¿Eliminar este lead del CRM?')) return;
+    try {
+      await deleteLead(_editingLeadId);
+      closeLeadModal();
+      await loadLeadsAdmin();
+    } catch (e) { alert('Error al eliminar: ' + (e.message || 'intentá de nuevo.')); }
   };
 
   // Widget flotante -- disponible en cualquier sección del admin, no
