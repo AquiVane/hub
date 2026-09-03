@@ -2306,6 +2306,7 @@
     _inSubtareas = [...(t.subtareas || [])];
     renderInSubtareas();
     document.getElementById('internaModal').classList.remove('hidden');
+    document.querySelector('#internaModal .modal-body').scrollTop = 0;
   };
   window.closeInternaModal = () => document.getElementById('internaModal').classList.add('hidden');
 
@@ -3374,6 +3375,7 @@
     document.getElementById('mt-visible-cliente-group').classList.toggle('hidden', esPseudoCliente || tipo !== 'tarea');
     document.getElementById('mt-visible-cliente').checked = !!t.visibleParaCliente;
     document.getElementById('misTareaModal').classList.remove('hidden');
+    document.querySelector('#misTareaModal .modal-body').scrollTop = 0;
   };
   window.closeMisTareaModal = function() {
     document.getElementById('misTareaModal').classList.add('hidden');
@@ -3533,6 +3535,7 @@
     await poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '');
 
     document.getElementById('nuevaMiTareaModal').classList.remove('hidden');
+    document.querySelector('#nuevaMiTareaModal .modal-body').scrollTop = 0;
   };
   window.closeNuevaMiTareaModal = function() {
     document.getElementById('nuevaMiTareaModal').classList.add('hidden');
@@ -4119,8 +4122,15 @@
   };
 
   async function loadClients() {
-    _clientsCache = await getAllClients();
-    renderClientGrid();
+    try {
+      _clientsCache = await getAllClients();
+      renderClientGrid();
+    } catch (e) {
+      // Antes, si esto fallaba (ej. varias pestañas abiertas a la vez
+      // disparando muchos pedidos juntos), la pantalla se quedaba en
+      // "Cargando..." para siempre, sin aviso ni forma de reintentar.
+      document.getElementById('clientGrid').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || 'Revisá tu conexión.'}</p><button class="btn btn-primary" style="margin-top:12px;" onclick="loadClients()">Reintentar</button></div>`;
+    }
   }
 
   function renderClientGrid() {
@@ -4972,10 +4982,15 @@
   // sección antes de que termine, ve el "Cargando..." de siempre; si
   // llega después (lo normal), la sección ya tiene datos y renderiza
   // al toque.
+  // Escalonado (no las 3 juntas) para no sumar de golpe varios pedidos
+  // más a los que ya dispara el arranque (loadClients + loadInformes) --
+  // con dos pestañas abiertas a la vez eso eran hasta 10 pedidos
+  // simultáneos al mismo origen, y algunos empezaban a fallar (ver el
+  // fix de loadClients de más arriba).
   function precargarSeccionesComunes() {
     loadMisTareas().catch(() => {});
-    loadInternas().catch(() => {});
-    if (user.role === 'admin') loadColaboradores().catch(() => {});
+    setTimeout(() => loadInternas().catch(() => {}), 400);
+    if (user.role === 'admin') setTimeout(() => loadColaboradores().catch(() => {}), 800);
   }
 
   // ── Asistente Claude (propio de cada agencia) ────────────────────

@@ -2991,6 +2991,10 @@ window.openTareaModal = function(id, defaultEstado) {
   const avisoBorrador = document.getElementById('tarea-borrador-aviso');
   if (avisoBorrador) avisoBorrador.style.display = 'none';
   document.getElementById('tareaModal').classList.remove('hidden');
+  // El modal quedaba con el scroll de la última tarea que se había
+  // visto (ej. cerrada más abajo del todo) -- una tarea nueva tiene que
+  // arrancar siempre desde el título, no donde quedó la vista anterior.
+  document.querySelector('#tareaModal .modal-body').scrollTop = 0;
   restaurarBorradorTarea(id || null);
 };
 
