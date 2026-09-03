@@ -21,6 +21,13 @@ Motor propio sin dependencias (`iniciarTour(steps, storageKey)`, spotlight + tar
 
 `cosmart-workers` complementa esto: al darse de alta una agencia nueva (`handleSignupAgencia`) se le crea un "Cliente Demo" con datos de ejemplo (`crearClienteDemo`), para que el tour tenga algo real que mostrar y no un panel vacío.
 
+## Octava tanda del mismo día (03/09): bugs reales reportados por Vaneh sobre la tanda anterior
+
+- **Bug real -- CRM Leads no se veía**: `showSection()` (el dispatcher de navegación del admin) nunca incluía `'crm'` en el array de secciones a mostrar/ocultar -- la sección quedaba siempre oculta aunque el nav item se marcara activo y `loadLeadsAdmin()` corriera bien atrás. Corregido sumando `'crm'` al array.
+- **Bug real -- subtareas invisibles al abrir una tarea en el panel del cliente**: en `js/app.js`, `openTareaModal()` llamaba a `renderSubtareas()` (que hace auto-grow de cada `<textarea>` de título midiendo `scrollHeight`) **antes** de sacarle la clase `hidden` al modal -- con el modal todavía en `display:none`, `scrollHeight` da 0 y el título de cada subtarea quedaba con altura cero (invisible). Se movió el `classList.remove('hidden')` al principio de la función, antes de cualquier render. El modal de "Mis Tareas"/"Gestión COSMART" del admin no tenía este bug por una razón distinta (su versión de `renderSubtareas` es async y sin `await`, así que por timing de microtasks el modal ya estaba visible cuando corría el auto-grow) -- no hizo falta tocarlo.
+- **Métricas generales ahora se alimenta del CRM real**: la tarjeta "Potenciales clientes" (antes "Próximamente" fijo) ahora muestra el total de leads y cuántos ya convirtieron a cliente, sacado de `getLeads()`. Al hacer click abre el desglose por columna y un link directo al tablero completo.
+- **Comentarios + @menciones en tareas internas** (Gestión COSMART y Mis Tareas): no existía ningún sistema de comentarios ahí, solo en tareas/contenidos del panel del cliente. Se portó el mismo mecanismo (mismo campo `comentarios`, mismo patrón de mención con `@nombre` + aviso por mail vía `/email/mencion`) a `internaModal` y `misTareaModal`. Los "mencionables" son vos + colaboradores activos (no incluye a Claude IA, no tiene sentido arrobarlo).
+
 ## Séptima tanda del mismo día (03/09): CRM de leads + tareas asignadas a "Claude IA"
 
 - **Sección "CRM Leads" nueva en el admin**: tablero kanban (Potencial → Email Marketing / WhatsApp → Nuevo Cliente → Seguimiento), filtro por vertical + buscador, alta manual con modal. Backend documentado en el HANDOFF de `cosmart-workers` -- ahí también está la lista de qué fuentes automáticas faltan conectar todavía (solo Training/carrito abandonado está enganchado por ahora).

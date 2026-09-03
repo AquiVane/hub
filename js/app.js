@@ -2935,6 +2935,13 @@ window.openTareaModal = function(id, defaultEstado) {
   }
   editingTarea = id ? STATE.tareas.find(t => t.id === id) : null;
   const t = editingTarea || {};
+  // El modal tiene que estar visible ANTES de renderizar las subtareas:
+  // el auto-grow de sus textareas mide `scrollHeight`, que da 0 mientras
+  // el modal todavía tiene la clase "hidden" (display:none) -- eso
+  // dejaba el título de cada subtarea con altura 0, invisible, cuando
+  // se entraba directo a esta pantalla (ej. "Abrir en panel del
+  // cliente" desde el admin, que carga la página de cero).
+  document.getElementById('tareaModal').classList.remove('hidden');
   document.getElementById('tarea-modal-title').textContent = editingTarea ? `Editar tarea${t.numero ? ' #' + codigoTarea(t) : ''}` : 'Nueva tarea';
   document.getElementById('tf-titulo').value = t.titulo || '';
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
@@ -2990,7 +2997,6 @@ window.openTareaModal = function(id, defaultEstado) {
   if (_tinputWrap) _tinputWrap.style.display = editingTarea ? '' : 'none';
   const avisoBorrador = document.getElementById('tarea-borrador-aviso');
   if (avisoBorrador) avisoBorrador.style.display = 'none';
-  document.getElementById('tareaModal').classList.remove('hidden');
   // El modal quedaba con el scroll de la última tarea que se había
   // visto (ej. cerrada más abajo del todo) -- una tarea nueva tiene que
   // arrancar siempre desde el título, no donde quedó la vista anterior.

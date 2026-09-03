@@ -687,6 +687,18 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="agregarInSubtarea()">+ Agregar</button>
         </div>
       </div>
+      <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:4px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
+        <div id="in-new-note" style="font-size:12px;color:var(--text-muted);padding:8px 12px;background:var(--surface);border-radius:6px;margin-bottom:8px;display:none;">Los comentarios estarán disponibles después de guardar la tarea.</div>
+        <div id="in-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
+        <div id="in-comment-input-wrap" style="position:relative;">
+          <div id="in-mention-list" class="mention-dropdown hidden" style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="in-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="agregarComentario('in')">Comentar</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:auto;display:none;" onclick="deleteInterna()">Eliminar</button>
@@ -793,6 +805,17 @@
         </div>
       </div>
       <div id="mt-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+      <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:10px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
+        <div id="mt-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
+        <div id="mt-comment-input-wrap" style="position:relative;">
+          <div id="mt-mention-list" class="mention-dropdown hidden" style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="mt-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="agregarComentario('mt')">Comentar</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="deleteMisTareaBtn" style="margin-right:auto;" onclick="deleteMisTareaModal()">Eliminar</button>
@@ -1570,7 +1593,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas','proyectos'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas','proyectos','crm'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1805,20 +1828,40 @@
     { id: 'facturacion-actual', icono: '🧾', label: 'Facturación actual', desc: 'Estado de facturación del mes en curso: cuántos clientes tienen la factura enviada y el pago recibido, tomado directo de la sección de Facturación de cada cliente.' },
     { id: 'leads', icono: '🎯', label: 'Potenciales clientes', desc: 'Leads captados por los imanes (lead magnets), Método y Brújula: cuántos entraron, cuántos siguieron abriendo la secuencia y cuántos terminaron convirtiendo.' },
   ];
-  function renderMetricasGenerales() {
+  async function renderMetricasGenerales() {
     const el = document.getElementById('metricasGeneralesGrid');
     if (!el) return;
     el.innerHTML = METRICAS_GENERALES.map(m => `
       <div class="dash-stat-pill" style="cursor:pointer;" onclick="verMetricaGeneral('${m.id}')">
-        <div class="dash-stat-pill-val" style="font-size:22px;color:var(--text-muted);">${m.icono}</div>
-        <div class="dash-stat-pill-label">${m.label}<br><span style="opacity:.7;">Próximamente</span></div>
+        <div class="dash-stat-pill-val" style="font-size:22px;color:var(--text-muted);" id="metrica-general-val-${m.id}">${m.icono}</div>
+        <div class="dash-stat-pill-label">${m.label}<br><span style="opacity:.7;" id="metrica-general-sub-${m.id}">Próximamente</span></div>
       </div>`).join('');
+
+    // "Potenciales clientes" ya no es un placeholder -- se alimenta del
+    // CRM de leads real (pedido de Vaneh: "así coincide").
+    try {
+      if (!_leadsCache.length) _leadsCache = await getLeads();
+      const total = _leadsCache.length;
+      const nuevosClientes = _leadsCache.filter(l => l.columna === 'nuevo-cliente').length;
+      const valEl = document.getElementById('metrica-general-val-leads');
+      const subEl = document.getElementById('metrica-general-sub-leads');
+      if (valEl) { valEl.textContent = total; valEl.style.color = 'var(--primary)'; valEl.style.fontSize = '26px'; }
+      if (subEl) subEl.innerHTML = total ? `${nuevosClientes} convertidos a cliente` : 'Sin leads todavía';
+    } catch (e) {}
   }
-  window.verMetricaGeneral = function(id) {
+  window.verMetricaGeneral = async function(id) {
     const m = METRICAS_GENERALES.find(x => x.id === id);
     if (!m) return;
     document.getElementById('metricaGeneralModalTitle').textContent = `${m.icono} ${m.label}`;
-    document.getElementById('metricaGeneralModalDesc').textContent = m.desc;
+    if (id === 'leads') {
+      try {
+        if (!_leadsCache.length) _leadsCache = await getLeads();
+        const porColumna = LEADS_COLS.map(col => `${col.label}: <strong>${_leadsCache.filter(l => l.columna === col.key).length}</strong>`).join(' · ');
+        document.getElementById('metricaGeneralModalDesc').innerHTML = `${m.desc}<br><br>${_leadsCache.length ? porColumna : 'Todavía no entró ningún lead.'}<br><br><a href="#" onclick="closeMetricaGeneralModal();irACrmLeads();return false;">Ver el tablero completo →</a>`;
+      } catch (e) { document.getElementById('metricaGeneralModalDesc').textContent = m.desc; }
+    } else {
+      document.getElementById('metricaGeneralModalDesc').textContent = m.desc;
+    }
     document.getElementById('metricaGeneralModal').classList.remove('hidden');
   };
   window.closeMetricaGeneralModal = () => document.getElementById('metricaGeneralModal').classList.add('hidden');
@@ -2450,6 +2493,10 @@
     document.getElementById('in-subtarea-input').value = '';
     _inSubtareas = [...(t.subtareas || [])];
     renderInSubtareas();
+    renderComentarios('in', t.comentarios || []);
+    document.getElementById('in-comment-input').value = '';
+    document.getElementById('in-new-note').style.display = _editingInterna ? 'none' : '';
+    document.getElementById('in-comment-input-wrap').style.display = _editingInterna ? '' : 'none';
     document.getElementById('internaModal').classList.remove('hidden');
     document.querySelector('#internaModal .modal-body').scrollTop = 0;
   };
@@ -3529,6 +3576,8 @@
     if (!esPseudoCliente) abrirPanelLink.href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
     document.getElementById('mt-visible-cliente-group').classList.toggle('hidden', esPseudoCliente || tipo !== 'tarea');
     document.getElementById('mt-visible-cliente').checked = !!t.visibleParaCliente;
+    renderComentarios('mt', t.comentarios || []);
+    document.getElementById('mt-comment-input').value = '';
     document.getElementById('misTareaModal').classList.remove('hidden');
     document.querySelector('#misTareaModal .modal-body').scrollTop = 0;
   };
@@ -5293,6 +5342,9 @@
     { key: 'seguimiento', label: 'Seguimiento', color: '#a855f7' },
   ];
 
+  window.irACrmLeads = function() {
+    document.querySelector('.nav-item[onclick*="showSection(\'crm\')"]')?.click();
+  };
   window.filtrarLeadsPorVertical = function(v) { _leadsVerticalFiltro = v; renderLeadsBoard(); };
   window.filtrarLeadsPorBusqueda = function(v) { _leadsBusqueda = v.trim().toLowerCase(); renderLeadsBoard(); };
 
@@ -5414,6 +5466,128 @@
       closeLeadModal();
       await loadLeadsAdmin();
     } catch (e) { alert('Error al eliminar: ' + (e.message || 'intentá de nuevo.')); }
+  };
+
+  // ── Comentarios en tareas internas (Gestión COSMART / Mis Tareas) ────
+  // Pedido de Vaneh: el mismo sistema de comentarios + @menciones que ya
+  // tienen las tareas/contenidos del panel del cliente, pero para las
+  // internas del admin, que nunca lo tuvieron.
+  function getMentionUsersInterno() {
+    const lista = [{ nombre: user.name || user.email.split('@')[0], email: user.email }];
+    (_colaboradoresCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
+    const seen = new Set();
+    return lista.filter(u => { if (!u.email || seen.has(u.email.toLowerCase())) return false; seen.add(u.email.toLowerCase()); return true; });
+  }
+
+  function setupMentionAutocompleteAdmin(inputId, dropdownId) {
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
+    input.addEventListener('input', () => {
+      const val = input.value;
+      const atIdx = val.lastIndexOf('@');
+      if (atIdx === -1) { dropdown.classList.add('hidden'); return; }
+      const query = val.slice(atIdx + 1).toLowerCase();
+      const users = getMentionUsersInterno().filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+      if (!users.length) { dropdown.classList.add('hidden'); return; }
+      dropdown.innerHTML = users.map(u => `
+        <div class="mention-item" data-nombre="${u.nombre}">
+          <div class="mention-avatar">${u.nombre[0].toUpperCase()}</div>
+          <div><div style="font-weight:600;font-size:12px;">${u.nombre}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
+        </div>`).join('');
+      dropdown.classList.remove('hidden');
+      dropdown.querySelectorAll('.mention-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const nombre = item.dataset.nombre;
+          const atIdx2 = input.value.lastIndexOf('@');
+          input.value = input.value.slice(0, atIdx2) + '@' + nombre + ' ';
+          dropdown.classList.add('hidden');
+          input.focus();
+        });
+      });
+    });
+    input.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 150));
+  }
+  setupMentionAutocompleteAdmin('in-comment-input', 'in-mention-list');
+  setupMentionAutocompleteAdmin('mt-comment-input', 'mt-mention-list');
+
+  function renderComentarios(prefix, comentarios) {
+    const listEl = document.getElementById(`${prefix}-comments-list`);
+    if (!listEl) return;
+    if (!comentarios || !comentarios.length) {
+      listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
+      return;
+    }
+    listEl.innerHTML = comentarios.map(c => {
+      const inicial = (c.autor || '?')[0].toUpperCase();
+      const textoHtml = escapeHtml(c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+      return `
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
+        <div style="flex:1;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+            <span style="font-size:11px;font-weight:700;color:var(--text);">${c.autor || 'Anónimo'}</span>
+            <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
+          </div>
+          <p style="font-size:13px;margin:0;color:var(--text);">${textoHtml}</p>
+        </div>
+      </div>`;
+    }).join('');
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  window.agregarComentario = async function(prefix) {
+    const input = document.getElementById(`${prefix}-comment-input`);
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    let item, guardar, contexto, clientIdComentario;
+    if (prefix === 'in') {
+      if (!_editingInterna) { alert('Guardá primero la tarea para poder comentar.'); return; }
+      item = _editingInterna;
+      clientIdComentario = INTERNAS_CLIENT_ID;
+      guardar = () => saveTarea(INTERNAS_CLIENT_ID, item, _internasCache);
+    } else {
+      if (_misTareaModalIdx === null) { alert('Guardá primero la tarea para poder comentar.'); return; }
+      const wrap = _misTareasCache[_misTareaModalIdx];
+      if (!wrap) return;
+      item = wrap.tarea;
+      clientIdComentario = wrap.clientId;
+      guardar = () => wrap.tipo === 'tarea' ? saveTarea(wrap.clientId, item) : saveContenido(wrap.clientId, item);
+    }
+    contexto = item.titulo || '';
+
+    const autorNombre = user.name || user.email.split('@')[0];
+    const comment = { autor: autorNombre, email: user.email, fecha: new Date().toLocaleDateString('es-AR'), texto };
+    if (!item.comentarios) item.comentarios = [];
+    item.comentarios.push(comment);
+    try {
+      const saved = await guardar();
+      if (prefix === 'in' && saved) { _editingInterna = saved; const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; }
+    } catch (e) {
+      item.comentarios.pop();
+      alert('No se pudo guardar el comentario: ' + (e.message || 'reintentá.'));
+      return;
+    }
+
+    input.value = '';
+    renderComentarios(prefix, item.comentarios);
+
+    // Notificar por mail a quien fue mencionado con @
+    const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
+    if (mencionados.length) {
+      const allUsers = getMentionUsersInterno();
+      mencionados.forEach(nombre => {
+        const u = allUsers.find(x => x.nombre.toLowerCase() === nombre.toLowerCase());
+        if (u && u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
+          fetch(WORKER_URL + '/email/mencion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+            body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto, tipo: 'tarea', itemId: item.id, clientId: clientIdComentario }),
+          }).catch(() => {});
+        }
+      });
+    }
   };
 
   // Widget flotante -- disponible en cualquier sección del admin, no
