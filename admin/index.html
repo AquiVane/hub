@@ -48,6 +48,9 @@
       <button class="nav-item" onclick="showSection('email-stats')">
         <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
       </button>
+      <button class="nav-item" onclick="showSection('recursos')">
+        <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos</span>
+      </button>
       <button class="nav-item" onclick="showSection('config')">
         <i data-lucide="settings" class="nav-icon"></i><span>Configuración</span>
       </button>
@@ -219,6 +222,25 @@
           <div class="procesos-content" id="procesosContent">
             <div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Elegí o creá un proceso</h3><p>Los procesos quedan agrupados por cliente (o por vertical, si elegiste COSMART).</p></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Recursos -->
+      <div id="sec-recursos" class="hidden">
+        <div class="mb-20 flex items-center gap-8">
+          <h2 style="font-size:18px;font-weight:700;">Recursos</h2>
+          <span class="text-muted text-sm">Plantillas y archivos de referencia para todo el equipo</span>
+        </div>
+        <div class="links-grid">
+          <a href="../plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx" download="Plantilla_Contenidos_Hub_COSMART.xlsx" class="link-card" style="text-decoration:none;">
+            <div class="link-card-icon">
+              <i data-lucide="file-spreadsheet" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="link-card-title">Plantilla Excel de Contenidos</div>
+              <div class="link-card-desc">Modelo vacío para cargar el calendario de contenidos de un cliente</div>
+            </div>
+          </a>
         </div>
       </div>
 
@@ -1240,7 +1262,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
