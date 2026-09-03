@@ -2,6 +2,39 @@
 
 Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Regla permanente: SIEMPRE cuidar el responsive mobile (03/09)
+
+Vaneh lo pidió explícito y en mayúsculas: "la versión mobile es la más importante de hecho". Ver también `CLAUDE.md`. No es una tarea puntual -- es un criterio a aplicar en cada cambio de UI de acá en adelante. Pendiente real todavía sin resolver: las barras de filtros (Mis Tareas, Gestión COSMART, Tareas del cliente) usan `flex-wrap:wrap` así que no rompen el layout en mobile, pero con 4-5 controles se apilan en varias filas y ocupan mucho scroll vertical -- Vaneh sugirió un menú de filtros que se abra como panel lateral desde la derecha en mobile en vez de la fila horizontal. No implementado todavía.
+
+## Segunda tanda de bugs/pedidos de Vaneh (03/09) -- lista de 19 ítems + Recursos
+
+Todo esto ya está commiteado y pusheado a `main`. Resumen de lo que se hizo (commits entre `f2a2d61` y `2c15b72`):
+
+- **Sidebar del admin en celeste** (`.admin-shell { --sidebar-bg: #1A4DAA; }` en `css/style.css`) para distinguirlo del navy del panel de cliente. Se sacó también la línea blanca que tachaba "PANEL DE ADMINISTRADOR" (era un `margin-top` negativo mal puesto).
+- **Reloj de arena (⏳)** reemplazado por el ícono SVG del resto del hub en el único lugar donde quedaba, en `app/index.html` (panel cliente).
+- **Buscador + filtro de prioridad + botón "Limpiar filtros"** agregados a Gestión COSMART (admin) y a Tareas del cliente -- antes solo estaban en Mis Tareas.
+- **Links clickeables**: nueva función `linkify()` en `js/app.js` detecta URLs sueltas (`http/https/www.`) y las convierte en `<a target=_blank>`. Aplicada a comentarios (tareas y contenidos, sobre texto ya escapado) y a las notas de una tarea al abrir el modal de edición. Ojo: solo linkifica al popular el campo, no en vivo mientras se escribe -- una URL recién tipeada se linkea al reabrir la tarea, no al instante.
+- **Subtareas editables**: en las 3 pantallas (tarea del cliente, Mis Tareas, Gestión COSMART) el título de una subtarea ya creada se puede corregir -- antes era un `<span>` fijo, ahora es un `<input>` con autoguardado (mismo patrón que el tildado).
+- **Checkbox "Visible para el cliente"** agregado tanto al crear una tarea nueva desde Mis Tareas (`nmt-*`) como al editar una ya existente (`mt-*`) -- antes solo se activaba sola al marcar "Listo", sin control manual.
+- **Botón "Eliminar"** en el modal de Mis Tareas (ya existía en Gestión COSMART).
+- **Campo "Link"** agregado al modal de Gestión COSMART (`in-url`), no existía.
+- **Bug real arreglado**: la "mini descripción" que se cargaba desde el admin (`t.descripcion`) y la "Descripción/Notas" que ve el cliente (`t.notas`) eran DOS CAMPOS SEPARADOS que nunca se sincronizaban -- por eso lo que Vaneh escribía en el admin nunca le llegaba al cliente. Unificado: ambos modales (`mt-*`/`nmt-*`) ahora leen/escriben `t.notas` directo (con fallback a `t.descripcion` para tareas viejas). El campo de Gestión COSMART (`in-descripcion`) NO se tocó -- esas tareas nunca son visibles para un cliente, así que no aplica.
+- **Drag-and-drop arreglado en los kanban del admin** (Mis Tareas, Gestión COSMART): el mismo fix de auto-scroll que ya existía en el panel de cliente (`js/app.js`) nunca se había portado a `admin/index.html`, que es un script totalmente aparte -- por eso Vaneh lo seguía reportando roto ahí después de 3 avisos.
+- **Tareas recurrentes: ahora también se regeneran en el admin.** `reactivarTareasRecurrentes()` corría en el cron diario pero solo sobre clientes reales -- las tareas de Gestión COSMART y Mis Tareas viven en dos pseudo-clientes aparte (`_cosmart` y `_personal`, `INTERNAS_CLIENT_ID` en `admin/index.html`) que nunca entraban en ese loop. Arreglado en `cosmart-workers` (ver su HANDOFF).
+- **Sección "Recursos"** nueva en el menú del admin, con la plantilla Excel de Contenidos descargable (mismo archivo que ya se podía bajar desde Contenidos). Pensada como lugar central para sumar más plantillas/archivos de referencia a futuro.
+- **Facturación** (recordatorio de enviar factura + revisión de pago recibido con recordatorio automático al cliente): implementado en `cosmart-workers`, ver su HANDOFF -- acá no hay cambios de UI nuevos, las tareas se ven con el flujo normal de Mis Tareas/Gestión COSMART.
+
+### Lo que NO se hizo todavía de esa lista (para no prometerlo de nuevo sin avisar)
+
+- **Item 2** (Vaneh no aparece para auto-asignarse): revisado el código dos veces, las 3 funciones que populan esos desplegables (`opcionesYoYColaboradoresHtml`, `poblarNmtAsignado`, `poblarMisTareasVerDe`) SIEMPRE incluyen "Yo (Vaneh)" primero -- no se pudo reproducir. Falta un repro más específico (screenshot + en qué pantalla exacta) para seguir.
+- **Item 3 parcial**: los links en la sección "Links y Archivos" ya eran clickeables de por sí (son tarjetas que abren la URL al tocarlas) -- lo que se arregló fue notas/comentarios de tareas.
+- **Item 9**: modo oscuro -- no empezado, es una tarea grande (toda la hoja de estilos).
+- **Item 16**: compactar filtros en mobile con un menú lateral -- no empezado (ver arriba, sección responsive).
+- **Item 1**: reset de contraseña de colaboradores + forzar cambio en el primer login -- no revisado en esta tanda, hay que chequear qué existe hoy en `js/auth.js`/backend antes de construir nada.
+- **Presupuesto de Pauta Digital** (feature grande pedida el mismo día: presupuesto total por cliente, distribución por red social, %/monto automático, moneda USD/ARS, por mes, vista de solo lectura en el panel del cliente) -- no empezado. Ojo: NO confundir con `procesosPresupuesto` que ya existe en la sección Procesos (admin) -- es un presupuesto totalmente distinto, para gestión interna de un proceso, no para pauta digital de un cliente.
+- **Instrucciones**: Vaneh pidió actualizar el contenido de las instrucciones (hace mucho no se tocan) -- no revisado en esta tanda.
+- **Aclaración pendiente de comunicarle a Vaneh** (no es código): la suscripción automática con Mercado Pago/PayPal que pidió en su mensaje del 03/09 YA EXISTE -- está en `signup.html` (ver sección "💳 Suscripción de agencias" más arriba), Vaneh estaba mirando otra página (`gestion-de-clientes-para-agencias.html`, que es la landing de venta, no el flujo de alta en sí).
+
 ## Importar Excel de Contenidos: ahora sí detecta duplicados, y Copy/Texto en pantalla son campos separados (03/09)
 
 Vaneh reportó que el import de Excel "iba a filtrar si los contenidos eran los mismos, actualizar lo que no concordaba, y dar la opción de omitir o reemplazar" -- pero **eso nunca estuvo implementado**: `saveContenidosBulk` siempre creaba contenidos NUEVOS con un id fresco, sin buscar si ya existían (confirmado leyendo el código, no era un bug de regresión, la función nunca existió). Se construyó de cero en `js/app.js`:
