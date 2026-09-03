@@ -48,13 +48,25 @@ input, select, textarea { font-family: inherit; }
   overflow-y: auto;
   z-index: 10;
 }
-/* Panel admin en celeste, panel de cliente en navy -- para que se
-   distingan de un vistazo (pedido de Vaneh, "la interfaz es muy
-   parecida"). El celeste es el mismo que ya se usaba para marcar el
-   ítem seleccionado (--sidebar-active); el ítem seleccionado pasa
-   entonces al navy original, para que siga notándose cuál es. */
-.admin-shell { --sidebar-bg: var(--sidebar-active); }
-.admin-shell .nav-item.active { background: var(--primary-dark); }
+/* Panel admin en celeste clarito, panel de cliente en navy -- para que
+   se distingan de un vistazo (pedido de Vaneh, "la interfaz es muy
+   parecida"). El celeste elegido es tan clarito como el verde de
+   fondo de una subtarea hecha (--status-publicado-bg); sobre un fondo
+   tan claro el texto blanco de siempre no se lee, así que todo el
+   texto/íconos del sidebar pasan a azul oscuro en este modo. El ítem
+   seleccionado usa el navy original de fondo con texto blanco, para
+   que se siga notando cuál es aun con todo lo demás en textos oscuros. */
+.admin-shell { --sidebar-bg: #dbeafe; }
+.admin-shell .nav-section-label { color: rgba(13,43,107,.55); }
+.admin-shell .nav-item { color: var(--primary-dark); }
+.admin-shell .nav-item:hover { background: rgba(13,43,107,.08); color: var(--primary-dark); }
+.admin-shell .nav-item.active { background: var(--primary-dark); color: #fff; }
+.admin-shell .nav-item .badge { background: rgba(13,43,107,.12); color: var(--primary-dark); }
+.admin-shell .nav-item.active .badge { background: rgba(255,255,255,.2); color: #fff; }
+.admin-shell .sidebar-panel-label { color: rgba(13,43,107,.55); border-bottom-color: rgba(13,43,107,.15); }
+.admin-shell .sidebar-footer { border-top-color: rgba(13,43,107,.15); }
+.admin-shell .btn-logout { color: var(--primary-dark); border-color: rgba(13,43,107,.3); }
+.admin-shell .btn-logout:hover { background: rgba(13,43,107,.08); color: var(--primary-dark); }
 .sidebar-logo {
   padding: 18px 16px 14px;
   color: #fff;
@@ -74,6 +86,7 @@ input, select, textarea { font-family: inherit; }
   text-transform: uppercase; letter-spacing: 2.5px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
+.sidebar-panel-label { color: rgba(255,255,255,.45); border-bottom: 1px solid rgba(255,255,255,.08); }
 .mention-dropdown {
   position:absolute; z-index:9999; background:#fff; border:1px solid var(--border-strong);
   border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:200px;

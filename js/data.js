@@ -110,7 +110,12 @@ export async function getContenidos(clientId) {
   return api('GET', `/data/${clientId}/contenidos`);
 }
 
-export async function saveContenido(clientId, contenido) {
+// `knownList` es opcional: si quien llama ya tiene la lista completa y
+// actualizada en memoria (caso normal -- el caché local siempre refleja
+// lo último guardado), se salta el GET previo y ahorra un round-trip
+// completo -- guardar pasaba a sentirse lento (~1-2seg) por hacer
+// SIEMPRE "traer todo + reescribir todo" aunque ya se tuviera la lista.
+export async function saveContenido(clientId, contenido, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     const idx = data.contenidos.findIndex(c => c.id === contenido.id);
@@ -119,7 +124,7 @@ export async function saveContenido(clientId, contenido) {
     saveDemoData(clientId, data);
     return contenido;
   }
-  const list = await api('GET', `/data/${clientId}/contenidos`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/contenidos`);
   const idx = list.findIndex(c => c.id === contenido.id);
   if (idx >= 0) list[idx] = contenido;
   else { contenido.id = 'c' + Date.now(); list.push(contenido); }
@@ -164,14 +169,14 @@ export async function updateContenidosBulk(clientId, actualizaciones) {
   return list.filter(c => actualizaciones.some(u => u.id === c.id));
 }
 
-export async function deleteContenido(clientId, id) {
+export async function deleteContenido(clientId, id, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.contenidos = data.contenidos.filter(c => c.id !== id);
     saveDemoData(clientId, data);
     return;
   }
-  const list = await api('GET', `/data/${clientId}/contenidos`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/contenidos`);
   await api('POST', `/data/${clientId}/contenidos`, list.filter(c => c.id !== id));
 }
 
@@ -194,7 +199,7 @@ export async function getTareas(clientId) {
   return api('GET', `/data/${clientId}/tareas`);
 }
 
-export async function saveTarea(clientId, tarea) {
+export async function saveTarea(clientId, tarea, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     const idx = data.tareas.findIndex(t => t.id === tarea.id);
@@ -203,7 +208,7 @@ export async function saveTarea(clientId, tarea) {
     saveDemoData(clientId, data);
     return tarea;
   }
-  const list = await api('GET', `/data/${clientId}/tareas`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/tareas`);
   const idx = list.findIndex(t => t.id === tarea.id);
   if (idx >= 0) list[idx] = tarea;
   else { tarea.id = 't' + Date.now(); list.push(tarea); }
@@ -221,14 +226,14 @@ export async function saveTareasList(clientId, list) {
   await api('POST', `/data/${clientId}/tareas`, list);
 }
 
-export async function deleteTarea(clientId, id) {
+export async function deleteTarea(clientId, id, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.tareas = data.tareas.filter(t => t.id !== id);
     saveDemoData(clientId, data);
     return;
   }
-  const list = await api('GET', `/data/${clientId}/tareas`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/tareas`);
   await api('POST', `/data/${clientId}/tareas`, list.filter(t => t.id !== id));
 }
 
@@ -363,7 +368,7 @@ export async function getIdeas(clientId) {
   return api('GET', `/data/${clientId}/ideas`);
 }
 
-export async function saveIdea(clientId, idea) {
+export async function saveIdea(clientId, idea, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     const idx = data.ideas.findIndex(i => i.id === idea.id);
@@ -372,7 +377,7 @@ export async function saveIdea(clientId, idea) {
     saveDemoData(clientId, data);
     return idea;
   }
-  const list = await api('GET', `/data/${clientId}/ideas`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/ideas`);
   const idx = list.findIndex(i => i.id === idea.id);
   if (idx >= 0) list[idx] = idea;
   else { idea.id = 'i' + Date.now(); list.push(idea); }
@@ -380,14 +385,14 @@ export async function saveIdea(clientId, idea) {
   return idea;
 }
 
-export async function deleteIdea(clientId, id) {
+export async function deleteIdea(clientId, id, knownList) {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.ideas = data.ideas.filter(i => i.id !== id);
     saveDemoData(clientId, data);
     return;
   }
-  const list = await api('GET', `/data/${clientId}/ideas`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/ideas`);
   await api('POST', `/data/${clientId}/ideas`, list.filter(i => i.id !== id));
 }
 
