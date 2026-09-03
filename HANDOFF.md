@@ -2,6 +2,22 @@
 
 Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Cuarta tanda del mismo día (03/09): sidebar clarito, perf de guardado, Ideas horizontal, Proyectos
+
+Commits entre `df25a9e` y `7ee48f7` (ver mensajes de commit para el detalle completo):
+
+- **Sidebar admin**: el celeste anterior (tanda anterior del mismo día) tampoco convenció -- ahora es un celeste bien clarito (mismo tono pálido que el verde de una subtarea hecha) con TODO el texto/íconos del sidebar en azul oscuro (nav, "Panel administrador", botón Cerrar sesión), porque texto blanco sobre un fondo tan claro no se leía. El ítem seleccionado sigue en navy con texto blanco.
+- **Perf real, no percibida**: `saveTarea`/`deleteTarea`/`saveContenido`/`deleteContenido`/`saveIdea`/`deleteIdea` en `js/data.js` hacían SIEMPRE un GET de la lista completa antes de reescribirla -- doble round-trip aunque quien llama ya tuviera la lista en memoria (el caso normal). Ahora aceptan un 3er parámetro opcional `knownList` para saltear ese GET. Aplicado en Gestión COSMART y en Ideas (transformar una idea en proyecto encadenaba DOS de estos guardados, de ahí los ~5 segundos que reportó Vaneh). **Todavía no aplicado en Mis Tareas** (guarda/borra/arrastra por cliente puntual, y ahí no se tiene cacheada la lista RAW de cada cliente por separado, solo la mezcla ya aplanada -- haría falta cachear también por cliente para poder pasar `knownList` ahí, no se hizo por tiempo).
+- **Ideas rediseñada**: de cards a filas horizontales + campo "Categoría" (texto libre con autocompletado de las ya usadas) + filtro por categoría arriba de la lista, mismo patrón que "Links y Archivos".
+- **"Proyecto en colaboración con"**: checklist de colaboradores, aparece cuando se tilda "Es un proyecto". **Solo en Gestión COSMART (`in-*`) por ahora** -- no está en Mis Tareas (`mt-*`/`nmt-*`) ni en la tarea del cliente (`tf-*`), se puede replicar el mismo patrón (`in-colaboracion-group`/`renderInColaboracionList`) si se pide ahí también.
+- **Nueva sección "Proyectos"**: agrega todas las tareas `esProyecto:true` de Gestión COSMART + Mis Tareas + todos los clientes, reusando el caché ya mezclado de Mis Tareas (`_misTareasCache`) en vez de duplicar el fetch. Limitación conocida: si se edita una tarea-proyecto directo desde Gestión COSMART, la vista de Proyectos no se entera hasta que se recargue Mis Tareas (cachés separados que no se sincronizan entre sí todavía).
+
+### Todavía sin hacer de esta tanda (para no prometerlo de nuevo)
+
+- Modo oscuro, menú de filtros compacto en mobile, Presupuesto de Pauta Digital (ver tanda anterior).
+- Instructivo para agencias nuevas + cliente de prueba + recorrido guiado (onboarding) para agencias/colaboradores/clientes en su primer login -- pedido nuevo, no empezado.
+- Modularizar `admin/index.html` (es un solo archivo HTML gigante con todo el JS inline) -- decisión explícita de NO hacerlo todavía: es un refactor grande y arriesgado que conviene encarar con una red de tests real de por medio, que recién arrancó (03/09) del lado del backend (`cosmart-workers`), no en este repo. Ver CLAUDE.md de `cosmart-workers` para el detalle de los tests nuevos.
+
 ## Tercera tanda del mismo día (03/09): color de sidebar, Ideas, contraseña forzada en admin
 
 Commits entre `9e2b616` y `9252b74`:
