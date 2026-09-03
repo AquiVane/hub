@@ -2,6 +2,18 @@
 
 Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Tercera tanda del mismo día (03/09): color de sidebar, Ideas, contraseña forzada en admin
+
+Commits entre `9e2b616` y `9252b74`:
+
+- **Color del sidebar admin corregido**: el celeste que Vaneh pidió es el mismo que ya se usaba para marcar el ítem de nav seleccionado (`--sidebar-active: #3A8FC7`) -- lo primero que se probó (`--primary`) no era ese celeste. El ítem seleccionado pasa al navy original (`--primary-dark`) para que se siga notando cuál es, ya que ahora comparte tono con el resto del sidebar.
+- **"Limpiar filtros" de Mis Tareas** ahora también resetea "Ver de" (antes se quedaba trabado en el colaborador que se hubiera elegido, o en el propio email para un colaborador).
+- **"Gestión COSMART" → "Gestión interna"** en el nav y en el título de la sección, cuando la agencia logueada no es COSMART (`esCosmart`, ya existía la variable, solo faltaba usarla acá).
+- **Mis Tareas y Gestión COSMART cachean entre navegaciones**: si ya se habían cargado antes en la sesión, se muestran al toque al reentrar a la sección (en vez de tapar todo con "Cargando..." de nuevo) y se refrescan atrás. No es caché entre sesiones, solo evita el refetch-y-blanqueo en cada click de nav dentro de la misma sesión.
+- **Sección "Ideas"** nueva en el admin: reusa el mismo backend que "Ideas de contenido" del cliente (`getIdeas`/`saveIdea`/`deleteIdea`, mismo endpoint genérico `/data/:id/ideas`) guardado en el pseudo-cliente `_cosmart`. Cada idea tiene título/descripción/autor(auto)/fecha. Botón "🚀 Transformar en proyecto": crea la tarea en Gestión COSMART con `esProyecto:true` y abre directo su modal para terminar de armarla con subtareas, y borra la idea. Se siembra sola la primera idea de Vaneh la primera vez que la lista está vacía -- si algún día se borra esa idea y la lista vuelve a quedar vacía, se va a volver a sembrar sola (edge case conocido, no se resolvió por bajo impacto).
+- **Cambio de contraseña obligatorio en el primer login, ahora también en el admin**: el backend ya marcaba `mustChangePassword:true` al crear un colaborador (`handleCreateColaborador`) y el modal bloqueante ya existía en el panel de CLIENTE (`app/index.html`+`js/app.js`) -- pero nunca se había portado al panel de ADMIN, que es donde loguean los colaboradores en la práctica. Portado con el mismo patrón (mismo modal, mismos ids de campo `mcp-*`); al terminar recarga la página entera en vez de llamar a un `init()` propio (el admin no tiene una función así). El "blanqueo" de contraseña sin ayuda de un admin ya funcionaba de antes para cualquier rol vía `/auth/forgot` + "¿Olvidaste tu contraseña?" en `login.html` -- no hizo falta tocar nada ahí.
+- **Mails de facturación**: confirmado que `sendEmail()` tiene el remitente hardcodeado siempre en `info@cosmart.com.ar` -- ningún mail automático del sistema sale nunca desde el email personal de un admin, `vaneh@cosmart.com.ar` solo aparece como destinatario del recordatorio interno.
+
 ## Regla permanente: SIEMPRE cuidar el responsive mobile (03/09)
 
 Vaneh lo pidió explícito y en mayúsculas: "la versión mobile es la más importante de hecho". Ver también `CLAUDE.md`. No es una tarea puntual -- es un criterio a aplicar en cada cambio de UI de acá en adelante. Pendiente real todavía sin resolver: las barras de filtros (Mis Tareas, Gestión COSMART, Tareas del cliente) usan `flex-wrap:wrap` así que no rompen el layout en mobile, pero con 4-5 controles se apilan en varias filas y ocupan mucho scroll vertical -- Vaneh sugirió un menú de filtros que se abra como panel lateral desde la derecha en mobile en vez de la fila horizontal. No implementado todavía.
