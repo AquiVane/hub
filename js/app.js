@@ -27,6 +27,17 @@ function linkify(html) {
   });
 }
 
+// Textarea de una línea que crece hacia abajo solo, para reemplazar
+// <input> en campos editables de texto largo (ej. título de subtarea) --
+// un <input> nunca hace wrap, así que un título largo quedaba cortado y
+// no se veía. La misma <textarea> sirve para el placeholder de "3
+// puntitos, agregar" en cualquier lugar que la reuse.
+function autoGrowTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+window.autoGrowTextarea = autoGrowTextarea;
+
 // ── Bootstrap ──────────────────────────────────────────
 const user = requireAuth();
 if (!user) throw new Error('No auth');
@@ -2995,11 +3006,12 @@ function renderSubtareas(subtareas) {
   list.innerHTML = subtareas.map((s, i) => `
     <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${s.done?'#bbf7d0':'var(--border)'};">
       <input type="checkbox" ${s.done?'checked':''} onchange="toggleSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
-      <input type="text" value="${escapeHtml(s.titulo).replace(/"/g,'&quot;')}" onchange="renombrarSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">
+      <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done?'text-decoration:line-through;color:var(--text-muted);':''}">${escapeHtml(s.titulo)}</textarea>
       <select onchange="reasignarSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${getAsignarOptions(s.asignado?.email || '')}</select>
       <button onclick="deleteSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
     </div>
   `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+  list.querySelectorAll('.subtarea-titulo-ta').forEach(autoGrowTextarea);
 }
 
 window.reasignarSubtarea = function(idx, sel) {

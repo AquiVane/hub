@@ -1384,6 +1384,15 @@
   }
 
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  // Textarea de una línea que crece hacia abajo sola -- reemplaza <input>
+  // en campos editables de texto largo (título de subtarea): un <input>
+  // nunca wrappea, así que un título largo quedaba cortado y no se veía
+  // (regresión reportada por Vaneh sobre el cambio anterior de <span> a
+  // <input> para poder editarlas).
+  window.autoGrowTextarea = function(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
 
   // ── Códigos de tareas (cliente/vertical/persona) ────────────────
   const VANEH_CODIGO = 'VH';
@@ -2239,12 +2248,13 @@
     const filas = await Promise.all(_inSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
-        <input type="text" value="${escapeHtml(s.titulo).replace(/"/g,'&quot;')}" onchange="renombrarInSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">
+        <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarInSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
         <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
     list.innerHTML = filas.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+    list.querySelectorAll('.subtarea-titulo-ta').forEach(autoGrowTextarea);
   }
   window.reasignarInSubtarea = function(i, sel) {
     if (!_inSubtareas[i]) return;
@@ -3280,12 +3290,13 @@
     const filas = await Promise.all(_mtSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
-        <input type="text" value="${escapeHtml(s.titulo).replace(/"/g,'&quot;')}" onchange="renombrarMiSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">
+        <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarMiSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
         <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
         <button type="button" onclick="eliminarMiSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
     list.innerHTML = filas.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+    list.querySelectorAll('.subtarea-titulo-ta').forEach(autoGrowTextarea);
   }
   window.reasignarMiSubtarea = function(i, sel) {
     if (!_mtSubtareas[i]) return;
