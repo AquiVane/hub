@@ -355,6 +355,13 @@
       <div id="sec-config" class="hidden">
         <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Configuración</h2>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>Recorrido guiado</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Volvé a ver la introducción al panel de administrador.</p>
+            <button class="btn btn-secondary" onclick="reiniciarTourAdmin()">Ver recorrido de nuevo</button>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>Numeración de tareas</h2></div>
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
@@ -4786,11 +4793,72 @@
     };
   }
 
+  // ── Recorrido guiado (primer login) ──────────────────────────
+  // Pedido de Vaneh: onboarding real para agencias/colaboradores nuevos
+  // en su primer login, no solo un texto explicando. Guardado en
+  // localStorage (por navegador, no por cuenta -- si en algún momento
+  // se quiere que sobreviva a un cambio de dispositivo, habría que
+  // persistirlo en el usuario del lado del backend en vez de acá).
+  function iniciarTour(steps, storageKey) {
+    if (localStorage.getItem(storageKey)) return;
+    let i = 0;
+    const overlay = document.createElement('div');
+    overlay.id = 'tour-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;';
+    document.body.appendChild(overlay);
+    function cerrar() { overlay.remove(); try { localStorage.setItem(storageKey, '1'); } catch (e) {} }
+    function render() {
+      const step = steps[i];
+      const el = step.selector ? document.querySelector(step.selector) : null;
+      overlay.innerHTML = '';
+      let rect = el ? el.getBoundingClientRect() : { top: window.innerHeight/2 - 20, left: window.innerWidth/2 - 100, width: 200, height: 40, bottom: window.innerHeight/2 + 20 };
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const spot = document.createElement('div');
+      spot.style.cssText = `position:fixed;top:${rect.top-6}px;left:${rect.left-6}px;width:${rect.width+12}px;height:${rect.height+12}px;border-radius:10px;box-shadow:0 0 0 9999px rgba(13,43,107,.6);border:2px solid #3A8FC7;pointer-events:none;`;
+      overlay.appendChild(spot);
+      const card = document.createElement('div');
+      const top = Math.max(16, Math.min(rect.bottom + 14, window.innerHeight - 200));
+      const left = Math.max(16, Math.min(rect.left, window.innerWidth - 316));
+      card.style.cssText = `position:fixed;top:${top}px;left:${left}px;width:280px;background:#fff;border-radius:10px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.3);`;
+      card.innerHTML = `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${i+1} de ${steps.length}</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${step.titulo}</div>
+        <div style="font-size:13px;color:#475569;margin-bottom:14px;line-height:1.4;">${step.texto}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <button id="tour-skip" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;">Saltar recorrido</button>
+          <div style="display:flex;gap:8px;">
+            ${i > 0 ? `<button id="tour-prev" class="btn btn-secondary btn-sm">Atrás</button>` : ''}
+            <button id="tour-next" class="btn btn-primary btn-sm">${i === steps.length - 1 ? 'Listo' : 'Siguiente'}</button>
+          </div>
+        </div>`;
+      overlay.appendChild(card);
+      document.getElementById('tour-skip').onclick = cerrar;
+      document.getElementById('tour-next').onclick = () => { i++; if (i >= steps.length) cerrar(); else render(); };
+      if (i > 0) document.getElementById('tour-prev').onclick = () => { i--; render(); };
+    }
+    render();
+  }
+
+  const TOUR_ADMIN_STEPS = [
+    { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
+    { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes).' },
+    { selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: 'Tus propias tareas, de cualquier cliente o internas de COSMART, todas juntas -- con Kanban, Lista y Calendario.' },
+    { selector: '#navInternasBtn', titulo: 'Gestión interna', texto: 'Tareas del equipo que no son de ningún cliente puntual (procesos internos, administrativas, etc.).' },
+    { selector: '.nav-item[onclick*="showSection(\'ideas\')"]', titulo: 'Ideas', texto: 'Anotá lo que se te ocurra sin necesidad de un plan armado. Cuando esté madura, "Transformar en proyecto" la manda directo a tareas.' },
+    { selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes. Cada uno entra con su propio usuario y contraseña.' },
+  ];
+  const TOUR_STORAGE_KEY = 'hub_tour_admin_v1';
+  window.reiniciarTourAdmin = function() {
+    try { localStorage.removeItem(TOUR_STORAGE_KEY); } catch (e) {}
+    iniciarTour(TOUR_ADMIN_STEPS, TOUR_STORAGE_KEY);
+  };
+
   if (user.mustChangePassword) {
     showMustChangePasswordModalAdmin();
   } else {
     loadClients();
     if (user.role === 'admin') loadInformes();
+    setTimeout(() => iniciarTour(TOUR_ADMIN_STEPS, TOUR_STORAGE_KEY), 600);
   }
   if (window.lucide) lucide.createIcons();
 </script>

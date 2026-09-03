@@ -38,6 +38,63 @@ function autoGrowTextarea(el) {
 }
 window.autoGrowTextarea = autoGrowTextarea;
 
+// ── Recorrido guiado (primer login del cliente) ──────────────────
+// Mismo motor que el del panel admin (duplicado a propósito -- son
+// scripts separados, uno por página). Guardado en localStorage, por
+// navegador, no por cuenta.
+function iniciarTour(steps, storageKey) {
+  if (localStorage.getItem(storageKey)) return;
+  let i = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'tour-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;';
+  document.body.appendChild(overlay);
+  function cerrar() { overlay.remove(); try { localStorage.setItem(storageKey, '1'); } catch (e) {} }
+  function render() {
+    const step = steps[i];
+    const el = step.selector ? document.querySelector(step.selector) : null;
+    overlay.innerHTML = '';
+    let rect = el ? el.getBoundingClientRect() : { top: window.innerHeight / 2 - 20, left: window.innerWidth / 2 - 100, width: 200, height: 40, bottom: window.innerHeight / 2 + 20 };
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const spot = document.createElement('div');
+    spot.style.cssText = `position:fixed;top:${rect.top-6}px;left:${rect.left-6}px;width:${rect.width+12}px;height:${rect.height+12}px;border-radius:10px;box-shadow:0 0 0 9999px rgba(13,43,107,.6);border:2px solid #3A8FC7;pointer-events:none;`;
+    overlay.appendChild(spot);
+    const card = document.createElement('div');
+    const top = Math.max(16, Math.min(rect.bottom + 14, window.innerHeight - 200));
+    const left = Math.max(16, Math.min(rect.left, window.innerWidth - 316));
+    card.style.cssText = `position:fixed;top:${top}px;left:${left}px;width:280px;background:#fff;border-radius:10px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.3);`;
+    card.innerHTML = `
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${i+1} de ${steps.length}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${step.titulo}</div>
+      <div style="font-size:13px;color:#475569;margin-bottom:14px;line-height:1.4;">${step.texto}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <button id="tour-skip" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;">Saltar recorrido</button>
+        <div style="display:flex;gap:8px;">
+          ${i > 0 ? `<button id="tour-prev" class="btn btn-secondary btn-sm">Atrás</button>` : ''}
+          <button id="tour-next" class="btn btn-primary btn-sm">${i === steps.length - 1 ? 'Listo' : 'Siguiente'}</button>
+        </div>
+      </div>`;
+    overlay.appendChild(card);
+    document.getElementById('tour-skip').onclick = cerrar;
+    document.getElementById('tour-next').onclick = () => { i++; if (i >= steps.length) cerrar(); else render(); };
+    if (i > 0) document.getElementById('tour-prev').onclick = () => { i--; render(); };
+  }
+  render();
+}
+window.iniciarTour = iniciarTour;
+
+const TOUR_CLIENTE_STEPS = [
+  { selector: '[data-section="home"]', titulo: '¡Bienvenido/a a tu Hub!', texto: 'Este es tu panel: acá vas a ver el resumen de todo lo que tu agencia está haciendo por vos.' },
+  { selector: '[data-section="tareas"]', titulo: 'Tareas', texto: 'Las tareas que tu agencia va completando para vos, organizadas en Kanban, Lista o Calendario.' },
+  { selector: '[data-section="contenidos"]', titulo: 'Contenidos', texto: 'El calendario de posteos y piezas gráficas -- podés ver el estado de cada uno y dejar comentarios.' },
+  { selector: '[data-section="pauta"]', titulo: 'Pauta digital', texto: 'Tus campañas de publicidad paga, con sus métricas.' },
+  { selector: '[data-section="links"]', titulo: 'Links y Archivos', texto: 'Todos los accesos y archivos importantes de tu marca, en un solo lugar.' },
+];
+window.reiniciarTourCliente = function() {
+  try { localStorage.removeItem('hub_tour_cliente_v1'); } catch (e) {}
+  iniciarTour(TOUR_CLIENTE_STEPS, 'hub_tour_cliente_v1');
+};
+
 // ── Bootstrap ──────────────────────────────────────────
 const user = requireAuth();
 if (!user) throw new Error('No auth');
@@ -104,6 +161,10 @@ async function init() {
       renderSection('home');
     }
     setTimeout(() => refreshIcons(), 100);
+    // Solo para el cliente en su propia cuenta -- si un admin/colaborador
+    // abrió este panel "como" el cliente (ver "Abrir en panel del
+    // cliente" en Mis Tareas), no tiene sentido mostrarle el tour.
+    if (user.role === 'client') setTimeout(() => iniciarTour(TOUR_CLIENTE_STEPS, 'hub_tour_cliente_v1'), 700);
   } catch (err) {
     const content = document.getElementById('main-content');
     const esPermisos = err.message === 'Sin permisos' || err.message === 'No autorizado';
@@ -3856,6 +3917,7 @@ function renderInstrucciones(container) {
         <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Bienvenido al Marketing Hub de COSMART</h2></div>
         <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
           <p>Este es tu panel de control digital. Desde acá podés gestionar todos los aspectos de tu estrategia de marketing en un solo lugar.</p>
+          <button class="btn btn-secondary btn-sm" onclick="reiniciarTourCliente()">Ver recorrido guiado de nuevo</button>
         </div>
       </div>
 
