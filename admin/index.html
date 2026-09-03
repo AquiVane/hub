@@ -1084,6 +1084,36 @@
   </div>
 </div>
 
+<!-- Cambio de contraseña obligatorio (primer login de un colaborador) -->
+<div id="mustChangePasswordModal" class="modal-overlay hidden" style="z-index:9999;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Creá tu contraseña</h3>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5;">
+        Por seguridad, antes de seguir tenés que cambiar la contraseña temporal que te llegó por mail.
+      </p>
+      <div class="form-group">
+        <label>Contraseña actual (la temporal)</label>
+        <input type="password" id="mcp-actual" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Contraseña nueva</label>
+        <input type="password" id="mcp-nueva" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Repetir contraseña nueva</label>
+        <input type="password" id="mcp-confirmar" class="form-control">
+      </div>
+      <div id="mcp-error" style="display:none;font-size:12px;color:#dc2626;margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="mcpSaveBtn" style="width:100%;justify-content:center;">Guardar y entrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal importar proceso -->
 <div id="importarProcesoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:600px;">
@@ -1210,7 +1240,7 @@
 </div>
 
 <script type="module">
-  import { requireAuth, logoutUser, getSessionToken } from '../js/auth.js';
+  import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
@@ -4542,8 +4572,44 @@
     return partes.join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin detalle.</p>';
   }
 
-  loadClients();
-  if (user.role === 'admin') loadInformes();
+  // Cambio de contraseña obligatorio en el primer login de un colaborador
+  // (mustChangePassword: true al crearlo, ver handleCreateColaborador en
+  // el worker). Ya existía este mismo mecanismo para el panel de cliente
+  // (js/app.js) pero nunca se había portado al admin -- por eso Vaneh
+  // seguía sin verlo funcionar acá. Mismo modal/patrón, la diferencia es
+  // que al terminar recarga la página entera (más simple que replicar el
+  // init() del cliente sobre este script gigante).
+  function showMustChangePasswordModalAdmin() {
+    const modal = document.getElementById('mustChangePasswordModal');
+    modal.classList.remove('hidden');
+    const errEl = document.getElementById('mcp-error');
+    const btn = document.getElementById('mcpSaveBtn');
+    btn.onclick = async () => {
+      errEl.style.display = 'none';
+      const actual = document.getElementById('mcp-actual').value;
+      const nueva = document.getElementById('mcp-nueva').value;
+      const confirmar = document.getElementById('mcp-confirmar').value;
+      if (!actual || !nueva) { errEl.textContent = 'Completá los dos campos.'; errEl.style.display = ''; return; }
+      if (nueva.length < 6) { errEl.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; errEl.style.display = ''; return; }
+      if (nueva !== confirmar) { errEl.textContent = 'Las contraseñas nuevas no coinciden.'; errEl.style.display = ''; return; }
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      try {
+        await changePassword(actual, nueva);
+        window.location.reload();
+      } catch (e) {
+        errEl.textContent = e.message || 'Error al cambiar la contraseña.';
+        errEl.style.display = '';
+        btn.disabled = false; btn.textContent = 'Guardar y entrar';
+      }
+    };
+  }
+
+  if (user.mustChangePassword) {
+    showMustChangePasswordModalAdmin();
+  } else {
+    loadClients();
+    if (user.role === 'admin') loadInformes();
+  }
   if (window.lucide) lucide.createIcons();
 </script>
 </body>
