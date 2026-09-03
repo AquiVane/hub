@@ -485,9 +485,14 @@ export async function generarInformesManual(mes, anio) {
   return api('POST', '/admin/informes/generar', { mes, anio });
 }
 
-export async function enviarResumenEquipoManual(mes, anio) {
+export async function previewResumenEquipo(dias = 30) {
+  if (DEMO_MODE) return { desde: '', hasta: '', tituloPeriodo: '', resumenes: [] };
+  return api('GET', `/admin/resumen-equipo/preview?dias=${dias}`);
+}
+
+export async function enviarResumenEquipoManual(dias = 30) {
   if (DEMO_MODE) { alert('En modo demo no se puede enviar el resumen real.'); return { enviados: 0 }; }
-  return api('POST', '/admin/resumen-equipo/enviar', { mes, anio });
+  return api('POST', '/admin/resumen-equipo/enviar', { dias });
 }
 
 export async function getEmailStats(dias = 30) {

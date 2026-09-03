@@ -316,10 +316,10 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Informes mensuales</h2>
           <span id="informesCount" class="text-muted text-sm"></span>
-          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="enviarResumenEquipoAhora()">Enviar resumen a equipo ahora</button>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="abrirPreviewResumenEquipo()">👁 Vista previa: resumen de equipo</button>
           <button class="btn btn-secondary btn-sm" onclick="generarInformesAhora()">Generar ahora</button>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno. El resumen de equipo (para colaboradores) sí se envía automáticamente ese mismo día.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno. El resumen de equipo (un mail por colaborador, con lo que cada uno completó) se envía automáticamente ese mismo día -- desde acá podés previsualizarlo y mandarlo antes si querés.</p>
         <div id="informesList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
@@ -1129,6 +1129,32 @@
   </div>
 </div>
 
+<!-- Vista previa del resumen de equipo -->
+<div id="resumenPreviewModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>Vista previa: resumen de equipo</h3>
+      <button class="modal-close" onclick="document.getElementById('resumenPreviewModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="flex items-center gap-8" style="margin-bottom:8px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--text-muted);">Período:</label>
+        <select class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarDiasResumenPreview(this.value)">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+      <p id="resumen-preview-periodo" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;"></p>
+      <div id="resumen-preview-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('resumenPreviewModal').classList.add('hidden')">Cerrar</button>
+      <button class="btn btn-primary" onclick="confirmarEnvioResumenEquipo()">Enviar a cada colaborador</button>
+    </div>
+  </div>
+</div>
+
 <!-- Cambio de contraseña obligatorio (primer login de un colaborador) -->
 <div id="mustChangePasswordModal" class="modal-overlay hidden" style="z-index:9999;">
   <div class="modal" style="max-width:420px;">
@@ -1286,7 +1312,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -4603,11 +4629,50 @@
     }
   };
 
-  window.enviarResumenEquipoAhora = async function() {
-    if (!confirm('¿Enviar YA el resumen de equipo del mes pasado a todos los colaboradores? Esto envía el mail de verdad, no se puede deshacer.')) return;
+  let _resumenPreviewDias = 30;
+  window.abrirPreviewResumenEquipo = async function() {
+    const modal = document.getElementById('resumenPreviewModal');
+    const body = document.getElementById('resumen-preview-body');
+    modal.classList.remove('hidden');
+    body.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Calculando...</p></div>`;
+    await cargarPreviewResumenEquipo();
+  };
+  window.cambiarDiasResumenPreview = function(dias) {
+    _resumenPreviewDias = Number(dias);
+    cargarPreviewResumenEquipo();
+  };
+  async function cargarPreviewResumenEquipo() {
+    const body = document.getElementById('resumen-preview-body');
     try {
-      const res = await enviarResumenEquipoManual();
-      alert(res.enviados ? `Resumen enviado a ${res.enviados} persona(s).` : (res.mensaje || 'Sin actividad para enviar.'));
+      const resumen = await previewResumenEquipo(_resumenPreviewDias);
+      document.getElementById('resumen-preview-periodo').textContent = `Período: ${resumen.tituloPeriodo} (${resumen.desde} a ${resumen.hasta})`;
+      if (!resumen.resumenes.length) {
+        body.innerHTML = `<div class="empty-state"><p>No hay colaboradores todavía.</p></div>`;
+        return;
+      }
+      body.innerHTML = resumen.resumenes.map(p => `
+        <div class="card" style="padding:14px;margin-bottom:10px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${escapeHtml(p.nombre)} <span style="font-weight:400;color:var(--text-muted);font-size:11px;">${escapeHtml(p.email)}</span></div>
+          ${p.porCliente.length ? p.porCliente.map(v => `
+            <div style="margin-bottom:6px;">
+              <div style="font-size:12px;font-weight:600;color:var(--primary-dark);">${escapeHtml(v.nombre)}</div>
+              ${v.tareasCompletadas.map(t => `<div style="font-size:12px;color:var(--text);margin-left:8px;">✅ ${escapeHtml(t.titulo)}</div>`).join('')}
+              ${v.contenidosPublicados.map(ct => `<div style="font-size:12px;color:var(--text);margin-left:8px;">📣 ${escapeHtml(ct.titulo)}</div>`).join('')}
+              ${v.campanasNuevas.map(cm => `<div style="font-size:12px;color:var(--text);margin-left:8px;">📈 ${escapeHtml(cm.nombre)}</div>`).join('')}
+            </div>
+          `).join('') : `<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin actividad en este período.</p>`}
+        </div>
+      `).join('');
+    } catch (e) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${e.message || 'Error al calcular.'}</p></div>`;
+    }
+  }
+  window.confirmarEnvioResumenEquipo = async function() {
+    if (!confirm('¿Enviar YA el resumen a cada colaborador? Esto manda los mails de verdad, no se puede deshacer.')) return;
+    try {
+      const res = await enviarResumenEquipoManual(_resumenPreviewDias);
+      alert(res.enviados ? `Resumen enviado a ${res.enviados} persona(s).` : 'Sin colaboradores para enviar.');
+      document.getElementById('resumenPreviewModal').classList.add('hidden');
     } catch (e) {
       alert('Error al enviar: ' + (e.message || 'intentá de nuevo.'));
     }
@@ -4839,26 +4904,66 @@
     render();
   }
 
-  const TOUR_ADMIN_STEPS = [
-    { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
-    { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes).' },
-    { selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: 'Tus propias tareas, de cualquier cliente o internas de COSMART, todas juntas -- con Kanban, Lista y Calendario.' },
-    { selector: '#navInternasBtn', titulo: 'Gestión interna', texto: 'Tareas del equipo que no son de ningún cliente puntual (procesos internos, administrativas, etc.).' },
-    { selector: '.nav-item[onclick*="showSection(\'ideas\')"]', titulo: 'Ideas', texto: 'Anotá lo que se te ocurra sin necesidad de un plan armado. Cuando esté madura, "Transformar en proyecto" la manda directo a tareas.' },
-    { selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes. Cada uno entra con su propio usuario y contraseña.' },
-  ];
+  // "Gestión COSMART" solo tiene sentido si la agencia es COSMART -- para
+  // cualquier otra agencia el tour tiene que hablar de "tu empresa", no
+  // de COSMART (era literal antes, reportado por Vaneh). Se arma la
+  // lista de pasos como función (no constante) para poder usar esCosmart
+  // y user.role, y cubrir TODAS las secciones del menú, no solo algunas
+  // -- pedido explícito: "no mostró ni métricas, ni procesos, ni
+  // recursos ni actividad".
+  function construirTourAdmin() {
+    const nombreInterno = esCosmart ? 'COSMART' : 'tu empresa';
+    const steps = [
+      { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
+      { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes) -- para abrirlo, entrá al cliente y buscá "Abrir panel del cliente".' },
+    ];
+    if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: `Tus propias tareas, de cualquier cliente o internas de ${nombreInterno}, todas juntas -- con Kanban, Lista y Calendario. El botón "+ Nueva tarea" está arriba a la derecha.` });
+    steps.push({ selector: '#navInternasBtn', titulo: 'Gestión interna', texto: `Tareas del equipo que no son de ningún cliente puntual (procesos internos de ${nombreInterno}, administrativas, etc.).` });
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'procesos\')"]', titulo: 'Procesos', texto: 'Documentación interna del equipo (instructivos, checklists) -- solo la ven colaboradores y admin, nunca el cliente.' });
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'ideas\')"]', titulo: 'Ideas', texto: 'Anotá lo que se te ocurra sin necesidad de un plan armado. Cuando esté madura, "Transformar en proyecto" la manda directo a tareas.' });
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'proyectos\')"]', titulo: 'Proyectos', texto: 'Todas las tareas marcadas "Es un proyecto", de cualquier cliente o interna, juntas en un solo lugar.' });
+    if (user.role === 'admin') {
+      steps.push({ selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes.' });
+      steps.push({ selector: '#btnNuevoColaborador', titulo: 'Dar de alta un colaborador', texto: 'Tocá acá para crear su usuario, con contraseña temporal -- se lo forzamos a cambiar en su primer login.' });
+    }
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'actividad\')"]', titulo: 'Actividad', texto: 'Reporte de tareas/contenidos/campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o adjuntar a una factura.' });
+    if (user.role === 'admin') {
+      steps.push({ selector: '.nav-item[onclick*="showSection(\'informes\')"]', titulo: 'Informes clientes', texto: 'Se generan solos el día 1 de cada mes. No se le mandan al cliente hasta que vos apruebes cada uno.' });
+      steps.push({ selector: '.nav-item[onclick*="showSection(\'email-stats\')"]', titulo: 'Métricas', texto: 'Estadísticas de los mails automáticos que manda el Hub.' });
+    }
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'recursos\')"]', titulo: 'Recursos', texto: 'Plantillas y archivos de referencia para todo el equipo.' });
+    steps.push({ selector: '.nav-item[onclick*="showSection(\'config\')"]', titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' });
+    return steps;
+  }
   const TOUR_STORAGE_KEY = 'hub_tour_admin_v1';
   window.reiniciarTourAdmin = function() {
     try { localStorage.removeItem(TOUR_STORAGE_KEY); } catch (e) {}
-    iniciarTour(TOUR_ADMIN_STEPS, TOUR_STORAGE_KEY);
+    iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY);
   };
+
+  // Precarga en segundo plano de las secciones más visitadas -- Vaneh
+  // seguía viendo 1-2 segundos de demora la PRIMERA vez que entraba a
+  // Mis Tareas/Gestión COSMART/Colaboradores en la sesión (el caché
+  // entre navegaciones ya estaba resuelto, pero no había nada cacheado
+  // todavía en ese primer click). Dispara los fetches ni bien loguea,
+  // sin esperarlos ni bloquear nada -- si el usuario llega a esa
+  // sección antes de que termine, ve el "Cargando..." de siempre; si
+  // llega después (lo normal), la sección ya tiene datos y renderiza
+  // al toque.
+  function precargarSeccionesComunes() {
+    loadMisTareas().catch(() => {});
+    loadInternas().catch(() => {});
+    if (user.role === 'admin') loadColaboradores().catch(() => {});
+  }
 
   if (user.mustChangePassword) {
     showMustChangePasswordModalAdmin();
   } else {
     loadClients();
     if (user.role === 'admin') loadInformes();
-    setTimeout(() => iniciarTour(TOUR_ADMIN_STEPS, TOUR_STORAGE_KEY), 600);
+    setTimeout(precargarSeccionesComunes, 300);
+    setTimeout(() => iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY), 600);
   }
   if (window.lucide) lucide.createIcons();
 </script>
