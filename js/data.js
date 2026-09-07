@@ -455,6 +455,15 @@ export async function getColaboradores() {
   return api('GET', '/admin/colaboradores');
 }
 
+// Equipo completo (admin + colaboradores) -- a diferencia de getColaboradores()
+// (admin-only), esta la puede llamar cualquiera del equipo. Se usa para
+// poblar los selectores de "asignar a"/@menciones en tareas internas, donde
+// un colaborador también necesita ver al admin en la lista.
+export async function getEquipo() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/admin/equipo');
+}
+
 export async function updateColaborador(email, updates) {
   if (DEMO_MODE) { alert('En modo demo no se pueden editar colaboradores reales.'); return; }
   return api('PATCH', `/admin/colaboradores/${encodeURIComponent(email)}`, updates);

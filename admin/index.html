@@ -1497,7 +1497,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2881,6 +2881,19 @@
   let _clientsCacheForColab = [];
   let _nmtClientsCache = [];
 
+  // Equipo completo (admin + colaboradores), para los selectores de
+  // "asignar a"/@menciones de tareas internas -- a propósito NO reusa
+  // _colaboradoresCache (esa es admin-only y solo colaboradores, la usan
+  // otras pantallas como gestión de colaboradores/responsable de cliente
+  // que no deberían mezclar al admin en esas listas).
+  let _equipoCache = [];
+  async function getEquipoCache() {
+    if (!_equipoCache.length) {
+      try { _equipoCache = await getEquipo(); } catch (e) { _equipoCache = []; }
+    }
+    return _equipoCache;
+  }
+
   // Pseudo-asignado especial -- una tarea asignada a esta "persona" la
   // ejecuta Claude solo, en el día/hora que diga la tarjeta (ver cron
   // `ejecutarTareasClaude` en cosmart-workers). Mismo email fijo para
@@ -2891,13 +2904,11 @@
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
     let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
-    try {
-      if (!_colaboradoresCache.length) _colaboradoresCache = await getColaboradores();
-      _colaboradoresCache.forEach(c => {
-        if (c.email.toLowerCase() === miEmail) return;
-        html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
-      });
-    } catch (e) {}
+    const equipo = await getEquipoCache();
+    equipo.forEach(c => {
+      if (c.email.toLowerCase() === miEmail) return;
+      html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
+    });
     html += `<option value="${CLAUDE_IA_EMAIL}" data-nombre="Claude IA"${cur === CLAUDE_IA_EMAIL ? ' selected' : ''}>🤖 Claude IA (la ejecuta sola)</option>`;
     return html;
   }
@@ -2910,14 +2921,14 @@
     const asignadoSel = document.getElementById('nmt-asignado');
     const prevValue = asignadoSel.value;
     asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
-    try {
-      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-      colaboradores.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
-        asignadoSel.appendChild(opt);
-      });
-    } catch (e) {}
+    const miEmailNmt = (user.email || '').toLowerCase();
+    const equipoNmt = await getEquipoCache();
+    equipoNmt.forEach(c => {
+      if (c.email.toLowerCase() === miEmailNmt) return;
+      const opt = document.createElement('option');
+      opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
+      asignadoSel.appendChild(opt);
+    });
     if (selectedClientId && !['_personal', '_cosmart'].includes(selectedClientId)) {
       const cliente = _nmtClientsCache.find(c => c.id === selectedClientId);
       (cliente?.usuarios || []).forEach(u => {
@@ -5474,7 +5485,7 @@
   // internas del admin, que nunca lo tuvieron.
   function getMentionUsersInterno() {
     const lista = [{ nombre: user.name || user.email.split('@')[0], email: user.email }];
-    (_colaboradoresCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
+    (_equipoCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
     const seen = new Set();
     return lista.filter(u => { if (!u.email || seen.has(u.email.toLowerCase())) return false; seen.add(u.email.toLowerCase()); return true; });
   }
