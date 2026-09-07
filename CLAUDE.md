@@ -14,6 +14,8 @@ También existe `HANDOFF.md` en `AquiVane/cosmart-workers` (backend) — si la t
 
 Antes de terminar la sesión (o apenas hiciste un cambio importante), actualizá vos mismo `HANDOFF.md` con lo que cambió: qué se hizo, qué decisiones nuevas se tomaron, qué quedó pendiente. No hace falta que Vaneh lo pida. Si en una sesión no cambió nada relevante, no hace falta tocarlo. Esto aplica también a cualquier repo nuevo que se sume al ecosistema COSMART — todos deberían tener su propio `HANDOFF.md` con este mismo mecanismo.
 
+**También existe `MEMORIA-TECNICA.md`** (raíz de este repo) — documento para el trámite de registro del software ante la DNDA (pedido de Vaneh, 07/09). Es distinto del HANDOFF: describe funcionalidades y arquitectura en lenguaje no técnico/legal, sin código fuente. Mismo mecanismo que el HANDOFF: actualizalo vos mismo cada vez que se agregue o cambie una funcionalidad importante, sin que Vaneh lo pida. Un ajuste chico de UI o un fix puntual no amerita tocarlo — es para cambios que modifican qué hace el sistema o cómo está armado.
+
 ## Reglas duras del proyecto
 
 - Vaneh se comunica **solo en español** — nunca respondas en inglés.
