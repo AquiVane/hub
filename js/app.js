@@ -1073,6 +1073,10 @@ window.addTodoItem = function() {
 // CONTENIDOS
 // ──────────────────────────────────────────────────────
 let activeContTab = 'banco';
+// Filtro orgánico/pauta/ambas del Banco de contenidos -- pedido de Vaneh
+// (07/09): "necesito poder filtrar sino me hago mucho lío". Mapea directo
+// a c.pauta: 'organico' | 'dark' (pauta pura) | 'dark-organico' (ambas).
+let activePautaFilter = 'todas';
 
 function renderContenidos(container) {
   container.innerHTML = `
@@ -1187,8 +1191,17 @@ function bancoMesGroupHtml(label, items, abierto) {
   `;
 }
 
+function matchPautaFilter(c) {
+  if (activePautaFilter === 'todas') return true;
+  const p = c.pauta || 'organico';
+  if (activePautaFilter === 'organico') return p === 'organico';
+  if (activePautaFilter === 'pauta') return p === 'dark';
+  if (activePautaFilter === 'ambas') return p === 'dark-organico';
+  return true;
+}
+
 function renderBancoContenidos(container) {
-  const activos = STATE.contenidos.filter(c => !c.archivado);
+  const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter);
   const archivados = STATE.contenidos.filter(c => c.archivado);
   const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
 
@@ -1223,8 +1236,18 @@ function renderBancoContenidos(container) {
     `;
   }).join('');
 
+  const pautaFiltros = [
+    { key: 'todas', label: 'Todos' },
+    { key: 'organico', label: 'Orgánico' },
+    { key: 'pauta', label: 'Pauta' },
+    { key: 'ambas', label: 'Ambas' },
+  ];
+
   container.innerHTML = `
-    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>Sin contenidos aún.</p></div>`}
+    <div class="tabs" id="banco-pauta-filtros" style="margin-bottom:14px;">
+      ${pautaFiltros.map(f => `<button class="tab-btn ${activePautaFilter===f.key?'active':''}" data-pauta-filtro="${f.key}">${f.label}</button>`).join('')}
+    </div>
+    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${activePautaFilter==='todas'?'Sin contenidos aún.':'Sin contenidos con este filtro.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
         <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
@@ -1243,6 +1266,13 @@ function renderBancoContenidos(container) {
       </div>
     ` : ''}
   `;
+
+  document.querySelectorAll('#banco-pauta-filtros .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePautaFilter = btn.dataset.pautaFiltro;
+      renderBancoContenidos(container);
+    });
+  });
 }
 
 window.bancoUpdateFecha = async function(id, fecha) {
