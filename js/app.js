@@ -2395,6 +2395,7 @@ function importParsePauta(val) {
 // entre cuentas distintas, y la fecha puede cambiar sin que sea "otro"
 // contenido (reprogramar no debería crear un duplicado).
 const IMPORT_DIFF_FIELDS = [
+  { key: 'cuenta', label: 'Cuenta' },
   { key: 'fechaPub', label: 'Fecha de publicación' },
   { key: 'estado', label: 'Estado' },
   { key: 'plataformas', label: 'Plataformas', arr: true },
