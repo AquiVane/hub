@@ -2900,7 +2900,13 @@
   // cualquier agencia, no es una cuenta real.
   const CLAUDE_IA_EMAIL = 'claude-ia@cosmart.internal';
 
-  async function opcionesYoYColaboradoresHtml(currentEmail) {
+  // clientId opcional: si es un cliente real (no _cosmart/_personal), suma
+  // también el equipo de ESE cliente -- pedido de Vaneh (07/09): "en las
+  // subtareas no me aparece el cliente". El "Asignar a" principal de la
+  // tarea (poblarNmtAsignado) ya lo hacía; a las subtareas nunca se le
+  // había pasado el clientId, así que nunca podían asignarse a alguien
+  // del equipo del cliente, solo a vos/colaboradores/Claude IA.
+  async function opcionesYoYColaboradoresHtml(currentEmail, clientId) {
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
     let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
@@ -2909,12 +2915,20 @@
       if (c.email.toLowerCase() === miEmail) return;
       html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
     });
+    if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
+      if (!_nmtClientsCache.length) { try { _nmtClientsCache = await getAllClients(); } catch (e) { _nmtClientsCache = []; } }
+      const cliente = _nmtClientsCache.find(c => c.id === clientId);
+      (cliente?.usuarios || []).forEach(u => {
+        if (!u.email || u.email.toLowerCase() === miEmail) return;
+        html += `<option value="${u.email}" data-nombre="${u.nombre}"${cur === u.email.toLowerCase() ? ' selected' : ''}>${u.nombre} (equipo del cliente)</option>`;
+      });
+    }
     html += `<option value="${CLAUDE_IA_EMAIL}" data-nombre="Claude IA"${cur === CLAUDE_IA_EMAIL ? ' selected' : ''}>🤖 Claude IA (la ejecuta sola)</option>`;
     return html;
   }
 
-  async function poblarSelectConYoYColaboradores(sel, currentEmail) {
-    sel.innerHTML = await opcionesYoYColaboradoresHtml(currentEmail);
+  async function poblarSelectConYoYColaboradores(sel, currentEmail, clientId) {
+    sel.innerHTML = await opcionesYoYColaboradoresHtml(currentEmail, clientId);
   }
 
   async function poblarNmtAsignado(selectedClientId) {
@@ -2952,6 +2966,10 @@
     document.getElementById('nmt-visible-cliente-group').classList.toggle('hidden', !esClienteReal);
     if (!esClienteReal) document.getElementById('nmt-visible-cliente').checked = false;
     poblarNmtAsignado(clientId);
+    // Al cambiar de cliente, el "asignar a" de subtareas tiene que
+    // reflejar el equipo de ESE cliente (no el del anterior).
+    poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '', clientId);
+    renderNmtSubtareas();
   };
   function renderColaboradores() {
     const listEl = document.getElementById('colabList');
@@ -3576,9 +3594,9 @@
     document.getElementById('mt-subtareas-group').style.display = tipo === 'tarea' ? '' : 'none';
     _mtSubtareas = tipo === 'tarea' ? [...(t.subtareas || [])] : [];
     document.getElementById('mt-subtarea-input').value = '';
-    poblarSelectConYoYColaboradores(document.getElementById('mt-subtarea-asignado'), '');
+    poblarSelectConYoYColaboradores(document.getElementById('mt-subtarea-asignado'), '', item.clientId);
     renderMiSubtareas();
-    poblarSelectConYoYColaboradores(document.getElementById('mt-asignado'), t.asignado?.email || '');
+    poblarSelectConYoYColaboradores(document.getElementById('mt-asignado'), t.asignado?.email || '', item.clientId);
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     document.getElementById('mt-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
     const abrirPanelLink = document.getElementById('mt-abrir-panel');
@@ -3611,11 +3629,12 @@
 
   async function renderMiSubtareas() {
     const list = document.getElementById('mt-subtareas-list');
+    const clientIdActual = _misTareaModalIdx !== null ? _misTareasCache[_misTareaModalIdx]?.clientId : null;
     const filas = await Promise.all(_mtSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
         <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarMiSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
-        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual)}</select>
         <button type="button" onclick="eliminarMiSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -3747,7 +3766,7 @@
     document.getElementById('nmt-subtarea-input').value = '';
     _nmtSubtareas = [];
     renderNmtSubtareas();
-    await poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '');
+    await poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '', clienteSel.value);
 
     document.getElementById('nuevaMiTareaModal').classList.remove('hidden');
     document.querySelector('#nuevaMiTareaModal .modal-body').scrollTop = 0;
@@ -3759,11 +3778,12 @@
   let _nmtSubtareas = [];
   async function renderNmtSubtareas() {
     const list = document.getElementById('nmt-subtareas-list');
+    const clientIdActual = document.getElementById('nmt-cliente').value;
     const filas = await Promise.all(_nmtSubtareas.map(async (s, i) => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleNmtSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
         <span style="flex:1;min-width:0;font-size:13px;word-break:break-word;overflow-wrap:anywhere;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.titulo}</span>
-        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual)}</select>
         <button type="button" onclick="eliminarNmtSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
