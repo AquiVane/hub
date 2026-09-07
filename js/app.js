@@ -6,7 +6,7 @@ import {
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
   getPlan, savePlan,
-  uploadArchivo, abrirArchivo, getAllClients
+  uploadArchivo, abrirArchivo, getAllClients, getEquipo
 } from './data.js';
 
 // ── Helpers de texto ────────────────────────────────────
@@ -113,6 +113,14 @@ let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
 
+// Equipo de COSMART (admin + colaboradores) con acceso a ESTE cliente --
+// pedido de Vaneh (07/09): en el tablero de un cliente (ej. Pharus) no se
+// podía asignar tareas a colaboradores, solo a los usuarios del equipo del
+// cliente. Se precarga en init() junto con STATE.client; si el que mira
+// esta pantalla es el cliente mismo (no admin/colaborador), /admin/equipo
+// devuelve 403 y queda vacío -- no le cambia nada a un cliente real.
+let _equipoDelCliente = [];
+
 window.cerrarSesionYVolver = function() {
   localStorage.removeItem('mh_session_token');
   localStorage.removeItem('mh_user');
@@ -125,6 +133,10 @@ async function init() {
     document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
     STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
+    try {
+      const equipo = await getEquipo();
+      _equipoDelCliente = (equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
+    } catch (e) { _equipoDelCliente = []; }
     document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
     document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
     if (user.role !== 'client') setupClientSwitcher();
@@ -5014,6 +5026,7 @@ function getAsignarOptions(currentEmail) {
   const options = [];
   if (STATE.client.email) options.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
   (STATE.client.usuarios || []).forEach(u => options.push(u));
+  _equipoDelCliente.forEach(c => options.push(c));
   const seen = new Set();
   const unique = options.filter(u => {
     if (!u.email || seen.has(u.email.toLowerCase())) return false;
@@ -5033,6 +5046,7 @@ function opcionesFiltroAsignadoTareas() {
   const options = [];
   if (STATE.client.email) options.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
   (STATE.client.usuarios || []).forEach(u => options.push(u));
+  _equipoDelCliente.forEach(c => options.push(c));
   const seen = new Set();
   const unique = options.filter(u => {
     if (!u.email || seen.has(u.email.toLowerCase())) return false;
@@ -5049,6 +5063,7 @@ function getMentionUsers() {
   // criterio que ya usa getAsignarOptions para el desplegable de asignar.
   if (STATE.client.email) lista.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
   lista.push(...(STATE.client.usuarios || []));
+  lista.push(..._equipoDelCliente);
   const seen = new Set();
   return lista.filter(u => {
     if (!u.email || seen.has(u.email.toLowerCase())) return false;

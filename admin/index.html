@@ -2906,13 +2906,21 @@
   // tarea (poblarNmtAsignado) ya lo hacía; a las subtareas nunca se le
   // había pasado el clientId, así que nunca podían asignarse a alguien
   // del equipo del cliente, solo a vos/colaboradores/Claude IA.
+  //
+  // Además, con clientId puesto, el equipo GLOBAL (colaboradores de
+  // cualquier cliente) se filtra a solo quienes tienen ESE cliente en su
+  // clientIds -- otro pedido de Vaneh (07/09): en "Asignar a" de una
+  // tarea de Pharus aparecían colaboradores sin nada que ver con Pharus.
+  // El admin siempre se ve (no tiene clientIds, ve todo).
   async function opcionesYoYColaboradoresHtml(currentEmail, clientId) {
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
     let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
     const equipo = await getEquipoCache();
+    const esClienteReal = clientId && !['_cosmart', '_personal'].includes(clientId);
     equipo.forEach(c => {
       if (c.email.toLowerCase() === miEmail) return;
+      if (esClienteReal && c.role !== 'admin' && !(c.clientIds || []).includes(clientId)) return;
       html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
     });
     if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
@@ -2937,8 +2945,13 @@
     asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
     const miEmailNmt = (user.email || '').toLowerCase();
     const equipoNmt = await getEquipoCache();
+    // Mismo filtro que opcionesYoYColaboradoresHtml: con un cliente real
+    // seleccionado, solo mostrar colaboradores que tienen ESE cliente
+    // asignado (el admin siempre se ve, ve todo).
+    const esClienteRealNmt = selectedClientId && !['_cosmart', '_personal'].includes(selectedClientId);
     equipoNmt.forEach(c => {
       if (c.email.toLowerCase() === miEmailNmt) return;
+      if (esClienteRealNmt && c.role !== 'admin' && !(c.clientIds || []).includes(selectedClientId)) return;
       const opt = document.createElement('option');
       opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
       asignadoSel.appendChild(opt);
