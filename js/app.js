@@ -2426,11 +2426,28 @@ function importDiffContenido(existente, entrante) {
 // Clasifica cada fila válida contra STATE.contenidos: 'nuevo' (no existe
 // todavía), 'igual' (existe y no cambió nada) o 'cambio' (existe pero
 // algún campo difiere -- acá se decide por fila, default "reemplazar").
+//
+// 07/09: Vaneh reportó que contenidos que YA estaban cargados se le
+// importaban de nuevo como duplicados en vez de detectarse. Causa real:
+// acá se exigía que título Y cuenta coincidieran exacto, pero "cuenta" se
+// carga distinto según el origen -- un contenido creado a mano en el Hub
+// arranca con el Instagram del cliente por default, mientras que la
+// cuenta que trae el Excel es texto libre de esa columna (puede decir
+// "Lambo" en vez de "@lambo_oficial", con mayúscula distinta, etc.) --
+// aunque el título sea idéntico, con una cuenta escrita distinto nunca
+// matcheaba y quedaba como "nuevo" (duplicado real, sin ni siquiera
+// preguntar reemplazar/omitir). Ahora matchea por TÍTULO primero; la
+// cuenta solo se usa para desempatar cuando hay más de un contenido
+// existente con exactamente el mismo título (ahí sí puede ser dos cosas
+// distintas de cuentas distintas).
 function importClasificarFilas(filas) {
   return filas.map(row => {
-    const match = STATE.contenidos.find(c =>
-      normImportTexto(c.titulo) === normImportTexto(row.titulo) &&
-      normImportTexto(c.cuenta) === normImportTexto(row.cuenta));
+    const porTitulo = STATE.contenidos.filter(c => normImportTexto(c.titulo) === normImportTexto(row.titulo));
+    let match = null;
+    if (porTitulo.length === 1) match = porTitulo[0];
+    else if (porTitulo.length > 1) {
+      match = porTitulo.find(c => normImportTexto(c.cuenta) === normImportTexto(row.cuenta)) || porTitulo[0];
+    }
     if (!match) return { tipo: 'nuevo', row };
     const cambios = importDiffContenido(match, row);
     if (!cambios.length) return { tipo: 'igual', row, match };
