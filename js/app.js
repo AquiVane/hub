@@ -1159,6 +1159,15 @@ function mesAnioLabel(fechaYYYYMM) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+// Pedido de Vaneh (07/09): ver de un vistazo si un contenido es orgánico
+// o de pauta, sin tener que abrirlo. Mapea c.pauta igual que matchPautaFilter.
+function pautaBadge(c) {
+  const p = c.pauta || 'organico';
+  if (p === 'dark-organico') return `<span style="font-size:10px;font-weight:700;background:#ede9fe;color:#6d28d9;border-radius:4px;padding:2px 7px;">Ambas</span>`;
+  if (p === 'dark') return `<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;border-radius:4px;padding:2px 7px;">Pauta</span>`;
+  return `<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;">Orgánico</span>`;
+}
+
 function bancoCardHtml(c) {
   return `
     <div class="content-card" onclick="openContenidoModalById('${c.id}')">
@@ -1168,6 +1177,7 @@ function bancoCardHtml(c) {
       </div>
       <div class="content-card-titulo">${c.titulo}</div>
       <div class="content-card-meta">
+        ${pautaBadge(c)}
         ${(c.plataformas || []).map(p => platBadge(p)).join('')}
         ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
         ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
@@ -1181,6 +1191,7 @@ function bancoRowHtml(c) {
     <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
       <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
       <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+      <td>${pautaBadge(c)}</td>
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
         <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
@@ -1211,7 +1222,7 @@ function bancoMesGroupHtml(label, items, abierto) {
         <div class="table-wrapper table-scroll-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Fecha pub.</th><th>Título</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
+              <tr><th>Fecha pub.</th><th>Título</th><th>Pauta</th><th>Plataforma</th><th>Estado</th><th>Formato</th><th>Eje</th><th>Drive</th><th>Notas</th><th></th></tr>
             </thead>
             <tbody>${items.map(bancoRowHtml).join('')}</tbody>
           </table>
@@ -2529,8 +2540,24 @@ document.getElementById('import-file-input').addEventListener('change', async (e
       });
     }
 
-    _importRows = importClasificarFilas(valid);
-    renderImportPreview(errores);
+    // Duplicados DENTRO del mismo archivo (mismo título+cuenta en dos
+    // filas) -- Vaneh reportó (07/09) que no se detectaban. La
+    // clasificación de más abajo solo compara contra lo ya guardado, así
+    // que dos filas nuevas idénticas dentro del mismo Excel pasaban las
+    // dos como "nuevo" sin cruzarse entre sí. Acá se deduplican antes de
+    // clasificar -- se queda la ÚLTIMA fila de cada título+cuenta
+    // repetido (se asume que corrige/reemplaza a la anterior).
+    const vistos = new Map();
+    let duplicadosEnArchivo = 0;
+    valid.forEach(row => {
+      const key = normImportTexto(row.titulo) + '|' + normImportTexto(row.cuenta);
+      if (vistos.has(key)) duplicadosEnArchivo++;
+      vistos.set(key, row);
+    });
+    const validSinDup = [...vistos.values()];
+
+    _importRows = importClasificarFilas(validSinDup);
+    renderImportPreview(errores, duplicadosEnArchivo);
     confirmBtn.disabled = !importHayAccion();
   } catch (err) {
     console.error(err);
@@ -2554,13 +2581,13 @@ window.cambiarAccionImport = function(idx, valor) {
   document.getElementById('confirmImportBtn').disabled = !importHayAccion();
 };
 
-function renderImportPreview(errores) {
+function renderImportPreview(errores, duplicadosEnArchivo) {
   const statusEl = document.getElementById('import-status');
   const previewEl = document.getElementById('import-preview');
   const nuevos = _importRows.filter(r => r.tipo === 'nuevo');
   const cambios = _importRows.filter(r => r.tipo === 'cambio');
   const iguales = _importRows.filter(r => r.tipo === 'igual');
-  statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
+  statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${duplicadosEnArchivo ? ` · ${duplicadosEnArchivo} duplicado(s) dentro del mismo archivo (se usó la última fila de cada uno)` : ''}${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
 
   const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`;
 
@@ -2596,6 +2623,54 @@ function renderImportPreview(errores) {
   `;
 }
 
+// Pedido de Vaneh (07/09): poder deshacer una importación con un botón.
+// Guarda lo mínimo para revertir: los ids que se crearon (para borrarlos)
+// y el valor ANTERIOR de los campos que se pisaron en actualizaciones
+// (para restaurarlos) -- no toca comentarios/asignado/imágenes porque el
+// import tampoco los toca.
+let _ultimoImportUndo = null;
+
+function mostrarBannerDeshacerImport(resumen) {
+  document.getElementById('import-undo-banner')?.remove();
+  const b = document.createElement('div');
+  b.id = 'import-undo-banner';
+  b.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0D2B6B;color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;display:flex;align-items:center;gap:14px;font-size:13px;max-width:90vw;flex-wrap:wrap;';
+  b.innerHTML = `
+    <span>✅ ${resumen}</span>
+    <button onclick="deshacerUltimaImportacion()" style="background:#fff;color:#0D2B6B;border:none;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">↩️ Deshacer</button>
+    <button onclick="document.getElementById('import-undo-banner').remove()" style="background:transparent;color:#fff;border:none;font-size:16px;cursor:pointer;opacity:.7;">×</button>
+  `;
+  document.body.appendChild(b);
+  setTimeout(() => { if (document.getElementById('import-undo-banner') === b) b.remove(); }, 60000);
+}
+
+window.deshacerUltimaImportacion = async function() {
+  if (!_ultimoImportUndo) return;
+  if (!confirm('¿Deshacer la última importación? Se van a borrar los contenidos nuevos que trajo y se van a restaurar los que actualizó a como estaban antes.')) return;
+  const { nuevosIds, actualizacionesPrevias } = _ultimoImportUndo;
+  const banner = document.getElementById('import-undo-banner');
+  try {
+    for (const id of nuevosIds) {
+      await deleteContenido(clientId, id, STATE.contenidos);
+      STATE.contenidos = STATE.contenidos.filter(c => c.id !== id);
+    }
+    if (actualizacionesPrevias.length) {
+      const restaurados = await updateContenidosBulk(clientId, actualizacionesPrevias);
+      restaurados.forEach(c => {
+        const i = STATE.contenidos.findIndex(x => x.id === c.id);
+        if (i > -1) STATE.contenidos[i] = c;
+      });
+    }
+    _ultimoImportUndo = null;
+    banner?.remove();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo deshacer del todo. Revisá el Banco de contenidos y avisame si quedó algo mal.');
+  }
+};
+
 document.getElementById('confirmImportBtn').addEventListener('click', async () => {
   const nuevos = _importRows.filter(r => r.tipo === 'nuevo').map(r => r.row);
   const aActualizar = _importRows.filter(r => r.tipo === 'cambio' && r.accion === 'reemplazar');
@@ -2603,9 +2678,16 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
   const btn = document.getElementById('confirmImportBtn');
   btn.disabled = true; btn.textContent = 'Importando…';
   try {
+    const actualizacionesPrevias = aActualizar.map(r => {
+      const prev = { id: r.match.id };
+      IMPORT_DIFF_FIELDS.forEach(f => { prev[f.key] = r.match[f.key]; });
+      return prev;
+    });
+    let nuevosIds = [];
     if (nuevos.length) {
       const saved = await saveContenidosBulk(clientId, nuevos);
       STATE.contenidos.push(...saved);
+      nuevosIds = saved.map(s => s.id);
     }
     if (aActualizar.length) {
       // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS)
@@ -2622,9 +2704,11 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
         if (i > -1) STATE.contenidos[i] = c;
       });
     }
+    _ultimoImportUndo = { nuevosIds, actualizacionesPrevias };
     closeImportModal();
     renderContTab(activeContTab);
     if (currentSection === 'home') renderSection('home');
+    mostrarBannerDeshacerImport(`Importados: ${nuevosIds.length} nuevo(s), ${actualizacionesPrevias.length} actualizado(s).`);
   } catch (err) {
     console.error(err);
     alert('Hubo un error al importar. Probá de nuevo.');
