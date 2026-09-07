@@ -30,13 +30,17 @@
       </div>
       <input type="file" id="client-logo-input" accept="image/*" style="display:none;">
       <input type="file" id="af-folder-input" webkitdirectory multiple style="display:none;">
-      <div style="flex:1;min-width:0;">
-        <strong id="sb-client-name">Cargando...</strong>
-        <span id="sb-client-ig"></span>
+      <div id="sb-client-switcher-trigger" style="flex:1;min-width:0;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Cambiar de cliente">
+        <div style="min-width:0;overflow:hidden;">
+          <strong id="sb-client-name" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Cargando...</strong>
+          <span id="sb-client-ig"></span>
+        </div>
+        <i id="sb-client-switcher-caret" data-lucide="chevron-down" style="display:none;width:13px;height:13px;stroke-width:2;color:rgba(255,255,255,.55);flex-shrink:0;"></i>
       </div>
       <button onclick="openEquipoModal()" title="Gestionar equipo" style="background:none;border:none;cursor:pointer;padding:4px;color:rgba(255,255,255,.45);flex-shrink:0;line-height:1;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.45)'">
         <i data-lucide="users" style="width:15px;height:15px;stroke-width:1.75;"></i>
       </button>
+      <div id="sb-client-switcher-dropdown" class="hidden" style="position:absolute;top:100%;left:16px;right:16px;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);max-height:340px;overflow-y:auto;z-index:200;padding:6px;"></div>
     </div>
     <nav class="nav-section">
       <div class="nav-section-label">Navegación</div>

@@ -354,8 +354,23 @@
 </div>
 
 <script type="module">
-  import { loginUser } from './js/auth.js';
+  import { loginUser, getCurrentUser } from './js/auth.js';
   import { WORKER_URL } from './js/firebase.js';
+
+  // Pedido de Vaneh (07/09): si ya hay sesión activa (guardada en
+  // localStorage, compartida entre pestañas del mismo navegador), no
+  // mostrar el formulario -- entrar directo. Sin esto, cada pestaña nueva
+  // que aterrizaba acá (por link viejo, bookmark, o escribir la URL)
+  // forzaba a loguearse de nuevo aunque ya estuviera logueada en otra.
+  (() => {
+    const existente = getCurrentUser();
+    if (!existente) return;
+    if (existente.role === 'admin' || existente.role === 'colaborador') {
+      window.location.href = '/admin/index.html';
+    } else if (existente.clientId) {
+      window.location.href = `/app/index.html?client=${existente.clientId}`;
+    }
+  })();
 
   // Si viene ?agencia=slug (link de login propio de una agencia), le
   // mostramos SOLO su logo antes de loguearse -- el resto de la página

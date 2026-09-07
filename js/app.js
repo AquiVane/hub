@@ -6,7 +6,7 @@ import {
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
   getPlan, savePlan,
-  uploadArchivo, abrirArchivo
+  uploadArchivo, abrirArchivo, getAllClients
 } from './data.js';
 
 // ── Helpers de texto ────────────────────────────────────
@@ -127,6 +127,8 @@ async function init() {
     STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
     document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
     document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
+    if (user.role !== 'client') setupClientSwitcher();
+    else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
 
     // Logo upload
     document.getElementById('client-logo-input').addEventListener('change', async e => {
@@ -213,10 +215,77 @@ function applyClientLogo(src) {
   const img = document.getElementById('sb-client-logo');
   const placeholder = document.getElementById('sb-client-logo-placeholder');
   const hint = document.querySelector('.client-logo-upload-hint');
+  const wrap = document.querySelector('.client-logo-wrap');
   img.src = src;
   img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;';
   if (placeholder) placeholder.style.display = 'none';
   if (hint) hint.style.display = 'none';
+  if (wrap) {
+    // Pedido de Vaneh (07/09): con logo cargado, borde continuo (el
+    // punteado queda solo como indicador de "acá falta subir algo") --
+    // y si es PNG (suele venir con transparencia) fondo blanco atrás,
+    // para que se distinga en el sidebar oscuro.
+    wrap.classList.add('has-logo');
+    wrap.classList.toggle('logo-png', /\.png($|\?)|^data:image\/png/i.test(src));
+  }
+}
+
+// Selector de cliente en el sidebar -- pedido de Vaneh (07/09): como
+// admin/colaboradora, poder saltar de un cliente a otro sin salir y
+// volver a entrar al hub. Solo para admin/colaborador (un cliente real
+// no tiene otros clientes para elegir). Usa /admin/clients, que el
+// backend ya filtra solo a los clientes asignados si sos colaborador.
+// Nota: NO muestra el logo real de cada cliente (ese vive en los datos
+// "home" de cada uno, cargarlos todos de antemano para esto sería caro)
+// -- usa el mismo círculo con iniciales/código que ya se usa en el resto
+// del admin para identificar clientes de un vistazo.
+const CLIENT_SWITCHER_COLORS = ['#1A4DAA','#3A8FC7','#10b981','#f59e0b','#ec4899','#8b5cf6','#e02020','#0d9488'];
+function colorDesdeTexto(s) {
+  let hash = 0;
+  for (let i = 0; i < (s || '').length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  return CLIENT_SWITCHER_COLORS[hash % CLIENT_SWITCHER_COLORS.length];
+}
+
+async function setupClientSwitcher() {
+  const trigger = document.getElementById('sb-client-switcher-trigger');
+  const dropdown = document.getElementById('sb-client-switcher-dropdown');
+  if (!trigger || !dropdown) return;
+  const caret = document.getElementById('sb-client-switcher-caret');
+  if (caret) { caret.style.display = ''; refreshIcons(); }
+
+  let clientesCache = null;
+  const abrir = async () => {
+    if (!clientesCache) {
+      try { clientesCache = (await getAllClients()).filter(c => c.activo !== false); }
+      catch (e) { clientesCache = []; }
+    }
+    dropdown.innerHTML = clientesCache.length
+      ? clientesCache.map(c => {
+          const codigo = c.codigo || codigoDesdeNombre(c.nombre || c.name || c.id);
+          const activo = c.id === clientId;
+          return `
+            <div class="client-switcher-item ${activo ? 'active' : ''}" data-client-id="${c.id}">
+              <div class="client-switcher-avatar" style="background:${colorDesdeTexto(c.id)};">${codigo}</div>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre || c.name || c.id}</span>
+            </div>`;
+        }).join('')
+      : `<div style="padding:10px;font-size:12px;color:var(--text-muted);">No hay otros clientes.</div>`;
+    dropdown.querySelectorAll('.client-switcher-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.dataset.clientId;
+        if (id !== clientId) window.location.href = `index.html?client=${id}`;
+        else dropdown.classList.add('hidden');
+      });
+    });
+    dropdown.classList.remove('hidden');
+  };
+
+  trigger.addEventListener('click', () => {
+    dropdown.classList.contains('hidden') ? abrir() : dropdown.classList.add('hidden');
+  });
+  document.addEventListener('click', e => {
+    if (!dropdown.contains(e.target) && !trigger.contains(e.target)) dropdown.classList.add('hidden');
+  });
 }
 
 function codigoDesdeNombre(nombre) {
