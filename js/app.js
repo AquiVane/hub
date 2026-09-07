@@ -2842,11 +2842,65 @@ window.toggleTareaVisibleCliente = async function(id) {
   if (currentSection === 'home') renderSection('home');
 };
 
+// Mismo criterio que siguienteFechaRecurrencia en cosmart-workers (ver
+// reactivarTareasRecurrente ahí) -- calcula la fecha del próximo ciclo a
+// partir de una fecha ancla, sin importar si esa fecha ya pasó o no.
+function siguienteFechaRecurrencia(fechaStr, recurrencia, diasSemana) {
+  const base = new Date((fechaStr || new Date().toISOString().split('T')[0]) + 'T00:00:00');
+  const d = new Date(base);
+  if (recurrencia === 'diaria') { d.setDate(d.getDate() + 1); return d; }
+  if (recurrencia === 'semanal') { d.setDate(d.getDate() + 7); return d; }
+  if (recurrencia === 'quincenal') { d.setDate(d.getDate() + 15); return d; }
+  if (recurrencia === 'mensual') { d.setMonth(d.getMonth() + 1); return d; }
+  if (recurrencia === 'anual') { d.setFullYear(d.getFullYear() + 1); return d; }
+  if (recurrencia === 'dias-semana') {
+    const dias = (diasSemana || []).map(Number);
+    if (!dias.length) return null;
+    for (let i = 1; i <= 7; i++) {
+      const cand = new Date(base);
+      cand.setDate(cand.getDate() + i);
+      if (dias.includes(cand.getDay())) return cand;
+    }
+    return null;
+  }
+  return null;
+}
+
+// Pedido de Vaneh (07/09): si una tarea con recurrencia se marca "Lista",
+// tiene que volver a generarse SOLA en "Sin empezar" con el próximo
+// vencimiento (la semana que viene si es semanal, el mismo día del mes
+// que viene si es mensual, etc.) -- de una, no hay que esperar a que esa
+// fecha futura llegue ni a que corra el cron. El cron diario
+// (reactivarTareasRecurrentes en cosmart-workers) sigue como red de
+// seguridad para lo que se complete fuera de la app (ej. Claude IA).
+function regenerarSiRecurrente(t) {
+  if (!t.recurrencia) return;
+  const anchor = t.vencimiento || t.completadoEn || new Date().toISOString().split('T')[0];
+  const siguiente = siguienteFechaRecurrencia(anchor, t.recurrencia, t.diasSemana);
+  if (!siguiente) return; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
+  if (t.completadoEn) {
+    if (!Array.isArray(t.historialCompletados)) t.historialCompletados = [];
+    t.historialCompletados.push(t.completadoEn);
+  }
+  (t.subtareas || []).forEach(s => {
+    if (s.done && s.completadoEn) {
+      if (!Array.isArray(s.historialCompletados)) s.historialCompletados = [];
+      s.historialCompletados.push(s.completadoEn);
+    }
+    s.done = false;
+    s.completadoEn = null;
+  });
+  t.estado = 'Sin empezar';
+  t.completadoEn = null;
+  t.visibleParaCliente = false;
+  t.vencimiento = siguiente.toISOString().split('T')[0];
+}
+
 window.toggleTareaListo = async function(id) {
   const t = STATE.tareas.find(x => x.id === id);
   if (!t) return;
   t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-  if (t.estado === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; } // al terminarla, el cliente la puede ver
+  if (t.estado === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t); } // al terminarla, el cliente la puede ver
   else t.completadoEn = null;
   const saved = await saveTarea(clientId, t);
   const i = STATE.tareas.findIndex(x => x.id === id);
@@ -2947,7 +3001,7 @@ function renderTareas(container) {
     const t = STATE.tareas.find(x => x.id === id);
     if (!t || t.estado === newCol) return;
     t.estado = newCol;
-    if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; }
+    if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t); }
     else t.completadoEn = null;
     updateBadges();
     refreshTareasView();
@@ -3220,6 +3274,7 @@ window.openTareaModal = function(id, defaultEstado) {
   document.querySelectorAll('.dia-check').forEach(cb => {
     cb.checked = (t.diasSemana || []).includes(cb.value);
   });
+  actualizarPreviewRecurrenciaTf();
 
   // Subtareas — disponibles también al crear una tarea nueva
   document.getElementById('subtareas-section').style.display = '';
@@ -3372,12 +3427,16 @@ window.toggleSubtarea = async function(idx) {
   // sola a "Listo" para que se refleje en el resumen de Tareas del Home.
   editingTarea.subtareas = [..._tareaSubtareasPendientes];
   const todasHechas = editingTarea.subtareas.length > 0 && editingTarea.subtareas.every(s => s.done);
-  if (todasHechas) {
+  if (todasHechas && editingTarea.estado !== 'Listo') {
     editingTarea.estado = 'Listo';
     editingTarea.visibleParaCliente = true;
     editingTarea.completadoEn = editingTarea.completadoEn || new Date().toISOString().split('T')[0];
+    regenerarSiRecurrente(editingTarea);
     const estadoSel = document.getElementById('tf-estado');
-    if (estadoSel) estadoSel.value = 'Listo';
+    if (estadoSel) estadoSel.value = editingTarea.estado;
+    const vencimientoEl = document.getElementById('tf-vencimiento');
+    if (vencimientoEl) vencimientoEl.value = editingTarea.vencimiento || '';
+    renderSubtareas(_tareaSubtareasPendientes); // regenerarSiRecurrente resetea done/completadoEn de las mismas subtareas
   }
   try {
     const saved = await saveTarea(clientId, editingTarea);
@@ -3454,6 +3513,10 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
     const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    // Recién se marcó "Lista" en este mismo guardado (no ya lo estaba) --
+    // si es recurrente, regenerarSiRecurrente la deja lista para el
+    // próximo ciclo de una, sin esperar el cron.
+    if (tfEstadoVal === 'Listo' && editingTarea?.estado !== 'Listo') regenerarSiRecurrente(obj);
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
@@ -4764,9 +4827,30 @@ function normUbicacion(u) {
 }
 
 // ── Recurrencia → show/hide dias-semana ───────────────
+// Pedido de Vaneh (07/09): si la recurrencia es diaria o semanal, tiene
+// que quedar claro qué día se repite -- para "semanal" se toma el día de
+// la semana de la fecha de Vencimiento ya cargada (mismo criterio que en
+// admin/index.html, duplicado acá porque este modal vive en otro archivo).
+const NOMBRES_DIA_SEMANA = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
+function actualizarPreviewRecurrenciaTf() {
+  const preview = document.getElementById('tf-recurrencia-preview');
+  if (!preview) return;
+  const recurrencia = document.getElementById('tf-recurrencia').value;
+  if (recurrencia === 'diaria') { preview.textContent = 'Se repite todos los días.'; return; }
+  if (recurrencia === 'semanal') {
+    const vencimiento = document.getElementById('tf-vencimiento').value;
+    if (!vencimiento) { preview.textContent = 'Elegí la fecha de vencimiento para saber qué día se repite.'; return; }
+    const dia = new Date(vencimiento + 'T00:00:00').getDay();
+    preview.textContent = `Se repite todos los ${NOMBRES_DIA_SEMANA[dia]}.`;
+    return;
+  }
+  preview.textContent = '';
+}
 document.getElementById('tf-recurrencia').addEventListener('change', function() {
   document.getElementById('dias-semana-group').style.display = this.value === 'dias-semana' ? '' : 'none';
+  actualizarPreviewRecurrenciaTf();
 });
+document.getElementById('tf-vencimiento').addEventListener('change', actualizarPreviewRecurrenciaTf);
 
 // ── Todo modal wiring ──────────────────────────────────
 function closeTodoModal() { document.getElementById('todoModal').classList.add('hidden'); }
