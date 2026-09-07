@@ -1074,13 +1074,17 @@ window.addTodoItem = function() {
 // ──────────────────────────────────────────────────────
 let activeContTab = 'banco';
 // Filtro orgánico/pauta/ambas del Banco de contenidos -- pedido de Vaneh
-// (07/09): "necesito poder filtrar sino me hago mucho lío". Mapea directo
-// a c.pauta: 'organico' | 'dark' (pauta pura) | 'dark-organico' (ambas).
-let activePautaFilter = 'todas';
+// (07/09): "necesito poder filtrar sino me hago mucho lío". Dos toggles
+// independientes (no mutuamente excluyentes) -- con los dos activos se ve
+// todo; apagar uno oculta lo que no tenga ese componente. Un contenido
+// "ambas" (c.pauta === 'dark-organico') aparece con cualquiera de los dos
+// prendido, y solo se oculta si se apagan los dos.
+let filtroOrganico = true;
+let filtroPauta = true;
 
 function renderContenidos(container) {
   container.innerHTML = `
-    <div class="mb-16">
+    <div class="mb-16" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div class="tabs" id="cont-tabs">
         <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
         <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario de contenidos</button>
@@ -1092,6 +1096,10 @@ function renderContenidos(container) {
         <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">En proceso</button>
         <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">Métricas</button>
       </div>
+      <div class="tabs" id="cont-pauta-filtros">
+        <button class="tab-btn ${filtroOrganico?'active':''}" data-pauta-filtro="organico">Orgánico</button>
+        <button class="tab-btn ${filtroPauta?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+      </div>
     </div>
     <div id="cont-tab-body"></div>
   `;
@@ -1101,6 +1109,15 @@ function renderContenidos(container) {
       document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeContTab = btn.dataset.tab;
+      renderContTab(activeContTab);
+    });
+  });
+
+  document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.pautaFiltro === 'organico') filtroOrganico = !filtroOrganico;
+      else filtroPauta = !filtroPauta;
+      btn.classList.toggle('active');
       renderContTab(activeContTab);
     });
   });
@@ -1192,12 +1209,10 @@ function bancoMesGroupHtml(label, items, abierto) {
 }
 
 function matchPautaFilter(c) {
-  if (activePautaFilter === 'todas') return true;
   const p = c.pauta || 'organico';
-  if (activePautaFilter === 'organico') return p === 'organico';
-  if (activePautaFilter === 'pauta') return p === 'dark';
-  if (activePautaFilter === 'ambas') return p === 'dark-organico';
-  return true;
+  const tieneOrganico = p === 'organico' || p === 'dark-organico';
+  const tienePauta = p === 'dark' || p === 'dark-organico';
+  return (tieneOrganico && filtroOrganico) || (tienePauta && filtroPauta);
 }
 
 function renderBancoContenidos(container) {
@@ -1236,18 +1251,10 @@ function renderBancoContenidos(container) {
     `;
   }).join('');
 
-  const pautaFiltros = [
-    { key: 'todas', label: 'Todos' },
-    { key: 'organico', label: 'Orgánico' },
-    { key: 'pauta', label: 'Pauta' },
-    { key: 'ambas', label: 'Ambas' },
-  ];
+  const hayFiltroActivo = !(filtroOrganico && filtroPauta);
 
   container.innerHTML = `
-    <div class="tabs" id="banco-pauta-filtros" style="margin-bottom:14px;">
-      ${pautaFiltros.map(f => `<button class="tab-btn ${activePautaFilter===f.key?'active':''}" data-pauta-filtro="${f.key}">${f.label}</button>`).join('')}
-    </div>
-    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${activePautaFilter==='todas'?'Sin contenidos aún.':'Sin contenidos con este filtro.'}</p></div>`}
+    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayFiltroActivo?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
         <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
@@ -1266,13 +1273,6 @@ function renderBancoContenidos(container) {
       </div>
     ` : ''}
   `;
-
-  document.querySelectorAll('#banco-pauta-filtros .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activePautaFilter = btn.dataset.pautaFiltro;
-      renderBancoContenidos(container);
-    });
-  });
 }
 
 window.bancoUpdateFecha = async function(id, fecha) {
