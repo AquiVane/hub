@@ -1087,13 +1087,14 @@ window.addTodoItem = function() {
 // ──────────────────────────────────────────────────────
 let activeContTab = 'banco';
 // Filtro orgánico/pauta/ambas del Banco de contenidos -- pedido de Vaneh
-// (07/09): "necesito poder filtrar sino me hago mucho lío". Dos toggles
-// independientes (no mutuamente excluyentes) -- con los dos activos se ve
-// todo; apagar uno oculta lo que no tenga ese componente. Un contenido
-// "ambas" (c.pauta === 'dark-organico') aparece con cualquiera de los dos
-// prendido, y solo se oculta si se apagan los dos.
-let filtroOrganico = true;
-let filtroPauta = true;
+// (07/09): "necesito poder filtrar sino me hago mucho lío". 07/09 (segunda
+// vuelta): los dos toggles independientes confundían -- Vaneh pidió algo
+// más simple, "aprieto uno y aparece solo eso, punto". Ahora es selección
+// única (como un tab): un solo botón activo a la vez, nunca los dos
+// prendidos ni los dos apagados. Un contenido "ambas" (c.pauta ===
+// 'dark-organico') aparece en los dos filtros porque tiene componente de
+// los dos, no porque estén ambos botones prendidos.
+let pautaFiltroSel = 'organico';
 
 function renderContenidos(container) {
   container.innerHTML = `
@@ -1110,8 +1111,8 @@ function renderContenidos(container) {
         <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">Métricas</button>
       </div>
       <div class="tabs" id="cont-pauta-filtros">
-        <button class="tab-btn ${filtroOrganico?'active':''}" data-pauta-filtro="organico">Orgánico</button>
-        <button class="tab-btn ${filtroPauta?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+        <button class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
+        <button class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
       </div>
     </div>
     <div id="cont-tab-body"></div>
@@ -1128,9 +1129,9 @@ function renderContenidos(container) {
 
   document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.dataset.pautaFiltro === 'organico') filtroOrganico = !filtroOrganico;
-      else filtroPauta = !filtroPauta;
-      btn.classList.toggle('active');
+      pautaFiltroSel = btn.dataset.pautaFiltro;
+      document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       renderContTab(activeContTab);
     });
   });
@@ -1234,9 +1235,8 @@ function bancoMesGroupHtml(label, items, abierto) {
 
 function matchPautaFilter(c) {
   const p = c.pauta || 'organico';
-  const tieneOrganico = p === 'organico' || p === 'dark-organico';
-  const tienePauta = p === 'dark' || p === 'dark-organico';
-  return (tieneOrganico && filtroOrganico) || (tienePauta && filtroPauta);
+  if (pautaFiltroSel === 'organico') return p === 'organico' || p === 'dark-organico';
+  return p === 'dark' || p === 'dark-organico';
 }
 
 function renderBancoContenidos(container) {
@@ -1275,10 +1275,10 @@ function renderBancoContenidos(container) {
     `;
   }).join('');
 
-  const hayFiltroActivo = !(filtroOrganico && filtroPauta);
+  const hayAlgunContenido = STATE.contenidos.some(c => !c.archivado);
 
   container.innerHTML = `
-    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayFiltroActivo?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
+    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayAlgunContenido?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
         <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
