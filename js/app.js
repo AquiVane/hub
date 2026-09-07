@@ -709,6 +709,15 @@ function renderDashboard(container) {
               </tr>
             </tbody>
           </table>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:10px;color:var(--text-muted);">
+            <span>Menos contenido</span>
+            <span class="freq-cell-0" style="padding:1px 6px;">·</span>
+            <span class="freq-cell-1" style="padding:1px 6px;">1</span>
+            <span class="freq-cell-2" style="padding:1px 6px;">2</span>
+            <span class="freq-cell-3" style="padding:1px 6px;">3</span>
+            <span class="freq-cell-many" style="padding:1px 6px;">4+</span>
+            <span>Más contenido</span>
+          </div>
         </div>
         <!-- Gráfico de torta por tipo -->
         ${buildPieChart(tipos, COLORS, tareasResumenHtml)}
@@ -774,6 +783,10 @@ function getTrabajoRealizadoMes(year, month) {
     items.push({ tipo: 'Contenido', icon: '📣', titulo: c.titulo, fecha: c.fechaPub }));
   (STATE.campanas || []).filter(camp => {
     if (!camp.fechaInicio) return false;
+    // Pedido de Vaneh (07/09): "las subí pero no significa que estén
+    // cargadas" -- una campaña en Borrador (recién subida, sin datos
+    // reales todavía) no cuenta como trabajo realizado.
+    if (camp.estado === 'Borrador') return false;
     const ini = new Date(camp.fechaInicio + 'T00:00:00');
     const fin = camp.fechaFin ? new Date(camp.fechaFin + 'T00:00:00') : ini;
     return ini <= finMes && fin >= inicioMes;
@@ -4213,7 +4226,11 @@ window.openCampanaModal = function(id) {
   document.getElementById('campana-modal-title').textContent = editingCampana ? 'Editar campaña' : 'Nueva campaña';
   document.getElementById('pf-nombre').value = c.nombre||'';
   document.getElementById('pf-plataforma').value = c.plataforma||'Meta Ads';
-  document.getElementById('pf-estado').value = c.estado||'Activa';
+  // Pedido de Vaneh (07/09): subir una campaña no significa que ya esté
+  // "cargada" con datos reales -- por eso una campaña nueva arranca en
+  // Borrador, no Activa, y así no aparece en "Trabajo realizado" hasta
+  // que ella misma le cambie el estado una vez que cargó todo.
+  document.getElementById('pf-estado').value = c.estado || (editingCampana ? 'Activa' : 'Borrador');
   const pfAsignado = document.getElementById('pf-asignado');
   if (pfAsignado) pfAsignado.innerHTML = getAsignarOptions(c.asignado?.email || '');
   document.getElementById('pf-presupuesto').value = c.presupuesto||'';
