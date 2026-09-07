@@ -2081,6 +2081,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
   document.getElementById('cf-prompt-ia').value = c.promptIA || '';
+  document.getElementById('cf-sugerencia-visual').value = c.sugerenciaVisual || '';
   document.getElementById('cf-notas').value = c.notas || '';
   setTimeout(() => {
     const df = document.getElementById('cf-duracion');
@@ -2242,6 +2243,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     copy: document.getElementById('cf-copy').value,
     textoPantalla: document.getElementById('cf-texto-pantalla').value,
     promptIA: document.getElementById('cf-prompt-ia').value,
+    sugerenciaVisual: document.getElementById('cf-sugerencia-visual').value,
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
@@ -2344,6 +2346,10 @@ const IMPORT_HEADER_MAP = {
   'texto pantalla': 'textoPantalla',
   'prompt sugerido para ia': 'promptIA',
   'prompt ia': 'promptIA',
+  'sugerencia de pieza creativa': 'sugerenciaVisual',
+  'sugerencia de pieza creativa visual / secuencia': 'sugerenciaVisual',
+  'sugerencia visual': 'sugerenciaVisual',
+  'sugerencia creativa': 'sugerenciaVisual',
   pauta: 'pauta',
   'link pieza terminada': 'linkDrive',
   'link material de referencia': 'linkDriveRef',
@@ -2408,6 +2414,7 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'copy', label: 'Copy' },
   { key: 'textoPantalla', label: 'Texto en pantalla' },
   { key: 'promptIA', label: 'Prompt sugerido para IA' },
+  { key: 'sugerenciaVisual', label: 'Sugerencia de pieza creativa' },
   { key: 'pauta', label: 'Pauta' },
   { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
   { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
@@ -2555,6 +2562,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         copy: String(obj.copy || '').trim(),
         textoPantalla: String(obj.textoPantalla || '').trim(),
         promptIA: String(obj.promptIA || '').trim(),
+        sugerenciaVisual: String(obj.sugerenciaVisual || '').trim(),
         pauta: importParsePauta(obj.pauta),
         linkDrive: importSplitMulti(obj.linkDrive),
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
