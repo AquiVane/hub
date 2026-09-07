@@ -2080,6 +2080,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
+  document.getElementById('cf-prompt-ia').value = c.promptIA || '';
   document.getElementById('cf-notas').value = c.notas || '';
   setTimeout(() => {
     const df = document.getElementById('cf-duracion');
@@ -2240,6 +2241,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     objetivo: document.getElementById('cf-objetivo').value,
     copy: document.getElementById('cf-copy').value,
     textoPantalla: document.getElementById('cf-texto-pantalla').value,
+    promptIA: document.getElementById('cf-prompt-ia').value,
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
@@ -2340,6 +2342,8 @@ const IMPORT_HEADER_MAP = {
   copy: 'copy',
   'texto en pantalla': 'textoPantalla',
   'texto pantalla': 'textoPantalla',
+  'prompt sugerido para ia': 'promptIA',
+  'prompt ia': 'promptIA',
   pauta: 'pauta',
   'link pieza terminada': 'linkDrive',
   'link material de referencia': 'linkDriveRef',
@@ -2402,6 +2406,7 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'objetivo', label: 'Objetivo' },
   { key: 'copy', label: 'Copy' },
   { key: 'textoPantalla', label: 'Texto en pantalla' },
+  { key: 'promptIA', label: 'Prompt sugerido para IA' },
   { key: 'pauta', label: 'Pauta' },
   { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
   { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
@@ -2548,6 +2553,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         objetivo: String(obj.objetivo || '').trim(),
         copy: String(obj.copy || '').trim(),
         textoPantalla: String(obj.textoPantalla || '').trim(),
+        promptIA: String(obj.promptIA || '').trim(),
         pauta: importParsePauta(obj.pauta),
         linkDrive: importSplitMulti(obj.linkDrive),
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
