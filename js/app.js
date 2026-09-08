@@ -109,6 +109,7 @@ let _tareasView = 'kanban';
 let _tareasBusqueda = '';
 let _tareasFiltroAsignado = ''; // '' = todos, '_sin_asignar' = sin asignar, o el email de un colaborador/usuario del equipo
 let _tareasFiltroPrioridad = '';
+let _tareasOrden = 'fecha'; // 'fecha' | 'prioridad' -- pedido de Vaneh (08/09): "todos tienen ue tener"
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -405,12 +406,19 @@ function renderSection(sec) {
     filtroPrioridad.value = _tareasFiltroPrioridad;
     filtroPrioridad.onchange = (e) => { _tareasFiltroPrioridad = e.target.value; refreshTareasView(); };
     actions.appendChild(filtroPrioridad);
-    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad) {
+    const ordenSel = document.createElement('select');
+    ordenSel.className = 'form-control';
+    ordenSel.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
+    ordenSel.innerHTML = '<option value="fecha">Ordenar por: fecha</option><option value="prioridad">Ordenar por: prioridad</option>';
+    ordenSel.value = _tareasOrden;
+    ordenSel.onchange = (e) => { _tareasOrden = e.target.value; refreshTareasView(); };
+    actions.appendChild(ordenSel);
+    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad || _tareasOrden !== 'fecha') {
       const clearBtn = document.createElement('button');
       clearBtn.className = 'btn btn-secondary btn-sm';
       clearBtn.title = 'Limpiar todos los filtros';
       clearBtn.textContent = '✕ Limpiar filtros';
-      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; renderSection('tareas'); };
+      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; _tareasOrden = 'fecha'; renderSection('tareas'); };
       actions.appendChild(clearBtn);
     }
     const viewKanbanBtn = document.createElement('button');
@@ -2867,8 +2875,19 @@ function renderTareas(container) {
   if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
   const archivadas = tareasBase.filter(t => t.archivado);
 
+  const PRIO_ORDEN_TAREAS = { Alta: 0, Media: 1, Baja: 2 };
+  const ordenarTareas = (lista) => [...lista].sort((a, b) => {
+    if (_tareasOrden === 'prioridad') {
+      const diff = (PRIO_ORDEN_TAREAS[a.prioridad] ?? 3) - (PRIO_ORDEN_TAREAS[b.prioridad] ?? 3);
+      if (diff !== 0) return diff;
+    }
+    const aFecha = (a.vencimiento || '9999') + 'T' + (a.hora || '00:00');
+    const bFecha = (b.vencimiento || '9999') + 'T' + (b.hora || '00:00');
+    return aFecha > bFecha ? 1 : -1;
+  });
+
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
-    const items = tareasBase.filter(t => t.estado === col.key && !t.archivado);
+    const items = ordenarTareas(tareasBase.filter(t => t.estado === col.key && !t.archivado));
     return `
       <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
         <div class="kanban-col-header">
@@ -2892,7 +2911,7 @@ function renderTareas(container) {
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</div>` : ''}
               ${t.notas ? `<div style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#fef9c3;color:#a16207;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
-              ${t.linkRef ? `<a href="${t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.linkRef}</a>` : ''}
+              ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.url || t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
                 const done = t.subtareas.filter(s=>s.done).length;
                 const total = t.subtareas.length;
@@ -3188,7 +3207,7 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-fecha-inicio').value = t.fechaInicio || '';
   toggleTfEsProyecto();
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
-  document.getElementById('tf-link').value = t.linkRef || '';
+  document.getElementById('tf-link').value = t.url || t.linkRef || '';
   // Imágenes
   _tareaImgList = t.imagenes ? [...t.imagenes] : [];
   renderTareaImgThumbs();
@@ -3441,7 +3460,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, linkRef: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     const saved = await Promise.race([
       saveTarea(clientId, obj),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),

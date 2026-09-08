@@ -157,6 +157,10 @@
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-secondary btn-sm" onclick="toggleVerArchivadasMT(this)">▼ Ver archivadas</button>
+          <div id="misTareasArchivadasWrap" class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
       </div>
 
       <!-- Colaboradores -->
@@ -181,6 +185,8 @@
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
           <input type="text" id="internasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="filtrarInternasPorBusqueda(this.value)">
+          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
+          <select id="internasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarInternasVerDe(this.value)"></select>
           <label style="font-size:12px;color:var(--text-muted);">Vertical:</label>
           <select id="internasVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorVertical(this.value)">
             <option value="">Todas</option>
@@ -204,11 +210,17 @@
             <option>Media</option>
             <option>Baja</option>
           </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
+          <select id="internasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarInternasOrden(this.value)">
+            <option value="fecha">Fecha</option>
+            <option value="prioridad">Prioridad</option>
+          </select>
           <button class="btn btn-secondary btn-sm" onclick="limpiarInternasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
         </div>
         <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
+        <div id="internasArchivadasWrap" style="margin-top:16px;"></div>
       </div>
 
       <!-- CRM de leads potenciales -->
@@ -583,6 +595,7 @@
       <button class="modal-close" onclick="closeInternaModal()">×</button>
     </div>
     <div class="modal-body">
+      <div id="in-borrador-aviso" style="display:none;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;">📝 Se restauró un borrador que tenías sin guardar.<button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="limpiarBorradorAdmin('in',_editingInterna?.id);openInternaModal(_editingInterna?.id || null)">Descartar borrador</button></div>
       <div class="form-group">
         <label>Título *</label>
         <input type="text" id="in-titulo" class="form-control">
@@ -632,9 +645,15 @@
         <label>Fecha de inicio</label>
         <input type="date" id="in-fecha-inicio" class="form-control">
       </div>
-      <div class="form-group">
-        <label id="in-vencimiento-label">Vencimiento</label>
-        <input type="date" id="in-vencimiento" class="form-control">
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="in-vencimiento-label">Vencimiento</label>
+          <input type="date" id="in-vencimiento" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" id="in-hora" class="form-control">
+        </div>
       </div>
       <div class="form-group">
         <label>🔁 Recurrencia</label>
@@ -701,7 +720,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:auto;display:none;" onclick="deleteInterna()">Eliminar</button>
+      <button class="btn btn-danger btn-sm" id="deleteInternaBtn" style="margin-right:8px;display:none;" onclick="deleteInterna()">Eliminar</button>
+      <button class="btn btn-secondary btn-sm" id="archiveInternaBtn" style="margin-right:auto;display:none;" onclick="archivarInterna()">📦 Archivar</button>
       <button class="btn btn-secondary" onclick="closeInternaModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveInterna()">Guardar</button>
     </div>
@@ -715,7 +735,25 @@
       <button class="modal-close" onclick="closeMisTareaModal()">×</button>
     </div>
     <div class="modal-body">
+      <div id="mt-borrador-aviso" style="display:none;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;">📝 Se restauró un borrador que tenías sin guardar.<button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="limpiarBorradorAdmin('mt',_misTareaModalIdx);openMisTareaModal(_misTareaModalIdx)">Descartar borrador</button></div>
       <div id="mt-cliente" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+      <div class="form-group hidden" id="mt-vertical-group">
+        <label>Vertical</label>
+        <select id="mt-vertical" class="form-control">
+          <option value="">General (sin vertical)</option>
+          <option>Brújula</option>
+          <option>Rumbo Voraz</option>
+          <option>Design</option>
+          <option>ComuniCOS</option>
+          <option>Talent</option>
+          <option>Shows</option>
+          <option>Euforia</option>
+          <option>Training</option>
+          <option>MPG</option>
+          <option>Home COSMART</option>
+          <option>Hub</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Título</label>
         <input type="text" id="mt-titulo" class="form-control">
@@ -795,6 +833,10 @@
         </label>
         <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en azul marino y se muestra en su rango completo en el calendario.</span>
       </div>
+      <div class="form-group hidden" id="mt-colaboracion-group">
+        <label>Proyecto en colaboración con</label>
+        <div id="mt-colaboracion-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+      </div>
       <div class="form-group" id="mt-subtareas-group">
         <label>Subtareas</label>
         <div id="mt-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
@@ -818,7 +860,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger btn-sm" id="deleteMisTareaBtn" style="margin-right:auto;" onclick="deleteMisTareaModal()">Eliminar</button>
+      <button class="btn btn-danger btn-sm" id="deleteMisTareaBtn" style="margin-right:8px;" onclick="deleteMisTareaModal()">Eliminar</button>
+      <button class="btn btn-secondary btn-sm" id="archiveMisTareaBtn" style="margin-right:auto;" onclick="archivarMiTarea()">📦 Archivar</button>
       <a id="mt-abrir-panel" href="#" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Abrir en panel del cliente</a>
       <button class="btn btn-secondary" onclick="closeMisTareaModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveMisTareaModal()">Guardar</button>
@@ -833,6 +876,7 @@
       <button class="modal-close" onclick="closeNuevaMiTareaModal()">×</button>
     </div>
     <div class="modal-body">
+      <div id="nmt-borrador-aviso" style="display:none;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;">📝 Se restauró un borrador que tenías sin guardar.<button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="limpiarBorradorAdmin('nmt','_nueva');openNuevaMiTareaModal()">Descartar borrador</button></div>
       <div class="form-group">
         <label>Cliente *</label>
         <select id="nmt-cliente" class="form-control" onchange="cambiarNmtCliente()"></select>
@@ -937,6 +981,10 @@
           🔷 Es un proyecto
         </label>
         <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en azul marino y se muestra en su rango completo en el calendario.</span>
+      </div>
+      <div class="form-group hidden" id="nmt-colaboracion-group">
+        <label>Proyecto en colaboración con</label>
+        <div id="nmt-colaboracion-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
       </div>
       <div class="form-group">
         <label>Subtareas</label>
@@ -1981,6 +2029,48 @@
   let _internasVerticalFiltro = '';
   let _internasPrioridadFiltro = '';
   let _internasBusqueda = '';
+  let _internasVerDe = '';
+  // Filtro "Ver de" -- pedido de Vaneh (08/09): "sumalo" / "todas tienen que
+  // tener" (mismo patrón que ya tenía Mis Tareas, poblarMisTareasVerDe).
+  async function poblarInternasVerDe(forzar) {
+    const sel = document.getElementById('internasVerDe');
+    if (!sel || (sel.dataset.poblado && !forzar)) return;
+    const miEmail = (user.email || '').toLowerCase();
+    let opciones = [`<option value="">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        if (c.email.toLowerCase() === miEmail) return;
+        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+      });
+    } catch (e) {}
+    sel.innerHTML = opciones.join('');
+    sel.value = _internasVerDe;
+    sel.dataset.poblado = '1';
+  }
+  window.cambiarInternasVerDe = function(email) {
+    _internasVerDe = email.toLowerCase();
+    renderInternasBoard();
+  };
+  // "Ordenar por" -- pedido de Vaneh (08/09): "todos tienen ue tener" (mismo
+  // patrón que ya tenía Mis Tareas, PRIO_ORDEN/ordenarMisTareas).
+  let _internasOrden = 'fecha';
+  const PRIO_ORDEN_INTERNAS = { Alta: 0, Media: 1, Baja: 2 };
+  window.cambiarInternasOrden = function(valor) {
+    _internasOrden = valor;
+    renderInternasBoard();
+  };
+  function ordenarInternas(lista) {
+    return [...lista].sort((a, b) => {
+      if (_internasOrden === 'prioridad') {
+        const diff = (PRIO_ORDEN_INTERNAS[a.prioridad] ?? 3) - (PRIO_ORDEN_INTERNAS[b.prioridad] ?? 3);
+        if (diff !== 0) return diff;
+      }
+      const aFecha = (a.vencimiento || '9999') + 'T' + (a.hora || '00:00');
+      const bFecha = (b.vencimiento || '9999') + 'T' + (b.hora || '00:00');
+      return aFecha > bFecha ? 1 : -1;
+    });
+  }
   const VERTICAL_COLOR = { 'Brújula':'#0ea5e9', 'Rumbo Voraz':'#e02020', 'Design':'#a855f7', 'ComuniCOS':'#3b82f6', 'Talent':'#f59e0b', 'Shows':'#ec4899', 'Euforia':'#10b981', 'Training':'#8b5cf6', 'MPG':'#06b6d4' };
   window.filtrarInternasPorVertical = function(v) {
     _internasVerticalFiltro = v;
@@ -1998,9 +2088,13 @@
     _internasVerticalFiltro = '';
     _internasPrioridadFiltro = '';
     _internasBusqueda = '';
+    _internasVerDe = '';
+    _internasOrden = 'fecha';
     document.getElementById('internasVerticalFiltro').value = '';
     document.getElementById('internasPrioridadFiltro').value = '';
     document.getElementById('internasBuscar').value = '';
+    document.getElementById('internasVerDe').value = '';
+    document.getElementById('internasOrden').value = 'fecha';
     renderInternasBoard();
   };
 
@@ -2011,6 +2105,7 @@
     // todo con "Cargando..." cada vez que se reentra a la sección.
     if (_internasCache.length) renderInternasBoard();
     else board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    poblarInternasVerDe();
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
       renderInternasBoard();
@@ -2030,10 +2125,11 @@
     const cacheFiltrado = _internasCache.filter(t =>
       (!_internasVerticalFiltro || (_internasVerticalFiltro === '_general' ? !t.vertical : t.vertical === _internasVerticalFiltro)) &&
       (!_internasPrioridadFiltro || t.prioridad === _internasPrioridadFiltro) &&
+      (!_internasVerDe || (t.asignado?.email || '').toLowerCase() === _internasVerDe) &&
       (!_internasBusqueda || (t.titulo || '').toLowerCase().includes(_internasBusqueda))
     );
     board.innerHTML = cols.map(col => {
-      const items = cacheFiltrado.filter(t => t.estado === col.key && !t.archivado);
+      const items = ordenarInternas(cacheFiltrado.filter(t => t.estado === col.key && !t.archivado));
       return `
         <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
           <div class="kanban-col-header">
@@ -2074,6 +2170,23 @@
         </div>`;
     }).join('');
     initInternasDrag();
+
+    const archivadas = cacheFiltrado.filter(t => t.archivado);
+    const archWrap = document.getElementById('internasArchivadasWrap');
+    if (archWrap) {
+      archWrap.innerHTML = archivadas.length ? `
+        <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivadas':'▼ Ver archivadas (${archivadas.length})'">▼ Ver archivadas (${archivadas.length})</button>
+        <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+          ${archivadas.map(t => `
+            <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+              <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="btn btn-secondary btn-sm" onclick="desarchivarInterna('${t.id}')">Restaurar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarInternaDirecto('${t.id}')">🗑</button>
+              </div>
+            </div>`).join('')}
+        </div>` : '';
+    }
   }
 
   function initInternasDrag() {
@@ -2464,17 +2577,69 @@
     renderProcesoContent();
   };
 
+  // Borrador local (localStorage) para los modales de tareas del admin --
+  // pedido de Vaneh (07/09): "todos tienen que tener [borrador local]".
+  // Mismo patrón que ya tenía el panel del Cliente (guardarBorradorTarea/
+  // limpiarBorradorTarea/restaurarBorradorTarea en js/app.js), simplificado
+  // a título + descripción + comentario en curso: las subtareas ya se
+  // autoguardan solas apenas se tildan/renombran, así que no hace falta
+  // protegerlas acá también.
+  const _adminDraftCurrentId = {}; // prefix ('in'/'mt'/'nmt') -> id de la tarea actualmente abierta en el modal
+  function adminDraftKey(prefix, id) {
+    return `hub_draft_admin_${prefix}_${id != null ? id : '_nueva'}`;
+  }
+  function guardarBorradorAdmin(prefix, fieldIds) {
+    const id = _adminDraftCurrentId[prefix];
+    const data = {};
+    let hayAlgo = false;
+    fieldIds.forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el && el.value) { data[fid] = el.value; hayAlgo = true; }
+    });
+    const key = adminDraftKey(prefix, id);
+    if (hayAlgo) localStorage.setItem(key, JSON.stringify(data));
+    else localStorage.removeItem(key);
+  }
+  window.limpiarBorradorAdmin = function(prefix, id) {
+    localStorage.removeItem(adminDraftKey(prefix, id));
+    const aviso = document.getElementById(`${prefix}-borrador-aviso`);
+    if (aviso) aviso.style.display = 'none';
+  };
+  window.restaurarBorradorAdmin = function(prefix, id, fieldIds) {
+    _adminDraftCurrentId[prefix] = id;
+    fieldIds.forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el && !el.dataset.borradorWired) {
+        el.dataset.borradorWired = '1';
+        el.addEventListener('input', () => guardarBorradorAdmin(prefix, fieldIds));
+      }
+    });
+    const aviso = document.getElementById(`${prefix}-borrador-aviso`);
+    const key = adminDraftKey(prefix, id);
+    const raw = localStorage.getItem(key);
+    if (!raw) { if (aviso) aviso.style.display = 'none'; return; }
+    let data;
+    try { data = JSON.parse(raw); } catch (e) { localStorage.removeItem(key); if (aviso) aviso.style.display = 'none'; return; }
+    let huboCambio = false;
+    fieldIds.forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el && data[fid] != null && data[fid] !== el.value) { el.value = data[fid]; huboCambio = true; }
+    });
+    if (aviso) aviso.style.display = huboCambio ? 'flex' : 'none';
+  };
+
   window.openInternaModal = async function(id, defaultEstado) {
     _editingInterna = id ? _internasCache.find(t => t.id === id) : null;
     const t = _editingInterna || {};
     document.getElementById('interna-modal-title').textContent = _editingInterna ? `Editar tarea interna${t.numero ? ' #' + codigoDeInterna(t) : ''}` : 'Nueva tarea interna';
     document.getElementById('in-titulo').value = t.titulo || '';
-    document.getElementById('in-descripcion').value = t.descripcion || '';
+    document.getElementById('in-descripcion').value = t.notas || t.descripcion || '';
     document.getElementById('in-url').value = t.url || '';
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
     document.getElementById('in-vencimiento').value = t.vencimiento || '';
+    document.getElementById('in-hora').value = t.hora || '';
     document.getElementById('in-recurrencia').value = t.recurrencia || '';
     (t.diasSemana || []).forEach(d => { const cb = document.querySelector(`.in-dia-check[value="${d}"]`); if (cb) cb.checked = true; });
     document.querySelectorAll('.in-dia-check').forEach(cb => { if (!(t.diasSemana || []).includes(cb.value)) cb.checked = false; });
@@ -2483,11 +2648,12 @@
     document.getElementById('in-fecha-inicio').value = t.fechaInicio || '';
     toggleInEsProyecto();
     document.getElementById('deleteInternaBtn').style.display = _editingInterna ? '' : 'none';
+    document.getElementById('archiveInternaBtn').style.display = _editingInterna ? '' : 'none';
     const asignadoSel = document.getElementById('in-asignado');
     const subAsignadoSel = document.getElementById('in-subtarea-asignado');
     await poblarSelectConYoYColaboradores(asignadoSel, t.asignado?.email || '');
     await poblarSelectConYoYColaboradores(subAsignadoSel, '');
-    renderInColaboracionList((t.colaboracionCon || []).map(c => c.email));
+    renderColaboracionList('in-colaboracion-list', 'in-colab-check', (t.colaboracionCon || []).map(c => c.email));
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     document.getElementById('in-asignadopor').textContent = asignadoPor ? `Asignada por ${asignadoPor}` : '';
     document.getElementById('in-subtarea-input').value = '';
@@ -2497,6 +2663,7 @@
     document.getElementById('in-comment-input').value = '';
     document.getElementById('in-new-note').style.display = _editingInterna ? 'none' : '';
     document.getElementById('in-comment-input-wrap').style.display = _editingInterna ? '' : 'none';
+    restaurarBorradorAdmin('in', id || '_nueva', ['in-titulo', 'in-descripcion', 'in-comment-input']);
     document.getElementById('internaModal').classList.remove('hidden');
     document.querySelector('#internaModal .modal-body').scrollTop = 0;
   };
@@ -2522,11 +2689,34 @@
     const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
     _inSubtareas[i].asignado = email ? { email, nombre } : null;
   };
+  // Autoguardado de subtareas (07/09, pedido de Vaneh -- "se tienen que
+  // autoguardar en todos los casos"): mismo patrón que ya tenía el panel
+  // del Cliente (toggleSubtarea/renombrarSubtarea en js/app.js). Sin esto,
+  // tildar o renombrar una subtarea se perdía si se cerraba el modal sin
+  // apretar "Guardar" en toda la tarea.
+  async function autoguardarInSubtareas() {
+    if (!_editingInterna) return; // tarea nueva, todavía sin guardar -- nada que persistir aún
+    _editingInterna.subtareas = [..._inSubtareas];
+    const todasHechas = _editingInterna.subtareas.length > 0 && _editingInterna.subtareas.every(s => s.done);
+    if (todasHechas) {
+      _editingInterna.estado = 'Listo';
+      _editingInterna.completadoEn = _editingInterna.completadoEn || new Date().toISOString().split('T')[0];
+      const estadoSel = document.getElementById('in-estado');
+      if (estadoSel) estadoSel.value = 'Listo';
+    }
+    try {
+      const saved = await saveTarea(INTERNAS_CLIENT_ID, _editingInterna);
+      _editingInterna = saved;
+      const i = _internasCache.findIndex(x => x.id === saved.id);
+      if (i > -1) _internasCache[i] = saved;
+    } catch (e) { /* se reintenta al guardar la tarea entera */ }
+  }
   window.renombrarInSubtarea = function(i, nuevoTitulo) {
     if (!_inSubtareas[i]) return;
     const titulo = nuevoTitulo.trim();
     if (!titulo) { renderInSubtareas(); return; }
     _inSubtareas[i].titulo = titulo;
+    autoguardarInSubtareas();
   };
   window.agregarInSubtarea = function() {
     const input = document.getElementById('in-subtarea-input');
@@ -2543,7 +2733,11 @@
   window.toggleInSubtarea = function(i) {
     if (!_inSubtareas[i]) return;
     _inSubtareas[i].done = !_inSubtareas[i].done;
+    // completadoEn es lo que hace que la subtarea aparezca en "Trabajo
+    // realizado" del mes -- antes esto solo marcaba el booleano.
+    _inSubtareas[i].completadoEn = _inSubtareas[i].done ? new Date().toISOString().split('T')[0] : null;
     renderInSubtareas();
+    autoguardarInSubtareas();
   };
   window.eliminarInSubtarea = function(i) {
     _inSubtareas.splice(i, 1);
@@ -2554,22 +2748,26 @@
     const v = document.getElementById('in-recurrencia').value;
     document.getElementById('in-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
   };
+  // Checklist de "proyecto en colaboración con" -- compartida entre las 3
+  // pantallas (07/09, pedido de Vaneh por comentario en la auditoría: antes
+  // solo existía en Gestión COSMART, ahora también en Mis Tareas crear/editar).
+  async function renderColaboracionList(listId, checkClass, seleccionados) {
+    if (!_colaboradoresCache.length) { try { _colaboradoresCache = await getColaboradores(); } catch (e) {} }
+    const list = document.getElementById(listId);
+    const emails = (seleccionados || []).map(e => e.toLowerCase());
+    list.innerHTML = _colaboradoresCache.length
+      ? _colaboradoresCache.map(c => `
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
+          <input type="checkbox" class="${checkClass}" value="${c.email}" data-nombre="${c.nombre}" ${emails.includes(c.email.toLowerCase()) ? 'checked' : ''}> ${c.nombre}
+        </label>`).join('')
+      : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores todavía.</p>';
+  }
   window.toggleInEsProyecto = function() {
     const checked = document.getElementById('in-es-proyecto').checked;
     document.getElementById('in-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('in-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
     document.getElementById('in-colaboracion-group').classList.toggle('hidden', !checked);
   };
-  function renderInColaboracionList(seleccionados) {
-    const list = document.getElementById('in-colaboracion-list');
-    const emails = (seleccionados || []).map(e => e.toLowerCase());
-    list.innerHTML = _colaboradoresCache.length
-      ? _colaboradoresCache.map(c => `
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
-          <input type="checkbox" class="in-colab-check" value="${c.email}" data-nombre="${c.nombre}" ${emails.includes(c.email.toLowerCase()) ? 'checked' : ''}> ${c.nombre}
-        </label>`).join('')
-      : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores todavía.</p>';
-  }
   window.toggleMtRecurrencia = function() {
     const v = document.getElementById('mt-recurrencia').value;
     document.getElementById('mt-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
@@ -2578,6 +2776,7 @@
     const checked = document.getElementById('mt-es-proyecto').checked;
     document.getElementById('mt-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('mt-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+    document.getElementById('mt-colaboracion-group').classList.toggle('hidden', !checked);
   };
   window.toggleNmtRecurrencia = function() {
     const v = document.getElementById('nmt-recurrencia').value;
@@ -2587,6 +2786,7 @@
     const checked = document.getElementById('nmt-es-proyecto').checked;
     document.getElementById('nmt-fecha-inicio-group').classList.toggle('hidden', !checked);
     document.getElementById('nmt-vencimiento-label').textContent = checked ? 'Fecha de finalización' : 'Vencimiento';
+    document.getElementById('nmt-colaboracion-group').classList.toggle('hidden', !checked);
   };
 
   window.saveInterna = async function() {
@@ -2602,12 +2802,13 @@
       ...(_editingInterna || {}),
       numero,
       titulo,
-      descripcion: document.getElementById('in-descripcion').value.trim() || null,
+      notas: document.getElementById('in-descripcion').value.trim() || null,
       url: document.getElementById('in-url').value.trim() || null,
       vertical: inVerticalVal,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
       vencimiento: document.getElementById('in-vencimiento').value || null,
+      hora: document.getElementById('in-hora').value || null,
       recurrencia: document.getElementById('in-recurrencia').value || null,
       diasSemana: document.getElementById('in-recurrencia').value === 'dias-semana'
         ? Array.from(document.querySelectorAll('.in-dia-check:checked')).map(cb => cb.value)
@@ -2625,6 +2826,7 @@
     };
     try {
       const saved = await saveTarea(INTERNAS_CLIENT_ID, obj, _internasCache);
+      limpiarBorradorAdmin('in', _editingInterna?.id || '_nueva');
       if (_editingInterna) { const i = _internasCache.findIndex(t => t.id === saved.id); _internasCache[i] = saved; }
       else _internasCache.push(saved);
       closeInternaModal();
@@ -2639,6 +2841,35 @@
     await deleteTarea(INTERNAS_CLIENT_ID, _editingInterna.id, _internasCache);
     _internasCache = _internasCache.filter(t => t.id !== _editingInterna.id);
     closeInternaModal();
+    renderInternasBoard();
+  };
+  // Archivar/desarchivar -- pedido de Vaneh (07/09): "no existe Archivar
+  // fuera del panel del Cliente". Mismo patrón simple que ya tiene el
+  // Cliente (lista plegable "Ver archivadas" con Restaurar/Eliminar);
+  // organizarlas por mes/día + reportes de 6 meses/1 año queda anotado
+  // como una mejora aparte, más grande, para una próxima vuelta.
+  window.archivarInterna = async function() {
+    if (!_editingInterna) return;
+    _editingInterna.archivado = true;
+    const saved = await saveTarea(INTERNAS_CLIENT_ID, _editingInterna, _internasCache);
+    const i = _internasCache.findIndex(x => x.id === saved.id);
+    if (i > -1) _internasCache[i] = saved;
+    closeInternaModal();
+    renderInternasBoard();
+  };
+  window.desarchivarInterna = async function(id) {
+    const t = _internasCache.find(x => x.id === id);
+    if (!t) return;
+    t.archivado = false;
+    const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache);
+    const i = _internasCache.findIndex(x => x.id === saved.id);
+    if (i > -1) _internasCache[i] = saved;
+    renderInternasBoard();
+  };
+  window.eliminarInternaDirecto = async function(id) {
+    if (!confirm('¿Eliminar esta tarea interna? Esto no se puede deshacer.')) return;
+    await deleteTarea(INTERNAS_CLIENT_ID, id, _internasCache);
+    _internasCache = _internasCache.filter(t => t.id !== id);
     renderInternasBoard();
   };
 
@@ -3449,9 +3680,18 @@
             const esProy = item.tipo === 'tarea' && !!t.esProyecto;
             const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
             const arrastrable = item.tipo === 'tarea';
+            // Toggle rápido de visibilidad -- pedido de Vaneh (08/09): "este
+            // habría que agregarlo en mis tareas también pero en cosmart
+            // interno no" (mismo ícono 👁/🔒 que ya tiene el Kanban del
+            // Cliente). Solo aplica a tareas de clientes reales, no a las
+            // pseudo-tareas de COSMART interno ni Personal.
+            const puedeVisibilidad = item.tipo === 'tarea' && !['_cosmart', '_personal'].includes(item.clientId);
             return `
             <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : '')}">
-              <div class="kanban-card-title" style="${esProy ? 'color:#fff;' : ''}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+              <div style="display:flex;align-items:flex-start;gap:6px;">
+                <div class="kanban-card-title" style="flex:1;${esProy ? 'color:#fff;' : ''}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+                ${puedeVisibilidad ? `<button onclick="event.stopPropagation();toggleMiTareaVisibleCliente(${idx})" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}" style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:0;font-size:13px;">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
+              </div>
               <div style="font-size:11px;color:${muted};margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
               ${atraso > 0 ? `<div style="font-size:10px;color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
@@ -3574,10 +3814,14 @@
     _misTareaModalIdx = idx;
     const { clientNombre, tipo, tarea: t } = item;
     document.getElementById('mt-cliente').textContent = `${clientNombre} · ${tipo === 'tarea' ? 'Tarea' : 'Contenido'}`;
+    const esInternaCosmart = tipo === 'tarea' && item.clientId === '_cosmart';
+    document.getElementById('mt-vertical-group').classList.toggle('hidden', !esInternaCosmart);
+    document.getElementById('mt-vertical').value = esInternaCosmart ? (t.vertical || '') : '';
     document.getElementById('mt-titulo').value = t.titulo || '';
     const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
     document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
     document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
+    document.getElementById('archiveMisTareaBtn').style.display = tipo === 'tarea' ? '' : 'none';
     if (tipo === 'tarea') document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
     document.getElementById('mt-descripcion').value = t.notas || t.descripcion || '';
     document.getElementById('mt-url').value = t.url || '';
@@ -3591,6 +3835,7 @@
     document.getElementById('mt-es-proyecto').checked = tipo === 'tarea' && t.esProyecto === true;
     document.getElementById('mt-fecha-inicio').value = t.fechaInicio || '';
     toggleMtEsProyecto();
+    renderColaboracionList('mt-colaboracion-list', 'mt-colab-check', (t.colaboracionCon || []).map(c => c.email));
     document.getElementById('mt-subtareas-group').style.display = tipo === 'tarea' ? '' : 'none';
     _mtSubtareas = tipo === 'tarea' ? [...(t.subtareas || [])] : [];
     document.getElementById('mt-subtarea-input').value = '';
@@ -3607,6 +3852,7 @@
     document.getElementById('mt-visible-cliente').checked = !!t.visibleParaCliente;
     renderComentarios('mt', t.comentarios || []);
     document.getElementById('mt-comment-input').value = '';
+    restaurarBorradorAdmin('mt', idx, ['mt-titulo', 'mt-descripcion', 'mt-comment-input']);
     document.getElementById('misTareaModal').classList.remove('hidden');
     document.querySelector('#misTareaModal .modal-body').scrollTop = 0;
   };
@@ -3625,6 +3871,77 @@
     _misTareasCache = _misTareasCache.filter(i => i !== item);
     closeMisTareaModal();
     renderMisTareas();
+  };
+  // Archivar -- pedido de Vaneh (07/09), mismo patrón que Gestión COSMART/
+  // Cliente. Como el load de Mis Tareas ya excluye las archivadas de
+  // _misTareasCache (para no mezclarlas en los tableros), la sección "Ver
+  // archivadas" las carga aparte, on-demand, la primera vez que se abre.
+  window.archivarMiTarea = async function() {
+    if (_misTareaModalIdx === null) return;
+    const item = _misTareasCache[_misTareaModalIdx];
+    if (!item || item.tipo !== 'tarea') return;
+    item.tarea.archivado = true;
+    await saveTarea(item.clientId, item.tarea);
+    _misTareasCache = _misTareasCache.filter(i => i !== item);
+    closeMisTareaModal();
+    renderMisTareas();
+  };
+  window.toggleMiTareaVisibleCliente = async function(idx) {
+    const item = _misTareasCache[idx];
+    if (!item || item.tipo !== 'tarea') return;
+    item.tarea.visibleParaCliente = item.tarea.visibleParaCliente === true ? false : true;
+    item.tarea = await saveTarea(item.clientId, item.tarea);
+    renderMisTareas();
+  };
+  let _misTareasArchivadasCache = null;
+  window.toggleVerArchivadasMT = async function(btn) {
+    const wrap = document.getElementById('misTareasArchivadasWrap');
+    if (_misTareasArchivadasCache === null) {
+      btn.textContent = 'Cargando…';
+      const clients = _misTareasClientsCache && _misTareasClientsCache.length ? _misTareasClientsCache : await getAllClients();
+      const pseudoClients = [{ id: '_cosmart', nombre: 'COSMART (interno)' }, { id: '_personal', nombre: 'Personal' }];
+      const all = [];
+      await Promise.all([...clients, ...pseudoClients].map(async c => {
+        try {
+          const tareas = await getTareas(c.id);
+          (tareas || []).filter(t => t.archivado).forEach(t => all.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t }));
+        } catch (e) {}
+      }));
+      _misTareasArchivadasCache = all;
+      renderMisTareasArchivadas();
+    }
+    wrap.classList.toggle('hidden');
+    btn.textContent = wrap.classList.contains('hidden') ? `▼ Ver archivadas (${_misTareasArchivadasCache.length})` : `▲ Ocultar archivadas`;
+  };
+  function renderMisTareasArchivadas() {
+    const wrap = document.getElementById('misTareasArchivadasWrap');
+    wrap.innerHTML = _misTareasArchivadasCache.length
+      ? _misTareasArchivadasCache.map((w, idx) => `
+        <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${w.tarea.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${w.clientNombre}</div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="desarchivarMiTareaDirecto(${idx})">Restaurar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarMiTareaArchivadaDirecto(${idx})">🗑</button>
+          </div>
+        </div>`).join('')
+      : '<p style="font-size:12px;color:var(--text-muted);">No hay tareas archivadas.</p>';
+  }
+  window.desarchivarMiTareaDirecto = async function(idx) {
+    const w = _misTareasArchivadasCache[idx];
+    if (!w) return;
+    w.tarea.archivado = false;
+    await saveTarea(w.clientId, w.tarea);
+    _misTareasArchivadasCache = null; // se recarga la próxima vez que se abra
+    document.getElementById('misTareasArchivadasWrap').classList.add('hidden');
+    loadMisTareas();
+  };
+  window.eliminarMiTareaArchivadaDirecto = async function(idx) {
+    const w = _misTareasArchivadasCache[idx];
+    if (!w || !confirm(`¿Eliminar "${w.tarea.titulo}"? Esto no se puede deshacer.`)) return;
+    await deleteTarea(w.clientId, w.tarea.id);
+    _misTareasArchivadasCache.splice(idx, 1);
+    renderMisTareasArchivadas();
   };
 
   async function renderMiSubtareas() {
@@ -3647,11 +3964,31 @@
     const nombre = sel.selectedOptions[0]?.dataset.nombre || '';
     _mtSubtareas[i].asignado = email ? { email, nombre } : null;
   };
+  // Mismo autoguardado que Gestión COSMART (autoguardarInSubtareas) --
+  // pedido de Vaneh (07/09): "se tienen que autoguardar en todos los casos".
+  async function autoguardarMiSubtareas() {
+    if (_misTareaModalIdx === null) return; // tarea nueva, todavía sin guardar
+    const item = _misTareasCache[_misTareaModalIdx];
+    if (!item || item.tipo !== 'tarea') return;
+    item.tarea.subtareas = [..._mtSubtareas];
+    const todasHechas = item.tarea.subtareas.length > 0 && item.tarea.subtareas.every(s => s.done);
+    if (todasHechas) {
+      item.tarea.estado = 'Listo';
+      item.tarea.visibleParaCliente = true;
+      item.tarea.completadoEn = item.tarea.completadoEn || new Date().toISOString().split('T')[0];
+      const estadoSel = document.getElementById('mt-estado');
+      if (estadoSel) estadoSel.value = 'Listo';
+    }
+    try {
+      item.tarea = await saveTarea(item.clientId, item.tarea);
+    } catch (e) { /* se reintenta al guardar la tarea entera */ }
+  }
   window.renombrarMiSubtarea = function(i, nuevoTitulo) {
     if (!_mtSubtareas[i]) return;
     const titulo = nuevoTitulo.trim();
     if (!titulo) { renderMiSubtareas(); return; }
     _mtSubtareas[i].titulo = titulo;
+    autoguardarMiSubtareas();
   };
   window.agregarMiSubtarea = function() {
     const input = document.getElementById('mt-subtarea-input');
@@ -3672,6 +4009,7 @@
     // realizado" del mes en el Home del cliente.
     _mtSubtareas[i].completadoEn = _mtSubtareas[i].done ? new Date().toISOString().split('T')[0] : null;
     renderMiSubtareas();
+    autoguardarMiSubtareas();
   };
   window.eliminarMiSubtarea = function(i) {
     _mtSubtareas.splice(i, 1);
@@ -3708,6 +4046,10 @@
       item.tarea.hora = document.getElementById('mt-hora').value || null;
       item.tarea.esProyecto = document.getElementById('mt-es-proyecto').checked;
       item.tarea.fechaInicio = item.tarea.esProyecto ? (document.getElementById('mt-fecha-inicio').value || null) : null;
+      item.tarea.colaboracionCon = item.tarea.esProyecto
+        ? Array.from(document.querySelectorAll('.mt-colab-check:checked')).map(cb => ({ email: cb.value, nombre: cb.dataset.nombre }))
+        : [];
+      if (item.clientId === '_cosmart') item.tarea.vertical = document.getElementById('mt-vertical').value || null;
       item.tarea.recurrencia = document.getElementById('mt-recurrencia').value || null;
       item.tarea.diasSemana = document.getElementById('mt-recurrencia').value === 'dias-semana'
         ? Array.from(document.querySelectorAll('.mt-dia-check:checked')).map(cb => cb.value)
@@ -3726,6 +4068,7 @@
       item.tarea.fechaPub = document.getElementById('mt-vencimiento').value || item.tarea.fechaPub;
       item.tarea = await saveContenido(item.clientId, item.tarea);
     }
+    limpiarBorradorAdmin('mt', _misTareaModalIdx);
     closeMisTareaModal();
     renderMisTareas();
   };
@@ -3745,6 +4088,7 @@
     document.getElementById('nmt-es-proyecto').checked = false;
     document.getElementById('nmt-fecha-inicio').value = '';
     toggleNmtEsProyecto();
+    renderColaboracionList('nmt-colaboracion-list', 'nmt-colab-check', []);
 
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
@@ -3768,6 +4112,7 @@
     renderNmtSubtareas();
     await poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '', clienteSel.value);
 
+    restaurarBorradorAdmin('nmt', '_nueva', ['nmt-titulo', 'nmt-descripcion']);
     document.getElementById('nuevaMiTareaModal').classList.remove('hidden');
     document.querySelector('#nuevaMiTareaModal .modal-body').scrollTop = 0;
   };
@@ -4285,12 +4630,16 @@
         : [],
       esProyecto: esProyectoVal,
       fechaInicio: esProyectoVal ? (document.getElementById('nmt-fecha-inicio').value || null) : null,
+      colaboracionCon: esProyectoVal
+        ? Array.from(document.querySelectorAll('.nmt-colab-check:checked')).map(cb => ({ email: cb.value, nombre: cb.dataset.nombre }))
+        : [],
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       subtareas: _nmtSubtareas,
       visibleParaCliente: !['_cosmart', '_personal'].includes(clientId) && document.getElementById('nmt-visible-cliente').checked,
     };
     try {
       await saveTarea(clientId, obj);
+      limpiarBorradorAdmin('nmt', '_nueva');
       closeNuevaMiTareaModal();
       loadMisTareas();
     } catch (e) {
@@ -5510,11 +5859,23 @@
   // Pedido de Vaneh: el mismo sistema de comentarios + @menciones que ya
   // tienen las tareas/contenidos del panel del cliente, pero para las
   // internas del admin, que nunca lo tuvieron.
-  function getMentionUsersInterno() {
+  // clientId opcional -- pedido de Vaneh (07/09): "no podés arrobar al
+  // equipo del cliente desde Mis Tareas" -- antes solo ofrecía colaboradores
+  // de COSMART, aunque el hilo de comentarios sea el mismo que ve el cliente.
+  function getMentionUsersInterno(clientId) {
     const lista = [{ nombre: user.name || user.email.split('@')[0], email: user.email }];
     (_equipoCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
+    if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
+      const cliente = _nmtClientsCache.find(c => c.id === clientId);
+      (cliente?.usuarios || []).forEach(u => { if (u.email) lista.push({ nombre: u.nombre, email: u.email }); });
+    }
     const seen = new Set();
     return lista.filter(u => { if (!u.email || seen.has(u.email.toLowerCase())) return false; seen.add(u.email.toLowerCase()); return true; });
+  }
+
+  function clientIdDelHiloActivo(inputId) {
+    if (inputId.startsWith('mt-')) return _misTareaModalIdx !== null ? _misTareasCache[_misTareaModalIdx]?.clientId : null;
+    return null; // 'in-*' -- Gestión COSMART nunca tiene cliente
   }
 
   function setupMentionAutocompleteAdmin(inputId, dropdownId) {
@@ -5526,7 +5887,7 @@
       const atIdx = val.lastIndexOf('@');
       if (atIdx === -1) { dropdown.classList.add('hidden'); return; }
       const query = val.slice(atIdx + 1).toLowerCase();
-      const users = getMentionUsersInterno().filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+      const users = getMentionUsersInterno(clientIdDelHiloActivo(inputId)).filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
       if (!users.length) { dropdown.classList.add('hidden'); return; }
       dropdown.innerHTML = users.map(u => `
         <div class="mention-item" data-nombre="${u.nombre}">
@@ -5549,6 +5910,19 @@
   setupMentionAutocompleteAdmin('in-comment-input', 'in-mention-list');
   setupMentionAutocompleteAdmin('mt-comment-input', 'mt-mention-list');
 
+  // Mismo linkify que el panel del Cliente (js/app.js) -- pedido de Vaneh
+  // (07/09): "todos los links tienen que quedar clickeables estén donde estén".
+  function linkifyAdmin(html) {
+    if (!html) return '';
+    return html.replace(/(<a\b[^>]*>[\s\S]*?<\/a>)|((?:https?:\/\/|www\.)[^\s<>"']+)/gi, (m, alreadyLink, url) => {
+      if (alreadyLink) return alreadyLink;
+      const clean = url.replace(/[.,;:!?)\]]+$/, '');
+      const trail = url.slice(clean.length);
+      const href = clean.startsWith('http') ? clean : 'https://' + clean;
+      return `<a href="${href}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">${clean}</a>${trail}`;
+    });
+  }
+
   function renderComentarios(prefix, comentarios) {
     const listEl = document.getElementById(`${prefix}-comments-list`);
     if (!listEl) return;
@@ -5556,9 +5930,12 @@
       listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin comentarios aún.</p>';
       return;
     }
-    listEl.innerHTML = comentarios.map(c => {
+    listEl.innerHTML = comentarios.map((c, idx) => {
       const inicial = (c.autor || '?')[0].toUpperCase();
-      const textoHtml = escapeHtml(c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>');
+      const textoHtml = linkifyAdmin(escapeHtml(c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>'));
+      const vistoPor = c.vistoPor || [];
+      const yoLoVi = vistoPor.some(v => v.email === user.email);
+      const vistoTitle = vistoPor.length ? `Visto por ${vistoPor.map(v => v.nombre).join(', ')}` : 'Marcar como visto';
       return `
       <div style="display:flex;gap:8px;align-items:flex-start;">
         <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
@@ -5567,12 +5944,77 @@
             <span style="font-size:11px;font-weight:700;color:var(--text);">${c.autor || 'Anónimo'}</span>
             <span style="font-size:10px;color:var(--text-muted);">${c.fecha || ''}</span>
           </div>
-          <p style="font-size:13px;margin:0;color:var(--text);">${textoHtml}</p>
+          <p style="font-size:13px;margin:0 0 4px;color:var(--text);">${textoHtml}</p>
+          <div style="display:flex;align-items:center;">
+            <button onclick="toggleComentarioVisto('${prefix}',${idx})" title="${vistoTitle}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">
+              ✓ ${vistoPor.length ? vistoTitle : 'Visto'}
+            </button>
+            <button onclick="transformarComentarioInterno('${prefix}',${idx})" title="Transformar este comentario en una tarea nueva" style="background:none;border:none;cursor:pointer;padding:0;margin-left:auto;font-size:11px;color:#cbd5e1;">+ Nueva tarea</button>
+          </div>
         </div>
       </div>`;
     }).join('');
     listEl.scrollTop = listEl.scrollHeight;
   }
+
+  window.toggleComentarioVisto = async function(prefix, idx) {
+    let item, guardar;
+    if (prefix === 'in') {
+      if (!_editingInterna) return;
+      item = _editingInterna;
+      guardar = async () => {
+        const saved = await saveTarea(INTERNAS_CLIENT_ID, item);
+        _editingInterna = saved;
+        const i = _internasCache.findIndex(x => x.id === saved.id);
+        if (i > -1) _internasCache[i] = saved;
+        return saved;
+      };
+    } else {
+      if (_misTareaModalIdx === null) return;
+      const wrap = _misTareasCache[_misTareaModalIdx];
+      if (!wrap) return;
+      item = wrap.tarea;
+      guardar = async () => {
+        wrap.tarea = wrap.tipo === 'tarea' ? await saveTarea(wrap.clientId, item) : await saveContenido(wrap.clientId, item);
+        return wrap.tarea;
+      };
+    }
+    if (!item.comentarios || !item.comentarios[idx]) return;
+    const comment = item.comentarios[idx];
+    if (!comment.vistoPor) comment.vistoPor = [];
+    const yaLoVi = comment.vistoPor.findIndex(v => v.email === user.email);
+    if (yaLoVi >= 0) comment.vistoPor.splice(yaLoVi, 1);
+    else comment.vistoPor.push({ email: user.email, nombre: user.name || user.email.split('@')[0] });
+    const saved = await guardar();
+    renderComentarios(prefix, saved.comentarios);
+  };
+
+  window.transformarComentarioInterno = function(prefix, idx) {
+    let item, clientIdOrigen;
+    if (prefix === 'in') {
+      item = _editingInterna;
+    } else {
+      const wrap = _misTareaModalIdx !== null ? _misTareasCache[_misTareaModalIdx] : null;
+      item = wrap?.tarea;
+      clientIdOrigen = wrap?.clientId;
+    }
+    const c = item?.comentarios?.[idx];
+    if (!c) return;
+    const titulo = (c.texto || '').slice(0, 120);
+    if (prefix === 'in') {
+      closeInternaModal();
+      openInternaModal(null).then(() => {
+        limpiarBorradorAdmin('in', '_nueva');
+        document.getElementById('in-titulo').value = titulo;
+      });
+    } else {
+      closeMisTareaModal();
+      openNuevaMiTareaModal().then(() => {
+        if (clientIdOrigen) { document.getElementById('nmt-cliente').value = clientIdOrigen; cambiarNmtCliente(); }
+        document.getElementById('nmt-titulo').value = titulo;
+      });
+    }
+  };
 
   window.agregarComentario = async function(prefix) {
     const input = document.getElementById(`${prefix}-comment-input`);
@@ -5609,12 +6051,13 @@
     }
 
     input.value = '';
+    guardarBorradorAdmin(prefix, [`${prefix}-titulo`, `${prefix}-descripcion`, `${prefix}-comment-input`]);
     renderComentarios(prefix, item.comentarios);
 
     // Notificar por mail a quien fue mencionado con @
     const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
     if (mencionados.length) {
-      const allUsers = getMentionUsersInterno();
+      const allUsers = getMentionUsersInterno(prefix === 'mt' ? clientIdComentario : null);
       mencionados.forEach(nombre => {
         const u = allUsers.find(x => x.nombre.toLowerCase() === nombre.toLowerCase());
         if (u && u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
