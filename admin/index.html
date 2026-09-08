@@ -666,6 +666,7 @@
           <option value="anual">↻ Anual</option>
           <option value="dias-semana">↻ Días específicos…</option>
         </select>
+        <div id="in-recurrencia-preview" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
       </div>
       <div class="form-group" id="in-dias-semana-group" style="display:none;">
         <label>¿Qué días se repite?</label>
@@ -809,6 +810,7 @@
           <option value="anual">↻ Anual</option>
           <option value="dias-semana">↻ Días específicos…</option>
         </select>
+        <div id="mt-recurrencia-preview" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
       </div>
       <div class="form-group" id="mt-dias-semana-group" style="display:none;">
         <label>¿Qué días se repite?</label>
@@ -958,6 +960,7 @@
           <option value="anual">↻ Anual</option>
           <option value="dias-semana">↻ Días específicos…</option>
         </select>
+        <div id="nmt-recurrencia-preview" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
       </div>
       <div class="form-group" id="nmt-dias-semana-group" style="display:none;">
         <label>¿Qué días se repite?</label>
@@ -2209,6 +2212,7 @@
         if (!t || t.estado === zone.dataset.col) return;
         t.estado = zone.dataset.col;
         t.completadoEn = zone.dataset.col === 'Listo' ? new Date().toISOString().split('T')[0] : null;
+        if (t.estado === 'Listo') regenerarSiRecurrente(t);
         renderInternasBoard();
         try { const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache); const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; } catch (e) { console.error(e); }
       });
@@ -2263,7 +2267,7 @@
         const item = _misTareasCache[idx];
         if (!item || item.tipo !== 'tarea' || item.tarea.estado === zone.dataset.col) return;
         item.tarea.estado = zone.dataset.col;
-        if (zone.dataset.col === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; }
+        if (zone.dataset.col === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(item.tarea); }
         else item.tarea.completadoEn = null;
         renderMisTareas();
         try { item.tarea = await saveTarea(item.clientId, item.tarea); } catch (e) { console.error(e); }
@@ -2744,9 +2748,35 @@
     renderInSubtareas();
   };
 
+  // Pedido de Vaneh (07/09): si la recurrencia es diaria o semanal, tiene
+  // que quedar claro qué día se repite -- para "semanal" se toma el día
+  // de la semana de la fecha de Vencimiento ya cargada (no hay que
+  // elegirlo aparte, "días específicos" ya cubre el caso de elegir día a
+  // mano). Se llama al cambiar la Recurrencia Y al cambiar el Vencimiento.
+  const NOMBRES_DIA_SEMANA = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
+  function actualizarPreviewRecurrencia(prefix) {
+    const preview = document.getElementById(`${prefix}-recurrencia-preview`);
+    if (!preview) return;
+    const recurrencia = document.getElementById(`${prefix}-recurrencia`).value;
+    if (recurrencia === 'diaria') { preview.textContent = 'Se repite todos los días.'; return; }
+    if (recurrencia === 'semanal') {
+      const vencimiento = document.getElementById(`${prefix}-vencimiento`).value;
+      if (!vencimiento) { preview.textContent = 'Elegí la fecha de vencimiento para saber qué día se repite.'; return; }
+      const dia = new Date(vencimiento + 'T00:00:00').getDay();
+      preview.textContent = `Se repite todos los ${NOMBRES_DIA_SEMANA[dia]}.`;
+      return;
+    }
+    preview.textContent = '';
+  }
+  ['in', 'mt', 'nmt'].forEach(prefix => {
+    const vencimientoEl = document.getElementById(`${prefix}-vencimiento`);
+    if (vencimientoEl) vencimientoEl.addEventListener('change', () => actualizarPreviewRecurrencia(prefix));
+  });
+
   window.toggleInRecurrencia = function() {
     const v = document.getElementById('in-recurrencia').value;
     document.getElementById('in-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
+    actualizarPreviewRecurrencia('in');
   };
   // Checklist de "proyecto en colaboración con" -- compartida entre las 3
   // pantallas (07/09, pedido de Vaneh por comentario en la auditoría: antes
@@ -2771,6 +2801,7 @@
   window.toggleMtRecurrencia = function() {
     const v = document.getElementById('mt-recurrencia').value;
     document.getElementById('mt-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
+    actualizarPreviewRecurrencia('mt');
   };
   window.toggleMtEsProyecto = function() {
     const checked = document.getElementById('mt-es-proyecto').checked;
@@ -2781,6 +2812,7 @@
   window.toggleNmtRecurrencia = function() {
     const v = document.getElementById('nmt-recurrencia').value;
     document.getElementById('nmt-dias-semana-group').style.display = v === 'dias-semana' ? '' : 'none';
+    actualizarPreviewRecurrencia('nmt');
   };
   window.toggleNmtEsProyecto = function() {
     const checked = document.getElementById('nmt-es-proyecto').checked;
@@ -3097,11 +3129,68 @@
     </div>`;
   }
 
+  // Mismo criterio que siguienteFechaRecurrencia en cosmart-workers (ver
+  // reactivarTareasRecurrentes ahí) -- calcula la fecha del próximo ciclo
+  // a partir de una fecha ancla, sin importar si esa fecha ya pasó o no.
+  function siguienteFechaRecurrencia(fechaStr, recurrencia, diasSemana) {
+    const base = new Date((fechaStr || new Date().toISOString().split('T')[0]) + 'T00:00:00');
+    const d = new Date(base);
+    if (recurrencia === 'diaria') { d.setDate(d.getDate() + 1); return d; }
+    if (recurrencia === 'semanal') { d.setDate(d.getDate() + 7); return d; }
+    if (recurrencia === 'quincenal') { d.setDate(d.getDate() + 15); return d; }
+    if (recurrencia === 'mensual') { d.setMonth(d.getMonth() + 1); return d; }
+    if (recurrencia === 'anual') { d.setFullYear(d.getFullYear() + 1); return d; }
+    if (recurrencia === 'dias-semana') {
+      const dias = (diasSemana || []).map(Number);
+      if (!dias.length) return null;
+      for (let i = 1; i <= 7; i++) {
+        const cand = new Date(base);
+        cand.setDate(cand.getDate() + i);
+        if (dias.includes(cand.getDay())) return cand;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  // Pedido de Vaneh (07/09): si una tarea con recurrencia se marca "Lista",
+  // tiene que volver a generarse SOLA en "Sin empezar" con el próximo
+  // vencimiento (la semana que viene si es semanal, el mismo día del mes
+  // que viene si es mensual, etc.) -- de una, no hay que esperar a que esa
+  // fecha futura llegue ni a que corra el cron. Se llama justo después de
+  // marcar una tarea "Lista" en cualquiera de los lugares donde eso pasa
+  // (drag&drop, checkbox, modal). El cron diario (reactivarTareasRecurrentes
+  // en cosmart-workers) sigue corriendo como red de seguridad para lo que
+  // se complete fuera de la app (ej. Claude IA marcando una tarea sola).
+  function regenerarSiRecurrente(t) {
+    if (!t.recurrencia) return;
+    const anchor = t.vencimiento || t.completadoEn || new Date().toISOString().split('T')[0];
+    const siguiente = siguienteFechaRecurrencia(anchor, t.recurrencia, t.diasSemana);
+    if (!siguiente) return; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
+    if (t.completadoEn) {
+      if (!Array.isArray(t.historialCompletados)) t.historialCompletados = [];
+      t.historialCompletados.push(t.completadoEn);
+    }
+    (t.subtareas || []).forEach(s => {
+      if (s.done && s.completadoEn) {
+        if (!Array.isArray(s.historialCompletados)) s.historialCompletados = [];
+        s.historialCompletados.push(s.completadoEn);
+      }
+      s.done = false;
+      s.completadoEn = null;
+    });
+    t.estado = 'Sin empezar';
+    t.completadoEn = null;
+    t.visibleParaCliente = false;
+    t.vencimiento = siguiente.toISOString().split('T')[0];
+  }
+
   window.toggleInternaListo = async function(id) {
     const t = _internasCache.find(x => x.id === id);
     if (!t) return;
     t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
     t.completadoEn = t.estado === 'Listo' ? new Date().toISOString().split('T')[0] : null;
+    if (t.estado === 'Listo') regenerarSiRecurrente(t);
     const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache);
     const i = _internasCache.findIndex(x => x.id === id);
     _internasCache[i] = saved;
@@ -3137,13 +3226,21 @@
   // tarea (poblarNmtAsignado) ya lo hacía; a las subtareas nunca se le
   // había pasado el clientId, así que nunca podían asignarse a alguien
   // del equipo del cliente, solo a vos/colaboradores/Claude IA.
+  //
+  // Además, con clientId puesto, el equipo GLOBAL (colaboradores de
+  // cualquier cliente) se filtra a solo quienes tienen ESE cliente en su
+  // clientIds -- otro pedido de Vaneh (07/09): en "Asignar a" de una
+  // tarea de Pharus aparecían colaboradores sin nada que ver con Pharus.
+  // El admin siempre se ve (no tiene clientIds, ve todo).
   async function opcionesYoYColaboradoresHtml(currentEmail, clientId) {
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
     let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
     const equipo = await getEquipoCache();
+    const esClienteReal = clientId && !['_cosmart', '_personal'].includes(clientId);
     equipo.forEach(c => {
       if (c.email.toLowerCase() === miEmail) return;
+      if (esClienteReal && c.role !== 'admin' && !(c.clientIds || []).includes(clientId)) return;
       html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
     });
     if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
@@ -3168,8 +3265,13 @@
     asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
     const miEmailNmt = (user.email || '').toLowerCase();
     const equipoNmt = await getEquipoCache();
+    // Mismo filtro que opcionesYoYColaboradoresHtml: con un cliente real
+    // seleccionado, solo mostrar colaboradores que tienen ESE cliente
+    // asignado (el admin siempre se ve, ve todo).
+    const esClienteRealNmt = selectedClientId && !['_cosmart', '_personal'].includes(selectedClientId);
     equipoNmt.forEach(c => {
       if (c.email.toLowerCase() === miEmailNmt) return;
+      if (esClienteRealNmt && c.role !== 'admin' && !(c.clientIds || []).includes(selectedClientId)) return;
       const opt = document.createElement('option');
       opt.value = c.email; opt.textContent = c.nombre; opt.dataset.nombre = c.nombre;
       asignadoSel.appendChild(opt);
@@ -3515,10 +3617,11 @@
     // tarea pasa sola a "Listo" -- si no, marcar subtareas nunca se ve
     // reflejado en ningún lado si nadie entra a cambiar el estado a mano
     // (pedido de Vaneh: que se refleje en el dashboard del cliente).
-    if ((item.tarea.subtareas || []).every(s => s.done)) {
+    if ((item.tarea.subtareas || []).every(s => s.done) && item.tarea.estado !== 'Listo') {
       item.tarea.estado = 'Listo';
       item.tarea.visibleParaCliente = true;
       item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+      regenerarSiRecurrente(item.tarea);
     }
     await saveTarea(clientId, item.tarea);
     renderMisTareas();
@@ -3787,7 +3890,7 @@
     const item = _misTareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.tipo === 'tarea');
     if (!item) return;
     item.tarea.estado = item.tarea.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-    if (item.tarea.estado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; } // al terminarla, el cliente la puede ver
+    if (item.tarea.estado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(item.tarea); } // al terminarla, el cliente la puede ver
     else item.tarea.completadoEn = null;
     await saveTarea(clientId, item.tarea);
     renderMisTareas();
@@ -3796,9 +3899,14 @@
   window.cambiarEstadoMiTarea = async function(idx, nuevoEstado) {
     const item = _misTareasCache[idx];
     if (!item) return;
+    const estadoPrevio = item.tarea.estado;
     item.tarea.estado = nuevoEstado;
     if (item.tipo === 'tarea') {
-      if (nuevoEstado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; }
+      if (nuevoEstado === 'Listo') {
+        item.tarea.visibleParaCliente = true;
+        item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+        if (estadoPrevio !== 'Listo') regenerarSiRecurrente(item.tarea);
+      }
       else item.tarea.completadoEn = null;
     }
     if (item.tipo === 'tarea') await saveTarea(item.clientId, item.tarea);
@@ -4058,7 +4166,10 @@
       const esPseudoClienteSave = ['_cosmart', '_personal'].includes(item.clientId);
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
-        if (estadoPrevio !== 'Listo') item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+        if (estadoPrevio !== 'Listo') {
+          item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+          regenerarSiRecurrente(item.tarea);
+        }
       } else {
         item.tarea.completadoEn = null;
         if (!esPseudoClienteSave) item.tarea.visibleParaCliente = document.getElementById('mt-visible-cliente').checked;
