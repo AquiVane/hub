@@ -201,6 +201,13 @@ async function loadAllData() {
   ]);
   STATE.contenidos = cont;
   STATE.tareas = tareas;
+  // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
+  // inmediato (09/09, pedido de Vaneh: "tiene que tener el mismo
+  // comportamiento" que las que se completan ahora) -- se regeneran apenas
+  // se cargan, en vez de quedar esperando al cron para siempre.
+  const _recurrentesAResetear = STATE.tareas.filter(t => t.recurrencia && t.estado === 'Listo');
+  _recurrentesAResetear.forEach(t => regenerarSiRecurrente(t));
+  _recurrentesAResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(clientId, t).catch(() => {}));
   STATE.campanas = campanas;
   STATE.metricas = metricas;
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };

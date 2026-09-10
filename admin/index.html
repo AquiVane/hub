@@ -2111,6 +2111,14 @@
     poblarInternasVerDe();
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
+      // Recurrentes que quedaron "Listo" de antes de que existiera el
+      // regenerado inmediato (09/09, pedido de Vaneh: "tiene que tener el
+      // mismo comportamiento" que las que se completan ahora) -- se
+      // regeneran apenas se cargan, en vez de quedar esperando al cron
+      // para siempre.
+      const _aResetear = _internasCache.filter(t => t.recurrencia && t.estado === 'Listo');
+      _aResetear.forEach(t => regenerarSiRecurrente(t));
+      _aResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(INTERNAS_CLIENT_ID, t, _internasCache).catch(() => {}));
       renderInternasBoard();
     } catch (e) {
       if (!_internasCache.length) board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
@@ -3435,6 +3443,11 @@
           getTareas(c.id),
           esPersonal ? Promise.resolve([]) : getContenidos(c.id),
         ]);
+        // Mismo backfill que Gestión COSMART (loadInternas) -- recurrentes
+        // que quedaron "Listo" de antes del regenerado inmediato (09/09).
+        const _aResetear = (tareas || []).filter(t => t.recurrencia && t.estado === 'Listo');
+        _aResetear.forEach(t => regenerarSiRecurrente(t));
+        _aResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(c.id, t).catch(() => {}));
         (tareas || []).forEach(t => {
           if (t.archivado) return;
           const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
