@@ -66,6 +66,9 @@
       <button class="nav-item hidden" id="nav-plan" data-section="plan">
         <i data-lucide="file-text" class="nav-icon"></i><span>Plan de ejecución</span>
       </button>
+      <button class="nav-item hidden" id="nav-reportes" data-section="reportes">
+        <i data-lucide="bar-chart-2" class="nav-icon"></i><span>Reportes</span>
+      </button>
       <button class="nav-item" data-section="links">
         <i data-lucide="link" class="nav-icon"></i><span>Links y Archivos</span>
       </button>
@@ -1030,6 +1033,33 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="closePlanModal2">Cancelar</button>
       <button class="btn btn-primary" id="planSaveBtn" disabled>Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="reporteModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Subir reporte mensual</h3>
+      <button class="modal-close" id="closeReporteModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Subí el archivo .html del reporte de ese mes. Si ya había un reporte cargado para el mismo mes, se reemplaza.
+      </p>
+      <div class="form-group">
+        <label>Mes *</label>
+        <input type="month" id="reporte-mes-input" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Archivo HTML *</label>
+        <input type="file" id="reporte-file-input" class="form-control" accept=".html,text/html">
+        <div id="reporte-file-name" style="font-size:12px;color:var(--primary);margin-top:6px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeReporteModal2">Cancelar</button>
+      <button class="btn btn-primary" id="reporteSaveBtn" disabled>Guardar</button>
     </div>
   </div>
 </div>

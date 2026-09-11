@@ -6,6 +6,7 @@ import {
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
   getPlan, savePlan,
+  getReportes, saveReportes,
   uploadArchivo, abrirArchivo, getAllClients, getEquipo
 } from './data.js';
 
@@ -163,6 +164,7 @@ async function init() {
     window.STATE = STATE; // necesario para inline handlers en módulos ES
     if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
     if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan').classList.remove('hidden');
+    if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes').classList.remove('hidden');
     setupNav();
     const openTipo = params.get('open');
     const openId = params.get('id');
@@ -195,9 +197,9 @@ async function init() {
 }
 
 async function loadAllData() {
-  const [cont, tareas, campanas, metricas, home, ideas, plan] = await Promise.all([
+  const [cont, tareas, campanas, metricas, home, ideas, plan, reportes] = await Promise.all([
     getContenidos(clientId), getTareas(clientId), getCampanas(clientId),
-    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId)
+    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId), getReportes(clientId)
   ]);
   STATE.contenidos = cont;
   STATE.tareas = tareas;
@@ -214,6 +216,7 @@ async function loadAllData() {
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   STATE.ideas = ideas;
   STATE.plan = plan || { html: '' };
+  STATE.reportes = (reportes || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero
   // Links guardados antes de que existiera el campo `id` (o cargados a mano
   // en Firestore) llegan sin id -- eso hace que openLinkModal('undefined')
   // matchee cualquier link sin id en vez del que se clickeó, y el modal
@@ -353,8 +356,8 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -529,6 +532,16 @@ function renderSection(sec) {
     }
     renderPlan(content);
   }
+  else if (sec === 'reportes') {
+    if (user.role !== 'client') {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.textContent = '+ Subir reporte';
+      btn.onclick = () => openReporteModal();
+      actions.appendChild(btn);
+    }
+    renderReportes(content);
+  }
   else if (sec === 'instrucciones') {
     renderInstrucciones(content);
     setTimeout(refreshIcons, 50);
@@ -579,6 +592,96 @@ window.openPlanModal = function() {
   window._planHtmlPendiente = null;
   document.getElementById('planModal').classList.remove('hidden');
 };
+
+// ── Reportes mensuales (misma idea que Plan de ejecución, pero uno por
+// mes en vez de un único documento -- pedido de Vaneh (11/09): "todos los
+// meses tengo que subir un reporte nuevo y se tiene que poder visualizar
+// los meses anteriores también si tocan para ir a ese otro mes"). ──
+let _reporteMesSeleccionado = null;
+function mesLabel(mesStr) {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [y, m] = (mesStr || '').split('-').map(Number);
+  return (m >= 1 && m <= 12) ? `${meses[m - 1]} ${y}` : mesStr;
+}
+function renderReportes(container) {
+  if (!STATE.reportes.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h3>Sin reportes cargados</h3><p>${user.role !== 'client' ? 'Usá "+ Subir reporte" arriba para cargar el HTML del reporte de un mes.' : 'Todavía no hay reportes cargados para este cliente.'}</p></div>`;
+    return;
+  }
+  if (!_reporteMesSeleccionado || !STATE.reportes.some(r => r.mes === _reporteMesSeleccionado)) {
+    _reporteMesSeleccionado = STATE.reportes[0].mes; // ya viene ordenado, más nuevo primero
+  }
+  const actual = STATE.reportes.find(r => r.mes === _reporteMesSeleccionado);
+  container.innerHTML = `
+    <div class="tabs" style="margin-bottom:14px;">
+      ${STATE.reportes.map(r => `<button class="tab-btn ${r.mes === _reporteMesSeleccionado ? 'active' : ''}" onclick="verReporteDeMes('${r.mes}')">${mesLabel(r.mes)}</button>`).join('')}
+    </div>
+    <div id="reporte-frame-wrap"></div>
+  `;
+  const wrap = document.getElementById('reporte-frame-wrap');
+  wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  const frame = document.getElementById('reporte-frame');
+  frame.srcdoc = actual.html;
+  frame.addEventListener('load', () => {
+    try {
+      const doc = frame.contentDocument;
+      const resize = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+      resize();
+      new ResizeObserver(resize).observe(doc.body);
+    } catch (e) {}
+  });
+}
+window.verReporteDeMes = function(mes) {
+  _reporteMesSeleccionado = mes;
+  renderSection('reportes');
+};
+
+window.openReporteModal = function() {
+  document.getElementById('reporte-file-input').value = '';
+  document.getElementById('reporte-file-name').textContent = '';
+  document.getElementById('reporteSaveBtn').disabled = true;
+  window._reporteHtmlPendiente = null;
+  const mesInput = document.getElementById('reporte-mes-input');
+  mesInput.value = _reporteMesSeleccionado || new Date().toISOString().slice(0, 7);
+  document.getElementById('reporteModal').classList.remove('hidden');
+};
+
+document.getElementById('reporte-file-input')?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    window._reporteHtmlPendiente = reader.result;
+    document.getElementById('reporte-file-name').textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+    document.getElementById('reporteSaveBtn').disabled = false;
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsText(file);
+});
+
+document.getElementById('closeReporteModal')?.addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteModal2')?.addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('reporteSaveBtn')?.addEventListener('click', async () => {
+  const mes = document.getElementById('reporte-mes-input').value;
+  if (!mes) { alert('Elegí el mes del reporte.'); return; }
+  if (!window._reporteHtmlPendiente) return;
+  const btn = document.getElementById('reporteSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const otros = STATE.reportes.filter(r => r.mes !== mes);
+    const nuevos = [...otros, { mes, html: window._reporteHtmlPendiente, subidoEn: new Date().toISOString() }];
+    await saveReportes(clientId, nuevos);
+    STATE.reportes = nuevos.slice().sort((a, b) => (a.mes < b.mes ? 1 : -1));
+    _reporteMesSeleccionado = mes;
+    document.getElementById('nav-reportes').classList.remove('hidden');
+    document.getElementById('reporteModal').classList.add('hidden');
+    renderSection('reportes');
+  } catch (e) {
+    alert('Error al guardar el reporte: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+});
 
 document.getElementById('plan-file-input')?.addEventListener('change', (e) => {
   const file = e.target.files[0];

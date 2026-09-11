@@ -329,6 +329,19 @@ export async function savePlan(clientId, html) {
   return api('POST', `/data/${clientId}/plan`, { html });
 }
 
+// ── Reportes mensuales (uno por mes, el cliente navega entre meses) ──
+
+export async function getReportes(clientId) {
+  if (DEMO_MODE) return [];
+  const reportes = await api('GET', `/data/${clientId}/reportes`);
+  return Array.isArray(reportes) ? reportes : [];
+}
+
+export async function saveReportes(clientId, reportes) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden guardar reportes reales.'); return; }
+  return api('POST', `/data/${clientId}/reportes`, reportes);
+}
+
 // ── Archivos subidos (R2) ────────────────────────────────────
 
 export async function uploadArchivo(clientId, file) {
