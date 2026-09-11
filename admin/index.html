@@ -2117,8 +2117,7 @@
       // regeneran apenas se cargan, en vez de quedar esperando al cron
       // para siempre.
       const _aResetear = _internasCache.filter(t => t.recurrencia && t.estado === 'Listo');
-      _aResetear.forEach(t => regenerarSiRecurrente(t));
-      _aResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(INTERNAS_CLIENT_ID, t, _internasCache).catch(() => {}));
+      _aResetear.forEach(t => { if (regenerarSiRecurrente(t, _internasCache, INTERNAS_CLIENT_ID)) saveTarea(INTERNAS_CLIENT_ID, t, _internasCache).catch(() => {}); });
       renderInternasBoard();
     } catch (e) {
       if (!_internasCache.length) board.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
@@ -2220,7 +2219,7 @@
         if (!t || t.estado === zone.dataset.col) return;
         t.estado = zone.dataset.col;
         t.completadoEn = zone.dataset.col === 'Listo' ? new Date().toISOString().split('T')[0] : null;
-        if (t.estado === 'Listo') regenerarSiRecurrente(t);
+        if (t.estado === 'Listo') regenerarSiRecurrente(t, _internasCache, INTERNAS_CLIENT_ID);
         renderInternasBoard();
         try { const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache); const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; } catch (e) { console.error(e); }
       });
@@ -2275,10 +2274,22 @@
         const item = _misTareasCache[idx];
         if (!item || item.tipo !== 'tarea' || item.tarea.estado === zone.dataset.col) return;
         item.tarea.estado = zone.dataset.col;
-        if (zone.dataset.col === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(item.tarea); }
-        else item.tarea.completadoEn = null;
+        let nuevo = null;
+        if (zone.dataset.col === 'Listo') {
+          item.tarea.visibleParaCliente = true;
+          item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+          const listaCliente = _misTareasCache.filter(i => i.clientId === item.clientId && i.tipo === 'tarea').map(i => i.tarea);
+          nuevo = regenerarSiRecurrente(item.tarea, listaCliente, item.clientId);
+        } else item.tarea.completadoEn = null;
         renderMisTareas();
-        try { item.tarea = await saveTarea(item.clientId, item.tarea); } catch (e) { console.error(e); }
+        try {
+          item.tarea = await saveTarea(item.clientId, item.tarea);
+          if (nuevo) {
+            nuevo = await saveTarea(item.clientId, nuevo);
+            _misTareasCache.push({ clientId: item.clientId, clientNombre: item.clientNombre, tipo: 'tarea', tarea: nuevo, personal: item.personal, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
+            renderMisTareas();
+          }
+        } catch (e) { console.error(e); }
       });
     });
   }
@@ -2864,6 +2875,12 @@
         : [],
       completadoEn: inEstadoVal === 'Listo' ? (_editingInterna?.estado === 'Listo' ? _editingInterna.completadoEn : new Date().toISOString().split('T')[0]) : null,
     };
+    // Si se marcó "Lista" recién en este guardado (no ya lo estaba) y es
+    // recurrente, se genera el próximo ciclo de una -- este modal no tenía
+    // este llamado (a diferencia del checkbox rápido y el drag&drop del
+    // tablero), así que una recurrente guardada "Lista" a mano desde acá
+    // se quedaba esperando al cron para siempre.
+    if (inEstadoVal === 'Listo' && _editingInterna?.estado !== 'Listo') regenerarSiRecurrente(obj, _internasCache, INTERNAS_CLIENT_ID);
     try {
       const saved = await saveTarea(INTERNAS_CLIENT_ID, obj, _internasCache);
       limpiarBorradorAdmin('in', _editingInterna?.id || '_nueva');
@@ -3170,27 +3187,51 @@
   // (drag&drop, checkbox, modal). El cron diario (reactivarTareasRecurrentes
   // en cosmart-workers) sigue corriendo como red de seguridad para lo que
   // se complete fuera de la app (ej. Claude IA marcando una tarea sola).
-  function regenerarSiRecurrente(t) {
-    if (!t.recurrencia) return;
+  // Al completar una recurrente, la tarea que se acaba de terminar queda
+  // como un registro normal y permanente en "Lista" -- pedido de Vaneh
+  // (10/09): "la tarea anterior también tiene que quedar como lista...
+  // la tengo que poder ver ahí en listos". Antes esta función mutaba esa
+  // misma tarea para convertirla en el próximo ciclo, y la que se acababa
+  // de completar desaparecía de la vista al toque. Ahora se le saca la
+  // recurrencia a la vieja (para que nada la vuelva a tratar como "la
+  // fuente viva" de la serie) y se arma una tarea NUEVA aparte para el
+  // próximo ciclo, que se agrega a `list` -- el caller la persiste junto
+  // con la vieja en el mismo guardado. `clientId` es opcional, solo para
+  // calcular el próximo número igual que al crear una tarea a mano
+  // (por vertical en _cosmart, por asignado en _personal). Devuelve la
+  // nueva tarea, o null si no hay nada que generar ("días específicos"
+  // sin ningún día tildado).
+  function regenerarSiRecurrente(t, list, clientId) {
+    if (!t.recurrencia) return null;
     const anchor = t.vencimiento || t.completadoEn || new Date().toISOString().split('T')[0];
     const siguiente = siguienteFechaRecurrencia(anchor, t.recurrencia, t.diasSemana);
-    if (!siguiente) return; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
-    if (t.completadoEn) {
-      if (!Array.isArray(t.historialCompletados)) t.historialCompletados = [];
-      t.historialCompletados.push(t.completadoEn);
-    }
-    (t.subtareas || []).forEach(s => {
-      if (s.done && s.completadoEn) {
-        if (!Array.isArray(s.historialCompletados)) s.historialCompletados = [];
-        s.historialCompletados.push(s.completadoEn);
-      }
-      s.done = false;
-      s.completadoEn = null;
-    });
-    t.estado = 'Sin empezar';
-    t.completadoEn = null;
-    t.visibleParaCliente = false;
-    t.vencimiento = siguiente.toISOString().split('T')[0];
+    if (!siguiente) return null; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
+    const recurrencia = t.recurrencia;
+    const diasSemana = t.diasSemana;
+    t.recurrencia = null;
+    t.diasSemana = [];
+    const mismoGrupo = clientId === '_cosmart'
+      ? (x => (x.vertical || null) === (t.vertical || null))
+      : clientId === '_personal'
+      ? (x => (x.asignado?.email || '').toLowerCase() === (t.asignado?.email || '').toLowerCase())
+      : (() => true);
+    const numero = Math.max(0, ...list.filter(mismoGrupo).map(x => x.numero || 0)) + 1;
+    const nuevo = {
+      ...t,
+      id: 't' + Date.now() + Math.random().toString(36).slice(2, 6),
+      numero,
+      recurrencia,
+      diasSemana,
+      estado: 'Sin empezar',
+      completadoEn: null,
+      visibleParaCliente: false,
+      vencimiento: siguiente.toISOString().split('T')[0],
+      comentarios: [],
+      historialCompletados: undefined,
+      subtareas: (t.subtareas || []).map(s => ({ ...s, done: false, completadoEn: null, historialCompletados: undefined })),
+    };
+    list.push(nuevo);
+    return nuevo;
   }
 
   window.toggleInternaListo = async function(id) {
@@ -3198,7 +3239,7 @@
     if (!t) return;
     t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
     t.completadoEn = t.estado === 'Listo' ? new Date().toISOString().split('T')[0] : null;
-    if (t.estado === 'Listo') regenerarSiRecurrente(t);
+    if (t.estado === 'Listo') regenerarSiRecurrente(t, _internasCache, INTERNAS_CLIENT_ID);
     const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache);
     const i = _internasCache.findIndex(x => x.id === id);
     _internasCache[i] = saved;
@@ -3446,8 +3487,7 @@
         // Mismo backfill que Gestión COSMART (loadInternas) -- recurrentes
         // que quedaron "Listo" de antes del regenerado inmediato (09/09).
         const _aResetear = (tareas || []).filter(t => t.recurrencia && t.estado === 'Listo');
-        _aResetear.forEach(t => regenerarSiRecurrente(t));
-        _aResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(c.id, t).catch(() => {}));
+        _aResetear.forEach(t => { if (regenerarSiRecurrente(t, tareas, c.id)) saveTarea(c.id, t, tareas).catch(() => {}); });
         (tareas || []).forEach(t => {
           if (t.archivado) return;
           const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
@@ -3630,13 +3670,20 @@
     // tarea pasa sola a "Listo" -- si no, marcar subtareas nunca se ve
     // reflejado en ningún lado si nadie entra a cambiar el estado a mano
     // (pedido de Vaneh: que se refleje en el dashboard del cliente).
+    let nuevo = null;
     if ((item.tarea.subtareas || []).every(s => s.done) && item.tarea.estado !== 'Listo') {
       item.tarea.estado = 'Listo';
       item.tarea.visibleParaCliente = true;
       item.tarea.completadoEn = new Date().toISOString().split('T')[0];
-      regenerarSiRecurrente(item.tarea);
+      const listaCliente = _misTareasCache.filter(i => i.clientId === clientId && i.tipo === 'tarea').map(i => i.tarea);
+      nuevo = regenerarSiRecurrente(item.tarea, listaCliente, clientId);
     }
     await saveTarea(clientId, item.tarea);
+    if (nuevo) {
+      nuevo = await saveTarea(clientId, nuevo);
+      const wrap = _misTareasCache.find(i => i.clientId === clientId && i.tipo === 'tarea' && i.tarea === item.tarea);
+      _misTareasCache.push({ clientId, clientNombre: wrap?.clientNombre || clientId, tipo: 'tarea', tarea: nuevo, personal: wrap?.personal || false, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
+    }
     renderMisTareas();
   };
 
@@ -3903,9 +3950,18 @@
     const item = _misTareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.tipo === 'tarea');
     if (!item) return;
     item.tarea.estado = item.tarea.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-    if (item.tarea.estado === 'Listo') { item.tarea.visibleParaCliente = true; item.tarea.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(item.tarea); } // al terminarla, el cliente la puede ver
-    else item.tarea.completadoEn = null;
+    let nuevo = null;
+    if (item.tarea.estado === 'Listo') { // al terminarla, el cliente la puede ver
+      item.tarea.visibleParaCliente = true;
+      item.tarea.completadoEn = new Date().toISOString().split('T')[0];
+      const listaCliente = _misTareasCache.filter(i => i.clientId === clientId && i.tipo === 'tarea').map(i => i.tarea);
+      nuevo = regenerarSiRecurrente(item.tarea, listaCliente, clientId);
+    } else item.tarea.completadoEn = null;
     await saveTarea(clientId, item.tarea);
+    if (nuevo) {
+      nuevo = await saveTarea(clientId, nuevo);
+      _misTareasCache.push({ clientId, clientNombre: item.clientNombre, tipo: 'tarea', tarea: nuevo, personal: item.personal, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
+    }
     renderMisTareas();
   };
 
@@ -3914,16 +3970,24 @@
     if (!item) return;
     const estadoPrevio = item.tarea.estado;
     item.tarea.estado = nuevoEstado;
+    let nuevo = null;
     if (item.tipo === 'tarea') {
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
         item.tarea.completadoEn = new Date().toISOString().split('T')[0];
-        if (estadoPrevio !== 'Listo') regenerarSiRecurrente(item.tarea);
+        if (estadoPrevio !== 'Listo') {
+          const listaCliente = _misTareasCache.filter(i => i.clientId === item.clientId && i.tipo === 'tarea').map(i => i.tarea);
+          nuevo = regenerarSiRecurrente(item.tarea, listaCliente, item.clientId);
+        }
       }
       else item.tarea.completadoEn = null;
     }
     if (item.tipo === 'tarea') await saveTarea(item.clientId, item.tarea);
     else await saveContenido(item.clientId, item.tarea);
+    if (nuevo) {
+      nuevo = await saveTarea(item.clientId, nuevo);
+      _misTareasCache.push({ clientId: item.clientId, clientNombre: item.clientNombre, tipo: 'tarea', tarea: nuevo, personal: item.personal, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
+    }
     renderMisTareas();
   };
 
@@ -4177,17 +4241,23 @@
         : [];
       item.tarea.subtareas = _mtSubtareas;
       const esPseudoClienteSave = ['_cosmart', '_personal'].includes(item.clientId);
+      let nuevo = null;
       if (nuevoEstado === 'Listo') {
         item.tarea.visibleParaCliente = true;
         if (estadoPrevio !== 'Listo') {
           item.tarea.completadoEn = new Date().toISOString().split('T')[0];
-          regenerarSiRecurrente(item.tarea);
+          const listaCliente = _misTareasCache.filter(i => i.clientId === item.clientId && i.tipo === 'tarea').map(i => i.tarea);
+          nuevo = regenerarSiRecurrente(item.tarea, listaCliente, item.clientId);
         }
       } else {
         item.tarea.completadoEn = null;
         if (!esPseudoClienteSave) item.tarea.visibleParaCliente = document.getElementById('mt-visible-cliente').checked;
       }
       item.tarea = await saveTarea(item.clientId, item.tarea);
+      if (nuevo) {
+        nuevo = await saveTarea(item.clientId, nuevo);
+        _misTareasCache.push({ clientId: item.clientId, clientNombre: item.clientNombre, tipo: 'tarea', tarea: nuevo, personal: item.personal, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
+      }
     } else {
       item.tarea.fechaPub = document.getElementById('mt-vencimiento').value || item.tarea.fechaPub;
       item.tarea = await saveContenido(item.clientId, item.tarea);

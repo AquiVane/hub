@@ -204,10 +204,11 @@ async function loadAllData() {
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
   // inmediato (09/09, pedido de Vaneh: "tiene que tener el mismo
   // comportamiento" que las que se completan ahora) -- se regeneran apenas
-  // se cargan, en vez de quedar esperando al cron para siempre.
+  // se cargan, en vez de quedar esperando al cron para siempre. La vieja
+  // queda "Lista" tal cual estaba (ver regenerarSiRecurrente); solo hace
+  // falta guardar si de verdad se generó un próximo ciclo.
   const _recurrentesAResetear = STATE.tareas.filter(t => t.recurrencia && t.estado === 'Listo');
-  _recurrentesAResetear.forEach(t => regenerarSiRecurrente(t));
-  _recurrentesAResetear.filter(t => t.estado !== 'Listo').forEach(t => saveTarea(clientId, t).catch(() => {}));
+  _recurrentesAResetear.forEach(t => { if (regenerarSiRecurrente(t, STATE.tareas)) saveTarea(clientId, t, STATE.tareas).catch(() => {}); });
   STATE.campanas = campanas;
   STATE.metricas = metricas;
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
@@ -2888,36 +2889,54 @@ function siguienteFechaRecurrencia(fechaStr, recurrencia, diasSemana) {
 // fecha futura llegue ni a que corra el cron. El cron diario
 // (reactivarTareasRecurrentes en cosmart-workers) sigue como red de
 // seguridad para lo que se complete fuera de la app (ej. Claude IA).
-function regenerarSiRecurrente(t) {
-  if (!t.recurrencia) return;
+// Al completar una recurrente, la tarea que se acaba de terminar queda
+// como un registro normal y permanente en "Lista" -- pedido de Vaneh
+// (10/09): "la tarea anterior también tiene que quedar como lista...
+// la tengo que poder ver ahí en listos". Antes esta función mutaba esa
+// misma tarea para convertirla en el próximo ciclo, y la que se acababa
+// de completar desaparecía de la vista al toque (mismo error que ya se
+// había solucionado antes con historialCompletados, pero eso solo
+// resolvía los reportes, no que se viera la tarjeta). Ahora se le saca
+// la recurrencia a la vieja (para que nada la vuelva a tratar como "la
+// fuente viva" de la serie) y se arma una tarea NUEVA aparte para el
+// próximo ciclo, que se agrega a `list` -- el caller la persiste junto
+// con la vieja en el mismo guardado. Devuelve la nueva tarea, o null si
+// no hay nada que generar ("días específicos" sin ningún día tildado).
+function regenerarSiRecurrente(t, list) {
+  if (!t.recurrencia) return null;
   const anchor = t.vencimiento || t.completadoEn || new Date().toISOString().split('T')[0];
   const siguiente = siguienteFechaRecurrencia(anchor, t.recurrencia, t.diasSemana);
-  if (!siguiente) return; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
-  if (t.completadoEn) {
-    if (!Array.isArray(t.historialCompletados)) t.historialCompletados = [];
-    t.historialCompletados.push(t.completadoEn);
-  }
-  (t.subtareas || []).forEach(s => {
-    if (s.done && s.completadoEn) {
-      if (!Array.isArray(s.historialCompletados)) s.historialCompletados = [];
-      s.historialCompletados.push(s.completadoEn);
-    }
-    s.done = false;
-    s.completadoEn = null;
-  });
-  t.estado = 'Sin empezar';
-  t.completadoEn = null;
-  t.visibleParaCliente = false;
-  t.vencimiento = siguiente.toISOString().split('T')[0];
+  if (!siguiente) return null; // "días específicos" sin ningún día tildado -- no hay a dónde avanzar
+  const recurrencia = t.recurrencia;
+  const diasSemana = t.diasSemana;
+  t.recurrencia = null;
+  t.diasSemana = [];
+  const numero = Math.max(0, ...list.map(x => x.numero || 0)) + 1;
+  const nuevo = {
+    ...t,
+    id: 't' + Date.now() + Math.random().toString(36).slice(2, 6),
+    numero,
+    recurrencia,
+    diasSemana,
+    estado: 'Sin empezar',
+    completadoEn: null,
+    visibleParaCliente: false,
+    vencimiento: siguiente.toISOString().split('T')[0],
+    comentarios: [],
+    historialCompletados: undefined,
+    subtareas: (t.subtareas || []).map(s => ({ ...s, done: false, completadoEn: null, historialCompletados: undefined })),
+  };
+  list.push(nuevo);
+  return nuevo;
 }
 
 window.toggleTareaListo = async function(id) {
   const t = STATE.tareas.find(x => x.id === id);
   if (!t) return;
   t.estado = t.estado === 'Listo' ? 'Sin empezar' : 'Listo';
-  if (t.estado === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t); } // al terminarla, el cliente la puede ver
+  if (t.estado === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t, STATE.tareas); } // al terminarla, el cliente la puede ver
   else t.completadoEn = null;
-  const saved = await saveTarea(clientId, t);
+  const saved = await saveTarea(clientId, t, STATE.tareas);
   const i = STATE.tareas.findIndex(x => x.id === id);
   STATE.tareas[i] = saved;
   updateBadges();
@@ -3027,11 +3046,11 @@ function renderTareas(container) {
     const t = STATE.tareas.find(x => x.id === id);
     if (!t || t.estado === newCol) return;
     t.estado = newCol;
-    if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t); }
+    if (newCol === 'Listo') { t.visibleParaCliente = true; t.completadoEn = new Date().toISOString().split('T')[0]; regenerarSiRecurrente(t, STATE.tareas); }
     else t.completadoEn = null;
     updateBadges();
     refreshTareasView();
-    saveTarea(clientId, t).catch(() => {});
+    saveTarea(clientId, t, STATE.tareas).catch(() => {});
   });
 }
 
@@ -3457,15 +3476,22 @@ window.toggleSubtarea = async function(idx) {
     editingTarea.estado = 'Listo';
     editingTarea.visibleParaCliente = true;
     editingTarea.completadoEn = editingTarea.completadoEn || new Date().toISOString().split('T')[0];
-    regenerarSiRecurrente(editingTarea);
+    const nuevo = regenerarSiRecurrente(editingTarea, STATE.tareas);
+    if (nuevo) {
+      // La que se acaba de completar queda guardada aparte, ya "Lista" --
+      // seguimos editando el próximo ciclo en este mismo modal, igual que
+      // se veía antes.
+      editingTarea = nuevo;
+      _tareaSubtareasPendientes = [...nuevo.subtareas];
+    }
     const estadoSel = document.getElementById('tf-estado');
     if (estadoSel) estadoSel.value = editingTarea.estado;
     const vencimientoEl = document.getElementById('tf-vencimiento');
     if (vencimientoEl) vencimientoEl.value = editingTarea.vencimiento || '';
-    renderSubtareas(_tareaSubtareasPendientes); // regenerarSiRecurrente resetea done/completadoEn de las mismas subtareas
+    renderSubtareas(_tareaSubtareasPendientes);
   }
   try {
-    const saved = await saveTarea(clientId, editingTarea);
+    const saved = await saveTarea(clientId, editingTarea, STATE.tareas);
     const i = STATE.tareas.findIndex(t => t.id === saved.id);
     if (i > -1) STATE.tareas[i] = saved;
     editingTarea = saved;
@@ -3540,11 +3566,11 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
     const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     // Recién se marcó "Lista" en este mismo guardado (no ya lo estaba) --
-    // si es recurrente, regenerarSiRecurrente la deja lista para el
-    // próximo ciclo de una, sin esperar el cron.
-    if (tfEstadoVal === 'Listo' && editingTarea?.estado !== 'Listo') regenerarSiRecurrente(obj);
+    // si es recurrente, regenerarSiRecurrente crea el próximo ciclo de una,
+    // sin esperar el cron, y esta misma (obj) queda "Lista" para siempre.
+    if (tfEstadoVal === 'Listo' && editingTarea?.estado !== 'Listo') regenerarSiRecurrente(obj, STATE.tareas);
     const saved = await Promise.race([
-      saveTarea(clientId, obj),
+      saveTarea(clientId, obj, STATE.tareas),
       new Promise((_, rej) => setTimeout(() => rej(new Error('Tiempo de espera agotado. Verificá tu conexión.')), 15000)),
     ]);
     if (editingTarea) { const i = STATE.tareas.findIndex(t => t.id === saved.id); STATE.tareas[i] = saved; }
