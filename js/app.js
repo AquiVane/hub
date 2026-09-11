@@ -537,7 +537,7 @@ function renderSection(sec) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-primary';
       btn.textContent = '+ Subir reporte';
-      btn.onclick = () => openReporteModal();
+      btn.onclick = () => openReporteMensualModal();
       actions.appendChild(btn);
     }
     renderReportes(content);
@@ -636,14 +636,14 @@ window.verReporteDeMes = function(mes) {
   renderSection('reportes');
 };
 
-window.openReporteModal = function() {
+window.openReporteMensualModal = function() {
   document.getElementById('reporte-file-input').value = '';
   document.getElementById('reporte-file-name').textContent = '';
   document.getElementById('reporteSaveBtn').disabled = true;
   window._reporteHtmlPendiente = null;
   const mesInput = document.getElementById('reporte-mes-input');
   mesInput.value = _reporteMesSeleccionado || new Date().toISOString().slice(0, 7);
-  document.getElementById('reporteModal').classList.remove('hidden');
+  document.getElementById('reporteMensualModal').classList.remove('hidden');
 };
 
 document.getElementById('reporte-file-input')?.addEventListener('change', (e) => {
@@ -659,8 +659,8 @@ document.getElementById('reporte-file-input')?.addEventListener('change', (e) =>
   reader.readAsText(file);
 });
 
-document.getElementById('closeReporteModal')?.addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
-document.getElementById('closeReporteModal2')?.addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteMensualModal')?.addEventListener('click', () => document.getElementById('reporteMensualModal').classList.add('hidden'));
+document.getElementById('closeReporteMensualModal2')?.addEventListener('click', () => document.getElementById('reporteMensualModal').classList.add('hidden'));
 document.getElementById('reporteSaveBtn')?.addEventListener('click', async () => {
   const mes = document.getElementById('reporte-mes-input').value;
   if (!mes) { alert('Elegí el mes del reporte.'); return; }
@@ -674,7 +674,7 @@ document.getElementById('reporteSaveBtn')?.addEventListener('click', async () =>
     STATE.reportes = nuevos.slice().sort((a, b) => (a.mes < b.mes ? 1 : -1));
     _reporteMesSeleccionado = mes;
     document.getElementById('nav-reportes').classList.remove('hidden');
-    document.getElementById('reporteModal').classList.add('hidden');
+    document.getElementById('reporteMensualModal').classList.add('hidden');
     renderSection('reportes');
   } catch (e) {
     alert('Error al guardar el reporte: ' + e.message);
