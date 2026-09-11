@@ -134,16 +134,6 @@ async function init() {
   try {
     document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
-    STATE.client = await getClientData(clientId) || { id: clientId, nombre: clientId };
-    try {
-      const equipo = await getEquipo();
-      _equipoDelCliente = (equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
-    } catch (e) { _equipoDelCliente = []; }
-    document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
-    document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
-    if (user.role !== 'client') setupClientSwitcher();
-    else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
-
     // Logo upload
     document.getElementById('client-logo-input').addEventListener('change', async e => {
       const file = e.target.files[0];
@@ -160,8 +150,12 @@ async function init() {
       e.target.value = '';
     });
 
-    await loadAllData();
+    await loadAllData(); // trae client, equipo y todo lo demás en una sola tanda -- ver el comentario ahí
     window.STATE = STATE; // necesario para inline handlers en módulos ES
+    document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
+    document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
+    if (user.role !== 'client') setupClientSwitcher();
+    else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
     if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
     if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan').classList.remove('hidden');
     if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes').classList.remove('hidden');
@@ -197,10 +191,19 @@ async function init() {
 }
 
 async function loadAllData() {
-  const [cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice] = await Promise.all([
+  // Pedido de Vaneh (11/09): "tarda entre 1 o 2 segundos para abrir, no
+  // tiene que pasar, tienen que cargar de una". client/equipo se pedían
+  // ANTES de esto, en dos idas y vueltas seguidas al servidor -- ninguno de
+  // los dos depende del otro ni de lo que se pide acá abajo, así que ahora
+  // van todos juntos en el mismo Promise.all (una sola ida y vuelta en vez
+  // de tres).
+  const [client, equipo, cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice] = await Promise.all([
+    getClientData(clientId), getEquipo().catch(() => []),
     getContenidos(clientId), getTareas(clientId), getCampanas(clientId),
     getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId), getReportesIndice(clientId)
   ]);
+  STATE.client = client || { id: clientId, nombre: clientId };
+  _equipoDelCliente = (equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
   STATE.contenidos = cont;
   STATE.tareas = tareas;
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
