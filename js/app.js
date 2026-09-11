@@ -6,7 +6,7 @@ import {
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea,
   getPlan, savePlan,
-  getReportes, saveReportes,
+  getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   uploadArchivo, abrirArchivo, getAllClients, getEquipo
 } from './data.js';
 
@@ -197,9 +197,9 @@ async function init() {
 }
 
 async function loadAllData() {
-  const [cont, tareas, campanas, metricas, home, ideas, plan, reportes] = await Promise.all([
+  const [cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice] = await Promise.all([
     getContenidos(clientId), getTareas(clientId), getCampanas(clientId),
-    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId), getReportes(clientId)
+    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId), getReportesIndice(clientId)
   ]);
   STATE.contenidos = cont;
   STATE.tareas = tareas;
@@ -216,7 +216,7 @@ async function loadAllData() {
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   STATE.ideas = ideas;
   STATE.plan = plan || { html: '' };
-  STATE.reportes = (reportes || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero
+  STATE.reportes = (reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
   // Links guardados antes de que existiera el campo `id` (o cargados a mano
   // en Firestore) llegan sin id -- eso hace que openLinkModal('undefined')
   // matchee cualquier link sin id en vez del que se clickeó, y el modal
@@ -603,7 +603,7 @@ function mesLabel(mesStr) {
   const [y, m] = (mesStr || '').split('-').map(Number);
   return (m >= 1 && m <= 12) ? `${meses[m - 1]} ${y}` : mesStr;
 }
-function renderReportes(container) {
+async function renderReportes(container) {
   if (!STATE.reportes.length) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h3>Sin reportes cargados</h3><p>${user.role !== 'client' ? 'Usá "+ Subir reporte" arriba para cargar el HTML del reporte de un mes.' : 'Todavía no hay reportes cargados para este cliente.'}</p></div>`;
     return;
@@ -619,6 +619,21 @@ function renderReportes(container) {
     <div id="reporte-frame-wrap"></div>
   `;
   const wrap = document.getElementById('reporte-frame-wrap');
+  // El html de cada mes se pide aparte (no viene en STATE.reportes de
+  // entrada) para no volver lento el arranque del Hub a medida que se
+  // acumulan meses -- se cachea en el mismo objeto una vez pedido.
+  if (actual.html == null) {
+    wrap.innerHTML = `<div class="empty-state"><p>Cargando reporte...</p></div>`;
+    let html;
+    try {
+      html = await getReporteHtml(clientId, actual.mes);
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty-state"><p>No se pudo cargar el reporte.</p></div>`;
+      return;
+    }
+    if (_reporteMesSeleccionado !== actual.mes) return; // se cambió de mes mientras cargaba
+    actual.html = html;
+  }
   wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('reporte-frame');
   frame.srcdoc = actual.html;
@@ -668,10 +683,12 @@ document.getElementById('reporteSaveBtn')?.addEventListener('click', async () =>
   const btn = document.getElementById('reporteSaveBtn');
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
-    const otros = STATE.reportes.filter(r => r.mes !== mes);
-    const nuevos = [...otros, { mes, html: window._reporteHtmlPendiente, subidoEn: new Date().toISOString() }];
-    await saveReportes(clientId, nuevos);
-    STATE.reportes = nuevos.slice().sort((a, b) => (a.mes < b.mes ? 1 : -1));
+    await saveReporteHtml(clientId, mes, window._reporteHtmlPendiente);
+    const otrosDelIndice = STATE.reportes.filter(r => r.mes !== mes).map(r => ({ mes: r.mes, subidoEn: r.subidoEn }));
+    const nuevoIndice = [...otrosDelIndice, { mes, subidoEn: new Date().toISOString() }];
+    await saveReportesIndice(clientId, nuevoIndice);
+    STATE.reportes = nuevoIndice.slice().sort((a, b) => (a.mes < b.mes ? 1 : -1));
+    STATE.reportes.find(r => r.mes === mes).html = window._reporteHtmlPendiente; // ya lo tenemos, no hace falta pedirlo de nuevo
     _reporteMesSeleccionado = mes;
     document.getElementById('nav-reportes').classList.remove('hidden');
     document.getElementById('reporteMensualModal').classList.add('hidden');
@@ -1126,6 +1143,15 @@ function renderHome(container) {
                 ...todos.map(t => ({ type:'todo', ...t })),
                 ...tareasPend.map(t => ({ type:'tarea', id: t.id, text: t.titulo, done: false, tarea: t }))
               ];
+              // Orden cronológico por fecha de vencimiento -- pedido de Vaneh
+              // (11/09). Los to-do manuales no tienen fecha propia, así que
+              // quedan al final (mismo criterio de fallback "9999" que ya se
+              // usa para ordenar tareas en otros lados de este archivo).
+              allItems.sort((a, b) => {
+                const fa = (a.type === 'tarea' && a.tarea.vencimiento) || '9999';
+                const fb = (b.type === 'tarea' && b.tarea.vencimiento) || '9999';
+                return fa > fb ? 1 : (fa < fb ? -1 : 0);
+              });
               if (!allItems.length) return `<p class="text-muted text-sm">Sin tareas pendientes.</p>`;
               return allItems.map(item => {
                 if (item.type === 'tarea') return `

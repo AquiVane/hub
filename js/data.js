@@ -330,16 +330,33 @@ export async function savePlan(clientId, html) {
 }
 
 // ── Reportes mensuales (uno por mes, el cliente navega entre meses) ──
+// El índice (mes + fecha de subida, SIN el html) se carga siempre al
+// entrar al Hub, para saber si mostrar el nav y qué meses hay. El html de
+// cada mes (puede ser pesado -- un reporte exportado con estilos/gráficos)
+// se pide aparte, solo cuando de verdad se quiere ver o reemplazar ese
+// mes -- si no, cargar el Hub entero se ponía lento a medida que se
+// acumulan meses.
 
-export async function getReportes(clientId) {
+export async function getReportesIndice(clientId) {
   if (DEMO_MODE) return [];
-  const reportes = await api('GET', `/data/${clientId}/reportes`);
-  return Array.isArray(reportes) ? reportes : [];
+  const indice = await api('GET', `/data/${clientId}/reportes`);
+  return Array.isArray(indice) ? indice : [];
 }
 
-export async function saveReportes(clientId, reportes) {
+export async function saveReportesIndice(clientId, indice) {
   if (DEMO_MODE) { alert('En modo demo no se pueden guardar reportes reales.'); return; }
-  return api('POST', `/data/${clientId}/reportes`, reportes);
+  return api('POST', `/data/${clientId}/reportes`, indice);
+}
+
+export async function getReporteHtml(clientId, mes) {
+  if (DEMO_MODE) return '';
+  const r = await api('GET', `/data/${clientId}/reporte-${mes}`);
+  return (r && r.html) || '';
+}
+
+export async function saveReporteHtml(clientId, mes, html) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden guardar reportes reales.'); return; }
+  return api('POST', `/data/${clientId}/reporte-${mes}`, { html });
 }
 
 // ── Archivos subidos (R2) ────────────────────────────────────
