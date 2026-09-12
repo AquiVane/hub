@@ -4661,7 +4661,17 @@
     const filas = _importarInternasRows;
     const duplicados = filas.filter(f => f.duplicadoId).length;
     statusEl.textContent = `${filas.length} tarea(s) encontradas${duplicados ? ` · ${duplicados} ya existen (revisá qué hacer)` : ''}.`;
-    previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+    previewEl.innerHTML = `${duplicados ? `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;">
+        <span style="color:var(--text-muted);">Para las ${duplicados} que ya existen:</span>
+        <select class="form-control" style="width:auto;font-size:12px;padding:4px 6px;" onchange="if(this.value){aplicarAccionATodasInternas(this.value);this.value='';}">
+          <option value="">Aplicar a todas...</option>
+          <option value="omitir">Omitir todas (ya existen)</option>
+          <option value="actualizar">Actualizar todas las existentes</option>
+          <option value="nueva">Importar todas como nuevas</option>
+        </select>
+      </div>` : ''}
+    <div class="table-wrapper table-scroll-wrap"><table class="data-table">
       <thead><tr><th>Título</th><th>Vertical</th><th>Estado</th><th>Prioridad</th><th>Vencimiento</th><th>Asignar a</th><th>Si ya existe</th></tr></thead>
       <tbody>
         ${filas.map((f, i) => `
@@ -4687,6 +4697,14 @@
 
   window.cambiarAccionDuplicadoInternas = function(i, valor) {
     _importarInternasRows[i].accionDuplicado = valor;
+  };
+
+  // Aplicar la misma acción a todas las duplicadas de una -- pedido de
+  // Vaneh (12/09): reimportar un excel de varias filas y tener que elegir
+  // "Actualizar" fila por fila era un embole.
+  window.aplicarAccionATodasInternas = function(valor) {
+    _importarInternasRows.forEach(f => { if (f.duplicadoId) f.accionDuplicado = valor; });
+    renderImportarInternasPreview();
   };
 
   document.getElementById('importar-internas-input').addEventListener('change', async (e) => {
