@@ -1371,15 +1371,25 @@
           </div>
           <div class="form-group" style="margin:0;">
             <label style="font-size:11px;">Rol</label>
-            <select id="eq-rol" class="form-control">
+            <select id="eq-rol" class="form-control" onchange="document.getElementById('eq-rol-otro').classList.toggle('hidden', this.value !== 'Otro')">
               <option>Responsable COSMART</option>
               <option>Cliente</option>
               <option>Diseñador/a</option>
               <option>Community Manager</option>
+              <option>SMM</option>
+              <option>Paid Media</option>
+              <option>Trafficker</option>
+              <option>Asistente</option>
+              <option>Líder</option>
+              <option>PM</option>
               <option>Otro</option>
             </select>
           </div>
           <button type="button" class="btn btn-primary btn-sm" onclick="agregarUsuarioCliente()" style="height:38px;white-space:nowrap;">+ Agregar</button>
+        </div>
+        <div class="form-group hidden" id="eq-rol-otro" style="margin:8px 0 0;">
+          <label style="font-size:11px;">Especificar rol</label>
+          <input type="text" id="eq-rol-otro-input" class="form-control" placeholder="Ej: Fotógrafo/a">
         </div>
       </div>
     </div>
@@ -3171,8 +3181,10 @@
           ${i.descripcion ? `<div style="font-size:12px;color:var(--text-muted);">${escapeHtml(i.descripcion)}</div>` : ''}
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">💡 ${escapeHtml(i.autor?.nombre || 'Alguien del equipo')} · ${fmtDateAct(i.fecha) || ''}</div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
-          <button class="btn btn-primary btn-sm" onclick="transformarIdeaEnProyecto('${i.id}')">🚀 Transformar en proyecto</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;">
+          ${i.proyectoTareaId
+            ? `<span style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;background:#dcfce7;color:#15803d;">✅ Idea en proyecto</span>`
+            : `<button class="btn btn-primary btn-sm" onclick="transformarIdeaEnProyecto('${i.id}')">🚀 Transformar en proyecto</button>`}
           <button class="btn btn-secondary btn-sm" onclick="openIdeaAdminModal('${i.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="eliminarIdeaAdmin('${i.id}')" title="Eliminar">🗑</button>
         </div>
@@ -3240,9 +3252,13 @@
     };
     const saved = await saveTarea(INTERNAS_CLIENT_ID, obj, _internasCache);
     _internasCache.push(saved);
-    const ideasPrevias = _ideasAdminCache;
-    _ideasAdminCache = _ideasAdminCache.filter(i => i.id !== id);
-    await deleteIdea(INTERNAS_CLIENT_ID, id, ideasPrevias).catch(() => {});
+    // La idea NO se borra: queda marcada como convertida (con el id de la
+    // tarea/proyecto que generó) para no poder transformarla de nuevo y
+    // duplicar el proyecto.
+    const ideaConvertida = { ...idea, proyectoTareaId: saved.id };
+    const savedIdea = await saveIdea(INTERNAS_CLIENT_ID, ideaConvertida, _ideasAdminCache);
+    const i = _ideasAdminCache.findIndex(x => x.id === id);
+    if (i >= 0) _ideasAdminCache[i] = savedIdea;
     // Navega a Gestión COSMART y abre de una el modal de la tarea recién
     // creada para que termine de completarla con las subtareas/procesos.
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas','proyectos'].forEach(s => {
@@ -3536,19 +3552,24 @@
       return;
     }
     const nombreCliente = (id) => { const c = _clientsCacheForColab.find(x => x.id === id); return c ? (c.nombre || c.name || c.id) : id; };
-    listEl.innerHTML = `<div class="admin-grid">${_colaboradoresCache.map(col => `
-        <div class="card" style="padding:16px;">
-          <div style="font-weight:700;font-size:14px;">${col.nombre}${col.activo === false ? ' <span style="font-size:10px;color:#dc2626;font-weight:700;">(INACTIVO)</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin:2px 0 10px;">${col.email}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
-            ${col.clientIds.length ? col.clientIds.map(id => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">${nombreCliente(id)}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted);font-style:italic;">Sin clientes asignados</span>'}
+    listEl.innerHTML = _colaboradoresCache.map(col => `
+        <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px;">
+          <div style="flex:1;min-width:200px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+              <span style="font-weight:700;font-size:14px;">${col.nombre}</span>
+              ${col.activo === false ? '<span style="font-size:10px;color:#dc2626;font-weight:700;">(INACTIVO)</span>' : ''}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${col.email}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              ${col.clientIds.length ? col.clientIds.map(id => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">${nombreCliente(id)}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted);font-style:italic;">Sin clientes asignados</span>'}
+            </div>
           </div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')" style="flex:1;justify-content:center;">✏️ Editar</button>
-            <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${col.email}')" style="flex:1;justify-content:center;">📋 Ver tareas</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
+            <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')">✏️ Editar</button>
+            <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${col.email}')">📋 Ver tareas</button>
           </div>
         </div>
-      `).join('')}</div>`;
+      `).join('');
   }
 
   async function loadColaboradores() {
@@ -5497,6 +5518,8 @@
     document.getElementById('eq-nombre').value = '';
     document.getElementById('eq-email').value = '';
     document.getElementById('eq-rol').value = 'Responsable COSMART';
+    document.getElementById('eq-rol-otro-input').value = '';
+    document.getElementById('eq-rol-otro').classList.add('hidden');
     renderEquipoClienteList();
     document.getElementById('equipoClienteModal').classList.remove('hidden');
   };
@@ -5520,11 +5543,15 @@
   window.agregarUsuarioCliente = function() {
     const nombre = document.getElementById('eq-nombre').value.trim();
     const email = document.getElementById('eq-email').value.trim();
-    const rol = document.getElementById('eq-rol').value;
+    const rolSel = document.getElementById('eq-rol').value;
+    const rol = rolSel === 'Otro' ? (document.getElementById('eq-rol-otro-input').value.trim() || 'Otro') : rolSel;
     if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
     _equipoUsuarios.push({ nombre, email, rol });
     document.getElementById('eq-nombre').value = '';
     document.getElementById('eq-email').value = '';
+    document.getElementById('eq-rol-otro-input').value = '';
+    document.getElementById('eq-rol-otro').classList.add('hidden');
+    document.getElementById('eq-rol').value = 'Responsable COSMART';
     renderEquipoClienteList();
   };
 
