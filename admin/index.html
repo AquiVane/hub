@@ -4647,7 +4647,13 @@
     document.getElementById('importar-internas-preview').innerHTML = '';
     document.getElementById('confirmImportarInternasBtn').disabled = true;
     _importarInternasRows = [];
-    try { _internasColaboradoresCache = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores(); } catch (e) { _internasColaboradoresCache = []; }
+    // getColaboradores() a propósito NO incluye a la admin (Vaneh) -- es la
+    // lista de gestión de colaboradores, no de asignación. Para "Asignar a"
+    // acá hace falta el equipo completo (admin + colaboradores), mismo
+    // criterio que ya usan los demás selectores de "Asignar a" del admin
+    // (pedido de Vaneh, 12/09: una fila del Excel asignada a ella misma
+    // nunca podía matchear).
+    try { _internasColaboradoresCache = await getEquipoCache(); } catch (e) { _internasColaboradoresCache = []; }
     document.getElementById('importarInternasModal').classList.remove('hidden');
     loadXLSXLibAdmin();
   };

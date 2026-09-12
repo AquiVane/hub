@@ -1,0 +1,11 @@
+/admin/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/app/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/login.html
+  Cache-Control: no-cache, must-revalidate
+
+/js/*
+  Cache-Control: no-cache, must-revalidate
