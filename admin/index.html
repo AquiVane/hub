@@ -60,6 +60,9 @@
       <button class="nav-item" onclick="showSection('recursos')">
         <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos</span>
       </button>
+      <button class="nav-item" onclick="showSection('instrucciones')">
+        <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
+      </button>
       <button class="nav-item" onclick="showSection('config')">
         <i data-lucide="settings" class="nav-icon"></i><span>Configuración</span>
       </button>
@@ -291,6 +294,177 @@
               <div class="link-card-desc">Modelo vacío para cargar el calendario de contenidos de un cliente</div>
             </div>
           </a>
+        </div>
+      </div>
+
+      <!-- Instrucciones -- pensadas para cualquier agencia/empresa que use
+      el Hub para administrar su parte digital, no solo para COSMART (el
+      Hub es multi-tenant: cada agencia que se suscribe tiene su propio
+      panel aislado). Mismo estilo que las instrucciones del panel del
+      cliente (js/app.js, renderInstrucciones). -->
+      <div id="sec-instrucciones" class="hidden">
+        <div style="max-width:820px;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Guía del panel de administración</h2></div>
+            <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
+              <p>Desde acá administrás toda la parte digital de tu agencia o empresa: tus clientes, tu equipo, tus tareas internas y la configuración general. Cada cliente tiene su propio panel (contenidos, tareas, pauta digital, reportes) -- este es el panel de arriba, desde donde manejás todo.</p>
+              <button class="btn btn-secondary btn-sm" onclick="reiniciarTourAdmin()">Ver recorrido guiado de nuevo</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="users" style="width:16px;height:16px;color:#1A4DAA;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Clientes</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>Creá un cliente nuevo con "+ Nuevo cliente" -- se le arma su propio panel al toque.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>"Ver panel" te lleva al panel de ese cliente tal cual lo ve él (o con permisos de admin si entrás como tal).</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>"Copiar acceso" copia el email del cliente, para pasárselo junto con su contraseña temporal.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>Desde adentro del panel de un cliente, el desplegable de arriba a la izquierda deja saltar a otro cliente sin volver a este panel primero.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="building-2" style="width:16px;height:16px;color:#0ea5e9;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Gestión interna (tareas de tu propia agencia)</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>Tareas que no son de ningún cliente puntual: administración, procesos internos, cosas de la agencia misma.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>Se organizan por vertical (si tu agencia tiene varias unidades de negocio) o quedan en "General".</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>Mismas funciones que las tareas de un cliente: subtareas, recurrencia, prioridad, comentarios, archivar.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>"📥 Importar Excel" carga varias de una desde una planilla -- columnas: Título, Vertical, Estado, Prioridad, Vencimiento, Asignar a.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="list-checks" style="width:16px;height:16px;color:#10b981;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Mis tareas</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Tu vista personal: todo lo que está asignado a vos, de cualquier cliente o interno, junto con tus tareas personales.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Kanban, Lista o Calendario -- elegí la vista que prefieras arriba.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"Ver de" te deja mirar las tareas de otro colaborador (si sos admin); "Ordenar por" cambia entre fecha y prioridad.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Si sos admin también podés ver acá lo que tiene pendiente cada colaborador, para organizar la semana del equipo.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="user-plus" style="width:16px;height:16px;color:#8b5cf6;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Colaboradores</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#8b5cf6;">›</span>Sumá gente a tu equipo con "+ Nuevo colaborador" -- le llega un mail con su contraseña temporal.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#8b5cf6;">›</span>A cada colaborador le asignás qué clientes puede ver y administrar.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#8b5cf6;">›</span>Un colaborador nunca ve la lista completa de otros colaboradores ni la configuración general -- eso es solo para admin.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="folder-kanban" style="width:16px;height:16px;color:#f59e0b;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Proyectos</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#f59e0b;">›</span>Reúne todas las tareas marcadas "Es un proyecto" (de cualquier cliente o internas) en un solo lugar.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#f59e0b;">›</span>Sirve para ver de un vistazo qué proyectos grandes están en curso sin tener que entrar cliente por cliente.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="clipboard-list" style="width:16px;height:16px;color:#0d9488;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Procesos</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0d9488;">›</span>Documentación interna del equipo: instructivos, checklists, guías paso a paso.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0d9488;">›</span>Solo lo ven colaboradores y admin -- el cliente nunca tiene acceso.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="lightbulb" style="width:16px;height:16px;color:#eab308;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Ideas</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Anotá lo que se te ocurra sin necesidad de tener un plan armado todavía.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Cuando una idea madura, "Transformar en proyecto/tarea" la manda directo a Gestión interna.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="target" style="width:16px;height:16px;color:#ec4899;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">CRM Leads</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#ec4899;">›</span>Pipeline de potenciales clientes nuevos, separado de los clientes que ya tenés cargados.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#ec4899;">›</span>Organizalo por etapa (contacto, propuesta, negociación, etc.) y filtrá por vertical si tu agencia tiene varias.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="activity" style="width:16px;height:16px;color:#dc2626;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Actividad e Informes</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Actividad:</strong> reporte de tareas, contenidos y campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o como respaldo para una factura.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Informes clientes:</strong> se generan solos el día 1 de cada mes con lo hecho el mes anterior. No se le mandan al cliente hasta que vos apruebes cada uno.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Reportes (dentro del panel de cada cliente):</strong> subís ahí un reporte mensual ya armado (un .html exportado, con gráficos y todo) y el cliente lo puede ver y navegar mes a mes, sin que se lo tengas que mandar por mail.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="bot" style="width:16px;height:16px;color:#7c3aed;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Asistente Claude / "Claude IA"</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Conectá tu propia clave de Anthropic en <strong>Configuración → 🤖 Asistente Claude</strong> (la sacás gratis en console.anthropic.com/settings/keys) para tener un asistente disponible en el Hub.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Una vez conectada, podés asignarle una tarea directamente a "Claude IA" (aparece como una persona más en "Asignar a") -- la resuelve sola a la hora que le pongas de vencimiento, y deja el resultado como comentario en la tarea.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>El uso se cobra en tu cuenta de Anthropic, aparte del plan del Hub -- el costo real es muy bajo, del orden de centavos de dólar por tarea resuelta.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Sin esa clave cargada, "Claude IA" no ejecuta nada -- ninguna tarea asignada a ella se va a resolver sola.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="megaphone" style="width:16px;height:16px;color:#64748b;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Cuentas publicitarias y Configuración</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>"Cuentas publicitarias propias" guarda el ID/nombre de tus propias cuentas de Meta/Google/TikTok/LinkedIn Ads (las de la agencia, no las de tus clientes) -- por ahora es carga manual, la conexión automática está pendiente.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>En Configuración también podés conectar un webhook para que tu propio CRM reciba avisos de eventos del Hub.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>Desde ahí podés volver a ver este recorrido guiado cuando quieras.</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1644,7 +1818,7 @@
   }
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas','proyectos','crm'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
