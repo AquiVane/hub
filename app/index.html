@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>(function(){try{var t=localStorage.getItem('hub_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <title>COSMART Marketing Hub</title>
   <link rel="icon" type="image/png" href="favicon-cosmart.png?v=2">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -134,6 +135,10 @@
       </a>
     </div>
     <div class="sidebar-footer">
+      <button class="btn-logout" id="themeToggleBtn" onclick="cycleTheme()" style="margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span id="themeToggleIconWrap"><i data-lucide="monitor" class="nav-icon"></i></span>
+        <span id="themeToggleLabel">Tema: Sistema</span>
+      </button>
       <button class="btn-logout" id="logoutBtn">Cerrar sesión</button>
     </div>
   </aside>
@@ -1102,6 +1107,7 @@
 </div>
 
 <script type="module" src="../js/app.js?v=20"></script>
+<script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:500px;">
