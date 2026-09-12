@@ -13,7 +13,7 @@ Documento pensado para adjuntar al trámite de **Inscripción de obra publicada/
 - **Titular**: COSMART (Conglomerado Contacto Smart) — Vanesa Anahí Fernández.
 - **Autor/desarrollo**: Vanesa Anahí Fernández, con desarrollo asistido por IA (Claude, de Anthropic) bajo su dirección y especificación en todas las decisiones de producto.
 - **Estado**: en producción, en uso activo por COSMART y sus clientes/colaboradores desde agosto de 2026. Desde el 29/08/2026 es multi-tenant: otras agencias pueden darse de alta y usarlo con sus propios clientes.
-- **Última actualización de este documento**: 07/09/2026.
+- **Última actualización de este documento**: 12/09/2026.
 
 ## 2. Descripción general (memoria descriptiva)
 
@@ -55,6 +55,10 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 ### Facturación e informes
 - Recordatorio automático a la agencia para emitir la factura mensual de cada cliente, y recordatorio automático al cliente si no se registra el pago pasado el vencimiento.
 - Generación de informes mensuales por cliente (aprobación manual antes de enviarse) y resumen cualitativo periódico para el equipo.
+- **Reportes**: sección para subir, mes a mes, un reporte de resultados ya armado (HTML exportado con gráficos) por cliente, navegable desde el panel del cliente para ver los meses anteriores sin depender del envío por mail.
+
+### Guía del panel de administración
+- Sección de instrucciones dentro del propio panel de administración, redactada de forma genérica para cualquier agencia o empresa que use el sistema (no específica de COSMART), que explica cada módulo del panel: clientes, gestión interna, mis tareas, colaboradores, proyectos, procesos, ideas, CRM, actividad/informes, asistente de IA y configuración.
 
 ### CRM y comunicación
 - Comentarios con menciones (`@nombre`) en tareas y contenidos, con notificación automática por email a la persona mencionada.
@@ -78,6 +82,7 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 
 ## 5. Historial de cambios relevantes (para actualizar)
 
+- **12/09/2026**: tareas recurrentes ahora se clonan en vez de mutarse — la instancia cumplida queda como registro histórico permanente ("Lista", con su propia fecha) en vez de desaparecer al generarse el siguiente ciclo; sección de Reportes mensuales (subida y navegación mes a mes) en el panel de cada cliente; sección de Instrucciones agregada al panel de administración; ideas transformadas en proyecto quedan marcadas como tales en vez de borrarse, evitando duplicar el proyecto; roles del equipo de un cliente ampliados (SMM, Paid Media, Trafficker, Asistente, Líder, PM, y rol libre a texto).
 - **07/09/2026**: corrección de detección de duplicados en la importación de contenidos (ahora matchea por título, con la cuenta solo como desempate); botón para deshacer una importación; columna visible de Orgánico/Pauta en el banco de contenidos; estado "Borrador" para campañas de pauta recién cargadas; endpoint de equipo accesible para colaboradores (antes solo veían al admin en listas de asignación si eran admin ellos mismos); mail de tareas del equipo ahora incluye vencidas, no solo las del día.
 - **03/09/2026 y anteriores**: ver `HANDOFF.md` de este repo y de `cosmart-workers` para el detalle completo, tanda por tanda, de todo lo construido desde el inicio del proyecto (multi-tenancy, CRM de leads, tareas asignadas a IA, sistema de comentarios y menciones, importación de Excel, dashboard editorial, etc.).
 
