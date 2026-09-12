@@ -15,3 +15,7 @@
 
 /manifest.webmanifest
   Cache-Control: no-cache, must-revalidate
+
+/.well-known/assetlinks.json
+  Cache-Control: no-cache, must-revalidate
+  Content-Type: application/json

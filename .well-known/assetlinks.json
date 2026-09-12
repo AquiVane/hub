@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ar.com.cosmart.hub",
+    "sha256_cert_fingerprints": [
+      "B3:F3:73:E9:E3:F8:70:20:2B:A4:91:87:F1:2C:79:FA:02:32:16:12:58:6E:E2:B9:81:7A:4E:54:0E:13:E0:5B"
+    ]
+  }
+}]
