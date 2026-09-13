@@ -566,7 +566,10 @@
         <div class="mb-20 flex items-center gap-8" style="margin-top:28px;">
           <h2 style="font-size:18px;font-weight:700;">Métricas de email</h2>
           <span class="text-muted text-sm" id="emailStatsRango"></span>
-          <select id="emailStatsDias" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:auto;" onchange="loadEmailStats()">
+          <select id="emailStatsVertical" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:auto;" onchange="aplicarFiltroVerticalEmailStats()">
+            <option value="">Todas las verticales</option>
+          </select>
+          <select id="emailStatsDias" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="loadEmailStats()">
             <option value="7">Últimos 7 días</option>
             <option value="30" selected>Últimos 30 días</option>
             <option value="90">Últimos 90 días</option>
@@ -2018,6 +2021,9 @@
     return nombreCampania(tag);
   }
 
+  let _emailStatsCampanasTodas = [];
+  let _emailStatsPorTagDia = {};
+
   window.loadEmailStats = async function() {
     const dias = document.getElementById('emailStatsDias').value;
     const avisoEl = document.getElementById('emailStatsAviso');
@@ -2035,14 +2041,71 @@
     }
     avisoEl.textContent = `Del ${d.rangoDesde} al ${d.rangoHasta} (${d.totalEventos} eventos). ${d.aviso || ''}`;
 
-    const campanas = d.campanas || [];
+    _emailStatsCampanasTodas = d.campanas || [];
+    _emailStatsPorTagDia = {};
+    (d.campanasPorDia || []).forEach(r => (_emailStatsPorTagDia[r.tag] ??= []).push(r));
+
+    // Filtro por vertical -- pedido de Vaneh (13/09): "acá necesito poder
+    // filtrar por vertical". Se arma de nuevo en cada carga (las
+    // verticales presentes pueden cambiar entre rangos de fecha), pero
+    // conserva la elección previa si sigue existiendo.
+    const selVertical = document.getElementById('emailStatsVertical');
+    const previaVertical = selVertical.value;
+    const verticalesPresentes = [...new Set(_emailStatsCampanasTodas.map(c => c.vertical || 'Sin clasificar'))].sort();
+    selVertical.innerHTML = '<option value="">Todas las verticales</option>' +
+      verticalesPresentes.map(v => `<option value="${escapeHtml(v)}" ${v === previaVertical ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+
+    aplicarFiltroVerticalEmailStats();
+
+    const seg = d.seguimientoSecuencias || [];
+    if (!seg.length) {
+      seguimientoEl.innerHTML = '<div class="empty-state"><p>Sin datos de seguimiento todavía.</p></div>';
+    } else {
+      seguimientoEl.innerHTML = `
+        <div class="card">
+          <div class="card-body" style="padding:0;overflow-x:auto;">
+            <table class="data-table" style="width:100%;">
+              <thead><tr><th>Secuencia</th><th>Email</th><th>Último paso abierto</th><th>Fecha</th></tr></thead>
+              <tbody>
+                ${seg.map(s => `<tr><td><span style="background:var(--primary-light,#e8f0fe);color:var(--primary,#1A4DAA);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${escapeHtml(nombreCampania(s.slug))}</span></td><td>${escapeHtml(s.email)}</td><td>Email ${s.ultimoPaso}</td><td>${escapeHtml(s.fecha || '—')}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    if (d.demografiaEuforia && d.demografiaEuforia.por_pais) {
+      seguimientoEl.innerHTML += `
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header"><h2 style="font-size:14px;">Euforia · país de las creadoras que abrieron o clickearon (${d.demografiaEuforia.total_creadoras_activas} en total)</h2></div>
+          <div class="card-body">
+            ${d.demografiaEuforia.por_pais.map(p => `
+              <div class="flex items-center gap-8" style="justify-content:space-between;padding:4px 0;font-size:13px;">
+                <span>${escapeHtml(p.pais || 'Sin país cargado')}</span><span style="font-weight:600;">${p.n}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+    } else if (d.demografiaEuforia && d.demografiaEuforia.error) {
+      seguimientoEl.innerHTML += `<p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${d.demografiaEuforia.error}</p>`;
+    }
+  };
+
+  window.aplicarFiltroVerticalEmailStats = function() {
+    const verticalFiltro = document.getElementById('emailStatsVertical').value;
+    const tablaEl = document.getElementById('emailStatsTabla');
+    const campanas = verticalFiltro
+      ? _emailStatsCampanasTodas.filter(c => (c.vertical || 'Sin clasificar') === verticalFiltro)
+      : _emailStatsCampanasTodas;
     renderEmailStatsResumen(campanas);
+    renderTablaEmailStats(campanas, tablaEl);
+  };
+
+  function renderTablaEmailStats(campanas, tablaEl) {
+    const porTagDia = _emailStatsPorTagDia;
     if (!campanas.length) {
       tablaEl.innerHTML = '<div class="empty-state"><p>No hay eventos de email registrados con etiqueta en este rango.</p></div>';
     } else {
-      const porTagDia = {};
-      (d.campanasPorDia || []).forEach(r => (porTagDia[r.tag] ??= []).push(r));
-
       // Agrupar por vertical para que se lea de corrido, no todo mezclado
       const porVertical = {};
       for (const c of campanas) (porVertical[c.vertical || 'Sin clasificar'] ??= []).push(c);
@@ -2084,40 +2147,7 @@
         });
       });
     }
-
-    const seg = d.seguimientoSecuencias || [];
-    if (!seg.length) {
-      seguimientoEl.innerHTML = '<div class="empty-state"><p>Sin datos de seguimiento todavía.</p></div>';
-    } else {
-      seguimientoEl.innerHTML = `
-        <div class="card">
-          <div class="card-body" style="padding:0;overflow-x:auto;">
-            <table class="data-table" style="width:100%;">
-              <thead><tr><th>Secuencia</th><th>Email</th><th>Último paso abierto</th><th>Fecha</th></tr></thead>
-              <tbody>
-                ${seg.map(s => `<tr><td><span style="background:var(--primary-light,#e8f0fe);color:var(--primary,#1A4DAA);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;">${escapeHtml(nombreCampania(s.slug))}</span></td><td>${escapeHtml(s.email)}</td><td>Email ${s.ultimoPaso}</td><td>${escapeHtml(s.fecha || '—')}</td></tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
-    }
-
-    if (d.demografiaEuforia && d.demografiaEuforia.por_pais) {
-      seguimientoEl.innerHTML += `
-        <div class="card" style="margin-top:16px;">
-          <div class="card-header"><h2 style="font-size:14px;">Euforia · país de las creadoras que abrieron o clickearon (${d.demografiaEuforia.total_creadoras_activas} en total)</h2></div>
-          <div class="card-body">
-            ${d.demografiaEuforia.por_pais.map(p => `
-              <div class="flex items-center gap-8" style="justify-content:space-between;padding:4px 0;font-size:13px;">
-                <span>${escapeHtml(p.pais || 'Sin país cargado')}</span><span style="font-weight:600;">${p.n}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>`;
-    } else if (d.demografiaEuforia && d.demografiaEuforia.error) {
-      seguimientoEl.innerHTML += `<p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${d.demografiaEuforia.error}</p>`;
-    }
-  };
+  }
 
   const EMAIL_STATS_COLORS = ['#3A8FC7', '#1A4DAA', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#e02020', '#64748b'];
 
