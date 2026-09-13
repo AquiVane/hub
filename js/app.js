@@ -28,6 +28,15 @@ function linkify(html) {
   });
 }
 
+// Link directo a un contenido/tarea puntual -- pedido de Vaneh (13/09):
+// "así si la tengo que pasar por whatsapp la encuentran rápido con tan
+// solo un click". Abre el Hub, entra al cliente correcto y abre el modal
+// de ese item solo -- ver el manejo de ?open=/&id= en init().
+window.copiarLinkItem = function (tipo, id) {
+  const url = `${location.origin}${location.pathname}?client=${encodeURIComponent(clientId)}&open=${tipo}&id=${encodeURIComponent(id)}`;
+  navigator.clipboard.writeText(url).then(() => alert('Link copiado -- al abrirlo entra directo a esto.'));
+};
+
 // Textarea de una línea que crece hacia abajo solo, para reemplazar
 // <input> en campos editables de texto largo (ej. título de subtarea) --
 // un <input> nunca hace wrap, así que un título largo quedaba cortado y
@@ -2385,6 +2394,9 @@ window.openContenidoModal = function(defaults = {}) {
   if (_cnote) _cnote.style.display = editingContenido ? 'none' : '';
   const _cinputWrap = document.getElementById('cont-comment-input-wrap');
   if (_cinputWrap) _cinputWrap.style.display = editingContenido ? '' : 'none';
+  const _copyLinkContBtn = document.getElementById('copyLinkContenidoBtn');
+  _copyLinkContBtn.classList.toggle('hidden', !editingContenido);
+  _copyLinkContBtn.onclick = () => copiarLinkItem('contenido', c.id);
   document.getElementById('contenidoModal').classList.remove('hidden');
 };
 
@@ -3429,6 +3441,9 @@ window.openTareaModal = function(id, defaultEstado) {
   // cliente" desde el admin, que carga la página de cero).
   document.getElementById('tareaModal').classList.remove('hidden');
   document.getElementById('tarea-modal-title').textContent = editingTarea ? `Editar tarea${t.numero ? ' #' + codigoTarea(t) : ''}` : 'Nueva tarea';
+  const _copyLinkTareaBtn = document.getElementById('copyLinkTareaBtn');
+  _copyLinkTareaBtn.classList.toggle('hidden', !editingTarea);
+  _copyLinkTareaBtn.onclick = () => copiarLinkItem('tarea', t.id);
   document.getElementById('tf-titulo').value = t.titulo || '';
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';

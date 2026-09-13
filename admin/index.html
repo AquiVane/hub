@@ -37,7 +37,7 @@
       <button class="nav-item" onclick="showSection('colaboradores')">
         <i data-lucide="user-cog" class="nav-icon"></i><span>Colaboradores</span>
       </button>
-      <button class="nav-item" onclick="showSection('mistareas')">
+      <button class="nav-item" id="navMisTareasBtn" onclick="showSection('mistareas')">
         <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
       </button>
       <button class="nav-item" id="navInternasBtn" onclick="showSection('internas')">
@@ -777,7 +777,8 @@
 <div id="internaModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
-      <h3 id="interna-modal-title">Nueva tarea interna</h3>
+      <h3 id="interna-modal-title" style="flex:1;">Nueva tarea interna</h3>
+      <button class="btn btn-secondary btn-sm hidden" id="copyLinkInternaBtn" title="Copiar link directo a esta tarea">🔗 Copiar link</button>
       <button class="modal-close" onclick="closeInternaModal()">×</button>
     </div>
     <div class="modal-body">
@@ -918,7 +919,8 @@
 <div id="misTareaModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:460px;">
     <div class="modal-header">
-      <h3>Tarea</h3>
+      <h3 style="flex:1;">Tarea</h3>
+      <button class="btn btn-secondary btn-sm" id="copyLinkMisTareaBtn" title="Copiar link directo a esta tarea">🔗 Copiar link</button>
       <button class="modal-close" onclick="closeMisTareaModal()">×</button>
     </div>
     <div class="modal-body">
@@ -2883,6 +2885,9 @@
     document.getElementById('in-new-note').style.display = _editingInterna ? 'none' : '';
     document.getElementById('in-comment-input-wrap').style.display = _editingInterna ? '' : 'none';
     restaurarBorradorAdmin('in', id || '_nueva', ['in-titulo', 'in-descripcion', 'in-comment-input']);
+    const _copyLinkInternaBtn = document.getElementById('copyLinkInternaBtn');
+    _copyLinkInternaBtn.classList.toggle('hidden', !_editingInterna);
+    _copyLinkInternaBtn.onclick = () => copiarLinkAdmin(`?open=interna&id=${t.id}`);
     document.getElementById('internaModal').classList.remove('hidden');
     document.querySelector('#internaModal .modal-body').scrollTop = 0;
   };
@@ -4240,6 +4245,7 @@
     const esPseudoCliente = ['_cosmart', '_personal'].includes(item.clientId);
     abrirPanelLink.style.display = esPseudoCliente ? 'none' : '';
     if (!esPseudoCliente) abrirPanelLink.href = `../app/index.html?client=${item.clientId}&open=${tipo}&id=${t.id}`;
+    document.getElementById('copyLinkMisTareaBtn').onclick = () => copiarLinkAdmin(`?open=mistarea&clientId=${encodeURIComponent(item.clientId)}&tipo=${tipo}&id=${t.id}`);
     document.getElementById('mt-visible-cliente-group').classList.toggle('hidden', esPseudoCliente || tipo !== 'tarea');
     document.getElementById('mt-visible-cliente').checked = !!t.visibleParaCliente;
     renderComentarios('mt', t.comentarios || []);
@@ -5318,6 +5324,15 @@
 
   window.copyLogin = (email) => {
     navigator.clipboard.writeText(email).then(() => alert(`Email copiado: ${email}`));
+  };
+
+  // Link directo a una tarea puntual de Mis Tareas / Gestión interna --
+  // pedido de Vaneh (13/09): "así si la tengo que pasar por whatsapp la
+  // encuentran rápido con tan solo un click". `query` es solo la parte
+  // "?open=...", ver el manejo de esos params al final de este script.
+  window.copiarLinkAdmin = (query) => {
+    const url = `${location.origin}${location.pathname}${query}`;
+    navigator.clipboard.writeText(url).then(() => alert('Link copiado -- al abrirlo entra directo a esto.'));
   };
 
   window.deleteClient = async function(clientId, nombre) {
@@ -6558,8 +6573,41 @@
     setTimeout(precargarSeccionesComunes, 300);
     setTimeout(() => iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY), 600);
     crearWidgetClaude();
+    abrirDesdeLinkDirecto();
   }
   if (window.lucide) lucide.createIcons();
+
+  // Entrar directo a una tarea puntual desde un link compartido (ver
+  // copiarLinkAdmin) -- pedido de Vaneh (13/09): "así si la tengo que
+  // pasar por whatsapp la encuentran rápido con tan solo un click".
+  function mostrarSoloSeccion(sec) {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm'].forEach(s => {
+      document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
+    });
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  }
+  async function abrirDesdeLinkDirecto() {
+    const qp = new URLSearchParams(location.search);
+    const open = qp.get('open');
+    if (open === 'interna') {
+      const id = qp.get('id');
+      if (!id) return;
+      mostrarSoloSeccion('internas');
+      document.getElementById('navInternasBtn')?.classList.add('active');
+      await loadInternas();
+      if (_internasCache.some(t => t.id === id)) openInternaModal(id);
+      else alert('Esta tarea ya no existe o fue movida.');
+    } else if (open === 'mistarea') {
+      const id = qp.get('id'), tipo = qp.get('tipo'), clientId = qp.get('clientId');
+      if (!id || !tipo || !clientId) return;
+      mostrarSoloSeccion('mistareas');
+      document.getElementById('navMisTareasBtn')?.classList.add('active');
+      await loadMisTareas();
+      const idx = _misTareasCache.findIndex(it => it.clientId === clientId && it.tipo === tipo && it.tarea.id === id);
+      if (idx >= 0) openMisTareaModal(idx);
+      else alert('Esta tarea ya no existe, fue movida, o no está entre tus tareas asignadas.');
+    }
+  }
 </script>
 <script src="../js/theme.js?v=1"></script>
 </body>
