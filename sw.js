@@ -12,5 +12,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  // A propósito no se llama a event.respondWith(): con eso alcanza para
+  // que Chrome considere el sitio instalable, sin meter al service worker
+  // en el medio de cada pedido (todos los pedidos a la API del Hub pasan
+  // por acá también, no solo los del sitio) -- interceptarlos de más
+  // agregaba una demora real y se sospecha que colgaba alguno.
 });
