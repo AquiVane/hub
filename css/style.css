@@ -491,23 +491,90 @@ input, select, textarea { font-family: inherit; }
 
 /* ── FEED IG ── */
 .feed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-.feed-cell { aspect-ratio: 1; background: #f1f5f9; overflow: hidden; position: relative; cursor: pointer; min-height: 90px; }
+.feed-cell { aspect-ratio: 4 / 5; background: #f1f5f9; overflow: hidden; position: relative; cursor: pointer; min-height: 90px; }
 .feed-cell img { width: 100%; height: 100%; object-fit: cover; }
 .feed-cell-empty { display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 28px; }
 .feed-cell-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; text-align: center; padding: 8px; }
 .feed-cell:hover .feed-cell-overlay { display: flex; }
 .feed-cell-status { position: absolute; top: 6px; right: 6px; }
 
-/* ── PHONE MOCKUP ── */
+/* ── PHONE MOCKUP (realista -- pedido de Vaneh 13/09, "el mockup que
+   había ES ESPANTOSO", con referencia de un iPhone real) ── */
 .phone-mockup-wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
 .phone-device {
-  width: 240px; background: #111827; border-radius: 44px;
-  padding: 14px 12px; box-shadow: 0 24px 64px rgba(0,0,0,.4), inset 0 0 0 2px #2d3748, 0 0 0 8px #1a202c;
-  flex-shrink: 0; position: relative;
+  width: 260px;
+  aspect-ratio: 9 / 18.5; /* proporción real de un iPhone -- así se ve bien a cualquier ancho, no solo a 260px */
+  background: linear-gradient(150deg, #4b4d52 0%, #232428 35%, #0c0c0d 100%);
+  border-radius: 54px;
+  padding: 5px;
+  box-shadow:
+    0 32px 60px -16px rgba(0,0,0,.5),
+    0 12px 24px -12px rgba(0,0,0,.4),
+    inset 0 0 0 1px rgba(255,255,255,.12);
+  flex-shrink: 0;
+  position: relative;
 }
-.phone-device::before { content:''; display:block; width:70px; height:6px; background:#2d3748; border-radius:10px; margin:0 auto 10px; }
-.phone-screen { background: white; border-radius: 32px; overflow: hidden; min-height: 520px; }
-.phone-label { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+/* Botones laterales -- volumen (izquierda) y power (derecha), como en
+   un iPhone real, no solo una carcasa lisa. */
+.phone-btn { position: absolute; width: 3px; background: #1a1b1d; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.phone-btn.vol-up { left: -3px; top: 20%; height: 6%; border-radius: 2px 0 0 2px; }
+.phone-btn.vol-down { left: -3px; top: 29%; height: 6%; border-radius: 2px 0 0 2px; }
+.phone-btn.power { right: -3px; top: 24%; height: 10%; border-radius: 0 2px 2px 0; }
+.phone-screen {
+  background: #000;
+  border-radius: 49px;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+  padding: 2px;
+}
+.phone-screen-content {
+  background: #fff;
+  border-radius: 46px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  height: 100%;
+}
+.phone-island {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  width: 84px; height: 24px; background: #000; border-radius: 14px;
+  z-index: 20; pointer-events: none;
+}
+.phone-label { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+/* ── Grilla de borrador de Instagram (pendiente de aprobación) ──
+   Pedido de Vaneh (13/09): grande, arrastrar imágenes, formato 4:5
+   (el que usa Instagram ahora, ya no el cuadrado 1:1). */
+.ig-draft-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: #000; }
+.ig-draft-cell {
+  aspect-ratio: 4 / 5;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: #16181c;
+}
+.ig-draft-cell.drag-over { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ig-draft-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ig-draft-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 4px; color: rgba(255,255,255,.35); font-size: 9.5px; text-align: center; padding: 6%;
+}
+.ig-draft-reel-badge {
+  position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,.6); color: #fff;
+  border-radius: 5px; padding: 2px 5px; font-size: 9px; font-weight: 700; z-index: 3;
+  display: flex; align-items: center; gap: 2px;
+}
+.ig-draft-cover-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 12%; font-weight: 800; line-height: 1.25; word-break: break-word; font-size: 13px;
+}
+.ig-draft-cell:hover .ig-draft-hover { opacity: 1; }
+.ig-draft-hover {
+  position: absolute; inset: 0; background: rgba(0,0,0,.45); opacity: 0; transition: opacity .15s;
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 600;
+}
+@media (max-width: 480px) { .ig-draft-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* IG Feed preview */
 .ig-preview { font-size: 12px; }

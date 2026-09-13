@@ -375,6 +375,22 @@ export async function saveReporteHtml(clientId, mes, html) {
   return api('POST', `/data/${clientId}/reporte-${mes}`, { html });
 }
 
+// ── Borrador de grilla de Instagram (pendiente de aprobación) ────
+// Pedido de Vaneh (13/09). Se carga aparte de loadAllData() -- recién
+// cuando se entra a esta pestaña puntual, no en la carga general del
+// Hub -- porque puede traer imágenes pesadas (portadas armadas a mano)
+// y "no puede tardar más de 1 segundo en cargar" el resto del panel.
+export async function getFeedBorrador(clientId) {
+  if (DEMO_MODE) return { celdas: [], colorMarca: '#111111' };
+  const r = await api('GET', `/data/${clientId}/feed-borrador`);
+  return (r && Array.isArray(r.celdas)) ? r : { celdas: [], colorMarca: '#111111' };
+}
+
+export async function saveFeedBorrador(clientId, borrador) {
+  if (DEMO_MODE) { alert('En modo demo no se puede guardar el borrador real.'); return; }
+  return api('POST', `/data/${clientId}/feed-borrador`, borrador);
+}
+
 // ── Archivos subidos (R2) ────────────────────────────────────
 
 export async function uploadArchivo(clientId, file) {

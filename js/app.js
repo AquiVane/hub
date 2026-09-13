@@ -7,6 +7,7 @@ import {
   getIdeas, saveIdea, deleteIdea,
   getPlan, savePlan,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
+  getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getAllClients, getEquipo
 } from './data.js';
 
@@ -1697,7 +1698,22 @@ const FEED_FILTERS = [
 
 window.setIgFilter = function(val) { _igFilter = val; renderContTab('feed-ig'); };
 
+let _igSubTab = 'real';
+window.setIgSubTab = function(v) { _igSubTab = v; renderFeedIG(document.getElementById('cont-tab-body')); };
+
 function renderFeedIG(container) {
+  const subTabBtns = `
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <button onclick="setIgSubTab('real')" class="btn btn-sm ${_igSubTab==='real'?'btn-primary':'btn-secondary'}">📤 Publicado</button>
+      <button onclick="setIgSubTab('borrador')" class="btn btn-sm ${_igSubTab==='borrador'?'btn-primary':'btn-secondary'}">📋 Borrador (pendiente de aprobación)</button>
+    </div>`;
+  container.innerHTML = subTabBtns + '<div id="ig-subtab-body"></div>';
+  const body = document.getElementById('ig-subtab-body');
+  if (_igSubTab === 'borrador') renderFeedBorrador(body);
+  else renderFeedIGReal(body);
+}
+
+function renderFeedIGReal(container) {
   const all = STATE.contenidos
     .filter(c => (c.plataformas||[]).includes('Instagram') && !normUbicacion(c.ubicacion||[]).includes('Story'))
     .sort((a,b) => (a.fechaPub||'') < (b.fechaPub||'') ? -1 : 1); // ASC: próximos primero
@@ -1710,6 +1726,33 @@ function renderFeedIG(container) {
     `<button onclick="setIgFilter('${f.val}')" style="padding:4px 10px;border-radius:20px;border:1px solid ${_igFilter===f.val?'var(--primary)':'var(--border)'};background:${_igFilter===f.val?'var(--primary)':'transparent'};color:${_igFilter===f.val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;font-weight:${_igFilter===f.val?'600':'400'}">${f.label}</button>`
   ).join('');
 
+  const screenHtml = `
+    <div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+      <div class="ig-avatar"></div>
+      <div>
+        <div style="font-weight:700;font-size:13px;">${client.instagram||'@cuenta'}</div>
+        <div style="font-size:10px;color:#666;">${all.filter(c=>c.estado==='Publicado').length} publicaciones</div>
+      </div>
+    </div>
+    <div class="feed-grid">
+      ${feedItems.map(c => {
+        const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+        const imgTag = thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : '';
+        return `
+        <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
+          ${imgTag}
+          <div class="feed-cell-empty" style="${thumb?'display:none':''};">${platIcon('Instagram')}</div>
+          <div class="feed-cell-overlay">
+            <div style="font-size:9px;font-weight:600;line-height:1.2;">${c.titulo}</div>
+            <div style="margin-top:3px;">${statusDot(c.estado)}</div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${Array(Math.max(0, 9 - feedItems.length)).fill(0).map(() =>
+        `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;font-size:20px;">+</div></div>`
+      ).join('')}
+    </div>`;
+
   container.innerHTML = `
     <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
       <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
@@ -1717,36 +1760,7 @@ function renderFeedIG(container) {
       <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">${filtered.length} contenido${filtered.length!==1?'s':''}</span>
     </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
-      <div class="phone-device">
-        <div class="phone-screen">
-          <div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
-            <div class="ig-avatar"></div>
-            <div>
-              <div style="font-weight:700;font-size:13px;">${client.instagram||'@cuenta'}</div>
-              <div style="font-size:10px;color:#666;">${all.filter(c=>c.estado==='Publicado').length} publicaciones</div>
-            </div>
-          </div>
-          <div class="feed-grid">
-            ${feedItems.map(c => {
-              const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
-              const imgTag = thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : '';
-              return `
-              <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
-                ${imgTag}
-                <div class="feed-cell-empty" style="${thumb?'display:none':''};">${platIcon('Instagram')}</div>
-                <div class="feed-cell-overlay">
-                  <div style="font-size:9px;font-weight:600;line-height:1.2;">${c.titulo}</div>
-                  <div style="margin-top:3px;">${statusDot(c.estado)}</div>
-                </div>
-              </div>`;
-            }).join('')}
-            ${Array(Math.max(0, 9 - feedItems.length)).fill(0).map(() =>
-              `<div class="feed-cell"><div class="feed-cell-empty" style="color:#e2e8f0;font-size:20px;">+</div></div>`
-            ).join('')}
-          </div>
-        </div>
-        <div class="phone-label">Feed Instagram</div>
-      </div>
+      ${phoneFrame(screenHtml, { label: 'Feed Instagram' })}
 
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Instagram (Feed)</h3>
@@ -1768,6 +1782,213 @@ function renderFeedIG(container) {
   `;
 }
 
+// ── Borrador de grilla de Instagram (pendiente de aprobación) ──────
+// Pedido de Vaneh (13/09): grilla grande arrastrable en formato 4:5,
+// con una pestaña aparte para ver como Reel lo que se marque como tal,
+// y portadas de texto con color propio por cliente cuando todavía no
+// hay material. Se carga aparte (lazy) de loadAllData(), recién al
+// entrar a esta pestaña -- "no puede tardar más de 1 segundo" el resto
+// del Hub por esto.
+const BORRADOR_CELDAS = 12;
+let _borradorCache = null; // { celdas: [...], colorMarca }
+let _borradorView = 'grilla'; // 'grilla' | 'reel'
+let _borradorEditingIdx = null;
+let _borradorImgPendiente = null; // data URL del archivo recién elegido, todavía sin guardar
+
+function celdaVacia() {
+  return { contenidoId: null, imagen: null, texto: '', color: null, esReel: false };
+}
+
+async function renderFeedBorrador(container) {
+  container.innerHTML = `<div class="empty-state"><p>Cargando borrador...</p></div>`;
+  if (!_borradorCache) {
+    try {
+      _borradorCache = await getFeedBorrador(clientId);
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>No se pudo cargar</h3><p>${e.message || ''}</p></div>`;
+      return;
+    }
+  }
+  if (!_borradorCache.celdas || !_borradorCache.celdas.length) {
+    _borradorCache.celdas = Array.from({ length: BORRADOR_CELDAS }, celdaVacia);
+  }
+  if (!_borradorCache.colorMarca) _borradorCache.colorMarca = '#111111';
+  pintarFeedBorrador(container);
+}
+
+function celdaImagenSrc(celda) {
+  if (celda.imagen) return celda.imagen;
+  if (celda.contenidoId) {
+    const c = STATE.contenidos.find(x => x.id === celda.contenidoId);
+    if (c) {
+      if (c.imagenes && c.imagenes[0]) return c.imagenes[0].src;
+      const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
+      if (thumb) return thumb;
+    }
+  }
+  return null;
+}
+
+function renderCeldaBorrador(celda, idx) {
+  const img = celdaImagenSrc(celda);
+  const color = celda.color || _borradorCache.colorMarca;
+  let inner;
+  if (img) {
+    inner = `<img src="${img}" alt="">`;
+  } else if (celda.texto) {
+    inner = `<div class="ig-draft-cover-text" style="background:${color};color:#fff;">${escapeHtml(celda.texto)}</div>`;
+  } else {
+    inner = `<div class="ig-draft-empty">📷<span>Arrastrá una imagen<br>o tocá para editar</span></div>`;
+  }
+  return `
+    <div class="ig-draft-cell" data-idx="${idx}" onclick="abrirCeldaBorrador(${idx})"
+      ondragover="event.preventDefault();this.classList.add('drag-over');"
+      ondragleave="this.classList.remove('drag-over');"
+      ondrop="soltarImagenEnCelda(event,${idx})">
+      ${inner}
+      ${celda.esReel ? `<div class="ig-draft-reel-badge">🎬 Reel</div>` : ''}
+      <div class="ig-draft-hover">✏️ Editar</div>
+    </div>`;
+}
+
+function pintarFeedBorrador(container) {
+  const { celdas, colorMarca } = _borradorCache;
+  const viewBtns = `
+    <button onclick="setBorradorView('grilla')" class="btn btn-sm ${_borradorView==='grilla'?'btn-primary':'btn-secondary'}">▦ Grilla</button>
+    <button onclick="setBorradorView('reel')" class="btn btn-sm ${_borradorView==='reel'?'btn-primary':'btn-secondary'}">🎬 Ver como Reel</button>
+  `;
+  const colorPicker = `
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);margin-left:auto;">
+      Color de marca
+      <input type="color" value="${colorMarca}" onchange="cambiarColorMarcaBorrador(this.value)" style="width:32px;height:28px;border:1px solid var(--border);border-radius:6px;padding:1px;cursor:pointer;">
+    </label>`;
+
+  let screenHtml;
+  if (_borradorView === 'reel') {
+    const reels = celdas.map((c, i) => ({ c, i })).filter(x => x.c.esReel);
+    screenHtml = reels.length
+      ? `<div style="display:flex;overflow-x:auto;height:100%;scroll-snap-type:x mandatory;">
+          ${reels.map(({ c, i }) => {
+            const img = celdaImagenSrc(c);
+            const color = c.color || colorMarca;
+            return `<div style="flex:0 0 100%;scroll-snap-align:start;position:relative;height:100%;cursor:pointer;" onclick="abrirCeldaBorrador(${i})">
+              ${img ? `<img src="${img}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;text-align:center;padding:14%;">${escapeHtml(c.texto||'')}</div>`}
+              <div style="position:absolute;bottom:14px;left:12px;right:12px;color:#fff;font-size:11px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.6);">🎬 Reel ${reels.length>1?`(${reels.findIndex(r=>r.i===i)+1}/${reels.length})`:''}</div>
+            </div>`;
+          }).join('')}
+        </div>`
+      : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:12px;text-align:center;padding:20px;">Todavía no marcaste ninguna celda como Reel.<br>Editá una publicación y tildá "Es Reel".</div>`;
+  } else {
+    screenHtml = `<div class="ig-draft-grid">${celdas.map((c, i) => renderCeldaBorrador(c, i)).join('')}</div>`;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+      ${viewBtns}
+      ${colorPicker}
+    </div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      ${phoneFrame(screenHtml, { label: _borradorView === 'reel' ? 'Vista Reel' : 'Borrador -- pendiente de aprobación' })}
+      <div style="flex:1;min-width:240px;font-size:12.5px;color:var(--text-muted);line-height:1.7;">
+        <p style="margin-bottom:8px;"><strong style="color:var(--text);">Cómo se usa:</strong></p>
+        <p>• Arrastrá una imagen de tu compu directo sobre cualquier celda, o tocala para elegir un archivo, vincular un contenido ya cargado, o armarle una portada de texto.</p>
+        <p style="margin-top:8px;">• El color de marca se usa como fondo de las portadas de texto que no tengan su propio color elegido.</p>
+        <p style="margin-top:8px;">• Tildá "Es Reel" en cualquier celda para verla en la pestaña "Ver como Reel", en formato vertical.</p>
+      </div>
+    </div>
+  `;
+}
+
+window.setBorradorView = function(v) { _borradorView = v; pintarFeedBorrador(document.getElementById('ig-subtab-body')); };
+
+window.cambiarColorMarcaBorrador = async function(color) {
+  _borradorCache.colorMarca = color;
+  pintarFeedBorrador(document.getElementById('ig-subtab-body'));
+  await saveFeedBorrador(clientId, _borradorCache).catch(() => {});
+};
+
+window.soltarImagenEnCelda = function(event, idx) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files && event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    _borradorCache.celdas[idx] = { ...celdaVacia(), imagen: e.target.result };
+    pintarFeedBorrador(document.getElementById('ig-subtab-body'));
+    await saveFeedBorrador(clientId, _borradorCache).catch(() => {});
+  };
+  reader.readAsDataURL(file);
+};
+
+window.abrirCeldaBorrador = function(idx) {
+  _borradorEditingIdx = idx;
+  _borradorImgPendiente = null;
+  const c = _borradorCache.celdas[idx];
+  document.getElementById('bc-file-input').value = '';
+  document.getElementById('bc-texto').value = c.texto || '';
+  document.getElementById('bc-color').value = c.color || _borradorCache.colorMarca;
+  document.getElementById('bc-es-reel').checked = !!c.esReel;
+  const sel = document.getElementById('bc-contenido-select');
+  const conImagen = STATE.contenidos.filter(x => (x.imagenes && x.imagenes[0]) || firstLink(x.linkDrive));
+  sel.innerHTML = '<option value="">-- Ninguno --</option>' + conImagen.map(x => `<option value="${x.id}" ${c.contenidoId===x.id?'selected':''}>${escapeHtml(x.titulo)}</option>`).join('');
+  actualizarPreviewCelda();
+  sel.onchange = () => { _borradorImgPendiente = null; actualizarPreviewCelda(); };
+  document.getElementById('bc-texto').oninput = actualizarPreviewCelda;
+  document.getElementById('bc-color').oninput = actualizarPreviewCelda;
+  document.getElementById('bc-file-input').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { _borradorImgPendiente = ev.target.result; actualizarPreviewCelda(); };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('borradorCeldaModal').classList.remove('hidden');
+};
+
+function actualizarPreviewCelda() {
+  const preview = document.getElementById('bc-preview');
+  const contenidoId = document.getElementById('bc-contenido-select').value;
+  const texto = document.getElementById('bc-texto').value;
+  const color = document.getElementById('bc-color').value;
+  let img = _borradorImgPendiente;
+  if (!img && contenidoId) {
+    const c = STATE.contenidos.find(x => x.id === contenidoId);
+    img = c ? celdaImagenSrc({ contenidoId, imagen: null }) : null;
+  }
+  if (img) preview.innerHTML = `<img src="${img}" style="width:100%;height:100%;object-fit:cover;">`;
+  else if (texto) preview.innerHTML = `<div style="width:100%;height:100%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:12%;font-weight:800;">${escapeHtml(texto)}</div>`;
+  else preview.innerHTML = `<div style="width:100%;height:100%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">Sin contenido</div>`;
+}
+
+window.guardarCeldaBorrador = async function() {
+  const idx = _borradorEditingIdx;
+  if (idx === null) return;
+  const contenidoId = document.getElementById('bc-contenido-select').value || null;
+  const texto = document.getElementById('bc-texto').value.trim();
+  const color = document.getElementById('bc-color').value;
+  const esReel = document.getElementById('bc-es-reel').checked;
+  _borradorCache.celdas[idx] = {
+    contenidoId: _borradorImgPendiente ? null : contenidoId,
+    imagen: _borradorImgPendiente || (contenidoId ? null : (_borradorCache.celdas[idx].imagen || null)),
+    texto: texto || '',
+    color: texto && color !== _borradorCache.colorMarca ? color : null,
+    esReel,
+  };
+  document.getElementById('borradorCeldaModal').classList.add('hidden');
+  pintarFeedBorrador(document.getElementById('ig-subtab-body'));
+  await saveFeedBorrador(clientId, _borradorCache).catch(() => {});
+};
+
+window.quitarCeldaBorrador = async function() {
+  const idx = _borradorEditingIdx;
+  if (idx === null) return;
+  _borradorCache.celdas[idx] = celdaVacia();
+  document.getElementById('borradorCeldaModal').classList.add('hidden');
+  pintarFeedBorrador(document.getElementById('ig-subtab-body'));
+  await saveFeedBorrador(clientId, _borradorCache).catch(() => {});
+};
+
 // ─ Muro FB ─
 let _fbFilter = 'Aprobado';
 window.setFbFilter = function(val) { _fbFilter = val; renderContTab('muro-fb'); };
@@ -1787,8 +2008,8 @@ function renderMuroFB(container) {
       <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>${filterBtns}
     </div>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
-      <div class="phone-device" style="width:300px;">
-        <div class="phone-screen" style="background:#f0f2f5;">
+      ${phoneFrame(`
+          <div style="background:#f0f2f5;height:100%;overflow-y:auto;">
           <div style="padding:8px;background:#1877f2;color:white;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">
             📘 ${STATE.client.facebook || STATE.client.nombre || 'Página'}
           </div>
@@ -1805,9 +2026,8 @@ function renderMuroFB(container) {
               <div class="fb-image">${firstLink(c.linkDrive)?`<img src="${driveThumb(firstLink(c.linkDrive))}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
             </div>
           `).join('')}
-        </div>
-        <div class="phone-label">Muro Facebook</div>
-      </div>
+          </div>
+        `, { width: 300, label: 'Muro Facebook' })}
 
       <div style="flex:1;min-width:280px;">
         <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Posts de Facebook</h3>
@@ -1854,16 +2074,14 @@ function renderStories(container) {
         const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
         return `
         <div>
-          <div class="phone-device" style="width:170px;">
-            <div class="phone-screen" style="min-height:300px;">
-              <div class="story-preview">
-                ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display='none'">` : '<div class="story-preview-empty">▯</div>'}
-                <div class="story-bar"><div class="story-bar-seg active"></div><div class="story-bar-seg"></div><div class="story-bar-seg"></div></div>
-                <div class="story-user"><div class="story-avatar"></div><span class="story-uname">${STATE.client.instagram||'@cuenta'}</span></div>
-                <div class="story-caption">${(c.copy||c.titulo||'').slice(0,60)}</div>
-              </div>
+          ${phoneFrame(`
+            <div class="story-preview" style="height:100%;">
+              ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display='none'">` : '<div class="story-preview-empty">▯</div>'}
+              <div class="story-bar"><div class="story-bar-seg active"></div><div class="story-bar-seg"></div><div class="story-bar-seg"></div></div>
+              <div class="story-user"><div class="story-avatar"></div><span class="story-uname">${STATE.client.instagram||'@cuenta'}</span></div>
+              <div class="story-caption">${(c.copy||c.titulo||'').slice(0,60)}</div>
             </div>
-          </div>
+          `, { width: 170 })}
           <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,22)}</div>
           <div style="text-align:center;margin-top:4px;">${statusBadge(c.estado)}</div>
           <div style="text-align:center;margin-top:6px;">
@@ -2047,106 +2265,78 @@ window.openPreview = function(id) {
 
   const previews = [];
 
-  if (plats.includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story')) previews.push(`
-    <div>
-      <div class="phone-device" style="width:260px;">
-        <div class="phone-screen">
-          <div class="ig-preview">
-            <div class="ig-header">
-              <div class="ig-avatar"></div>
-              <div>
-                <div class="ig-username">${ig}</div>
-                <div style="font-size:10px;color:#666;">Buenos Aires</div>
-              </div>
-              <div class="ig-more">···</div>
-            </div>
-            <div class="ig-image">${imgHtml || '📸'}</div>
-            <div class="ig-actions">❤️ 💬 ➤</div>
-            <div class="ig-likes">128 Me gusta</div>
-            <div class="ig-caption"><strong>${ig}</strong> ${copy.slice(0,120)}${copy.length>120?'...':''}</div>
+  if (plats.includes('Instagram') && !normUbicacion(c.ubicacion).includes('Story')) previews.push(phoneFrame(`
+      <div class="ig-preview">
+        <div class="ig-header">
+          <div class="ig-avatar"></div>
+          <div>
+            <div class="ig-username">${ig}</div>
+            <div style="font-size:10px;color:#666;">Buenos Aires</div>
           </div>
+          <div class="ig-more">···</div>
         </div>
+        <div class="ig-image">${imgHtml || '📸'}</div>
+        <div class="ig-actions">❤️ 💬 ➤</div>
+        <div class="ig-likes">128 Me gusta</div>
+        <div class="ig-caption"><strong>${ig}</strong> ${copy.slice(0,120)}${copy.length>120?'...':''}</div>
       </div>
-      <div class="phone-label">Instagram Feed</div>
-    </div>
-  `);
+    `, { width: 260, label: 'Instagram Feed' }));
 
-  if (plats.includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')) previews.push(`
-    <div>
-      <div class="phone-device" style="width:200px;">
-        <div class="phone-screen">
-          <div class="story-preview">
-            ${imgHtml || '<div class="story-preview-empty">▯</div>'}
-            <div class="story-bar">
-              <div class="story-bar-seg active"></div>
-              <div class="story-bar-seg"></div>
-            </div>
-            <div class="story-user">
-              <div class="story-avatar"></div>
-              <span class="story-uname">${ig}</span>
-            </div>
-            <div class="story-caption">${copy.slice(0,60)}</div>
-          </div>
+  if (plats.includes('Instagram') && normUbicacion(c.ubicacion).includes('Story')) previews.push(phoneFrame(`
+      <div class="story-preview" style="height:100%;">
+        ${imgHtml || '<div class="story-preview-empty">▯</div>'}
+        <div class="story-bar">
+          <div class="story-bar-seg active"></div>
+          <div class="story-bar-seg"></div>
         </div>
+        <div class="story-user">
+          <div class="story-avatar"></div>
+          <span class="story-uname">${ig}</span>
+        </div>
+        <div class="story-caption">${copy.slice(0,60)}</div>
       </div>
-      <div class="phone-label">Instagram Story</div>
-    </div>
-  `);
+    `, { width: 200, label: 'Instagram Story' }));
 
-  if (plats.includes('Facebook')) previews.push(`
-    <div>
-      <div class="phone-device" style="width:260px;">
-        <div class="phone-screen">
-          <div class="fb-preview">
-            <div class="fb-header">
-              <div class="fb-avatar">${fbName[0]}</div>
-              <div>
-                <div class="fb-name">${fbName}</div>
-                <div class="fb-time">${fmtDate(c.fechaPub)} · 🌐</div>
-              </div>
-            </div>
-            <div class="fb-text">${copy.slice(0,150)}${copy.length>150?'...':''}</div>
-            <div class="fb-image" style="height:160px;">${imgHtml || '📘'}</div>
-            <div class="fb-reactions">👍 ❤️  24 · 3 comentarios</div>
-            <div class="fb-actions">
-              <button class="fb-action-btn">👍 Me gusta</button>
-              <button class="fb-action-btn">💬 Comentar</button>
-              <button class="fb-action-btn">↗ Compartir</button>
-            </div>
+  if (plats.includes('Facebook')) previews.push(phoneFrame(`
+      <div class="fb-preview">
+        <div class="fb-header">
+          <div class="fb-avatar">${fbName[0]}</div>
+          <div>
+            <div class="fb-name">${fbName}</div>
+            <div class="fb-time">${fmtDate(c.fechaPub)} · 🌐</div>
           </div>
         </div>
+        <div class="fb-text">${copy.slice(0,150)}${copy.length>150?'...':''}</div>
+        <div class="fb-image" style="height:160px;">${imgHtml || '📘'}</div>
+        <div class="fb-reactions">👍 ❤️  24 · 3 comentarios</div>
+        <div class="fb-actions">
+          <button class="fb-action-btn">👍 Me gusta</button>
+          <button class="fb-action-btn">💬 Comentar</button>
+          <button class="fb-action-btn">↗ Compartir</button>
+        </div>
       </div>
-      <div class="phone-label">Facebook</div>
-    </div>
-  `);
+    `, { width: 260, label: 'Facebook' }));
 
-  if (plats.includes('LinkedIn')) previews.push(`
-    <div>
-      <div class="phone-device" style="width:260px;">
-        <div class="phone-screen">
-          <div class="li-preview">
-            <div class="li-header">
-              <div class="li-avatar">${fbName[0]}</div>
-              <div>
-                <div class="li-name">${fbName}</div>
-                <div class="li-title">Empresa · Buenos Aires</div>
-                <div class="li-time">${fmtDate(c.fechaPub)} · 🌐</div>
-              </div>
-            </div>
-            <div class="li-text">${copy.slice(0,200)}${copy.length>200?'...':''}</div>
-            <div class="li-image" style="height:120px;">${imgHtml || '💼'}</div>
-            <div class="li-stats">👍 ❤️ 18 · 4 comentarios</div>
-            <div class="li-actions">
-              <button class="li-action-btn">👍 Recomendar</button>
-              <button class="li-action-btn">💬 Comentar</button>
-              <button class="li-action-btn">↗ Compartir</button>
-            </div>
+  if (plats.includes('LinkedIn')) previews.push(phoneFrame(`
+      <div class="li-preview">
+        <div class="li-header">
+          <div class="li-avatar">${fbName[0]}</div>
+          <div>
+            <div class="li-name">${fbName}</div>
+            <div class="li-title">Empresa · Buenos Aires</div>
+            <div class="li-time">${fmtDate(c.fechaPub)} · 🌐</div>
           </div>
         </div>
+        <div class="li-text">${copy.slice(0,200)}${copy.length>200?'...':''}</div>
+        <div class="li-image" style="height:120px;">${imgHtml || '💼'}</div>
+        <div class="li-stats">👍 ❤️ 18 · 4 comentarios</div>
+        <div class="li-actions">
+          <button class="li-action-btn">👍 Recomendar</button>
+          <button class="li-action-btn">💬 Comentar</button>
+          <button class="li-action-btn">↗ Compartir</button>
+        </div>
       </div>
-      <div class="phone-label">LinkedIn</div>
-    </div>
-  `);
+    `, { width: 260, label: 'LinkedIn' }));
 
   document.getElementById('preview-modal-body').innerHTML = `
     <div style="margin-bottom:16px;">
@@ -5038,6 +5228,28 @@ function driveThumb(url) {
 function normUbicacion(u) {
   if (!u) return [];
   return Array.isArray(u) ? u : [u];
+}
+
+// Marco de celular realista para todos los mockups (feed IG, muro FB,
+// post LI, stories, borrador) -- pedido de Vaneh (13/09): "el mockup
+// que habías hecho ES ESPANTOSO", con referencia de un iPhone real.
+// Un solo lugar para el marco -- lo que cambia entre vistas es
+// screenHtml (lo que se ve "adentro de la pantalla").
+function phoneFrame(screenHtml, { width = 260, label = '' } = {}) {
+  return `
+    <div style="flex-shrink:0;width:${width}px;">
+      <div class="phone-device" style="width:${width}px;">
+        <div class="phone-btn vol-up"></div>
+        <div class="phone-btn vol-down"></div>
+        <div class="phone-btn power"></div>
+        <div class="phone-screen">
+          <div class="phone-island"></div>
+          <div class="phone-screen-content">${screenHtml}</div>
+        </div>
+      </div>
+      ${label ? `<div class="phone-label">${label}</div>` : ''}
+    </div>
+  `;
 }
 
 // ── Recurrencia → show/hide dias-semana ───────────────
