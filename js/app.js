@@ -5244,9 +5244,18 @@ function renderComments(ctx, comments) {
   listEl.innerHTML = comments.map((c, idx) => {
     const inicial = (c.autor || '?')[0].toUpperCase();
     const textoHtml = linkify(escapeHtml(c.texto || '').replace(/@(\w+)/g, '<strong style="color:var(--accent);">@$1</strong>'));
-    const vistoPor = c.vistoPor || [];
+    // El autor de un comentario no cuenta como "lo vio" -- obvio que lo
+    // vio, lo escribió él (pedido de Vaneh, 13/09). Se filtra al renderizar
+    // en vez de al guardar, así datos viejos que ya tuvieran al autor
+    // adentro se corrigen solos sin tener que migrar nada.
+    const vistoPor = (c.vistoPor || []).filter(v => v.email !== c.email);
     const yoLoVi = vistoPor.some(v => v.email === user.email);
-    const vistoTitle = vistoPor.length ? `Visto por ${vistoPor.map(v => v.nombre).join(', ')}` : 'Marcar como visto';
+    const esAutor = c.email === user.email;
+    const vistoTitle = vistoPor.length ? `Visto por ${vistoPor.map(v => v.nombre).join(', ')}` : 'Todavía nadie lo vio';
+    const vistoColor = vistoPor.length ? '#10b981' : '#94a3b8';
+    const vistoHtml = esAutor
+      ? `<span title="${vistoTitle}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${vistoColor};font-weight:${vistoPor.length ? '700' : '400'};">✓ ${vistoTitle}</span>`
+      : `<button onclick="toggleCommentSeen('${ctx}',${idx})" title="${yoLoVi ? 'Sacar mi visto' : 'Marcar como visto'}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">✓ ${vistoPor.length ? vistoTitle : 'Marcar como visto'}</button>`;
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${inicial}</div>
@@ -5257,9 +5266,7 @@ function renderComments(ctx, comments) {
         </div>
         <p style="font-size:13px;margin:0 0 4px;color:var(--text);">${textoHtml}</p>
         <div style="display:flex;align-items:center;">
-          <button onclick="toggleCommentSeen('${ctx}',${idx})" title="${vistoTitle}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${yoLoVi ? '#10b981' : '#94a3b8'};font-weight:${yoLoVi ? '700' : '400'};">
-            ✓ ${vistoPor.length ? vistoTitle : 'Visto'}
-          </button>
+          ${vistoHtml}
           ${ctx === 'tarea' ? `<button onclick="transformarComentarioEnTarea(${idx})" title="Transformar este comentario en una tarea nueva" style="background:none;border:none;cursor:pointer;padding:0;margin-left:auto;font-size:11px;color:#cbd5e1;">+ Nueva tarea</button>` : ''}
         </div>
       </div>
@@ -5454,6 +5461,7 @@ window.toggleCommentSeen = async function(ctx, idx) {
   const stateArr = ctx === 'cont' ? STATE.contenidos : STATE.tareas;
   if (!editingObj || !editingObj.comentarios || !editingObj.comentarios[idx]) return;
   const comment = editingObj.comentarios[idx];
+  if (comment.email === user.email) return; // el autor no puede marcarse "visto" a sí mismo
   if (!comment.vistoPor) comment.vistoPor = [];
   const yaLoVi = comment.vistoPor.findIndex(v => v.email === user.email);
   if (yaLoVi >= 0) comment.vistoPor.splice(yaLoVi, 1);
