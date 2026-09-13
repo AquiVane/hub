@@ -321,6 +321,7 @@
             <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Guía del panel de administración</h2></div>
             <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
               <p>Desde acá administrás toda la parte digital de tu agencia o empresa: tus clientes, tu equipo, tus tareas internas y la configuración general. Cada cliente tiene su propio panel (contenidos, tareas, pauta digital, reportes) -- este es el panel de arriba, desde donde manejás todo.</p>
+              <p>Desde el navegador del celu lo podés instalar como una app (Safari/Chrome → "Agregar a inicio"), y elegir modo claro u oscuro con el botón de abajo de todo en la barra lateral.</p>
               <button class="btn btn-secondary btn-sm" onclick="reiniciarTourAdmin()">Ver recorrido guiado de nuevo</button>
             </div>
           </div>
@@ -336,6 +337,7 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>"Ver panel" te lleva al panel de ese cliente tal cual lo ve él (o con permisos de admin si entrás como tal).</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>"Copiar acceso" copia el email del cliente, para pasárselo junto con su contraseña temporal.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>Desde adentro del panel de un cliente, el desplegable de arriba a la izquierda deja saltar a otro cliente sin volver a este panel primero.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#1A4DAA;">›</span>"🧾 Facturación" ya no asume que mandás factura a mano: guardá ahí el link de la suscripción automática del cliente (Mercado Pago/PayPal) y marcá un mes solo si el cobro automático falló.</li>
               </ul>
             </div>
           </div>
@@ -351,6 +353,7 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>Se organizan por vertical (si tu agencia tiene varias unidades de negocio) o quedan en "General".</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>Mismas funciones que las tareas de un cliente: subtareas, recurrencia, prioridad, comentarios, archivar.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>"📥 Importar Excel" carga varias de una desde una planilla -- columnas: Título, Vertical, Estado, Prioridad, Vencimiento, Asignar a.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0ea5e9;">›</span>"🔗 Copiar link" en cada tarea genera un link directo a esa tarjeta puntual, para mandar por WhatsApp.</li>
               </ul>
             </div>
           </div>
@@ -366,6 +369,7 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Kanban, Lista o Calendario -- elegí la vista que prefieras arriba.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"Ver de" te deja mirar las tareas de otro colaborador (si sos admin); "Ordenar por" cambia entre fecha y prioridad.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Si sos admin también podés ver acá lo que tiene pendiente cada colaborador, para organizar la semana del equipo.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"🔗 Copiar link" genera un link directo a esa tarea puntual, para mandar por WhatsApp.</li>
               </ul>
             </div>
           </div>
@@ -417,8 +421,8 @@
             </div>
             <div class="card-body">
               <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
-                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Anotá lo que se te ocurra sin necesidad de tener un plan armado todavía.</li>
-                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Cuando una idea madura, "Transformar en proyecto/tarea" la manda directo a Gestión interna.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Anotá lo que se te ocurra sin necesidad de tener un plan armado todavía. "Idea de" deja marcar qué colaborador la trajo, aparte de quién la anotó en el sistema.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#eab308;">›</span>Cuando una idea madura, "Transformar en proyecto/tarea" la manda directo a Gestión interna -- la idea queda marcada como "Idea en proyecto" en vez de borrarse, para no duplicar el proyecto si se toca de nuevo.</li>
               </ul>
             </div>
           </div>
@@ -444,8 +448,10 @@
             <div class="card-body">
               <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Actividad:</strong> reporte de tareas, contenidos y campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o como respaldo para una factura.</li>
-                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Informes clientes:</strong> se generan solos el día 1 de cada mes con lo hecho el mes anterior. No se le mandan al cliente hasta que vos apruebes cada uno.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Informes clientes:</strong> se generan solos el día 1 de cada mes con lo hecho el mes anterior. No se le mandan al cliente hasta que vos apruebes cada uno. Se agrupan por mes -- el más reciente queda abierto, los anteriores colapsados pero un clic los despliega, no se pierden.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Reportes (dentro del panel de cada cliente):</strong> subís ahí un reporte mensual ya armado (un .html exportado, con gráficos y todo) y el cliente lo puede ver y navegar mes a mes, sin que se lo tengas que mandar por mail.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>Métricas:</strong> métricas de email (Brevo) con embudo, gráfico por vertical y tabla por campaña -- filtrable por vertical y por rango de días.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#dc2626;">›</span><strong>CRM Leads:</strong> se alimenta solo desde eventos reales de cada vertical (registros, carritos abandonados, formularios) -- si un lead no aparece, puede ser que esa vertical todavía no tenga el aviso conectado.</li>
               </ul>
             </div>
           </div>
@@ -475,6 +481,18 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>"Cuentas publicitarias propias" guarda el ID/nombre de tus propias cuentas de Meta/Google/TikTok/LinkedIn Ads (las de la agencia, no las de tus clientes) -- por ahora es carga manual, la conexión automática está pendiente.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>En Configuración también podés conectar un webhook para que tu propio CRM reciba avisos de eventos del Hub.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>Desde ahí podés volver a ver este recorrido guiado cuando quieras.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="folder-open" style="width:16px;height:16px;color:#0d9488;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Recursos</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#0d9488;">›</span>Plantillas y archivos de referencia para todo el equipo. "+ Agregar recurso" deja subir un archivo o pegar un link, con título y descripción.</li>
               </ul>
             </div>
           </div>

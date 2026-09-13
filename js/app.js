@@ -4674,6 +4674,7 @@ function renderInstrucciones(container) {
         <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Bienvenido al Marketing Hub de COSMART</h2></div>
         <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
           <p>Este es tu panel de control digital. Desde acá podés gestionar todos los aspectos de tu estrategia de marketing en un solo lugar.</p>
+          <p>Desde el navegador del celu podés instalarlo como una app (Safari/Chrome → "Agregar a inicio"), y elegir modo claro u oscuro con el botón de abajo de todo en la barra lateral.</p>
           <button class="btn btn-secondary btn-sm" onclick="reiniciarTourCliente()">Ver recorrido guiado de nuevo</button>
         </div>
       </div>
@@ -4688,18 +4689,21 @@ function renderInstrucciones(container) {
           '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá.',
           '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
           '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
-          '<strong>Feed IG / Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
+          '<strong>Feed IG:</strong> "Publicado" muestra el feed real; "Borrador (pendiente de aprobación)" es una grilla de 12 casilleros en formato 4:5 donde podés arrastrar imágenes, vincular un contenido ya cargado, o armar una portada de texto con su propio color mientras no haya material -- más la pestaña "Ver como Reel" para lo que marques como tal.',
+          '<strong>Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
           '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
+          '<strong>🔗 Copiar link:</strong> dentro de cada contenido hay un botón para copiar un link directo a esa tarjeta puntual -- ideal para mandarlo por WhatsApp y que lo encuentren con un clic.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
           'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
           'El <strong>To-do del Home</strong> y las Tareas están sincronizados: lo que agregás en uno aparece en el otro.',
           'Cada tarea puede tener <strong>subtareas</strong>, fecha de vencimiento, prioridad y enlace.',
-          'Podés agregar <strong>recurrencia</strong>: diaria, semanal, quincenal, mensual o días específicos.',
+          'Podés agregar <strong>recurrencia</strong>: diaria, semanal, quincenal, mensual o días específicos -- al completarse, la anterior queda como historial ("Lista", con su propia fecha) y se genera la próxima aparte.',
           'Podés <strong>archivar</strong> tareas completadas para mantener el tablero limpio.',
+          '<strong>🔗 Copiar link:</strong> mismo botón que en Contenidos, para compartir una tarea puntual por WhatsApp.',
         ]},
         { icon:'trending-up', title:'Pauta Digital', color:'#f59e0b', items:[
           'Registrá tus campañas de Meta Ads, Google Ads, TikTok Ads o LinkedIn Ads.',
@@ -4712,6 +4716,11 @@ function renderInstrucciones(container) {
           'Generá un reporte mensual para presentar a gerencia: contenidos publicados, métricas, campañas e insights.',
           'Accedé desde el botón "📊 Reporte" en la sección Contenidos.',
           'Podés imprimir o guardar como PDF con Ctrl+P.',
+          'No confundir con "Reportes" (más abajo): esto se genera solo, al toque, con los datos ya cargados en el Hub.',
+        ]},
+        { icon:'bar-chart-2', title:'Reportes', color:'#16a34a', items:[
+          'Reportes de resultados armados afuera (ej. un análisis con gráficos exportado a HTML) que tu agencia sube mes a mes.',
+          'Navegá entre meses anteriores desde acá mismo, sin que te lo tengan que volver a mandar por mail.',
         ]},
         { icon:'folder-open', title:'Archivos importantes', color:'#7c3aed', items:[
           'Guardá los documentos clave del cliente: contratos, briefings, manuales de marca, carpetas de Drive/Dropbox.',
