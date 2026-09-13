@@ -208,6 +208,18 @@ export async function saveProcesos(clientId, lista) {
   await api('POST', `/data/${clientId}/procesos`, lista);
 }
 
+// ── Recursos (plantillas/archivos de referencia para todo el equipo) ──
+export async function getRecursos(clientId) {
+  if (DEMO_MODE) return [];
+  const r = await api('GET', `/data/${clientId}/recursos`);
+  return Array.isArray(r) ? r : [];
+}
+
+export async function saveRecursos(clientId, lista) {
+  if (DEMO_MODE) return;
+  await api('POST', `/data/${clientId}/recursos`, lista);
+}
+
 // ── Tareas ────────────────────────────────────────────────────
 
 export async function getTareas(clientId) {

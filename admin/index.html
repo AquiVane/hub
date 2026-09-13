@@ -295,8 +295,9 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Recursos</h2>
           <span class="text-muted text-sm">Plantillas y archivos de referencia para todo el equipo</span>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openRecursoModal(null)">+ Agregar recurso</button>
         </div>
-        <div class="links-grid">
+        <div class="links-grid" id="recursos-grid">
           <a href="../plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx" download="Plantilla_Contenidos_Hub_COSMART.xlsx" class="link-card" style="text-decoration:none;">
             <div class="link-card-icon">
               <i data-lucide="file-spreadsheet" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
@@ -1465,11 +1466,49 @@
         <input type="text" id="ia-categoria" class="form-control" list="ia-categoria-list" placeholder="Ej: Nuevo negocio, Producto, Marketing...">
         <datalist id="ia-categoria-list"></datalist>
       </div>
+      <div class="form-group">
+        <label>Idea de <span style="font-weight:400;color:var(--text-muted);">(quién la trajo -- opcional)</span></label>
+        <select id="ia-traido-por" class="form-control"></select>
+      </div>
       <div id="ia-autor" style="font-size:12px;color:var(--text-muted);"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="document.getElementById('ideaAdminModal').classList.add('hidden')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarIdeaAdmin()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: agregar/editar recurso -->
+<div id="recursoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3 id="recurso-modal-title">Nuevo recurso</h3>
+      <button class="modal-close" onclick="document.getElementById('recursoModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título</label>
+        <input type="text" id="rc-titulo" class="form-control" placeholder="Ej: Guía de tono de voz">
+      </div>
+      <div class="form-group">
+        <label>Descripción <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+        <input type="text" id="rc-desc" class="form-control" placeholder="Para qué sirve este recurso">
+      </div>
+      <div class="form-group">
+        <label>Archivo <span style="font-weight:400;color:var(--text-muted);">(o pegá un link abajo en vez de subir uno)</span></label>
+        <input type="file" id="rc-file-input" class="form-control">
+        <div id="rc-file-name" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+      </div>
+      <div class="form-group">
+        <label>Link externo <span style="font-weight:400;color:var(--text-muted);">(opcional, ej. Google Drive)</span></label>
+        <input type="text" id="rc-url" class="form-control" placeholder="https://...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger hidden" id="rc-eliminar-btn" onclick="eliminarRecurso()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('recursoModal').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRecurso()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1746,7 +1785,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1859,6 +1898,7 @@
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
+    if (sec === 'recursos') loadRecursos();
   };
 
   function fmtDateAct(iso) {
@@ -3132,6 +3172,94 @@
   };
 
   // ── Ideas (admin) ────────────────────────────────────────────
+  // ── Recursos (plantillas/archivos para todo el equipo) ──────────
+  // Pedido de Vaneh (13/09): "acá cómo cargo recursos, no hay botón".
+  // Guardados en el pseudo-cliente '_cosmart', igual que Ideas/Mis Tareas.
+  let _recursosCache = [];
+  let _editingRecursoIdx = null;
+
+  async function loadRecursos() {
+    try {
+      _recursosCache = await getRecursos(INTERNAS_CLIENT_ID);
+      renderRecursos();
+    } catch (e) {
+      console.error('[loadRecursos]', e);
+    }
+  }
+
+  function renderRecursos() {
+    const grid = document.getElementById('recursos-grid');
+    const plantillaHtml = grid.querySelector('a').outerHTML; // conserva la plantilla fija de siempre
+    grid.innerHTML = plantillaHtml + _recursosCache.map((r, idx) => `
+      <div class="link-card" style="${r.url ? 'cursor:pointer;' : ''}" ${r.url ? `onclick="window.open('${r.url.replace(/'/g,"\\'")}','_blank')"` : ''}>
+        <div class="link-card-icon">
+          <i data-lucide="${r.archivo ? 'file' : 'link'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="link-card-title">${escapeHtml(r.titulo)}</div>
+          ${r.desc ? `<div class="link-card-desc">${escapeHtml(r.desc)}</div>` : ''}
+        </div>
+        ${r.archivo ? `<a href="${r.archivo}" download="${escapeHtml(r.archivoNombre||r.titulo)}" onclick="event.stopPropagation();" title="Descargar" style="flex-shrink:0;color:var(--text-muted);"><i data-lucide="download" style="width:14px;height:14px;"></i></a>` : ''}
+        <button class="link-card-edit" onclick="event.stopPropagation();openRecursoModal(${idx})" title="Editar">
+          <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
+        </button>
+      </div>
+    `).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  window.openRecursoModal = function(idx) {
+    _editingRecursoIdx = (idx === null || idx === undefined) ? null : idx;
+    const r = _editingRecursoIdx !== null ? _recursosCache[_editingRecursoIdx] : {};
+    document.getElementById('recurso-modal-title').textContent = _editingRecursoIdx !== null ? 'Editar recurso' : 'Nuevo recurso';
+    document.getElementById('rc-titulo').value = r.titulo || '';
+    document.getElementById('rc-desc').value = r.desc || '';
+    document.getElementById('rc-url').value = r.url || '';
+    document.getElementById('rc-file-input').value = '';
+    document.getElementById('rc-file-name').textContent = r.archivoNombre ? `Archivo actual: ${r.archivoNombre}` : '';
+    document.getElementById('rc-eliminar-btn').classList.toggle('hidden', _editingRecursoIdx === null);
+    window._rcArchivoPendiente = null;
+    document.getElementById('rc-file-input').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        window._rcArchivoPendiente = { data: ev.target.result, nombre: file.name };
+        document.getElementById('rc-file-name').textContent = `Elegido: ${file.name}`;
+      };
+      reader.readAsDataURL(file);
+    };
+    document.getElementById('recursoModal').classList.remove('hidden');
+  };
+
+  window.guardarRecurso = async function() {
+    const titulo = document.getElementById('rc-titulo').value.trim();
+    if (!titulo) { alert('El título es obligatorio.'); return; }
+    const url = document.getElementById('rc-url').value.trim();
+    const previo = _editingRecursoIdx !== null ? _recursosCache[_editingRecursoIdx] : {};
+    const obj = {
+      titulo,
+      desc: document.getElementById('rc-desc').value.trim() || null,
+      url: url || null,
+      archivo: window._rcArchivoPendiente ? window._rcArchivoPendiente.data : (previo.archivo || null),
+      archivoNombre: window._rcArchivoPendiente ? window._rcArchivoPendiente.nombre : (previo.archivoNombre || null),
+    };
+    if (_editingRecursoIdx !== null) _recursosCache[_editingRecursoIdx] = obj;
+    else _recursosCache.push(obj);
+    await saveRecursos(INTERNAS_CLIENT_ID, _recursosCache);
+    document.getElementById('recursoModal').classList.add('hidden');
+    renderRecursos();
+  };
+
+  window.eliminarRecurso = async function() {
+    if (_editingRecursoIdx === null) return;
+    if (!confirm('¿Eliminar este recurso?')) return;
+    _recursosCache.splice(_editingRecursoIdx, 1);
+    await saveRecursos(INTERNAS_CLIENT_ID, _recursosCache);
+    document.getElementById('recursoModal').classList.add('hidden');
+    renderRecursos();
+  };
+
   // Reusa el mismo backend que "Ideas de contenido" del cliente
   // (getIdeas/saveIdea/deleteIdea, endpoint genérico /data/:id/ideas) pero
   // guardadas en el pseudo-cliente '_cosmart' -- mismo criterio que Mis
@@ -3194,9 +3322,10 @@
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
             <span style="font-weight:600;font-size:13px;">${escapeHtml(i.titulo)}</span>
             ${i.categoria ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">${escapeHtml(i.categoria)}</span>` : ''}
+            ${i.traidoPor?.nombre ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700;">Idea de ${escapeHtml(i.traidoPor.nombre)}</span>` : ''}
           </div>
           ${i.descripcion ? `<div style="font-size:12px;color:var(--text-muted);">${escapeHtml(i.descripcion)}</div>` : ''}
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">💡 ${escapeHtml(i.autor?.nombre || 'Alguien del equipo')} · ${fmtDateAct(i.fecha) || ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">💡 Anotada por ${escapeHtml(i.autor?.nombre || 'Alguien del equipo')} · ${fmtDateAct(i.fecha) || ''}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;">
           ${i.proyectoTareaId
@@ -3210,7 +3339,7 @@
     listEl.innerHTML = pillsHtml + filasHtml;
   }
 
-  window.openIdeaAdminModal = function(id) {
+  window.openIdeaAdminModal = async function(id) {
     _editingIdeaAdmin = id ? _ideasAdminCache.find(i => i.id === id) : null;
     const i = _editingIdeaAdmin || {};
     document.getElementById('idea-admin-modal-title').textContent = _editingIdeaAdmin ? 'Editar idea' : 'Nueva idea';
@@ -3220,17 +3349,27 @@
     const categoriasExistentes = [...new Set(_ideasAdminCache.map(x => x.categoria).filter(Boolean))];
     document.getElementById('ia-categoria-list').innerHTML = categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">`).join('');
     document.getElementById('ia-autor').textContent = i.autor?.nombre ? `Anotada por ${i.autor.nombre}` : '';
+    // "Idea de" -- pedido de Vaneh (13/09): poder marcar qué colaborador
+    // trajo la idea, aparte de quién la tipeó en el sistema (autor).
+    const equipo = await getEquipoCache();
+    const traidoPorSel = document.getElementById('ia-traido-por');
+    traidoPorSel.innerHTML = '<option value="">-- Nadie en particular --</option>' +
+      equipo.map(c => `<option value="${c.email}" ${i.traidoPor?.email === c.email ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>`).join('');
     document.getElementById('ideaAdminModal').classList.remove('hidden');
   };
 
   window.guardarIdeaAdmin = async function() {
     const titulo = document.getElementById('ia-titulo').value.trim();
     if (!titulo) { alert('El título es obligatorio.'); return; }
+    const traidoPorSel = document.getElementById('ia-traido-por');
+    const traidoPorEmail = traidoPorSel.value;
+    const traidoPorNombre = traidoPorEmail ? traidoPorSel.options[traidoPorSel.selectedIndex].textContent : null;
     const obj = {
       ...(_editingIdeaAdmin || {}),
       titulo,
       descripcion: document.getElementById('ia-descripcion').value.trim() || null,
       categoria: document.getElementById('ia-categoria').value.trim() || null,
+      traidoPor: traidoPorEmail ? { email: traidoPorEmail, nombre: traidoPorNombre } : null,
       autor: _editingIdeaAdmin?.autor || { email: user.email, nombre: user.name || user.email },
       fecha: _editingIdeaAdmin?.fecha || new Date().toISOString().split('T')[0],
     };
