@@ -5805,36 +5805,65 @@
       if (window.lucide) lucide.createIcons();
       return;
     }
-    const ordenados = [..._informesCache].sort((a, b) => {
-      if (a.aprobado !== b.aprobado) return a.aprobado ? 1 : -1;
-      return (b.generadoEn || 0) - (a.generadoEn || 0);
+    // Agrupados por mes -- pedido de Vaneh (varias veces): "que se puedan
+    // archivar por mes y desaparezcan de ahí de los actuales, pero al
+    // mismo tiempo los necesito accesibles". El mes más reciente queda
+    // abierto de entrada; los anteriores quedan colapsados (un clic los
+    // despliega) en vez de perderse mezclados en una sola lista larga.
+    const claveMes = (inf) => `${inf.anio}-${String(inf.mes).padStart(2, '0')}`;
+    const grupos = new Map();
+    _informesCache.forEach(inf => {
+      const k = claveMes(inf);
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(inf);
     });
-    listEl.innerHTML = ordenados.map((inf, idx) => {
-      const realIdx = _informesCache.indexOf(inf);
+    const clavesOrdenadas = [...grupos.keys()].sort((a, b) => b.localeCompare(a));
+
+    listEl.innerHTML = clavesOrdenadas.map((k, gi) => {
+      const items = grupos.get(k).sort((a, b) => {
+        if (a.aprobado !== b.aprobado) return a.aprobado ? 1 : -1;
+        return (b.generadoEn || 0) - (a.generadoEn || 0);
+      });
+      const primero = items[0];
+      const pendientesDelMes = items.filter(i => !i.aprobado).length;
       return `
-      <div class="card" style="padding:16px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <div style="font-size:14px;font-weight:700;">${inf.clientNombre}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${MESES_NOMBRE_JS[inf.mes]} ${inf.anio} · ${inf.items.length} ítem${inf.items.length !== 1 ? 's' : ''}</div>
-          </div>
-          <span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;background:${inf.aprobado ? '#d1fae5' : '#fef3c7'};color:${inf.aprobado ? '#059669' : '#b45309'};">${inf.aprobado ? '✓ Aprobado y enviado' : 'Pendiente de revisión'}</span>
-          <button class="btn btn-secondary btn-sm" onclick="toggleInformeDetalle(${realIdx})">Ver detalle</button>
-          ${!inf.aprobado ? `<button class="btn btn-primary btn-sm" onclick="aprobarInformeClick('${inf.id}')">Aprobar y enviar</button>` : ''}
-          ${user.role === 'admin' && inf.aprobado ? `<button class="btn btn-secondary btn-sm" onclick="desaprobarInformeClick('${inf.id}')">Desaprobar</button>` : ''}
-          ${user.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="eliminarInformeClick('${inf.id}')">Eliminar</button>` : ''}
+      <details class="banco-mes-group" ${gi === 0 ? 'open' : ''}>
+        <summary class="banco-mes-header">
+          ${MESES_NOMBRE_JS[primero.mes]} ${primero.anio}
+          <span class="banco-mes-count">${items.length} informe${items.length !== 1 ? 's' : ''}</span>
+          ${pendientesDelMes ? `<span class="banco-mes-count" style="background:#fef3c7;color:#b45309;border-color:#fde68a;">${pendientesDelMes} pendiente${pendientesDelMes !== 1 ? 's' : ''}</span>` : ''}
+        </summary>
+        <div style="padding-top:8px;">
+          ${items.map(inf => {
+            const realIdx = _informesCache.indexOf(inf);
+            return `
+            <div class="card" style="padding:16px;margin-bottom:10px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:160px;">
+                  <div style="font-size:14px;font-weight:700;">${inf.clientNombre}</div>
+                  <div style="font-size:12px;color:var(--text-muted);">${MESES_NOMBRE_JS[inf.mes]} ${inf.anio} · ${inf.items.length} ítem${inf.items.length !== 1 ? 's' : ''}</div>
+                </div>
+                <span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;background:${inf.aprobado ? '#d1fae5' : '#fef3c7'};color:${inf.aprobado ? '#059669' : '#b45309'};">${inf.aprobado ? '✓ Aprobado y enviado' : 'Pendiente de revisión'}</span>
+                <button class="btn btn-secondary btn-sm" onclick="toggleInformeDetalle(${realIdx})">Ver detalle</button>
+                ${!inf.aprobado ? `<button class="btn btn-primary btn-sm" onclick="aprobarInformeClick('${inf.id}')">Aprobar y enviar</button>` : ''}
+                ${user.role === 'admin' && inf.aprobado ? `<button class="btn btn-secondary btn-sm" onclick="desaprobarInformeClick('${inf.id}')">Desaprobar</button>` : ''}
+                ${user.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="eliminarInformeClick('${inf.id}')">Eliminar</button>` : ''}
+              </div>
+              <div id="informe-detalle-${realIdx}" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+                ${inf.items.map(it => `
+                  <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
+                    <span>${it.icon}</span>
+                    <span style="flex:1;">${it.titulo}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : ''}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>`;
+          }).join('')}
         </div>
-        <div id="informe-detalle-${realIdx}" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          ${inf.items.map(it => `
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
-              <span>${it.icon}</span>
-              <span style="flex:1;">${it.titulo}</span>
-              <span style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : ''}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>`;
+      </details>`;
     }).join('');
+    if (window.lucide) lucide.createIcons();
   }
 
   window.toggleInformeDetalle = function(idx) {
