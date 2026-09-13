@@ -376,14 +376,24 @@ export async function uploadArchivo(clientId, file) {
 }
 
 export async function abrirArchivo(clientId, key, filename) {
+  // La pestaña se abre ACÁ, antes del await -- todavía dentro del mismo
+  // gesto de click del usuario. Si se abre recién después de esperar el
+  // fetch, el navegador ya no lo asocia a ningún click y el popup queda
+  // bloqueado en silencio (sin avisar nada) -- eso era el bug real de
+  // "no abre al tocar abrir".
+  const win = window.open('', '_blank');
   const res = await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
     headers: { 'Authorization': `Bearer ${getSessionToken()}` },
   });
-  if (!res.ok) throw new Error('No se pudo descargar el archivo');
+  if (!res.ok) {
+    win?.close();
+    throw new Error('No se pudo descargar el archivo');
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (!win) {
+  if (win && !win.closed) {
+    win.location.href = url;
+  } else {
     const a = document.createElement('a');
     a.href = url; a.download = filename || 'archivo';
     a.click();
