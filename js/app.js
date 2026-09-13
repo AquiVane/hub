@@ -197,15 +197,30 @@ async function loadAllData() {
   // los dos depende del otro ni de lo que se pide acá abajo, así que ahora
   // van todos juntos en el mismo Promise.all (una sola ida y vuelta en vez
   // de tres).
-  const [client, equipo, cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice] = await Promise.all([
-    getClientData(clientId), getEquipo().catch(() => []),
-    getContenidos(clientId), getTareas(clientId), getCampanas(clientId),
-    getMetricas(clientId), getHomeData(clientId), getIdeas(clientId), getPlan(clientId), getReportesIndice(clientId)
-  ]);
+  //
+  // allSettled en vez de all (12/09): con all, si UN SOLO pedido de estos
+  // se cuelga o falla, ningún dato se muestra -- toda la pantalla queda en
+  // "Cargando..." para siempre. Con allSettled, lo que sí llega se muestra
+  // igual y lo que falló queda con un valor por defecto vacío (ver también
+  // el timeout de 20s agregado en el helper api() de data.js).
+  const calls = {
+    client: getClientData(clientId), equipo: getEquipo(),
+    cont: getContenidos(clientId), tareas: getTareas(clientId), campanas: getCampanas(clientId),
+    metricas: getMetricas(clientId), home: getHomeData(clientId), ideas: getIdeas(clientId),
+    plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
+  };
+  const keys = Object.keys(calls);
+  const settled = await Promise.allSettled(keys.map(k => calls[k]));
+  const r = {};
+  settled.forEach((res, i) => {
+    if (res.status === 'fulfilled') r[keys[i]] = res.value;
+    else console.error(`[loadAllData] Falló "${keys[i]}":`, res.reason);
+  });
+  const { client, equipo, cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice } = r;
   STATE.client = client || { id: clientId, nombre: clientId };
   _equipoDelCliente = (equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
-  STATE.contenidos = cont;
-  STATE.tareas = tareas;
+  STATE.contenidos = cont || [];
+  STATE.tareas = tareas || [];
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
   // inmediato (09/09, pedido de Vaneh: "tiene que tener el mismo
   // comportamiento" que las que se completan ahora) -- se regeneran apenas
@@ -214,10 +229,10 @@ async function loadAllData() {
   // falta guardar si de verdad se generó un próximo ciclo.
   const _recurrentesAResetear = STATE.tareas.filter(t => t.recurrencia && t.estado === 'Listo');
   _recurrentesAResetear.forEach(t => { if (regenerarSiRecurrente(t, STATE.tareas)) saveTarea(clientId, t, STATE.tareas).catch(() => {}); });
-  STATE.campanas = campanas;
-  STATE.metricas = metricas;
+  STATE.campanas = campanas || [];
+  STATE.metricas = metricas || {};
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
-  STATE.ideas = ideas;
+  STATE.ideas = ideas || [];
   STATE.plan = plan || { html: '' };
   STATE.reportes = (reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
   // Links guardados antes de que existiera el campo `id` (o cargados a mano

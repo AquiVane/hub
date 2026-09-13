@@ -2,6 +2,11 @@ import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
 
 // ── Worker API helper ─────────────────────────────────────────
+// Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del
+// lado del servidor deja el fetch esperando para siempre -- y como el
+// Hub pide varias cosas juntas con Promise.all, ESE Promise.all entero
+// nunca resuelve y toda la pantalla queda trabada en "Cargando..." sin
+// ningún error ni forma de reintentar.
 async function api(method, path, body = null) {
   const opts = {
     method,
@@ -11,7 +16,18 @@ async function api(method, path, body = null) {
     },
   };
   if (body !== null) opts.body = JSON.stringify(body);
-  const res = await fetch(WORKER_URL + path, opts);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  opts.signal = controller.signal;
+  let res;
+  try {
+    res = await fetch(WORKER_URL + path, opts);
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Se colgó el pedido a ${path} (más de 20s sin respuesta).`);
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Error del servidor');
   return data;
