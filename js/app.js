@@ -201,34 +201,28 @@ async function init() {
 }
 
 async function loadAllData() {
-  // Pedido de Vaneh (11/09): "tarda entre 1 o 2 segundos para abrir, no
-  // tiene que pasar, tienen que cargar de una". client/equipo se pedían
-  // ANTES de esto, en dos idas y vueltas seguidas al servidor -- ninguno de
-  // los dos depende del otro ni de lo que se pide acá abajo, así que ahora
-  // van todos juntos en el mismo Promise.all (una sola ida y vuelta en vez
-  // de tres).
-  //
-  // allSettled en vez de all (12/09): con all, si UN SOLO pedido de estos
-  // se cuelga o falla, ningún dato se muestra -- toda la pantalla queda en
-  // "Cargando..." para siempre. Con allSettled, lo que sí llega se muestra
-  // igual y lo que falló queda con un valor por defecto vacío (ver también
-  // el timeout de 20s agregado en el helper api() de data.js).
-  const calls = {
-    client: getClientData(clientId), equipo: getEquipo(),
-    cont: getContenidos(clientId), tareas: getTareas(clientId), campanas: getCampanas(clientId),
-    metricas: getMetricas(clientId), home: getHomeData(clientId), ideas: getIdeas(clientId),
-    plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
+  // Pedido de Vaneh (11/09, y de nuevo 13/09: "no puede tardar más de 1
+  // segundo, las páginas con esta carga sufren abandono instantánea").
+  // Antes se esperaban 10 pedidos en paralelo ANTES de mostrar nada --
+  // aunque vayan todos juntos, el tiempo total lo marca el más lento de
+  // los diez. Ahora solo se espera lo que Home/la barra lateral necesitan
+  // para el primer pintado (4 pedidos); el resto (equipo, pauta,
+  // métricas, ideas, plan, reportes) se pide en segundo plano, sin
+  // bloquear, y actualiza la pantalla sola cuando llega -- ver
+  // cargarDatosSecundarios() más abajo.
+  const criticalCalls = {
+    client: getClientData(clientId), cont: getContenidos(clientId),
+    tareas: getTareas(clientId), home: getHomeData(clientId),
   };
-  const keys = Object.keys(calls);
-  const settled = await Promise.allSettled(keys.map(k => calls[k]));
+  const criticalKeys = Object.keys(criticalCalls);
+  const criticalSettled = await Promise.allSettled(criticalKeys.map(k => criticalCalls[k]));
   const r = {};
-  settled.forEach((res, i) => {
-    if (res.status === 'fulfilled') r[keys[i]] = res.value;
-    else console.error(`[loadAllData] Falló "${keys[i]}":`, res.reason);
+  criticalSettled.forEach((res, i) => {
+    if (res.status === 'fulfilled') r[criticalKeys[i]] = res.value;
+    else console.error(`[loadAllData] Falló "${criticalKeys[i]}":`, res.reason);
   });
-  const { client, equipo, cont, tareas, campanas, metricas, home, ideas, plan, reportesIndice } = r;
+  const { client, cont, tareas, home } = r;
   STATE.client = client || { id: clientId, nombre: clientId };
-  _equipoDelCliente = (equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
   STATE.contenidos = cont || [];
   STATE.tareas = tareas || [];
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
@@ -239,12 +233,15 @@ async function loadAllData() {
   // falta guardar si de verdad se generó un próximo ciclo.
   const _recurrentesAResetear = STATE.tareas.filter(t => t.recurrencia && t.estado === 'Listo');
   _recurrentesAResetear.forEach(t => { if (regenerarSiRecurrente(t, STATE.tareas)) saveTarea(clientId, t, STATE.tareas).catch(() => {}); });
-  STATE.campanas = campanas || [];
-  STATE.metricas = metricas || {};
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
-  STATE.ideas = ideas || [];
-  STATE.plan = plan || { html: '' };
-  STATE.reportes = (reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
+  // Valores por defecto para lo que todavía no llegó (wave 2), así ninguna
+  // sección explota si el usuario navega ahí antes de que termine de cargar.
+  STATE.campanas = STATE.campanas || [];
+  STATE.metricas = STATE.metricas || {};
+  STATE.ideas = STATE.ideas || [];
+  STATE.plan = STATE.plan || { html: '' };
+  STATE.reportes = STATE.reportes || [];
+  _equipoDelCliente = _equipoDelCliente || [];
   // Links guardados antes de que existiera el campo `id` (o cargados a mano
   // en Firestore) llegan sin id -- eso hace que openLinkModal('undefined')
   // matchee cualquier link sin id en vez del que se clickeó, y el modal
@@ -261,6 +258,34 @@ async function loadAllData() {
   STATE.home.links = STATE.links;
   if (_linksSinId) saveHomeData(clientId, STATE.home).catch(() => {});
   updateBadges();
+  cargarDatosSecundarios(); // en segundo plano, no se espera
+}
+
+async function cargarDatosSecundarios() {
+  const calls = {
+    equipo: getEquipo(), campanas: getCampanas(clientId), metricas: getMetricas(clientId),
+    ideas: getIdeas(clientId), plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
+  };
+  const keys = Object.keys(calls);
+  const settled = await Promise.allSettled(keys.map(k => calls[k]));
+  const r = {};
+  settled.forEach((res, i) => {
+    if (res.status === 'fulfilled') r[keys[i]] = res.value;
+    else console.error(`[cargarDatosSecundarios] Falló "${keys[i]}":`, res.reason);
+  });
+  _equipoDelCliente = (r.equipo || []).filter(c => c.role === 'admin' || (c.clientIds || []).includes(clientId));
+  STATE.campanas = r.campanas || [];
+  STATE.metricas = r.metricas || {};
+  STATE.ideas = r.ideas || [];
+  STATE.plan = r.plan || { html: '' };
+  STATE.reportes = (r.reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
+  if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan')?.classList.remove('hidden');
+  if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes')?.classList.remove('hidden');
+  // Si el usuario ya está mirando una sección que depende de estos datos
+  // (pauta, ideas, plan, reportes, dashboard) se refresca sola con lo que
+  // acaba de llegar -- si está en Home o Tareas, no hace falta, esas no
+  // usan nada de acá.
+  if (['pauta', 'ideas', 'plan', 'reportes', 'dashboard'].includes(currentSection)) renderSection(currentSection);
 }
 
 function applyClientLogo(src) {
