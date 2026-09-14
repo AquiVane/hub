@@ -3226,6 +3226,7 @@
     const asignadoNombre = asignadoEl.selectedOptions[0]?.dataset.nombre || '';
     const inEstadoVal = document.getElementById('in-estado').value;
     const inVerticalVal = document.getElementById('in-vertical').value || null;
+    const prevInAsignadoEmail = _editingInterna?.asignado?.email || '';
     const numero = _editingInterna?.numero || (Math.max(0, ..._internasCache.filter(t => (t.vertical || null) === inVerticalVal).map(t => t.numero || 0)) + 1);
     const obj = {
       ...(_editingInterna || {}),
@@ -3265,6 +3266,7 @@
       limpiarBorradorAdmin('in', _editingInterna?.id || '_nueva');
       if (_editingInterna) { const i = _internasCache.findIndex(t => t.id === saved.id); _internasCache[i] = saved; }
       else _internasCache.push(saved);
+      notifyAsignacionAdmin('tarea', saved, prevInAsignadoEmail, INTERNAS_CLIENT_ID);
       closeInternaModal();
       renderInternasBoard();
     } catch (e) {
@@ -4718,6 +4720,7 @@
     const asignadoSel = document.getElementById('mt-asignado');
     const nuevoAsignadoEmail = asignadoSel.value;
     const nuevoAsignadoNombre = asignadoSel.selectedOptions[0]?.dataset.nombre || '';
+    const prevMtAsignadoEmail = item.tarea.asignado?.email || '';
     if (nuevoAsignadoEmail !== (item.tarea.asignado?.email || '')) {
       item.tarea.asignado = nuevoAsignadoEmail
         ? { ...(item.tarea.asignado || {}), email: nuevoAsignadoEmail, nombre: nuevoAsignadoNombre }
@@ -4754,6 +4757,7 @@
         if (!esPseudoClienteSave) item.tarea.visibleParaCliente = document.getElementById('mt-visible-cliente').checked;
       }
       item.tarea = await saveTarea(item.clientId, item.tarea);
+      notifyAsignacionAdmin('tarea', item.tarea, prevMtAsignadoEmail, item.clientId);
       if (nuevo) {
         nuevo = await saveTarea(item.clientId, nuevo);
         _misTareasCache.push({ clientId: item.clientId, clientNombre: item.clientNombre, tipo: 'tarea', tarea: nuevo, personal: item.personal, asignadoEmail: (nuevo.asignado?.email || '').toLowerCase() });
@@ -4761,6 +4765,7 @@
     } else {
       item.tarea.fechaPub = document.getElementById('mt-vencimiento').value || item.tarea.fechaPub;
       item.tarea = await saveContenido(item.clientId, item.tarea);
+      notifyAsignacionAdmin('contenido', item.tarea, prevMtAsignadoEmail, item.clientId);
     }
     limpiarBorradorAdmin('mt', _misTareaModalIdx);
     closeMisTareaModal();
@@ -5358,7 +5363,8 @@
       visibleParaCliente: !['_cosmart', '_personal'].includes(clientId) && document.getElementById('nmt-visible-cliente').checked,
     };
     try {
-      await saveTarea(clientId, obj);
+      const saved = await saveTarea(clientId, obj);
+      notifyAsignacionAdmin('tarea', saved, '', clientId);
       limpiarBorradorAdmin('nmt', '_nueva');
       closeNuevaMiTareaModal();
       loadMisTareas();
@@ -6635,6 +6641,49 @@
   // clientId opcional -- pedido de Vaneh (07/09): "no podés arrobar al
   // equipo del cliente desde Mis Tareas" -- antes solo ofrecía colaboradores
   // de COSMART, aunque el hilo de comentarios sea el mismo que ve el cliente.
+  // Detecta a quién se mencionó con @ dentro de un comentario, contra la
+  // lista de usuarios candidatos -- busca por NOMBRE COMPLETO (más largo
+  // primero), no por una sola palabra: con /@(\w+)/g un nombre con espacio
+  // (ej. "Vale Díaz") se cortaba en la primera palabra y nunca encontraba
+  // al usuario, así que nunca le llegaba el mail. Pedido de Vaneh (14/09):
+  // que arrobar a cualquiera (equipo COSMART o cliente) le mande un mail.
+  function detectarUsuariosMencionados(texto, candidatos) {
+    const ordenados = [...candidatos].filter(u => u.nombre && u.email).sort((a, b) => b.nombre.length - a.nombre.length);
+    const encontrados = new Map();
+    let idx = 0;
+    while ((idx = texto.indexOf('@', idx)) !== -1) {
+      const resto = texto.slice(idx + 1).toLowerCase();
+      const match = ordenados.find(u => resto.startsWith(u.nombre.toLowerCase()));
+      if (match) encontrados.set(match.email.toLowerCase(), match);
+      idx++;
+    }
+    return [...encontrados.values()];
+  }
+
+  // Avisa por mail a quien se le asignó una tarea/contenido -- mismo
+  // endpoint y misma lógica que ya usa el panel del cliente (js/app.js,
+  // notifyAsignacion), portado acá porque el admin nunca lo tuvo: solo
+  // mandaba el mail de mención por @, no el de asignación directa.
+  async function notifyAsignacionAdmin(tipo, item, prevAsignadoEmail, clientIdItem) {
+    const asignado = item?.asignado;
+    if (!asignado || !asignado.email || asignado.email.toLowerCase() === (prevAsignadoEmail || '').toLowerCase() || asignado.email.toLowerCase() === user.email.toLowerCase()) return;
+    try {
+      await fetch(WORKER_URL + '/email/asignacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({
+          toEmail: asignado.email,
+          toName: asignado.nombre,
+          asignadorNombre: user.name || user.email.split('@')[0],
+          titulo: item.titulo || '',
+          tipo,
+          itemId: item.id,
+          clientId: clientIdItem,
+        }),
+      });
+    } catch (e) {}
+  }
+
   function getMentionUsersInterno(clientId) {
     const lista = [{ nombre: user.name || user.email.split('@')[0], email: user.email }];
     (_equipoCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
@@ -6836,12 +6885,11 @@
     renderComentarios(prefix, item.comentarios);
 
     // Notificar por mail a quien fue mencionado con @
-    const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
+    const allUsersMencion = getMentionUsersInterno(prefix === 'mt' ? clientIdComentario : null);
+    const mencionados = detectarUsuariosMencionados(texto, allUsersMencion);
     if (mencionados.length) {
-      const allUsers = getMentionUsersInterno(prefix === 'mt' ? clientIdComentario : null);
-      mencionados.forEach(nombre => {
-        const u = allUsers.find(x => x.nombre.toLowerCase() === nombre.toLowerCase());
-        if (u && u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
+      mencionados.forEach(u => {
+        if (u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
           fetch(WORKER_URL + '/email/mencion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },

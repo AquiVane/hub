@@ -5636,6 +5636,24 @@ function getMentionUsers() {
   });
 }
 
+// Detecta a quién se mencionó con @ dentro de un comentario, buscando por
+// NOMBRE COMPLETO (el más largo primero) en vez de una sola palabra: con
+// /@(\w+)/g un nombre con espacio (ej. "Vale Díaz") se cortaba en la
+// primera palabra y nunca encontraba al usuario, así que nunca le llegaba
+// el mail. Pedido de Vaneh (14/09): que arrobar a cualquiera le mande un mail.
+function detectarUsuariosMencionados(texto, candidatos) {
+  const ordenados = [...candidatos].filter(u => u.nombre && u.email).sort((a, b) => b.nombre.length - a.nombre.length);
+  const encontrados = new Map();
+  let idx = 0;
+  while ((idx = texto.indexOf('@', idx)) !== -1) {
+    const resto = texto.slice(idx + 1).toLowerCase();
+    const match = ordenados.find(u => resto.startsWith(u.nombre.toLowerCase()));
+    if (match) encontrados.set(match.email.toLowerCase(), match);
+    idx++;
+  }
+  return [...encontrados.values()];
+}
+
 function setupMentionAutocomplete(inputId, dropdownId) {
   const input = document.getElementById(inputId);
   const dropdown = document.getElementById(dropdownId);
@@ -5687,13 +5705,12 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
   input.value = '';
   renderComments(ctx, editingObj.comentarios);
   // Notificar por email a los usuarios mencionados con @
-  const mencionados = [...texto.matchAll(/@(\w+)/g)].map(m => m[1]);
   const allUsers = getMentionUsers();
+  const mencionados = detectarUsuariosMencionados(texto, allUsers);
   const { WORKER_URL } = await import('./firebase.js');
   const { getSessionToken } = await import('./auth.js');
-  mencionados.forEach(nombre => {
-    const u = allUsers.find(u => u.nombre.toLowerCase() === nombre.toLowerCase());
-    if (u && u.email && u.email !== user.email) {
+  mencionados.forEach(u => {
+    if (u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
       fetch(WORKER_URL + '/email/mencion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
