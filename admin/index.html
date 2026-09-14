@@ -650,26 +650,6 @@
             <p id="webhook-config-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
-        <div class="card" style="max-width:600px;margin-bottom:20px;">
-          <div class="card-header"><h2>Numeración de tareas</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
-              Les asigna número (y por lo tanto código, ej. #GA-01) a las tareas que se crearon antes de tener numeración, agrupando por cliente, por vertical de COSMART interno y por persona en tareas personales. Las tareas que ya tienen número no se tocan. Se puede correr las veces que haga falta — solo numera lo que falte.
-            </p>
-            <button class="btn btn-secondary" onclick="migrarNumeracionTareas()">Numerar tareas existentes</button>
-            <div id="migracion-numeracion-resultado" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></div>
-          </div>
-        </div>
-        <div class="card" style="max-width:600px;">
-          <div class="card-header"><h2>Firebase</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
-              Para conectar Firebase real, editá el archivo <code>js/firebase.js</code> con tus credenciales.<br>
-              Seguí las instrucciones del archivo <code>SETUP.md</code>.
-            </p>
-            <div id="firebase-status" style="padding:10px 12px;border-radius:6px;font-size:13px;"></div>
-          </div>
-        </div>
       </div>
 
       <!-- Agencias (solo super-admin COSMART) -->
@@ -1456,13 +1436,13 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <label style="font-size:12px;color:var(--text-muted);margin:0;">Año</label>
           <select id="fact-anio" class="form-control" style="width:auto;" onchange="renderFacturacionTabla()"></select>
-          <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">Marcá el mes solo si el cobro automático falló y hay que hacer algo</span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="border-bottom:1px solid var(--border-strong);">
               <th style="text-align:left;padding:6px 4px;">Mes</th>
-              <th style="text-align:center;padding:6px 4px;">⚠️ Cobro falló / hay que revisar</th>
+              <th style="text-align:center;padding:6px 4px;">Factura enviada</th>
+              <th style="text-align:center;padding:6px 4px;">Pago recibido</th>
             </tr>
           </thead>
           <tbody id="facturacion-tbody"></tbody>
@@ -1875,9 +1855,11 @@
       }));
     }
   }
-  // "Agencias": solo lo ve el super-admin (el admin de COSMART, dueño del
+  // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
   // sistema) -- gestiona altas/bajas de las agencias que usan el Hub.
-  if (esCosmart && user.role === 'admin') {
+  // Pedido explícito: ningún otro admin de COSMART debe verla, solo ella.
+  const esVaneh = (user.email || '').toLowerCase() === 'vaneh@cosmart.com.ar';
+  if (esCosmart && esVaneh) {
     const btnAgencias = document.createElement('button');
     btnAgencias.className = 'nav-item';
     btnAgencias.innerHTML = '<i data-lucide="building" class="nav-icon"></i><span>Agencias</span>';
@@ -1888,6 +1870,7 @@
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
   // ── Mobile sidebar toggle (faltaba acá -- ya existía en app/index.html) ──
+
   const _sidebarEl = document.querySelector('.sidebar');
   const _sidebarOverlayEl = document.getElementById('sidebar-overlay');
   const _sidebarToggleEl = document.getElementById('sidebar-toggle');
@@ -1900,16 +1883,6 @@
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
   });
-
-  // Worker status
-  const fsEl = document.getElementById('firebase-status');
-  if (DEMO_MODE) {
-    fsEl.style.background = '#fffbeb'; fsEl.style.color = '#b45309'; fsEl.style.border = '1px solid #fde68a';
-    fsEl.innerHTML = '⚠️ <strong>Modo demo activo.</strong> Editá <code>js/firebase.js</code> con la URL de tu Cloudflare Worker para activar el backend real.';
-  } else {
-    fsEl.style.background = '#ecfdf5'; fsEl.style.color = '#059669'; fsEl.style.border = '1px solid #a7f3d0';
-    fsEl.innerHTML = '✅ <strong>Worker conectado.</strong> Datos guardados en Cloudflare KV.';
-  }
 
   window.showSection = function(sec) {
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm'].forEach(s => {
@@ -1972,46 +1945,6 @@
     const col = (colaboradores || _colaboradoresCache).find(c => c.email.toLowerCase() === (email || '').toLowerCase());
     return col?.codigo || codigoDesdeNombre(col?.nombre) || 'US';
   }
-  window.migrarNumeracionTareas = async function() {
-    if (!confirm('¿Numerar las tareas existentes que todavía no tienen número? No se puede deshacer.')) return;
-    const resultEl = document.getElementById('migracion-numeracion-resultado');
-    resultEl.textContent = 'Numerando...';
-    let totalNumeradas = 0;
-    try {
-      const clients = await getAllClients();
-      const pseudoClients = [{ id: '_cosmart' }, { id: '_personal' }];
-      const ordenId = (t) => { const m = /^t(\d+)/.exec(t.id || ''); return m ? Number(m[1]) : 0; };
-      for (const c of [...clients, ...pseudoClients]) {
-        const tareas = await getTareas(c.id);
-        if (!tareas || !tareas.length) continue;
-        const sinNumero = tareas.filter(t => !t.numero);
-        if (!sinNumero.length) continue;
-        const claveScope = (t) => {
-          if (c.id === '_cosmart') return t.vertical || '';
-          if (c.id === '_personal') return (t.asignado?.email || '').toLowerCase();
-          return '__whole__';
-        };
-        const maxPorScope = {};
-        tareas.forEach(t => {
-          if (!t.numero) return;
-          const k = claveScope(t);
-          maxPorScope[k] = Math.max(maxPorScope[k] || 0, t.numero);
-        });
-        sinNumero.sort((a, b) => ordenId(a) - ordenId(b));
-        sinNumero.forEach(t => {
-          const k = claveScope(t);
-          maxPorScope[k] = (maxPorScope[k] || 0) + 1;
-          t.numero = maxPorScope[k];
-          totalNumeradas++;
-        });
-        await saveTareasList(c.id, tareas);
-      }
-      resultEl.textContent = `Listo: se numeraron ${totalNumeradas} tarea${totalNumeradas !== 1 ? 's' : ''}.`;
-    } catch (e) {
-      resultEl.textContent = 'Error: ' + (e.message || 'intentá de nuevo.');
-    }
-  };
-
   let _misTareasClientsCache = [];
   function codigoDeItem(item) {
     if (item.tipo !== 'tarea' || !item.tarea.numero) return '';
@@ -2731,11 +2664,21 @@
     renderProcesoContent();
   };
 
+  let _procError = null;
+
   async function cargarProcesos() {
     document.getElementById('procesosLista').innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Cargando...</p>';
+    _procError = null;
     try {
       _procLista = await getProcesos(_procClienteId) || [];
-    } catch (e) { _procLista = []; }
+    } catch (e) {
+      _procLista = [];
+      // Antes esto quedaba en silencio -- un proceso que no cargó por un
+      // problema de red se veía IGUAL que "no cargaste ningún proceso
+      // todavía", sin ninguna diferencia. Pedido de Vaneh: "cargué
+      // procesos... y ahora no me aparecen".
+      _procError = e.message || 'Error de red';
+    }
     renderProcesosLista();
     renderProcesoContent();
   }
@@ -2747,9 +2690,16 @@
 
   function renderProcesosLista() {
     const el = document.getElementById('procesosLista');
+    if (_procError) {
+      el.innerHTML = `<div style="padding:8px;"><p style="font-size:12px;color:#dc2626;margin-bottom:6px;">⚠️ No se pudieron cargar: ${escapeHtml(_procError)}</p><button class="btn btn-secondary btn-sm" onclick="cargarProcesos()">Reintentar</button></div>`;
+      return;
+    }
     const lista = procesosFiltrados();
     if (!lista.length) {
-      el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Sin procesos todavía.</p>';
+      const avisoVertical = _procClienteId === '_cosmart' && _procVertical
+        ? ` en "${escapeHtml(_procVertical)}" -- probá elegir otra vertical arriba o "General" si los cargaste sin elegir una.`
+        : '.';
+      el.innerHTML = `<p style="font-size:12px;color:var(--text-muted);padding:8px;">Sin procesos todavía${avisoVertical}</p>`;
       return;
     }
     el.innerHTML = lista.map(p => `
@@ -5820,7 +5770,8 @@
       return `
       <tr style="border-bottom:1px solid var(--border);">
         <td style="padding:6px 4px;">${mes}</td>
-        <td style="text-align:center;padding:6px 4px;"><input type="checkbox" id="fact-${anio}-${mesNum}-fallo" ${d.fallo ? 'checked' : ''}></td>
+        <td style="text-align:center;padding:6px 4px;"><input type="checkbox" id="fact-${anio}-${mesNum}-enviada" ${d.enviada ? 'checked' : ''}></td>
+        <td style="text-align:center;padding:6px 4px;"><input type="checkbox" id="fact-${anio}-${mesNum}-pago" ${d.pago ? 'checked' : ''}></td>
       </tr>`;
     }).join('');
   };
@@ -5831,8 +5782,9 @@
     const anio = document.getElementById('fact-anio').value;
     const datosAnio = {};
     for (let mesNum = 1; mesNum <= 12; mesNum++) {
-      const fallo = document.getElementById(`fact-${anio}-${mesNum}-fallo`).checked;
-      if (fallo) datosAnio[mesNum] = { fallo };
+      const enviada = document.getElementById(`fact-${anio}-${mesNum}-enviada`).checked;
+      const pago = document.getElementById(`fact-${anio}-${mesNum}-pago`).checked;
+      if (enviada || pago) datosAnio[mesNum] = { enviada, pago };
     }
     _facturacionData[anio] = datosAnio;
     await saveClientData(_facturacionClienteId, { facturacion: _facturacionData, linkSuscripcion });
