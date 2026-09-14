@@ -128,6 +128,7 @@
             <span id="misTareasCount" class="text-muted text-sm"></span>
           </div>
           <div class="flex gap-8">
+            <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="btn btn-secondary btn-sm" style="text-decoration:none;">⬇️ Plantilla Excel</a>
             <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
             <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
             <button id="misTareasViewLista" class="btn btn-secondary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
@@ -305,6 +306,15 @@
             <div style="flex:1;min-width:0;">
               <div class="link-card-title">Plantilla Excel de Contenidos</div>
               <div class="link-card-desc">Modelo vacío para cargar el calendario de contenidos de un cliente</div>
+            </div>
+          </a>
+          <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="link-card" style="text-decoration:none;">
+            <div class="link-card-icon">
+              <i data-lucide="file-spreadsheet" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="link-card-title">Plantilla Excel de Tareas</div>
+              <div class="link-card-desc">Modelo vacío para importar tareas en "Mis tareas"</div>
             </div>
           </a>
         </div>
@@ -3197,8 +3207,11 @@
 
   function renderRecursos() {
     const grid = document.getElementById('recursos-grid');
-    const plantillaHtml = grid.querySelector('a').outerHTML; // conserva la plantilla fija de siempre
-    grid.innerHTML = plantillaHtml + _recursosCache.map((r, idx) => `
+    // Conserva las plantillas fijas de siempre (los <a> con "download" --
+    // antes solo tomaba la primera con querySelector('a') y al agregar la
+    // segunda plantilla de Tareas se perdía en cada render).
+    const plantillasHtml = [...grid.querySelectorAll('a[download]')].map(a => a.outerHTML).join('');
+    grid.innerHTML = plantillasHtml + _recursosCache.map((r, idx) => `
       <div class="link-card" style="${r.url ? 'cursor:pointer;' : ''}" ${r.url ? `onclick="window.open('${r.url.replace(/'/g,"\\'")}','_blank')"` : ''}>
         <div class="link-card-icon">
           <i data-lucide="${r.archivo ? 'file' : 'link'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
