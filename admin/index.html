@@ -840,6 +840,16 @@
           <option>Baja</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Cuadrante (urgente / importante)</label>
+        <select id="in-cuadrante" class="form-control">
+          <option value="">Sin clasificar</option>
+          <option>Urgente e Importante</option>
+          <option>Importante pero no Urgente</option>
+          <option>Urgente pero no Importante</option>
+          <option>Ni Urgente ni Importante</option>
+        </select>
+      </div>
       <div class="form-group hidden" id="in-fecha-inicio-group">
         <label>Fecha de inicio</label>
         <input type="date" id="in-fecha-inicio" class="form-control">
@@ -969,6 +979,16 @@
           <option>Alta</option>
           <option>Media</option>
           <option>Baja</option>
+        </select>
+      </div>
+      <div class="form-group" id="mt-cuadrante-group">
+        <label>Cuadrante (urgente / importante)</label>
+        <select id="mt-cuadrante" class="form-control">
+          <option value="">Sin clasificar</option>
+          <option>Urgente e Importante</option>
+          <option>Importante pero no Urgente</option>
+          <option>Urgente pero no Importante</option>
+          <option>Ni Urgente ni Importante</option>
         </select>
       </div>
       <div class="form-group">
@@ -1118,6 +1138,16 @@
           <option>Alta</option>
           <option selected>Media</option>
           <option>Baja</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Cuadrante (urgente / importante)</label>
+        <select id="nmt-cuadrante" class="form-control">
+          <option value="">Sin clasificar</option>
+          <option>Urgente e Importante</option>
+          <option>Importante pero no Urgente</option>
+          <option>Urgente pero no Importante</option>
+          <option>Ni Urgente ni Importante</option>
         </select>
       </div>
       <div class="form-group">
@@ -1932,6 +1962,19 @@
     el.style.height = el.scrollHeight + 'px';
   };
 
+  // ── Cuadrante de Covey (urgente/importante) -- pedido de Vaneh: un
+  // campo aparte de "Prioridad" en todos los módulos de tareas. ──────
+  const CUADRANTE_EMOJI = {
+    'Urgente e Importante': '🔴',
+    'Importante pero no Urgente': '🟡',
+    'Urgente pero no Importante': '🟠',
+    'Ni Urgente ni Importante': '⚪',
+  };
+  function cuadranteBadge(c) {
+    if (!c || !CUADRANTE_EMOJI[c]) return '';
+    return `<span title="${c}" style="font-size:11px;">${CUADRANTE_EMOJI[c]}</span>`;
+  }
+
   // ── Códigos de tareas (cliente/vertical/persona) ────────────────
   const VANEH_CODIGO = 'VH';
   const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF', 'Home COSMART': 'HOME', 'Hub': 'HUB' };
@@ -2399,6 +2442,7 @@
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
                   ${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
+                  ${cuadranteBadge(t.cuadrante)}
                 </div>
                 ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${muted};">📅 ${t.vencimiento}</div>` : ''}
                 ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:${esProy ? '#93c5fd' : 'var(--primary)'};">👤 ${t.asignado.nombre}</div>` : ''}
@@ -2917,6 +2961,7 @@
     document.getElementById('in-vertical').value = t.vertical || '';
     document.getElementById('in-estado').value = t.estado || defaultEstado || 'Sin empezar';
     document.getElementById('in-prioridad').value = t.prioridad || 'Media';
+    document.getElementById('in-cuadrante').value = t.cuadrante || '';
     document.getElementById('in-vencimiento').value = t.vencimiento || '';
     document.getElementById('in-hora').value = t.hora || '';
     document.getElementById('in-recurrencia').value = t.recurrencia || '';
@@ -3117,6 +3162,7 @@
       vertical: inVerticalVal,
       estado: inEstadoVal,
       prioridad: document.getElementById('in-prioridad').value,
+      cuadrante: document.getElementById('in-cuadrante').value || null,
       vencimiento: document.getElementById('in-vencimiento').value || null,
       hora: document.getElementById('in-hora').value || null,
       recurrencia: document.getElementById('in-recurrencia').value || null,
@@ -3509,7 +3555,7 @@
         <div class="card" style="padding:14px;background:var(--primary-dark);color:#fff;border-color:var(--primary-dark);cursor:pointer;" onclick="openMisTareaModal(${idx})">
           <div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔷 ${escapeHtml(item.clientNombre)}</div>
           <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${escapeHtml(t.titulo)}</div>
-          ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;">${t.prioridad}</span>` : ''}
+          ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}
           ${t.asignado ? `<div style="font-size:11px;margin-top:8px;color:#93c5fd;">👤 ${escapeHtml(t.asignado.nombre)}</div>` : ''}
           ${t.colaboracionCon?.length ? `<div style="font-size:11px;margin-top:2px;color:#93c5fd;">🤝 ${escapeHtml(t.colaboracionCon.map(c => c.nombre).join(', '))}</div>` : ''}
           ${total ? `<div style="margin-top:10px;">
@@ -4079,6 +4125,7 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${i.tarea.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[i.tarea.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${i.tarea.prioridad}</span>` : ''}
+      ${cuadranteBadge(i.tarea.cuadrante)}
       <span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;flex-shrink:0;">SUBTAREA</span>
     </div>`;
   }
@@ -4146,6 +4193,7 @@
         <div style="font-size:11px;color:${muted};margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
+      ${cuadranteBadge(t.cuadrante)}
       <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
         ${estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
       </select>
@@ -4378,8 +4426,12 @@
     const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
     document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
     document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
+    document.getElementById('mt-cuadrante-group').style.display = tipo === 'tarea' ? '' : 'none';
     document.getElementById('archiveMisTareaBtn').style.display = tipo === 'tarea' ? '' : 'none';
-    if (tipo === 'tarea') document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
+    if (tipo === 'tarea') {
+      document.getElementById('mt-prioridad').value = t.prioridad || 'Media';
+      document.getElementById('mt-cuadrante').value = t.cuadrante || '';
+    }
     document.getElementById('mt-descripcion').value = t.notas || t.descripcion || '';
     document.getElementById('mt-url').value = t.url || '';
     document.getElementById('mt-vencimiento').value = t.vencimiento || t.fechaPub || '';
@@ -4600,6 +4652,7 @@
     item.asignadoEmail = nuevoAsignadoEmail.toLowerCase();
     if (tipo === 'tarea') {
       item.tarea.prioridad = document.getElementById('mt-prioridad').value;
+      item.tarea.cuadrante = document.getElementById('mt-cuadrante').value || null;
       item.tarea.vencimiento = document.getElementById('mt-vencimiento').value || null;
       item.tarea.hora = document.getElementById('mt-hora').value || null;
       item.tarea.esProyecto = document.getElementById('mt-es-proyecto').checked;
@@ -4644,6 +4697,7 @@
     document.getElementById('nmt-titulo').value = '';
     document.getElementById('nmt-estado').value = 'Sin empezar';
     document.getElementById('nmt-prioridad').value = 'Media';
+    document.getElementById('nmt-cuadrante').value = '';
     document.getElementById('nmt-descripcion').value = '';
     document.getElementById('nmt-url').value = '';
     document.getElementById('nmt-visible-cliente').checked = false;
@@ -5211,6 +5265,7 @@
       vertical: verticalVal,
       estado: document.getElementById('nmt-estado').value,
       prioridad: document.getElementById('nmt-prioridad').value,
+      cuadrante: document.getElementById('nmt-cuadrante').value || null,
       notas: document.getElementById('nmt-descripcion').value.trim() || null, // mismo campo "Descripción/Notas" que ve el cliente
       url: document.getElementById('nmt-url').value.trim() || null,
       vencimiento: document.getElementById('nmt-vencimiento').value || null,

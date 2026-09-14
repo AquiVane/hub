@@ -379,6 +379,18 @@ function codigoTarea(t) {
   return `${codigoCliente()}-${String(t.numero).padStart(2, '0')}`;
 }
 
+// Cuadrante de Covey (urgente/importante) -- campo aparte de "Prioridad".
+const CUADRANTE_EMOJI = {
+  'Urgente e Importante': '🔴',
+  'Importante pero no Urgente': '🟡',
+  'Urgente pero no Importante': '🟠',
+  'Ni Urgente ni Importante': '⚪',
+};
+function cuadranteBadge(c) {
+  if (!c || !CUADRANTE_EMOJI[c]) return '';
+  return `<span title="${c}" style="font-size:11px;">${CUADRANTE_EMOJI[c]}</span>`;
+}
+
 function tareasVisibles(lista) {
   if (user.role !== 'client') return lista;
   return lista.filter(t => t.visibleParaCliente === true);
@@ -3373,7 +3385,7 @@ function renderTareas(container) {
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                 <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
               </div>
-              ${t.prioridad ? `<div style="margin-top:4px;"><span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span></div>` : ''}
+              ${t.prioridad || t.cuadrante ? `<div style="margin-top:4px;">${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}</div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</div>` : ''}
               ${t.notas ? `<div style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#fef9c3;color:#a16207;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
@@ -3662,6 +3674,7 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-titulo').value = t.titulo || '';
   document.getElementById('tf-estado').value = t.estado || defaultEstado || 'Sin empezar';
   document.getElementById('tf-prioridad').value = t.prioridad || 'Media';
+  document.getElementById('tf-cuadrante').value = t.cuadrante || '';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
   document.getElementById('tf-hora').value = t.hora || '';
   document.getElementById('tf-notas').innerHTML = linkify(t.notas || '');
@@ -3941,7 +3954,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, cuadrante: document.getElementById('tf-cuadrante').value || null, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     // Recién se marcó "Lista" en este mismo guardado (no ya lo estaba) --
     // si es recurrente, regenerarSiRecurrente crea el próximo ciclo de una,
     // sin esperar el cron, y esta misma (obj) queda "Lista" para siempre.
