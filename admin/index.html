@@ -490,6 +490,7 @@
               <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>"Cuentas publicitarias propias" guarda el ID/nombre de tus propias cuentas de Meta/Google/TikTok/LinkedIn Ads (las de la agencia, no las de tus clientes) -- por ahora es carga manual, la conexión automática está pendiente.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>En Configuración también podés conectar un webhook para que tu propio CRM reciba avisos de eventos del Hub.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>Si tu agencia usa varias unidades de negocio (o querés clasificar proyectos internos por separado), armá tu propia lista en <strong>Configuración → 🏷️ Verticales / proyectos</strong> -- queda disponible en los filtros de Vertical de Mis tareas, Gestión interna y CRM Leads.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#64748b;">›</span>Desde ahí podés volver a ver este recorrido guiado cuando quieras.</li>
               </ul>
             </div>
@@ -621,6 +622,18 @@
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Volvé a ver la introducción al panel de administrador.</p>
             <button class="btn btn-secondary" onclick="reiniciarTourAdmin()">Ver recorrido de nuevo</button>
+          </div>
+        </div>
+        <div class="card hidden" id="cardVerticalesPropias" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🏷️ Verticales / proyectos</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Armá tu propia lista para clasificar tareas internas, leads y proyectos -- por ejemplo tus propias líneas de negocio, o simplemente los proyectos internos que quieras seguir por separado. Se usa en el filtro de Vertical de Mis tareas, Gestión interna y CRM Leads.</p>
+            <div id="verticalesPropiasList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:10px;">
+              <input type="text" id="nuevaVerticalPropiaInput" class="form-control" placeholder="Nombre de la vertical/proyecto" style="flex:1;">
+              <button class="btn btn-secondary btn-sm" onclick="agregarVerticalPropia()">+ Agregar</button>
+            </div>
+            <p id="verticales-propias-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
@@ -1836,7 +1849,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -1895,6 +1908,67 @@
       }));
     }
   }
+  // Verticales: COSMART sigue con su lista fija de siempre en estos 7
+  // selects (cero riesgo de tocar datos ya cargados). Cualquier OTRA
+  // agencia arranca sin ningún rastro de las verticales propias de
+  // COSMART (Brújula, Euforia, etc.) -- puede armar su propia lista
+  // desde Configuración, pensada para usarla como quiera (verticales
+  // propias o simplemente proyectos internos). Pedido de Vaneh (13/09):
+  // "que en el logueo de agencia no queden rasgos de verticales de
+  // COSMART... de COSMART nada".
+  const VERTICAL_SELECT_IDS = ['misTareasFiltroVertical', 'internasVerticalFiltro', 'leadsVerticalFiltro', 'in-vertical', 'mt-vertical', 'nmt-vertical', 'lead-vertical'];
+  let _verticalesPropias = [];
+  function aplicarVerticalesPropiasEnSelects() {
+    VERTICAL_SELECT_IDS.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const placeholder = sel.querySelector('option')?.textContent || 'Sin especificar';
+      const valorPrevio = sel.value;
+      sel.innerHTML = `<option value="">${placeholder}</option>` + _verticalesPropias.map(v => `<option>${v.replace(/</g, '&lt;')}</option>`).join('');
+      sel.value = valorPrevio;
+    });
+  }
+  if (!esCosmart) {
+    try { _verticalesPropias = await getVerticalesAgencia(); } catch (e) { _verticalesPropias = []; }
+    aplicarVerticalesPropiasEnSelects();
+    document.getElementById('cardVerticalesPropias').classList.remove('hidden');
+    renderVerticalesPropiasList();
+  }
+  function renderVerticalesPropiasList() {
+    const el = document.getElementById('verticalesPropiasList');
+    if (!_verticalesPropias.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Todavía no agregaste ninguna.</p>'; return; }
+    el.innerHTML = _verticalesPropias.map((v, i) => `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="flex:1;font-size:13px;">${v.replace(/</g, '&lt;')}</span>
+        <button class="btn btn-secondary btn-sm" onclick="eliminarVerticalPropia(${i})">Eliminar</button>
+      </div>`).join('');
+  }
+  window.agregarVerticalPropia = async function() {
+    const input = document.getElementById('nuevaVerticalPropiaInput');
+    const val = input.value.trim();
+    if (!val) return;
+    if (_verticalesPropias.some(v => v.toLowerCase() === val.toLowerCase())) { input.value = ''; return; }
+    _verticalesPropias.push(val);
+    input.value = '';
+    await guardarVerticalesPropias();
+  };
+  window.eliminarVerticalPropia = async function(idx) {
+    _verticalesPropias.splice(idx, 1);
+    await guardarVerticalesPropias();
+  };
+  async function guardarVerticalesPropias() {
+    const statusEl = document.getElementById('verticales-propias-status');
+    statusEl.textContent = 'Guardando...';
+    try {
+      await setVerticalesAgencia(_verticalesPropias);
+      aplicarVerticalesPropiasEnSelects();
+      renderVerticalesPropiasList();
+      statusEl.textContent = '';
+    } catch (e) {
+      statusEl.textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.');
+    }
+  }
+
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
   // sistema) -- gestiona altas/bajas de las agencias que usan el Hub.
   // Pedido explícito: ningún otro admin de COSMART debe verla, solo ella.

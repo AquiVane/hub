@@ -636,6 +636,19 @@ export async function setClaudeApiKey(apiKey) {
   return api('POST', '/admin/claude-config', { apiKey });
 }
 
+// Verticales/proyectos propios de una agencia (no-COSMART) -- ver comentario
+// en el worker (handleGetVerticales/handleSetVerticales).
+export async function getVerticalesAgencia() {
+  if (DEMO_MODE) return [];
+  const r = await api('GET', '/admin/verticales');
+  return r?.verticales || [];
+}
+
+export async function setVerticalesAgencia(verticales) {
+  if (DEMO_MODE) return { verticales: [] };
+  return api('POST', '/admin/verticales', { verticales });
+}
+
 export async function preguntarClaude(mensaje, historial) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
   return api('POST', '/ai/preguntar', { mensaje, historial });
