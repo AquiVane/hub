@@ -463,6 +463,20 @@ function renderSection(sec) {
     importBtn.textContent = '📥 Importar Excel';
     importBtn.onclick = () => openImportModal();
     actions.appendChild(importBtn);
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'btn btn-secondary';
+    exportBtn.textContent = '📤 Exportar Excel';
+    exportBtn.title = 'Bajar el calendario de contenidos cargado, con las mismas columnas que la plantilla';
+    exportBtn.onclick = () => exportarContenidosExcel();
+    actions.appendChild(exportBtn);
+    if (user.role !== 'client') {
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'btn btn-secondary';
+      dupBtn.textContent = '🧹 Duplicados';
+      dupBtn.title = 'Buscar contenidos cargados dos veces con el mismo título';
+      dupBtn.onclick = () => abrirDuplicadosContenidoModal();
+      actions.appendChild(dupBtn);
+    }
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nuevo contenido';
@@ -2803,6 +2817,7 @@ const IMPORT_PAUTA_MAP = {
   dark: 'dark',
   'dark-organico': 'dark-organico',
 };
+const EXPORT_PAUTA_LABEL = { organico: 'Solo orgánico', dark: 'Sí – Dark post', 'dark-organico': 'Sí – Dark + orgánico' };
 // header normalizado (sin acentos, minúscula) -> campo del contenido
 const IMPORT_HEADER_MAP = {
   'titulo del contenido': 'titulo',
@@ -2980,6 +2995,120 @@ function loadXLSXLib() {
 
 function closeImportModal() {
   document.getElementById('importContenidoModal').classList.add('hidden');
+}
+
+// ── Exportar Excel: bajar el calendario de contenidos ya cargado ─────
+// Pedido de Vaneh (18/09): poder exportar el calendario de Contenidos
+// para hacer modificaciones masivas afuera y volver a subirlo. Mismas
+// columnas y mismo orden que la plantilla de importación, para que el
+// archivo exportado se pueda volver a importar sin tocar encabezados.
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas'];
+
+function contenidoAFilaExport(c) {
+  return [
+    c.titulo || '',
+    c.fechaPub || '',
+    c.estado || '',
+    c.cuenta || '',
+    (c.plataformas || []).join(', '),
+    (c.ubicacion || []).join(', '),
+    (c.formato || []).join(', '),
+    (c.dimensiones || []).join(', '),
+    c.eje || '',
+    c.tipo || '',
+    c.objetivo || '',
+    c.copy || '',
+    c.textoPantalla || '',
+    c.promptIA || '',
+    c.sugerenciaVisual || '',
+    EXPORT_PAUTA_LABEL[c.pauta] || '',
+    (c.linkDrive || []).join(', '),
+    (c.linkDriveRef || []).join(', '),
+    c.notas || '',
+  ];
+}
+
+// ── Detectar duplicados en Contenidos ─────────────────────────────
+// Pedido de Vaneh (18/09): el cliente Lambo quedó con contenidos
+// duplicados, posiblemente de antes de que se arreglara el bug de
+// detección de duplicados en el import (07/09, ver comentario arriba de
+// importClasificarFilas). Agrupa por título normalizado -- mismo criterio
+// que ya usa el import para matchear -- para poder revisar y limpiar los
+// que ya quedaron cargados dos veces.
+function detectarContenidosDuplicados() {
+  const grupos = new Map();
+  STATE.contenidos.forEach(c => {
+    const clave = normImportTexto(c.titulo);
+    if (!clave) return;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(c);
+  });
+  return [...grupos.values()].filter(g => g.length > 1).sort((a, b) => b.length - a.length);
+}
+
+window.abrirDuplicadosContenidoModal = function() {
+  const grupos = detectarContenidosDuplicados();
+  const listaEl = document.getElementById('duplicados-lista');
+  if (!grupos.length) {
+    listaEl.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">No se encontraron títulos repetidos.</p>';
+  } else {
+    listaEl.innerHTML = grupos.map((grupo, gi) => `
+      <div style="border:1px solid var(--border-strong);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">${escapeHtml(grupo[0].titulo)} <span style="color:var(--text-muted);font-weight:400;">(${grupo.length} contenidos con este título)</span></div>
+        ${grupo.map(c => `
+          <label style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:12.5px;cursor:pointer;">
+            <input type="checkbox" class="dup-cont-check" value="${c.id}" data-grupo="${gi}" style="margin-top:2px;">
+            <span style="flex:1;">
+              <strong>Cuenta:</strong> ${escapeHtml(c.cuenta || '—')} ·
+              <strong>Fecha:</strong> ${c.fechaPub ? fmtDate(c.fechaPub) : 'sin fecha'} ·
+              <strong>Estado:</strong> ${escapeHtml(c.estado || '—')} ·
+              <strong>Plataformas:</strong> ${escapeHtml((c.plataformas || []).join(', ') || '—')}
+              ${c.copy ? `<br><span style="color:var(--text-muted);">${escapeHtml(c.copy.slice(0, 120))}${c.copy.length > 120 ? '…' : ''}</span>` : ''}
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="event.preventDefault();event.stopPropagation();closeDuplicadosContenidoModal();openContenidoModalById('${c.id}');">Ver</button>
+          </label>`).join('')}
+      </div>`).join('');
+    listaEl.querySelectorAll('.dup-cont-check').forEach(cb => cb.addEventListener('change', actualizarBtnEliminarDuplicados));
+  }
+  actualizarBtnEliminarDuplicados();
+  document.getElementById('duplicadosContenidoModal').classList.remove('hidden');
+};
+
+function actualizarBtnEliminarDuplicados() {
+  const marcados = document.querySelectorAll('.dup-cont-check:checked').length;
+  const btn = document.getElementById('confirmEliminarDuplicadosBtn');
+  btn.disabled = marcados === 0;
+  btn.textContent = marcados ? `Eliminar seleccionados (${marcados})` : 'Eliminar seleccionados';
+}
+
+window.closeDuplicadosContenidoModal = function() {
+  document.getElementById('duplicadosContenidoModal').classList.add('hidden');
+};
+
+window.eliminarDuplicadosSeleccionados = async function() {
+  const ids = [...document.querySelectorAll('.dup-cont-check:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  if (!confirm(`¿Eliminar ${ids.length} contenido${ids.length !== 1 ? 's' : ''}? No se puede deshacer.`)) return;
+  const btn = document.getElementById('confirmEliminarDuplicadosBtn');
+  btn.disabled = true;
+  btn.textContent = 'Eliminando...';
+  for (const id of ids) {
+    try { await deleteContenido(clientId, id); STATE.contenidos = STATE.contenidos.filter(c => c.id !== id); } catch (e) {}
+  }
+  renderContTab(activeContTab);
+  window.abrirDuplicadosContenidoModal();
+};
+
+async function exportarContenidosExcel() {
+  if (!STATE.contenidos.length) { alert('No hay contenidos cargados todavía para exportar.'); return; }
+  await loadXLSXLib();
+  const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30][i] || 16 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
+  const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
+  XLSX.writeFile(wb, `Contenidos_${nombreCliente}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
 document.getElementById('closeImportModal2').addEventListener('click', closeImportModal);
@@ -4708,6 +4837,8 @@ function renderInstrucciones(container) {
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
           '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
+          '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
+          '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
           '<strong>🔗 Copiar link:</strong> dentro de cada contenido hay un botón para copiar un link directo a esa tarjeta puntual -- ideal para mandarlo por WhatsApp y que lo encuentren con un clic.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[

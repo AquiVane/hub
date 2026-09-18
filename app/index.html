@@ -439,6 +439,26 @@
   </div>
 </div>
 
+<!-- Modal: Detectar duplicados en Contenidos -->
+<div id="duplicadosContenidoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h3>Contenidos duplicados</h3>
+      <button class="modal-close" onclick="closeDuplicadosContenidoModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Agrupa los contenidos que tienen el mismo título -- puede ser un duplicado real (se cargó dos veces, por ejemplo antes de un arreglo del importador) o simplemente dos piezas distintas que coinciden en el título. Revisá cada grupo y tildá los que quieras eliminar; no se borra nada solo.
+      </p>
+      <div id="duplicados-lista"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDuplicadosContenidoModal()">Cerrar</button>
+      <button class="btn btn-danger" id="confirmEliminarDuplicadosBtn" onclick="eliminarDuplicadosSeleccionados()" disabled>Eliminar seleccionados</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Tarea Sitio Web -->
 <div id="webTaskModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:460px;">
