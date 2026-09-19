@@ -2508,13 +2508,39 @@ function renderImgThumbs() {
   wrap.innerHTML = _imgList.map((item, i) => {
     const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
     const preview = f.isImage
-      ? `<img src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;">`
+      ? `<img src="${f.src}" onclick="openImgLightboxFromList(_imgList,${i})" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
       : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
     return `<div style="position:relative;">${preview}<button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
   }).join('');
   const ph = document.querySelector('.img-paste-placeholder');
   if (ph) ph.style.display = _imgList.length ? 'none' : '';
 }
+
+// Lightbox simple para ampliar cualquier imagen pegada/adjunta (Contenidos y Tareas) --
+// Vaneh reportó (19/09) que tocar una miniatura no hacía nada y por eso no podía
+// confirmar si se habían guardado bien. Se creaba sí (viaja en el payload de guardado),
+// solo faltaba esta forma de verlas grandes.
+function openImgLightbox(src) {
+  let ov = document.getElementById('img-lightbox-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'img-lightbox-overlay';
+    ov.className = 'hidden';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px;cursor:zoom-out;display:flex;';
+    ov.innerHTML = '<img id="img-lightbox-img" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);">';
+    ov.addEventListener('click', () => ov.classList.add('hidden'));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') ov.classList.add('hidden'); });
+    document.body.appendChild(ov);
+  }
+  document.getElementById('img-lightbox-img').src = src;
+  ov.classList.remove('hidden');
+}
+window.openImgLightbox = openImgLightbox;
+window.openImgLightboxFromList = function(list, i) {
+  const item = list[i];
+  const src = typeof item === 'string' ? item : item?.src;
+  if (src) openImgLightbox(src);
+};
 
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
@@ -3666,7 +3692,7 @@ function renderTareaImgThumbs() {
   if (!container) return;
   container.innerHTML = _tareaImgList.map((src, i) => `
     <div style="position:relative;display:inline-block;">
-      <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+      <img src="${src}" onclick="openImgLightboxFromList(_tareaImgList,${i})" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;">
       <button onclick="removeTareaImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
     </div>
   `).join('');
