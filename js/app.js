@@ -3673,20 +3673,28 @@ window.rteColor = function(color) {
 // (quedan como estan, no se migran).
 const _imgBlobUrlCache = new Map();
 
+// Antes las miniaturas (72x72) quedaban adentro de la zona de pegado --
+// ocupaban lugar justo donde hay que hacer click/Ctrl+V para agregar la
+// siguiente, y cada vez achicaban más ese espacio. Pedido de Vaneh
+// (19/09): que queden arriba, como una fila compacta con el nombre
+// (igual que "Archivos adjuntos" debajo), dejando la zona de pegado
+// siempre libre.
 function renderTareaImgThumbs() {
   const container = document.getElementById('tarea-img-thumbs');
   if (!container) return;
   container.innerHTML = _tareaImgList.map((item, i) => {
     if (item.subiendo) {
-      return `<div style="position:relative;width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;color:#64748b;text-align:center;">Subiendo…</div>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
     }
-    const src = item.src || '';
+    const nombre = item.filename || `Imagen ${i + 1}`;
     return `
-    <div style="position:relative;display:inline-block;">
-      <img class="tarea-img-thumb" data-idx="${i}" src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;background:#f1f5f9;">
-      <button type="button" data-idx="${i}" class="tarea-img-remove" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="image" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="tarea-img-thumb" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="tarea-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
     </div>`;
   }).join('');
+  setTimeout(refreshIcons, 30);
   // Miniaturas subidas a R2 necesitan el blob (el endpoint pide auth, no
   // se puede apuntar un <img> directo ahi) -- se cargan aparte y se
   // pisa el src cuando estan listas.
