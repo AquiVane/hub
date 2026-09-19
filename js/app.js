@@ -3683,8 +3683,8 @@ function renderTareaImgThumbs() {
     const src = item.src || '';
     return `
     <div style="position:relative;display:inline-block;">
-      <img src="${src}" onclick="ampliarImagen('${src.replace(/'/g, "\\'")}')" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;background:#f1f5f9;">
-      <button type="button" onclick="event.stopPropagation();removeTareaImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
+      <img class="tarea-img-thumb" data-idx="${i}" src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;background:#f1f5f9;">
+      <button type="button" data-idx="${i}" class="tarea-img-remove" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
     </div>`;
   }).join('');
   // Miniaturas subidas a R2 necesitan el blob (el endpoint pide auth, no
@@ -3699,6 +3699,21 @@ function renderTareaImgThumbs() {
     } catch (e) {}
   });
 }
+
+// Click para ampliar / eliminar -- con un listener delegado (fijo, una
+// sola vez) en vez de meter la imagen entera adentro de un atributo
+// onclick="...", que con un base64 largo (imágenes viejas) podía fallar
+// según el navegador y quedaba "sin hacer nada" al tocarla. Pedido de
+// Vaneh (19/09): "la toco y no pasa nada y quedó ahí".
+document.getElementById('tarea-img-thumbs')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.tarea-img-remove');
+  if (removeBtn) { removeTareaImg(Number(removeBtn.dataset.idx)); return; }
+  const thumb = e.target.closest('.tarea-img-thumb');
+  if (thumb) {
+    const item = _tareaImgList[Number(thumb.dataset.idx)];
+    if (item?.src) ampliarImagen(item.src);
+  }
+});
 
 // Lightbox simple: pedido de Vaneh -- "necesito tocar la imagen y que se
 // amplie asi se entiende si se cargo o no".
