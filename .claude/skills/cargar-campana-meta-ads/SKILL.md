@@ -184,6 +184,11 @@ Vas a encontrar estos campos, generalmente opcionales:
     cuál de las dos corresponde si no está claro -- no asumas.
 - Calendario: fecha de arranque real → fin del período que ya cargaste para esa campaña en el
   Hub, para que después sea fácil cruzar los números.
+- **"Programar aumentos de presupuesto"** (aparece bajo "Ocultar/mostrar configuración"): te deja
+  subir el presupuesto diario automáticamente en fechas u horarios puntuales (hasta 100% más),
+  volviendo al presupuesto normal después. Dejalo **destildado** salvo que haya una fecha
+  concreta que lo justifique (ej. el día de un evento de lanzamiento con fecha confirmada) -- no
+  lo actives "por las dudas" sin una fecha puntual en mente.
 
 **Antes de fijar el monto de cualquier campaña de Meta, confirmá que ese presupuesto es
 específico de ESA campaña puntual**, no el total combinado de todas las campañas de Meta del
@@ -201,6 +206,29 @@ mucho más acotada (rubro, cargo/función, ubicación geográfica concreta). Si 
 campaña hermana con la misma audiencia (ej. otra campaña de growth del mismo cliente), reusá la
 misma definición en vez de rearmarla de cero. Nada de públicos similares/lookalike con una base
 de seguidores chica (mínimo recomendado ~1.000+).
+
+**Audiencia original vs. Advantage+ Audience** -- en algún momento de esta pantalla vas a poder
+elegir entre segmentación manual (intereses/edad/ubicación como filtros) o **Advantage+
+Audience** (Meta usa IA para elegir a quién mostrarle el anuncio, tratando tus intereses como
+"sugerencia" en vez de regla -- solo ubicación y edad mínima quedan fijas). Según Meta y varias
+fuentes de la industria (ver fuentes abajo):
+
+- **Advantage+ conviene** con cuentas que ya tienen datos de conversión reales (Meta recomienda
+  arriba de ~50 conversiones semanales), presupuestos más grandes (~USD 50+/día), y creativos ya
+  probados -- ahí el algoritmo tiene de dónde aprender.
+- **Segmentación original/manual conviene** con cuentas nuevas sin historial de conversión,
+  presupuestos chicos, o campañas B2B/de nicho donde además necesitás poder leer resultados por
+  segmento. La práctica recomendada es arrancar manual las primeras 2-4 semanas para generar
+  datos propios, y recién ahí evaluar pasar a Advantage+.
+
+**Regla práctica para clientes nuevos de COSMART** (cuenta/píxel recién creado, sin historial):
+arrancá con **audiencia original** (manual), no actives Advantage+ Audience todavía. Revisá esto
+de nuevo una vez que la campaña lleve unas semanas corriendo con datos reales.
+
+Fuentes: [Meta Business Help Centre -- About Advantage+ audience](https://www.facebook.com/business/help/273363992030035) ·
+[Jon Loomer -- How Advantage+ Audience Works](https://www.jonloomer.com/how-advantage-plus-audience-works/) ·
+[ATTN Agency -- When to use it vs. when it's killing your ROAS](https://www.attnagency.com/blog/meta-advantage-audience) ·
+[Affect Group -- Advantage+ & Original audiences](https://affectgroup.com/blog/meta-ads-advantage-plus-or-original-audiences-when-to-use/)
 
 ### 3.5 — Ubicaciones
 
