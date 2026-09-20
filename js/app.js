@@ -3147,6 +3147,9 @@ const QUICK_UPDATE_HEADER_MAP = {
   notas: 'notas',
   comentario: 'comentario',
   comentarios: 'comentario',
+  'link pieza terminada': 'linkDrive',
+  'link drive': 'linkDrive',
+  link: 'linkDrive',
 };
 
 window.openQuickUpdateModal = function() {
@@ -3202,10 +3205,11 @@ document.getElementById('quick-update-file-input').addEventListener('change', as
       const estado = obj.estado != null ? String(obj.estado).trim() : '';
       const notas = obj.notas != null ? String(obj.notas).trim() : '';
       const comentario = obj.comentario != null ? String(obj.comentario).trim() : '';
-      if (!estado && !notas && !comentario) continue; // fila sin nada para actualizar
+      const linkDrive = importSplitMulti(obj.linkDrive);
+      if (!estado && !notas && !comentario && !linkDrive.length) continue; // fila sin nada para actualizar
       const matches = STATE.contenidos.filter(c => normImportTexto(c.titulo) === normImportTexto(titulo));
       if (!matches.length) { sinMatch.push(titulo); continue; }
-      _quickUpdateRows.push({ titulo, estado, notas, comentario, matches });
+      _quickUpdateRows.push({ titulo, estado, notas, comentario, linkDrive, matches });
     }
 
     renderQuickUpdatePreview(sinMatch);
@@ -3228,6 +3232,7 @@ function renderQuickUpdatePreview(sinMatch) {
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
           ${r.estado ? `<div><strong>Estado →</strong> ${escapeHtml(r.estado)}</div>` : ''}
           ${r.notas ? `<div><strong>Notas →</strong> ${escapeHtml(r.notas)}</div>` : ''}
+          ${r.linkDrive.length ? `<div><strong>Link pieza terminada →</strong> ${escapeHtml(r.linkDrive.join(', '))}</div>` : ''}
           ${r.comentario ? `<div><strong>Comentario nuevo →</strong> ${escapeHtml(r.comentario)}</div>` : ''}
         </div>
       </div>
@@ -3252,6 +3257,7 @@ document.getElementById('confirmQuickUpdateBtn').addEventListener('click', async
         const contenido = idx > -1 ? STATE.contenidos[idx] : match;
         if (r.estado) contenido.estado = r.estado;
         if (r.notas) contenido.notas = r.notas;
+        if (r.linkDrive.length) contenido.linkDrive = r.linkDrive;
         if (r.comentario) {
           if (!contenido.comentarios) contenido.comentarios = [];
           contenido.comentarios.push({ autor: autorNombre, email: user.email, fecha: new Date().toLocaleDateString('es-AR'), texto: r.comentario });
@@ -5096,7 +5102,7 @@ function renderInstrucciones(container) {
           '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
-          '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
+          '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
           '<strong>🔗 Copiar link:</strong> dentro de cada contenido hay un botón para copiar un link directo a esa tarjeta puntual -- ideal para mandarlo por WhatsApp y que lo encuentren con un clic.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
