@@ -384,6 +384,17 @@ anuncio. **Camino confirmado (septiembre 2026)** para retomarlo:
   publicado como contenido nativo primero (orgánico) y después boosteado, en vez de forzarlo
   directo como pauta fría desde el arranque.
 
+### ⚠ Antes de publicar: revisar la pantalla "Revisar" campo por campo, no solo por arriba
+
+En la pantalla final de revisión (antes de publicar) aparece un resumen con campos como
+**"URL del sitio web"** -- confirmado con Lambo que este campo puede autocompletarse o quedar
+mal cargado con un usuario/URL que **no es el real** (ej. mostró `instagram.com/lambolabs13`
+en vez de `instagram.com/lambo_labs`, el usuario correcto). Este tipo de error no bloquea la
+publicación -- Meta lo deja pasar igual -- así que hay que revisarlo a ojo antes de dar por
+terminado. Si ves ese campo, tocá **"Editar"** al lado y confirmá que la URL coincida
+exactamente con el usuario real de Instagram (`https://instagram.com/<usuario_correcto>`), letra
+por letra -- un guion bajo de más o de menos manda toda la plata de la campaña a un link roto.
+
 ## Paso 5 — Después de publicar: actualizar el Hub
 
 Publicar en Meta Ads Manager es solo la mitad del trabajo. En el Hub (sección **Pauta Digital**
