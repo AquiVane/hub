@@ -2690,7 +2690,8 @@ document.getElementById('img-file-input').addEventListener('change', e => {
 document.addEventListener('paste', e => {
   const contenidoOpen = !document.getElementById('contenidoModal').classList.contains('hidden');
   const tareaOpen = !document.getElementById('tareaModal').classList.contains('hidden');
-  if (!contenidoOpen && !tareaOpen) return;
+  const webTaskOpen = !document.getElementById('webTaskModal').classList.contains('hidden');
+  if (!contenidoOpen && !tareaOpen && !webTaskOpen) return;
   // Si el foco está en el editor RTE de tarea, dejar que el navegador maneje el paste de texto
   if (tareaOpen && document.activeElement && document.activeElement.id === 'tf-notas') {
     const items = e.clipboardData?.items || [];
@@ -2708,6 +2709,7 @@ document.addEventListener('paste', e => {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
       if (contenidoOpen) addImgFromFile(item.getAsFile());
+      else if (webTaskOpen) addWtImgFromFile(item.getAsFile());
       else addTareaImgFromFile(item.getAsFile());
       return;
     }
@@ -5034,6 +5036,8 @@ function renderWeb(container) {
                 ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
                 ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
+                ${t.asignado ? `<div style="font-size:10px;color:var(--primary);margin-top:4px;font-weight:600;">👤 ${escapeHtml(t.asignado.nombre || t.asignado.email)}</div>` : ''}
+                ${(t.subtareas || []).length ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px;">☑ ${t.subtareas.filter(s => s.done).length}/${t.subtareas.length} subtareas</div>` : ''}
               </div>
             `).join('')}
             <button class="kanban-add-btn" onclick="openWebTaskModal(null,'${estado}')">+ Agregar</button>
@@ -5055,6 +5059,7 @@ window.toggleWebTareaListo = async function(id) {
 };
 
 let _editingWebTask = null;
+let _wtSubtareas = [];
 window.openWebTaskModal = function(id, defaultEstado) {
   _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => String(t.id) === String(id)) : null;
   const t = _editingWebTask || {};
@@ -5064,10 +5069,127 @@ window.openWebTaskModal = function(id, defaultEstado) {
   document.getElementById('wt-vencimiento').value = t.vencimiento || '';
   document.getElementById('wt-url').value = t.url || '';
   document.getElementById('wt-notas').value = t.notas || '';
+  const wtAsignado = document.getElementById('wt-asignado');
+  if (wtAsignado) wtAsignado.innerHTML = getAsignarOptions(t.asignado?.email || '');
+  _wtSubtareas = t.subtareas ? [...t.subtareas] : [];
+  renderWtSubtareas();
+  document.getElementById('wt-subtarea-input').value = '';
+  _wtImgList = (t.imagenes || []).map(item => typeof item === 'string' ? { src: item } : { ...item });
+  renderWtImgThumbs();
   document.getElementById('deleteWebTaskBtn').style.display = _editingWebTask ? '' : 'none';
   document.getElementById('webTaskModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('wt-titulo').focus(), 50);
 };
+
+// ── Subtareas de Tarea de Sitio Web -- versión simple (sin asignación
+// individual ni autoguardado por click, a diferencia de las subtareas de
+// Tareas normales): esto vive en STATE.home.webTareas, que se guarda
+// entero recién al tocar "Guardar", no tiene su propio endpoint.
+function renderWtSubtareas() {
+  const list = document.getElementById('wt-subtareas-list');
+  if (!list) return;
+  list.innerHTML = _wtSubtareas.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+      <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleSubtareaWt(${i})" style="flex-shrink:0;">
+      <span style="flex:1;font-size:13px;word-break:break-word;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</span>
+      <button type="button" onclick="deleteSubtareaWt(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
+    </div>
+  `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+}
+
+window.agregarSubtareaWt = function() {
+  const input = document.getElementById('wt-subtarea-input');
+  const titulo = input.value.trim();
+  if (!titulo) return;
+  _wtSubtareas.push({ titulo, done: false });
+  renderWtSubtareas();
+  input.value = '';
+  input.focus();
+};
+
+window.toggleSubtareaWt = function(i) {
+  if (!_wtSubtareas[i]) return;
+  _wtSubtareas[i].done = !_wtSubtareas[i].done;
+  renderWtSubtareas();
+};
+
+window.deleteSubtareaWt = function(i) {
+  _wtSubtareas.splice(i, 1);
+  renderWtSubtareas();
+};
+
+// ── Imágenes adjuntas de Tarea de Sitio Web -- mismo mecanismo que
+// Tareas normales (subida a R2 al toque, ver comentario en
+// renderTareaImgThumbs), copiado acá porque webTareas es un objeto
+// separado de STATE.tareas.
+let _wtImgList = [];
+
+function renderWtImgThumbs() {
+  const container = document.getElementById('wt-img-thumbs');
+  if (!container) return;
+  container.innerHTML = _wtImgList.map((item, i) => {
+    if (item.subiendo) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
+    }
+    const nombre = item.filename || `Imagen ${i + 1}`;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="image" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="wt-img-thumb" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="wt-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
+    </div>`;
+  }).join('');
+  setTimeout(refreshIcons, 30);
+  _wtImgList.forEach(async (item, i) => {
+    if (item.subiendo || item.src || !item.key) return;
+    try {
+      item.src = _imgBlobUrlCache.get(item.key) || await getArchivoBlobUrl(clientId, item.key);
+      _imgBlobUrlCache.set(item.key, item.src);
+      renderWtImgThumbs();
+    } catch (e) {}
+  });
+}
+
+document.getElementById('wt-img-thumbs')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.wt-img-remove');
+  if (removeBtn) { _wtImgList.splice(Number(removeBtn.dataset.idx), 1); renderWtImgThumbs(); return; }
+  const thumb = e.target.closest('.wt-img-thumb');
+  if (thumb) {
+    const item = _wtImgList[Number(thumb.dataset.idx)];
+    if (item?.src) ampliarImagen(item.src);
+  }
+});
+
+function serializarImagenesWt(list) {
+  return list.filter(item => !item.subiendo).map(item =>
+    item.key ? { key: item.key, filename: item.filename, size: item.size } : { src: item.src }
+  );
+}
+
+async function addWtImgFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (_wtImgList.length >= 3) { alert('Máximo 3 imágenes por tarea.'); return; }
+  if (file.size > 15 * 1024 * 1024) { alert('La imagen supera 15 MB. Subíla a Drive y pegá el link.'); return; }
+  const placeholder = { subiendo: true };
+  _wtImgList.push(placeholder);
+  renderWtImgThumbs();
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    const idx = _wtImgList.indexOf(placeholder);
+    if (idx === -1) return;
+    _wtImgList[idx] = { key: subido.key, filename: subido.filename, size: subido.size };
+    renderWtImgThumbs();
+  } catch (err) {
+    _wtImgList.splice(_wtImgList.indexOf(placeholder), 1);
+    renderWtImgThumbs();
+    alert('No se pudo subir la imagen: ' + (err.message || 'reintentá.'));
+  }
+}
+
+document.getElementById('wt-img-input')?.addEventListener('change', (e) => {
+  [...e.target.files].forEach(addWtImgFromFile);
+  e.target.value = '';
+});
 
 // ──────────────────────────────────────────────────────
 // INSTRUCCIONES
@@ -5143,6 +5265,7 @@ function renderInstrucciones(container) {
           'Gestioná tareas y mejoras del sitio web del cliente.',
           'Podés cargar tareas del tipo: contenidos, arreglos, agregados o análisis.',
           'Las tareas del sitio web están separadas de las tareas de marketing pero usan la misma interfaz.',
+          'Cada tarea también se puede <strong>asignar</strong> a un colaborador o al cliente, dividir en <strong>subtareas</strong>, y llevar <strong>imágenes adjuntas</strong> (pegadas con Ctrl+V o subidas) además del link de referencia.',
         ]},
         { icon:'map-pin', title:'Google Drive', color:'#ec4899', items:[
           'Usamos Google Drive para almacenar las piezas gráficas y videos.',
@@ -5802,10 +5925,14 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
   if (btn.disabled) return;
   const titulo = document.getElementById('wt-titulo').value.trim();
   if (!titulo) { alert('La descripción es obligatoria.'); return; }
+  if (_wtImgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir la imagen.'); return; }
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     if (!STATE.home.webTareas) STATE.home.webTareas = [];
     const wtEstadoVal = document.getElementById('wt-estado').value;
+    const wtAsignadoEl = document.getElementById('wt-asignado');
+    const wtAsignadoEmail = wtAsignadoEl.value;
+    const wtAsignadoNombre = wtAsignadoEl.selectedOptions[0]?.dataset.nombre || '';
     const obj = {
       ...(_editingWebTask || {}),
       id: _editingWebTask?.id || Date.now(),
@@ -5815,6 +5942,9 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
       vencimiento: document.getElementById('wt-vencimiento').value || null,
       url: document.getElementById('wt-url').value.trim() || null,
       notas: document.getElementById('wt-notas').value.trim(),
+      asignado: wtAsignadoEmail ? { email: wtAsignadoEmail, nombre: wtAsignadoNombre } : null,
+      subtareas: [..._wtSubtareas],
+      imagenes: serializarImagenesWt(_wtImgList),
       completadoEn: wtEstadoVal === 'Listo' ? (_editingWebTask?.estado === 'Listo' ? _editingWebTask.completadoEn : new Date().toISOString().split('T')[0]) : null,
     };
     if (_editingWebTask) {
