@@ -207,28 +207,58 @@ campaña hermana con la misma audiencia (ej. otra campaña de growth del mismo c
 misma definición en vez de rearmarla de cero. Nada de públicos similares/lookalike con una base
 de seguidores chica (mínimo recomendado ~1.000+).
 
-**Audiencia original vs. Advantage+ Audience** -- en algún momento de esta pantalla vas a poder
-elegir entre segmentación manual (intereses/edad/ubicación como filtros) o **Advantage+
-Audience** (Meta usa IA para elegir a quién mostrarle el anuncio, tratando tus intereses como
-"sugerencia" en vez de regla -- solo ubicación y edad mínima quedan fijas). Según Meta y varias
-fuentes de la industria (ver fuentes abajo):
+**Ubicación -- si necesitás varias zonas puntuales (ej. "CABA y Zona Norte"), no uses un solo
+círculo/radio en el mapa.** Un radio centrado en "Buenos Aires" no coincide con lo que
+entendemos por zonas específicas como "Zona Norte" (San Isidro, Vicente López, Olivos, San
+Fernando, Tigre, Martínez) y puede terminar cubriendo de más hacia otros lados que no interesan.
+Mejor: **"Buscar lugares" o "Añadir lugares de forma masiva"** y cargar cada localidad puntual
+por separado, además de CABA si corresponde.
 
-- **Advantage+ conviene** con cuentas que ya tienen datos de conversión reales (Meta recomienda
-  arriba de ~50 conversiones semanales), presupuestos más grandes (~USD 50+/día), y creativos ya
-  probados -- ahí el algoritmo tiene de dónde aprender.
-- **Segmentación original/manual conviene** con cuentas nuevas sin historial de conversión,
-  presupuestos chicos, o campañas B2B/de nicho donde además necesitás poder leer resultados por
-  segmento. La práctica recomendada es arrancar manual las primeras 2-4 semanas para generar
-  datos propios, y recién ahí evaluar pasar a Advantage+.
+Vas a ver un checkbox tipo **"Llegar a más personas con probabilidades de responder a tus
+anuncios"** (expande a gente "interesada en" esa ubicación o cerca de ella, no solo a quien vive
+ahí -- turistas, gente de paso). **Dejalo destildado** para audiencias locales reales donde la
+precisión geográfica importa (alguien que va a ir a un gimnasio de la zona, no un turista de
+paso).
 
-**Regla práctica para clientes nuevos de COSMART** (cuenta/píxel recién creado, sin historial):
-arrancá con **audiencia original** (manual), no actives Advantage+ Audience todavía. Revisá esto
-de nuevo una vez que la campaña lleve unas semanas corriendo con datos reales.
+**Advantage+ Audience -- cambió cómo se controla (confirmado septiembre 2026).** Ya no hay un
+switch simple para "apagarlo": ahora viene **activado por defecto siempre** (vas a ver el badge
+"Advantage+ activado" al lado de "Audiencia"). Lo que controlás no es si está prendido, sino
+**cuánto lo limitás**:
+
+1. En la sección Audiencia vas a ver una nota tipo "también llegaremos a personas fuera de
+   cualquier configuración de audiencia personalizada, edad, género y segmentación detallada que
+   apliques si es probable que esto mejore el rendimiento" -- eso es Advantage+ funcionando por
+   default, expandiendo más allá de lo que cargues.
+2. Para que tus intereses/edad/ubicación se respeten como **límite real** (el equivalente a lo
+   que antes era "audiencia original"), hacé clic en **"Limitar más tu audiencia"**.
+3. Ahí cargás ubicación, edad, género y segmentación detallada (intereses). Según la propia
+   explicación de Meta en esa pantalla: "las campañas no llegarán a personas más allá de los
+   controles que hayas establecido, aunque tengas Advantage+ activado" -- o sea que lo que
+   cargues en "Limitar más tu audiencia" sí actúa como tope, a diferencia de dejarlo en la
+   configuración sugerida por default.
+4. Guardá con **"Guardar audiencia"**.
+
+**Regla práctica para clientes nuevos de COSMART** (cuenta/píxel recién creado, sin historial de
+conversión): usá **"Limitar más tu audiencia"** y cargá ahí ubicación/edad/intereses como límite
+real, en vez de dejar la configuración sugerida abierta -- según Meta y varias fuentes de la
+industria, Advantage+ sin restricción rinde mejor con cuentas que ya tienen datos de conversión
+reales (Meta recomienda arriba de ~50 conversiones semanales) y presupuestos más grandes; con
+cuentas nuevas sin historial conviene limitar y generar datos propios primero, revisando esto de
+nuevo en unas semanas.
 
 Fuentes: [Meta Business Help Centre -- About Advantage+ audience](https://www.facebook.com/business/help/273363992030035) ·
 [Jon Loomer -- How Advantage+ Audience Works](https://www.jonloomer.com/how-advantage-plus-audience-works/) ·
 [ATTN Agency -- When to use it vs. when it's killing your ROAS](https://www.attnagency.com/blog/meta-advantage-audience) ·
 [Affect Group -- Advantage+ & Original audiences](https://affectgroup.com/blog/meta-ads-advantage-plus-or-original-audiences-when-to-use/)
+
+### Transparencia de anuncios / verificación del anunciante
+
+En algún punto de armar el anuncio vas a ver una card de **"Transparencia de anuncios"**
+pidiendo "completar la verificación" del anunciante y el pagador. Por cómo está redactado, es
+**opcional para publicar** (no bloquea el lanzamiento), pero Meta viene exigiendo esto cada vez
+más en cuentas comerciales. Como agencia ya tienen a mano el nombre legal, CUIT y domicilio
+fiscal del mismo trámite de verificación de empresa del Business Manager -- conviene completarlo
+en algún momento, no hace falta que sea antes de este lanzamiento puntual.
 
 ### 3.5 — Ubicaciones
 
