@@ -299,9 +299,31 @@ en algún momento, no hace falta que sea antes de este lanzamiento puntual.
 
 ### 3.5 — Ubicaciones
 
-Si el creativo es un video vertical (9:16), elegí ubicaciones **manuales** restringidas a
-Stories/Reels/Historias -- en ubicaciones automáticas Meta puede mostrarlo también en formatos
-horizontales donde un video vertical se recorta mal.
+Igual que Audiencia, esta sección viene con **"Advantage+ activado"** por defecto ("Mostraremos
+automáticamente los anuncios en aquellos lugares en los que es probable que las personas
+respondan"). Para elegir manual: al final de la card, hay un link **"Mostrar más opciones de
+configuración"** -- ahí aparece el detalle real por placement:
+
+- **Feeds** -- anuncios en formato feed normal (horizontal/cuadrado). Si el creativo es un video
+  vertical (9:16), **desactivalo**: en feed un video vertical se recorta o pierde inmersión.
+- **Historias, estado y reels** -- formato vertical a pantalla completa. Dejalo activado, es el
+  que corresponde a un creativo 9:16.
+- **Anuncios in-stream para reels** / **Resultados de la búsqueda** -- volumen bajo, no
+  imprescindibles para este tipo de campaña, pero tampoco hacen daño si quedan activados. Podés
+  dejarlos o sacarlos según cuánto quieras acotar.
+- **Aplicaciones y sitios web** -- va a aparecer bloqueado solo si el destino de la conversión es
+  un perfil de Instagram (no compatible con esa combinación), no hace falta tocarlo.
+
+Un poco más abajo vas a ver **"Idoneidad y seguridad de marca"** (filtros de contenido/editores)
+-- dejalo todo en "Ninguna selección" (el filtro sugerido por Meta ya excluye contenido
+excesivamente controvertido u ofensivo por default), no hace falta tocar nada acá salvo que haya
+una razón puntual de marca.
+
+**⚠ Al excluir un placement (ej. Feeds), revisá el checkbox "Permitir gasto limitado en
+ubicaciones excluidas"** que aparece más abajo -- viene tildado por defecto, y dice literalmente
+que van a gastar ~5% del presupuesto en cada ubicación excluida igual "si hay probabilidades de
+que mejore el rendimiento". Es el mismo patrón que el resto de esta pantalla: la exclusión no es
+100% real hasta que **destildás** este checkbox.
 
 ## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
 
