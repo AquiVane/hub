@@ -1,0 +1,152 @@
+---
+name: cargar-campana-meta-ads
+description: Guía paso a paso para cargar una campaña de pauta paga en Meta Ads Manager (Facebook/Instagram) para cualquier cliente de COSMART, cubriendo las decisiones donde más se pifia -- objetivo de campaña, CBO vs ABO, destino del tráfico y el botón de CTA correcto según ese destino. Usar SIEMPRE que alguien del equipo (Vaneh o un colaborador) vaya a crear, revisar o corregir una campaña en Meta Ads Manager, o pregunte cosas como "qué objetivo elijo", "CBO o ABO", "qué botón le pongo", o mencione cargar/armar/subir una campaña de Meta/Facebook/Instagram Ads. También usar como checklist antes de publicar una campaña ya armada, y para actualizar el registro correspondiente en Pauta Digital del Hub una vez publicada.
+---
+
+# Cargar una campaña en Meta Ads Manager
+
+Esta guía es para el equipo humano de COSMART (no es código del Hub). Nació de errores reales
+al cargar campañas para Lambo Energy en septiembre 2026 -- entre otros, elegir el botón de CTA
+equivocado. La idea es que cualquiera que la siga llegue al mismo resultado correcto, sin
+depender de que alguien se acuerde de memoria.
+
+## Antes que nada: los labels de Meta cambian
+
+Meta actualiza la interfaz de Ads Manager seguido -- nombres de botones, orden de pantallas,
+hasta objetivos enteros aparecen y desaparecen. Todo lo que dice esta guía sobre nombres exactos
+de botones/menús está confirmado a la fecha en que se escribió cada sección, pero **antes de
+tocar algo, mirá la pantalla real y confirmá que el label coincide** con lo que dice acá. Si no
+coincide, andá con lo que ves en pantalla, no con lo que dice esta guía -- y de paso, actualizá
+esta guía (o pedile a Claude que la actualice) para que no se repita el desfasaje. Esta guía se
+va a ir corrigiendo con el tiempo; no la trates como verdad fija.
+
+## Paso 1 — Elegir el objetivo de campaña según qué resultado buscás
+
+El error más caro es elegir el objetivo equivocado, porque Meta optimiza la entrega del anuncio
+para lo que le pediste, no para lo que en realidad querés. Preguntate primero: **¿qué acción
+concreta quiero que haga la persona que ve el anuncio?**
+
+- **Quiero que me sigan / crecer el perfil** → Objetivo **Tráfico**, destino **Perfil de
+  Instagram**. No existe un objetivo nativo de "conseguir seguidores" en Meta -- Tráfico
+  apuntando al perfil es el approach estándar. Usalo especialmente cuando la cuenta todavía
+  tiene pocos seguidores: con poca base, un objetivo de conversión/leads no tiene con qué
+  optimizar (Meta necesita datos históricos de gente calificada para aprender, y con pocos
+  seguidores esa audiencia semilla no existe todavía).
+- **Quiero captar contactos/leads con una landing propia** (ej. un formulario para
+  distribuidores) → Objetivo **Clientes potenciales (Leads)** o **Tráfico**, destino **Sitio
+  web**, apuntando a la URL de la landing. Para que esto funcione de verdad (no solo medir
+  clics) hace falta el **Pixel de Meta instalado en ESE dominio específico** -- si la landing
+  vive en un dominio o sitio distinto al que ya tiene el Pixel instalado (ej. la tienda
+  Shopify), hay que instalar el Pixel ahí también, si no Meta no puede medir ni optimizar la
+  conversión real.
+- **Quiero que me escriban directo** (click-to-chat, sin landing ni formulario) → Objetivo
+  **Interacción** o **Clientes potenciales**, eligiendo **Mensajes/WhatsApp** como destino.
+
+Si tenés dudas sobre cuál corresponde a tu caso y no es ninguno de estos tres, no adivines --
+preguntá antes de crear la campaña.
+
+## Paso 2 — CBO o ABO (Estrategia de presupuesto)
+
+Esta decisión aparece en la pantalla de **Presupuesto**, dentro de "Estrategia de presupuesto",
+a nivel CAMPAÑA (no conjunto de anuncios). Vas a ver dos opciones:
+
+- **"Presupuesto de la campaña"** = **CBO** (Campaign Budget Optimization). Cargás un monto
+  total y Meta lo reparte solo entre los conjuntos de anuncios de esa campaña, dándole más
+  plata al que mejor esté rindiendo.
+- **"Presupuesto del conjunto de anuncios"** = **ABO** (Ad Set Budget Optimization). Vos
+  definís cuánto gasta cada conjunto de anuncios, sin que Meta mueva plata entre ellos.
+
+**Regla práctica:**
+
+- **Usá ABO** cuando la campaña tiene un solo conjunto de anuncios, o cuando el presupuesto
+  total es chico, o cuando la cuenta/píxel es nuevo y todavía no hay datos históricos. Con poco
+  presupuesto y poca data, CBO puede repartir mal y "matar" un conjunto de anuncios antes de
+  darle tiempo a demostrar si funciona.
+- **Pasá a CBO** cuando corrés 2 o más conjuntos de anuncios en paralelo dentro de la misma
+  campaña (ej. probando distintas audiencias o creativos) y hay presupuesto suficiente para que
+  el algoritmo junte datos de cada uno antes de decidir dónde poner más plata.
+
+Con un solo conjunto de anuncios, da lo mismo cuál elijas -- en ese caso dejá ABO por default,
+es más predecible.
+
+## Paso 3 — Conjunto de anuncios: audiencia, presupuesto y calendario
+
+- **Audiencia**: definila según el objetivo del Paso 1 -- para growth/awareness, audiencia
+  amplia por intereses relevantes (ej. fitness, deporte, según el rubro del cliente); para
+  B2B/distribuidores, audiencia mucho más acotada (rubro, cargo/función, ubicación geográfica
+  concreta). Si ya existe una campaña hermana con la misma audiencia (ej. otra campaña de
+  growth del mismo cliente), reusá la misma definición en vez de rearmarla de cero.
+- **Presupuesto**: Meta pide presupuesto diario o total del conjunto de anuncios, no mensual.
+  Si el monto que tenés (por ejemplo, cargado en Pauta Digital del Hub) es mensual, dividilo por
+  la cantidad de días que va a correr para saber el diario.
+- **Calendario**: hacelo coincidir con el período que ya cargaste para esa campaña en el Hub,
+  para que después sea fácil cruzar los números.
+
+## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
+
+- Subí el creativo (imagen o video) ya revisado -- ver más abajo qué chequear en un video antes
+  de subirlo.
+- El copy tiene que estar escrito para el destino elegido en el Paso 1. Un copy pensado para
+  WhatsApp ("escribinos por WhatsApp") no sirve si el destino real es una landing o el perfil de
+  Instagram -- revisalo y ajustalo cada vez que cambie el destino, no reuses el mismo texto para
+  todo.
+- **El botón de CTA depende pura y exclusivamente del destino que elegiste**, no es una elección
+  de gusto:
+  - Destino **Perfil de Instagram** → **"Ir al perfil de Instagram"**.
+  - Destino **Sitio web** → CTA orientado a la acción real (ej. "Más información",
+    "Registrarte"), no "Enviar mensaje" (ese es para destino WhatsApp).
+  - Destino **WhatsApp** → **"Enviar mensaje"**.
+
+  Si el botón que ves en pantalla no coincide con ninguno de estos, es porque Meta cambió algo
+  -- fijate cuál corresponde al destino elegido en esa pantalla puntual, no fuerces uno de esta
+  lista si no aparece.
+
+### Antes de subir un video: mini-checklist
+
+- ¿La medida es la que corresponde a la ubicación? (9:16 = 1080×1920 para Stories/Reels; 1:1 o
+  4:5 para Feed). Un video de 1080×1896 o similar, unos pixeles corto de 1920, generalmente pasa
+  sin problema, pero si tenés el archivo fuente, exportalo a la medida exacta.
+- ¿El texto en pantalla tiene typos u errores de mayúsculas/minúsculas mezcladas? Revisalo cuadro
+  por cuadro si hace falta, un typo en un headline grande se nota mucho.
+- ¿Tiene audio con música de fondo? Confirmá que sea libre de derechos o producida para la pieza
+  -- si tiene una pista comercial sin licencia, Meta puede silenciarlo o rechazarlo en revisión.
+- Si el video termina con un CTA nativo tipo "seguinos" (no un hard-sell), suele rendir mejor
+  publicado como contenido nativo primero (orgánico) y después boosteado, en vez de forzarlo
+  directo como pauta fría desde el arranque.
+
+## Paso 5 — Después de publicar: actualizar el Hub
+
+Publicar en Meta Ads Manager es solo la mitad del trabajo. En el Hub (sección **Pauta Digital**
+del cliente correspondiente):
+
+1. Buscá el registro de esa campaña (debería existir ya, salvo que sea la primera vez que se
+   carga -- si no existe, creala con "+ Nueva campaña", ver `HANDOFF.md` del repo `hub` para el
+   detalle de esos campos).
+2. Cambiá el **Estado** de "Borrador" a "Activa" -- una campaña nueva arranca en Borrador a
+   propósito, así no cuenta como "trabajo realizado" hasta que de verdad esté corriendo con
+   datos reales.
+3. A medida que tengas métricas reales desde Meta Ads Manager (impresiones, alcance, clics,
+   gastado, conversiones), cargalas ahí -- el ROAS y el resto de los cálculos se arman solos a
+   partir de esos números.
+
+## Glosario rápido
+
+- **CBO** (Campaign Budget Optimization): Meta reparte un presupuesto único entre varios
+  conjuntos de anuncios de una misma campaña, solo, según cuál rinde mejor.
+- **ABO** (Ad Set Budget Optimization): vos fijás el presupuesto de cada conjunto de anuncios
+  por separado, sin reparto automático entre ellos.
+- **Objetivo de campaña**: lo primero que se elige al crear una campaña en Meta -- le dice al
+  algoritmo qué resultado optimizar (tráfico, leads, interacción, ventas, etc.). Todo lo demás
+  se configura después, en función de esto.
+- **Conjunto de anuncios (ad set)**: el nivel intermedio entre campaña y anuncio -- ahí se
+  define audiencia, presupuesto (si es ABO), ubicaciones y calendario. Una campaña puede tener
+  uno o varios conjuntos de anuncios.
+- **Pixel**: un código que se instala en un sitio web para que Meta pueda medir qué pasa después
+  de que alguien hace clic en el anuncio (visitó la página, completó un formulario, compró).
+  Vive atado a un dominio específico -- si mandás tráfico a un dominio nuevo, hay que instalarlo
+  ahí también, no alcanza con tenerlo en otro sitio del mismo cliente.
+- **CAPI** (Conversions API): una forma más confiable de mandarle a Meta los mismos eventos que
+  mide el Pixel, pero directo desde el servidor en vez del navegador -- se usa como complemento
+  del Pixel, no como reemplazo.
+- **Destino de tráfico**: a dónde llega la persona al tocar el anuncio (perfil de Instagram,
+  sitio web, WhatsApp, etc.) -- define tanto el copy como el botón de CTA que corresponde usar.
