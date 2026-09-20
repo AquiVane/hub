@@ -167,15 +167,31 @@ Vas a encontrar estos campos, generalmente opcionales:
 ### 3.3 — Presupuesto y calendario
 
 - Meta pide presupuesto **diario** o total del conjunto de anuncios, no mensual. Si el monto que
-  tenés (ej. cargado en Pauta Digital del Hub) es mensual, dividilo por la cantidad de días que
-  va a correr para saber el diario.
-- **Si arrancás la campaña a mitad de mes, prorrateá el presupuesto a los días reales que van a
-  correr, no al mes completo** -- ej. un presupuesto mensual de $945.000 arrancando el día 20 se
-  reparte entre los 11 días que quedan hasta fin de mes ($945.000 ÷ 11 ≈ $85.900/día), no entre
-  30 días. Es un error fácil de cometer si copiás el número mensual tal cual sin fijarte qué día
-  es hoy.
+  tenés (ej. cargado en Pauta Digital del Hub) es un total mensual, hay que convertirlo a diario.
+- **Prorratear bien significa**: tarifa diaria = presupuesto mensual ÷ días DEL MES (30 o 31,
+  no los días que quedan) -- esa es la tarifa diaria real. Si arrancás a mitad de mes, el gasto
+  real de acá a fin de mes es esa tarifa diaria × los días que efectivamente van a correr, y ESE
+  gasto real va a ser menor al presupuesto mensual completo (queda un remanente sin usar por
+  haber arrancado tarde, que es una decisión aparte qué hacer con él -- absorberlo subiendo la
+  tarifa a futuro, dejarlo así, o correrlo al mes siguiente).
+  - Ejemplo: presupuesto mensual $945.000, arrancando el día 20 con 10 días restantes en el mes.
+    Tarifa diaria = $945.000 ÷ 30 = **$31.500/día**. Gasto real en esos 10 días = $31.500 × 10 =
+    **$315.000** (no los $945.000 completos).
+  - **Ojo, esto NO es lo mismo que dividir el total por los días que quedan** ($945.000 ÷ 10 =
+    $94.500/día) -- eso no es prorratear, es comprimir todo el presupuesto mensual en menos días
+    para forzar a gastarlo entero igual. Son dos decisiones distintas: prorratear (tarifa real,
+    se gasta menos este mes) vs. comprimir (tarifa más alta, se gasta el total igual). Preguntá
+    cuál de las dos corresponde si no está claro -- no asumas.
 - Calendario: fecha de arranque real → fin del período que ya cargaste para esa campaña en el
   Hub, para que después sea fácil cruzar los números.
+
+**Antes de fijar el monto de cualquier campaña de Meta, confirmá que ese presupuesto es
+específico de ESA campaña puntual**, no el total combinado de todas las campañas de Meta del
+cliente. Un cliente puede tener varias campañas corriendo en Meta al mismo tiempo (ej. growth +
+awareness + distribuidores), cada una con su propio monto -- que sean números redondeados
+parecidos no significa que haya que repartir uno solo entre todas. Si hay dudas, andá a la
+fuente (el plan de campañas o Pauta Digital del Hub, que ya debería tener cada campaña cargada
+por separado con su propio presupuesto).
 
 ### 3.4 — Audiencia
 
