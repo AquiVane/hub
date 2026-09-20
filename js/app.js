@@ -3694,7 +3694,7 @@ function renderTareas(container) {
               </div>
               ${t.prioridad || t.cuadrante ? `<div style="margin-top:4px;">${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}</div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</div>` : ''}
-              ${t.notas ? `<div style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
+              ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#fef9c3;color:#a16207;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
               ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.url || t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
@@ -5031,7 +5031,7 @@ function renderWeb(container) {
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
                 </div>
                 <div class="kanban-card-title" style="margin-top:6px;${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
-                ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+                ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
                 ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
               </div>
