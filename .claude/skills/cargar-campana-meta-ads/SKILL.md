@@ -66,6 +66,18 @@ a nivel CAMPAÑA (no conjunto de anuncios). Vas a ver dos opciones:
   campaña (ej. probando distintas audiencias o creativos) y hay presupuesto suficiente para que
   el algoritmo junte datos de cada uno antes de decidir dónde poner más plata.
 
+Si elegiste ABO, vas a ver un checkbox debajo que dice algo como **"Comparte hasta el 20% de tu
+presupuesto con otros conjuntos de anuncios"**. Es una mezcla intermedia entre ABO y CBO: deja
+que un conjunto de anuncios le pida prestado presupuesto a otros de la misma campaña, hasta ese
+20%, si está encontrando más oportunidades.
+
+- Si la campaña tiene **un solo conjunto de anuncios**, esta opción no hace nada -- no hay
+  "otros conjuntos" con quién compartir. Da igual tildarla o no.
+- Con **2 o más conjuntos**: dejala destildada mientras la campaña es nueva y estás juntando
+  datos por conjunto por separado (para poder comparar cada uno limpio). Una vez que ya sepas
+  cuál anda mejor, tildarla le da un poco de margen de maniobra a Meta sin perder del todo el
+  control que buscabas al elegir ABO.
+
 Con un solo conjunto de anuncios, da lo mismo cuál elijas -- en ese caso dejá ABO por default,
 es más predecible.
 
