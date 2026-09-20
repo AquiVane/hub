@@ -346,10 +346,11 @@ anuncio. **Camino confirmado (septiembre 2026)** para retomarlo:
    izquierda: la campaña arriba (ej. "Nueva campaña de Tráfico") y el conjunto de anuncios debajo
    (ej. "Lambo IG Growth - Fitness/Pádel CABA-ZN"). Ahí podés seguir editando el conjunto de
    anuncios donde lo dejaste.
-3. Para crear el Anuncio en sí desde esa vista: probá el menú **"..."** (tres puntos) al lado del
-   nombre del conjunto de anuncios en ese árbol de la izquierda -- debería tener una opción para
-   agregar/crear un anuncio nuevo debajo de ese conjunto. Si no aparece ahí, mandá captura de las
-   opciones del "..." para confirmar el paso exacto y actualizar esto.
+3. Para crear el Anuncio en sí desde esa vista: click en el menú **"..."** (tres puntos) al lado
+   del nombre del conjunto de anuncios en ese árbol de la izquierda -- se abre "Menú de
+   acciones" con, entre otras, **"Crear anuncio"** (uno solo) y **"Crear varios anuncios"** (para
+   cargar más de un anuncio de una, ej. distintas variantes de copy para testear). Elegí la que
+   corresponda y te lleva a la pantalla del anuncio (Identidad, Destino, creativo, copy, CTA).
 
 ## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
 
