@@ -1,6 +1,22 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-09-03. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-09-20. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## Sesión 19-20/09: lightbox de imágenes + actualización rápida de Contenidos por Excel (branch `claude/proyecto-lambo-rw29d0`)
+
+- **Bug real -- imágenes pegadas (Ctrl+V) en Tareas/Contenidos no se podían ampliar**: las miniaturas (`renderImgThumbs` en Contenidos, `renderTareaImgThumbs` en Tareas) no tenían ningún handler de click, así que tocarlas no hacía nada y Vaneh no podía confirmar si se habían guardado bien. Sí se guardaban (`imagenes: [..._tareaImgList]` ya viajaba en el save) -- solo faltaba poder verlas grandes. Se agregó un lightbox simple (`openImgLightbox`/`openImgLightboxFromList`, overlay creado dinámicamente, cierra con click afuera o Escape) conectado en ambos lugares.
+- **Nueva función en Contenidos: "⚡ Actualizar estado/notas"** (equipo de la agencia, junto a Importar/Exportar Excel). Pensada para no tener que abrir contenido por contenido cuando hay que poner varios en un estado puntual con una nota -- caso real: revisar contra el Drive de piezas creativas de un cliente (Lambo) cuáles video/estáticos faltan y marcarlas. A diferencia de "Importar Excel" (exige título+cuenta+plataformas+formato y al hacer "Reemplazar" pisa TODOS los campos de `IMPORT_DIFF_FIELDS`, incluso vacíos -- pensado para re-subir el export completo, no para ediciones parciales), este import nuevo:
+  - Matchea solo por **Título** (mismo `normImportTexto` que ya usa el import grande).
+  - Excel de 4 columnas: `Título del contenido` (obligatoria) + `Estado` / `Notas internas` / `Comentario` (todas opcionales, se completa la que se necesite).
+  - Solo toca los campos que vengan con contenido en la fila -- una celda vacía no se pisa, porque edita el objeto real ya cargado (`STATE.contenidos[idx]`) en vez de armar uno nuevo y reemplazar la lista entera como hace `updateContenidosBulk`.
+  - `Comentario` empuja un comentario real (mismo formato `{autor,email,fecha,texto}`) y si tiene `@Nombre` dispara el mismo mail de mención que el comentario manual (reusa `getMentionUsers`/`detectarUsuariosMencionados` + `/email/mencion`).
+  - Si el título matchea más de un contenido, actualiza todos y avisa en la preview (no hay desambiguación por cuenta como en el import grande -- no hizo falta para el caso de uso).
+  - Sin botón de deshacer (a diferencia del import grande) -- si hace falta más adelante, se puede sumar guardando el estado previo antes de pisar, mismo patrón que `_ultimoImportUndo`.
+
+### Pendiente real de esta sesión
+
+- Quedó sin resolver por qué Vaneh no podía actualizar directo los Contenidos de Lambo desde acá: el entorno de esta sesión (Claude Code en la nube) tiene el tráfico saliente restringido por política de organización y `hub.cosmart.com.ar` no está en la lista permitida -- ni con credenciales reales se puede abrir el sitio desde una sesión así. Si se vuelve a pedir algo que requiera loguearse al Hub en vivo desde una sesión de este tipo, hay que avisar este límite de entrada, no asumir que un browser headless lo resuelve.
+- Se armó a mano (fuera del repo) un Excel de ejemplo con las piezas faltantes de Lambo detectadas contra su Drive de piezas creativas (`LAMBO contenido Vanesa PAUTA/CONTENIDO`), para usar con la función nueva -- no se subió al repo, se le mandó el archivo directo a Vaneh.
 
 ## Quinta tanda del mismo día (03/09): bugs reales + recorrido guiado
 
