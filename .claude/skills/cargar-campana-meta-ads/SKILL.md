@@ -247,6 +247,19 @@ switch simple para "apagarlo": ahora viene **activado por defecto siempre** (vas
    configuración sugerida por default.
 4. Guardá con **"Guardar audiencia"**.
 
+Dentro de esa misma sección vas a ver un checkbox **"Usar como sugerencia"** (con la aclaración
+"también mostraremos anuncios a audiencias similares si es probable que ayude a mejorar el
+rendimiento"). Es el mismo mecanismo que "Limitar más tu audiencia" pero aplicado a lo que
+cargues ahí puntualmente -- **dejalo destildado** por la misma razón: para que la segmentación
+se respete de verdad mientras la cuenta no tiene datos históricos propios.
+
+**Idiomas**: dejalo **en blanco**, no lo restrinjas a "Español" aunque el copy esté en español y
+el público sea de Argentina. El idioma en Meta refleja el idioma configurado en el
+teléfono/la app de la persona, no su nacionalidad ni si entiende el idioma del anuncio -- mucha
+gente local (sobre todo perfiles más digitales, que suele ser justo el público que se busca)
+tiene el dispositivo en inglés. Restringir por idioma excluye gente real sin necesidad; la
+ubicación ya da la relevancia geográfica, y el copy en español se autoselecciona solo.
+
 **Ojo al buscar intereses -- revisá bajo qué categoría cae cada resultado que agregás.** El
 buscador de segmentación detallada a veces devuelve resultados de categorías que no son
 "Intereses" y no sirven para esto -- por ejemplo, buscar "Gym" puede devolver un resultado bajo
