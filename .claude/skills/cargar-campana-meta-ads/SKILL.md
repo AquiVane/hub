@@ -308,11 +308,12 @@ configuración"** -- ahí aparece el detalle real por placement:
   vertical (9:16), **desactivalo**: en feed un video vertical se recorta o pierde inmersión.
 - **Historias, estado y reels** -- formato vertical a pantalla completa. Dejalo activado, es el
   que corresponde a un creativo 9:16.
-- **Anuncios in-stream para reels** / **Resultados de la búsqueda** -- volumen bajo, no
-  imprescindibles para este tipo de campaña, pero tampoco hacen daño si quedan activados. Podés
-  dejarlos o sacarlos según cuánto quieras acotar.
-- **Aplicaciones y sitios web** -- va a aparecer bloqueado solo si el destino de la conversión es
-  un perfil de Instagram (no compatible con esa combinación), no hace falta tocarlo.
+- **Resultados de la búsqueda** -- volumen bajo, no imprescindible para este tipo de campaña,
+  pero tampoco hace daño si queda activado. Podés dejarlo o sacarlo según cuánto quieras acotar.
+- **Anuncios in-stream para reels** y **Aplicaciones y sitios web** -- confirmado: con objetivo
+  Tráfico y destino "Perfil de Instagram", **ninguna de las dos está disponible** (no es que sean
+  opcionales, directamente no se pueden seleccionar con esa combinación de objetivo+destino). No
+  hace falta tocarlas.
 
 Un poco más abajo vas a ver **"Idoneidad y seguridad de marca"** (filtros de contenido/editores)
 -- dejalo todo en "Ninguna selección" (el filtro sugerido por Meta ya excluye contenido
@@ -324,6 +325,28 @@ ubicaciones excluidas"** que aparece más abajo -- viene tildado por defecto, y 
 que van a gastar ~5% del presupuesto en cada ubicación excluida igual "si hay probabilidades de
 que mejore el rendimiento". Es el mismo patrón que el resto de esta pantalla: la exclusión no es
 100% real hasta que **destildás** este checkbox.
+
+Al desactivar Advantage+ de Ubicaciones, puede aparecer un checkbox tipo **"Hacé un test A/B
+para ver los resultados del uso de Ubicaciones de Advantage+"**. Dejalo **destildado** en el
+lanzamiento de una campaña nueva -- es útil para comparar rendimiento manual vs. Advantage+ más
+adelante, cuando ya haya presupuesto y datos de sobra para bancarse dividir el aprendizaje en
+dos variantes. No es para el armado inicial.
+
+### Si cerrás la ventana/pestaña a mitad de armar la campaña y no encontrás dónde crear el anuncio
+
+Pasa seguido si se cierra el flujo antes de llegar al nivel de Anuncio (ej. para forzar que Ads
+Manager recargue algo). La campaña y el conjunto de anuncios ya creados quedan guardados como
+borrador, pero al volver a entrar no te vuelve a aparecer automáticamente el paso de crear el
+anuncio. Para retomarlo:
+
+1. En Ads Manager, arriba de la tabla principal hay tres pestañas: **Campañas / Conjuntos de
+   anuncios / Anuncios**. Andá a **"Anuncios"**.
+2. Botón **"+ Crear"** (o el "+") → elegí la opción de usar una **campaña/conjunto de anuncios
+   existente** (no la de crear una campaña nueva de cero).
+3. Seleccioná la campaña y el conjunto de anuncios que ya armaste (van a figurar en estado
+   Borrador) y confirmá.
+4. Esto te lleva directo a la pantalla del anuncio (Identidad, Destino, creativo, copy, CTA) para
+   terminar de cargarlo, sin tener que rehacer la campaña ni el conjunto de anuncios de nuevo.
 
 ## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
 
