@@ -255,6 +255,13 @@ llamada así (empleados), no a gente que va al gimnasio. Antes de confirmar un r
 la categoría completa que muestra arriba de cada ítem (Intereses > ... vs. Datos demográficos >
 Trabajo > ...) y sacá los que no correspondan.
 
+Ojo, esto no significa que "Trabajo > Empresas" nunca sirva -- **para una campaña B2B/de
+distribuidores, targetear por dónde trabaja la gente puede ser justo lo que buscás** (ej.
+"Trabajo > Empresas: Gym" apunta a gente empleada en negocios de gimnasio -- un contacto
+potencialmente útil para una campaña de distribuidores dirigida a dueños/encargados de
+gimnasios). La regla es usar la categoría que corresponda al objetivo de ESA campaña puntual, no
+descartarla siempre porque no sirvió para growth de consumidor final.
+
 **Regla práctica para clientes nuevos de COSMART** (cuenta/píxel recién creado, sin historial de
 conversión): usá **"Limitar más tu audiencia"** y cargá ahí ubicación/edad/intereses como límite
 real, en vez de dejar la configuración sugerida abierta -- según Meta y varias fuentes de la
