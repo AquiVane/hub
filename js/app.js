@@ -2871,6 +2871,10 @@ const IMPORT_HEADER_MAP = {
   'link material de referencia': 'linkDriveRef',
   'notas internas': 'notas',
   notas: 'notas',
+  'asignar a': 'asignado',
+  asignado: 'asignado',
+  responsable: 'asignado',
+  'responsable sugerido': 'asignado',
 };
 
 const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
@@ -2908,6 +2912,21 @@ function importParsePauta(val) {
   return IMPORT_PAUTA_MAP[norm] || 'organico';
 }
 
+// Resuelve la columna "Asignado" del Excel contra la misma lista de
+// candidatos que ya usa el selector "Asignar a" del modal (contacto del
+// cliente + usuarios del cliente + equipo asignado) -- matchea por
+// nombre o por email, sin importar mayúsculas/espacios.
+function importResolverAsignado(val) {
+  const n = String(val || '').trim().toLowerCase();
+  if (!n) return null;
+  const candidatos = [];
+  if (STATE.client.email) candidatos.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  (STATE.client.usuarios || []).forEach(u => candidatos.push(u));
+  _equipoDelCliente.forEach(c => candidatos.push(c));
+  const match = candidatos.find(c => (c.nombre || '').trim().toLowerCase() === n || (c.email || '').trim().toLowerCase() === n);
+  return match ? { email: match.email, nombre: match.nombre } : null;
+}
+
 // ── Importar Excel: detectar si una fila ya existe y qué cambió ──────
 // Pedido explícito de Vaneh: al volver a subir el mismo calendario (con
 // alguna fila editada), el import tiene que reconocer que ese contenido
@@ -2935,6 +2954,7 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
   { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
   { key: 'notas', label: 'Notas internas' },
+  { key: 'asignado', label: 'Asignado a', esAsignado: true },
 ];
 
 function normImportTexto(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
@@ -2949,7 +2969,12 @@ function importValoresIguales(a, b, esArray) {
 }
 
 function importDiffContenido(existente, entrante) {
-  return IMPORT_DIFF_FIELDS.filter(f => !importValoresIguales(existente[f.key], entrante[f.key], f.arr));
+  return IMPORT_DIFF_FIELDS.filter(f => {
+    if (f.esAsignado) {
+      return (existente.asignado?.email || '').toLowerCase() !== (entrante.asignado?.email || '').toLowerCase();
+    }
+    return !importValoresIguales(existente[f.key], entrante[f.key], f.arr);
+  });
 }
 
 // Clasifica cada fila válida contra STATE.contenidos: 'nuevo' (no existe
@@ -3020,7 +3045,7 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a'];
 
 function contenidoAFilaExport(c) {
   return [
@@ -3043,6 +3068,7 @@ function contenidoAFilaExport(c) {
     (c.linkDrive || []).join(', '),
     (c.linkDriveRef || []).join(', '),
     c.notas || '',
+    c.asignado ? (c.asignado.nombre || c.asignado.email) : '',
   ];
 }
 
@@ -3122,7 +3148,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30, 20][i] || 16 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
@@ -3360,7 +3386,8 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
         notas: String(obj.notas || '').trim(),
         comentarios: [],
-        asignado: null,
+        asignado: importResolverAsignado(obj.asignado),
+        asignadoOriginal: obj.asignado ? String(obj.asignado).trim() : '',
       });
     }
 
@@ -3393,7 +3420,8 @@ function importHayAccion() {
   return _importRows.some(r => r.tipo === 'nuevo' || (r.tipo === 'cambio' && r.accion === 'reemplazar'));
 }
 
-function formatoImportValor(v, esArray) {
+function formatoImportValor(v, esArray, esAsignado) {
+  if (esAsignado) return v ? (v.nombre || v.email) : 'Sin asignar';
   if (esArray) return (v || []).join(', ');
   const s = String(v || '');
   return s.length > 60 ? s.slice(0, 60) + '…' : s;
@@ -3411,6 +3439,11 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
   const nuevos = _importRows.filter(r => r.tipo === 'nuevo');
   const cambios = _importRows.filter(r => r.tipo === 'cambio');
   const iguales = _importRows.filter(r => r.tipo === 'igual');
+  // La columna Asignado traía un nombre/email que no coincide con nadie
+  // del equipo del cliente -- se importa igual pero sin asignar, así que
+  // avisamos para que lo revise (typo, o la persona todavía no está
+  // agregada como colaboradora/usuaria de este cliente).
+  const sinAsignar = _importRows.filter(r => r.row.asignadoOriginal && !r.row.asignado);
   statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${duplicadosEnArchivo ? ` · ${duplicadosEnArchivo} duplicado(s) dentro del mismo archivo (se usó la última fila de cada uno)` : ''}${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
 
   const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`;
@@ -3436,13 +3469,14 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
               </select>
             </div>
             <div style="font-size:11px;color:#92400e;margin-top:6px;line-height:1.6;">
-              ${r.cambios.map(f => `<div><strong>${f.label}:</strong> ${formatoImportValor(r.match[f.key], f.arr) || '—'} → ${formatoImportValor(r.row[f.key], f.arr) || '—'}</div>`).join('')}
+              ${r.cambios.map(f => `<div><strong>${f.label}:</strong> ${formatoImportValor(r.match[f.key], f.arr, f.esAsignado) || '—'} → ${formatoImportValor(r.row[f.key], f.arr, f.esAsignado) || '—'}</div>`).join('')}
             </div>
           </div>
         `).join('')}
       </div>
     ` : ''}
     ${iguales.length ? `<div style="font-size:12px;color:var(--text-muted);margin-top:14px;">✅ ${iguales.length} ya estaban cargados igual, no hace falta tocarlos.</div>` : ''}
+    ${sinAsignar.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fffbeb;border-radius:6px;font-size:12px;color:#92400e;">⚠️ No reconocí a quién asignar en ${sinAsignar.length} fila(s) (se importan igual, sin asignar): ${sinAsignar.map(r => `"${escapeHtml(r.row.asignadoOriginal)}"`).join(', ')}. Revisá que el nombre o email coincida con el contacto del cliente o alguien del equipo agregado a este cliente.</div>` : ''}
     ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
   `;
 }
@@ -3450,8 +3484,8 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
 // Pedido de Vaneh (07/09): poder deshacer una importación con un botón.
 // Guarda lo mínimo para revertir: los ids que se crearon (para borrarlos)
 // y el valor ANTERIOR de los campos que se pisaron en actualizaciones
-// (para restaurarlos) -- no toca comentarios/asignado/imágenes porque el
-// import tampoco los toca.
+// (para restaurarlos, "asignado" incluido) -- no toca comentarios ni
+// imágenes porque el import tampoco los toca.
 let _ultimoImportUndo = null;
 
 function mostrarBannerDeshacerImport(resumen) {
@@ -3514,9 +3548,10 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
       nuevosIds = saved.map(s => s.id);
     }
     if (aActualizar.length) {
-      // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS)
-      // -- comentarios/asignado/imágenes del contenido existente quedan
-      // intactos, no son parte de la plantilla.
+      // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS,
+      // que desde el pedido de Vaneh del 21/09 incluye "asignado") --
+      // comentarios/imágenes del contenido existente quedan intactos, no
+      // son parte de la plantilla.
       const actualizaciones = aActualizar.map(r => {
         const u = { id: r.match.id };
         IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = r.row[f.key]; });
@@ -5221,7 +5256,7 @@ function renderInstrucciones(container) {
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
-          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
+          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno. La columna "Asignado a" (nombre o email del contacto del cliente o de alguien del equipo) también se puede completar ahí en vez de asignar contenido por contenido.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
           '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
