@@ -367,6 +367,7 @@
 
         <div class="form-group" style="grid-column:span 3;">
           <label>📎 Archivos adjuntos</label>
+          <div id="img-thumbnails" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
           <div id="img-paste-area" class="img-paste-area" style="cursor:default;">
             <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
               <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
@@ -376,7 +377,6 @@
               <button type="button" onclick="document.getElementById('img-file-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
             <p style="font-size:10px;color:#94a3b8;margin-top:4px;">Videos o archivos pesados → subí a Drive y pegá el link arriba. Límite sugerido: 50 MB.</p>
-            <div id="img-thumbnails" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             <input type="file" id="img-file-input" accept="image/*,video/*,.pdf,.doc,.docx" multiple style="display:none;">
           </div>
         </div>

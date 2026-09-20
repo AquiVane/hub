@@ -2506,48 +2506,108 @@ window.removeDriveLink = function(type, idx) {
 };
 
 // Image paste/upload
+// Igual que las imágenes de Tareas (ver comentario en
+// renderTareaImgThumbs): se suben a R2 al toque en vez de embeberse como
+// base64 en el contenido. Acá el riesgo era mayor todavía -- este campo
+// acepta video/PDF/doc hasta 50MB (no solo imágenes de pocos MB como
+// Tareas), así que un archivo pesado embebido en el JSON de todos los
+// contenidos del cliente podía volver el guardado lentísimo o directamente
+// no completarse. Reporte de Vaneh (21/09): "en contenidos pasa lo mismo
+// que pasaba con tareas en cuanto a las imágenes".
 let _imgList = [];
 
+// Fila compacta con ícono + nombre (no una miniatura grande) -- mismo
+// motivo que en Tareas: adentro de la zona de pegado achicaba cada vez
+// más el lugar libre para agregar el siguiente archivo.
 function renderImgThumbs() {
   const wrap = document.getElementById('img-thumbnails');
   if (!wrap) return;
   wrap.innerHTML = _imgList.map((item, i) => {
+    if (item.subiendo) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
+    }
     const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
-    const preview = f.isImage
-      ? `<img class="cont-img-thumb" data-idx="${i}" src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
-      : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
-    return `<div style="position:relative;">${preview}<button type="button" data-idx="${i}" class="cont-img-remove" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+    const nombre = f.filename || f.name || `Imagen ${i + 1}`;
+    const claseClick = f.isImage ? 'cont-img-thumb' : 'cont-img-file';
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="${f.isImage ? 'image' : 'file'}" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="${claseClick}" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="cont-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
+    </div>`;
   }).join('');
-  const ph = document.querySelector('.img-paste-placeholder');
-  if (ph) ph.style.display = _imgList.length ? 'none' : '';
+  // Antes esto escondía el cartel de "Ctrl+V para pegar" cuando ya había
+  // algo cargado -- tenía sentido cuando las miniaturas vivían ADENTRO de
+  // la misma zona de pegado, pero ahora la fila de archivos está aparte
+  // (arriba), así que la zona de pegado se deja siempre visible para
+  // seguir agregando.
+  setTimeout(refreshIcons, 30);
+  // Para poder ampliar una imagen hace falta el blob (el endpoint pide
+  // auth, no se puede apuntar un <img> directo ahí) -- se carga aparte.
+  _imgList.forEach(async (item, i) => {
+    if (item.subiendo || typeof item === 'string' || !item.isImage || item.src || !item.key) return;
+    try {
+      item.src = _imgBlobUrlCache.get(item.key) || await getArchivoBlobUrl(clientId, item.key);
+      _imgBlobUrlCache.set(item.key, item.src);
+    } catch (e) {}
+  });
 }
 
-// Click para ampliar / eliminar -- listener delegado (mismo criterio que
-// tarea-img-thumbs) para no meter la imagen entera adentro de un atributo
-// onclick, que con un base64 largo puede fallar según el navegador.
+// Click para ampliar / abrir / eliminar -- listener delegado (mismo
+// criterio que tarea-img-thumbs) para no meter la imagen entera adentro
+// de un atributo onclick, que con un base64 largo puede fallar según el
+// navegador.
 document.getElementById('img-thumbnails')?.addEventListener('click', (e) => {
   const removeBtn = e.target.closest('.cont-img-remove');
   if (removeBtn) { removeImg(Number(removeBtn.dataset.idx)); return; }
   const thumb = e.target.closest('.cont-img-thumb');
-  if (thumb) ampliarImagen(thumb.getAttribute('src'));
+  if (thumb) {
+    const item = _imgList[Number(thumb.dataset.idx)];
+    const src = typeof item === 'string' ? item : item?.src;
+    if (src) ampliarImagen(src);
+    return;
+  }
+  const fileEl = e.target.closest('.cont-img-file');
+  if (fileEl) {
+    const item = _imgList[Number(fileEl.dataset.idx)];
+    if (item?.key) abrirArchivo(clientId, item.key, item.filename).catch(() => {});
+    else if (item?.src) window.open(item.src, '_blank');
+  }
 });
 
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
-function addImgFromFile(file) {
+// El objeto en memoria trae `src` como blob URL (para las subidas a R2)
+// que solo vale en esta sesión -- no se guarda. Lo que persiste es la
+// key (R2) o el objeto legado con base64 completo (sin key).
+function serializarImagenesCont(list) {
+  return list.filter(item => !item.subiendo).map(item => {
+    if (typeof item === 'string') return { src: item, name: '', isImage: true };
+    return item.key ? { key: item.key, filename: item.filename, size: item.size, isImage: item.isImage } : item;
+  });
+}
+
+async function addImgFromFile(file) {
   if (!file) return;
   const MAX = 50 * 1024 * 1024; // 50 MB
   if (file.size > MAX) {
     alert(`"${file.name}" pesa más de 50 MB. Subilo a Google Drive y pegá el link en el campo de Drive.`);
     return;
   }
-  const reader = new FileReader();
-  const isImage = file.type.startsWith('image/');
-  reader.onload = e => {
-    _imgList.push({ src: e.target.result, name: file.name, isImage });
+  const placeholder = { subiendo: true };
+  _imgList.push(placeholder);
+  renderImgThumbs();
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    const idx = _imgList.indexOf(placeholder);
+    if (idx === -1) return;
+    _imgList[idx] = { key: subido.key, filename: file.name, size: subido.size, isImage: file.type.startsWith('image/') };
     renderImgThumbs();
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    _imgList.splice(_imgList.indexOf(placeholder), 1);
+    renderImgThumbs();
+    alert('No se pudo subir el archivo: ' + (err.message || 'reintentá.'));
+  }
 }
 
 // Populate cuenta select from client data
@@ -2721,6 +2781,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   if (btn.disabled) return;
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
+  if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');
   const cuentaCustom = document.getElementById('cf-cuenta-custom');
@@ -2762,7 +2823,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
-    imagenes: _imgList,
+    imagenes: serializarImagenesCont(_imgList),
     notas: document.getElementById('cf-notas').value,
     comentarios: editingContenido?.comentarios || [],
     asignado: contAsignadoEmail ? (contAsignadoEmail === prevContAsignadoEmail
