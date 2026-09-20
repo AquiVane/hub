@@ -60,16 +60,38 @@ que "ya conectó Instagram" -- es porque **hay dos vínculos distintos y son ind
 1. **Vincular Instagram a la Página de Facebook** (`facebook.com/settings/?tab=linked_profiles`
    → Cuentas vinculadas → Instagram). Esto es un vínculo orgánico entre la Página y el
    Instagram -- típicamente lo hace el cliente. **No alcanza para poder usarlo en anuncios.**
-2. **Agregar la cuenta de Instagram como activo del Business Manager** de la agencia
-   (Configuración del negocio → Cuentas → Cuentas de Instagram → Agregar → Conectar una cuenta
-   de Instagram, con usuario y contraseña de esa cuenta de IG). Esto es lo que realmente
-   habilita que la cuenta publicitaria pueda usar ese perfil como destino de un anuncio.
+2. **Agregar la cuenta de Instagram como activo del Business Manager** de la agencia. Esto es
+   lo que realmente habilita que la cuenta publicitaria pueda usar ese perfil como destino de un
+   anuncio, y **lo tiene que hacer el cliente** (o quien tenga acceso a esa cuenta de Instagram),
+   no la agencia -- ser administrador del Business Manager no da acceso automático al Instagram
+   de otra empresa, el Instagram se agrega como activo aparte.
 
 Si el cliente dice que "ya está conectado" pero el checkbox sigue pidiendo login, es casi
-seguro que solo se hizo el paso 1. Solución: pedile al cliente el usuario/contraseña de esa
-cuenta de Instagram y hacé el paso 2 (podés tocar directo "Conectar perfil" en la pantalla del
-anuncio, o hacerlo una vez desde el Business Manager para que quede disponible en todas las
-campañas futuras sin repetir el login cada vez).
+seguro que solo se hizo el paso 1. Pasale esto al cliente para que haga el paso 2 -- hay dos
+formas:
+
+**Opción 1 (recomendada) — desde la app de Instagram, sin compartir contraseña con nadie:**
+1. Abrir la app de Instagram con la cuenta de la empresa (tiene que ser cuenta profesional:
+   Business o Creador).
+2. Perfil → Menú (☰) → Configuración y actividad → Cuenta (en algunas versiones: "Panel
+   profesional").
+3. Buscar "Portafolio de negocios" o "Compartir acceso a Meta Business Suite".
+4. Elegir "Conectar a un portafolio de negocios".
+5. Buscar el negocio de la agencia por nombre (si el cliente ya te dio de alta como admin del
+   Business Manager, el negocio le va a aparecer directo en la lista) y seleccionarlo.
+6. Confirmar la conexión.
+
+Con esto el Instagram queda como activo del Business Manager, y cualquiera que ya sea admin del
+negocio (la agencia) tiene acceso automático -- no hace falta ningún paso extra de nuestro lado.
+
+**Opción 2 (alternativa, si la app del cliente es una versión vieja que no tiene esa opción) —
+desde la computadora, requiere compartir la contraseña de Instagram:**
+1. `business.facebook.com`, logueado como admin del negocio.
+2. Configuración del negocio → Cuentas → Cuentas de Instagram → Agregar.
+3. Iniciar sesión con usuario y contraseña del Instagram de la empresa para autorizar.
+
+Usá la Opción 2 solo si la 1 no está disponible -- implica que el cliente comparta su
+contraseña de Instagram, que conviene evitar siempre que se pueda.
 
 ## Paso 2 — CBO o ABO (Estrategia de presupuesto)
 
