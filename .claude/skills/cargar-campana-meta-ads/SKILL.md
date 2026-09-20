@@ -129,18 +129,68 @@ que un conjunto de anuncios le pida prestado presupuesto a otros de la misma cam
 Con un solo conjunto de anuncios, da lo mismo cuál elijas -- en ese caso dejá ABO por default,
 es más predecible.
 
-## Paso 3 — Conjunto de anuncios: audiencia, presupuesto y calendario
+## Paso 3 — Conjunto de anuncios
 
-- **Audiencia**: definila según el objetivo del Paso 1 -- para growth/awareness, audiencia
-  amplia por intereses relevantes (ej. fitness, deporte, según el rubro del cliente); para
-  B2B/distribuidores, audiencia mucho más acotada (rubro, cargo/función, ubicación geográfica
-  concreta). Si ya existe una campaña hermana con la misma audiencia (ej. otra campaña de
-  growth del mismo cliente), reusá la misma definición en vez de rearmarla de cero.
-- **Presupuesto**: Meta pide presupuesto diario o total del conjunto de anuncios, no mensual.
-  Si el monto que tenés (por ejemplo, cargado en Pauta Digital del Hub) es mensual, dividilo por
-  la cantidad de días que va a correr para saber el diario.
-- **Calendario**: hacelo coincidir con el período que ya cargaste para esa campaña en el Hub,
-  para que después sea fácil cruzar los números.
+Dentro del conjunto de anuncios, el orden real en pantalla (confirmado septiembre 2026) es:
+Conversión (ver Paso 1) → **Identidad** → opciones de optimización avanzada → **Presupuesto y
+calendario** → Audiencia → Ubicaciones. No es el orden "lógico" que uno esperaría (audiencia y
+presupuesto antes que identidad), pero es como Meta lo muestra -- seguilo en ese orden en vez de
+buscar cada sección por tema.
+
+### 3.1 — Identidad
+
+Acá elegís desde qué perfil/página corre el anuncio. **Tiene que ser el de la marca del
+cliente**, y tanto la Página de Facebook como el Perfil de Instagram tienen que estar
+previamente conectados como activos (ver el problema común de arriba si todavía no lo están).
+
+Regla clave: **elegí el activo que coincide con el destino que definiste en el Paso 1, no los
+dos**. Si el destino de la conversión es solo Instagram (ej. "quiero que me sigan"), dejá
+seleccionado únicamente el Perfil de Instagram -- no hace falta tildar también la Página de
+Facebook si no vas a mandar tráfico ahí.
+
+### 3.2 — Opciones de optimización avanzada
+
+Vas a encontrar estos campos, generalmente opcionales:
+
+- **Objetivo de coste por resultado**: dejalo **vacío** en una campaña nueva. Forzar un costo
+  objetivo sin datos históricos reales puede limitar la entrega en vez de ayudarla -- Meta
+  todavía no sabe cuánto cuesta de verdad conseguir un resultado para este anuncio puntual.
+- **Reglas de valor** ("Crear un conjunto de reglas"): no las crees para una campaña nueva. Son
+  para diferenciar la importancia de audiencias/ubicaciones específicas cuando ya hay historial
+  de qué segmento vale más -- prematuro sin datos.
+- **Tipo de entrega**: dejalo en **Estándar** (no lo cambies a Acelerado salvo que haya una razón
+  puntual de urgencia, tipo una promo con fecha límite muy corta).
+- **"Anuncio con video en directo"**: dejalo en **No**, salvo que el anuncio sea de verdad un
+  video en vivo/streaming (Live de Instagram o Facebook). Un video grabado normal no es esto,
+  aunque el nombre pueda confundir.
+
+### 3.3 — Presupuesto y calendario
+
+- Meta pide presupuesto **diario** o total del conjunto de anuncios, no mensual. Si el monto que
+  tenés (ej. cargado en Pauta Digital del Hub) es mensual, dividilo por la cantidad de días que
+  va a correr para saber el diario.
+- **Si arrancás la campaña a mitad de mes, prorrateá el presupuesto a los días reales que van a
+  correr, no al mes completo** -- ej. un presupuesto mensual de $945.000 arrancando el día 20 se
+  reparte entre los 11 días que quedan hasta fin de mes ($945.000 ÷ 11 ≈ $85.900/día), no entre
+  30 días. Es un error fácil de cometer si copiás el número mensual tal cual sin fijarte qué día
+  es hoy.
+- Calendario: fecha de arranque real → fin del período que ya cargaste para esa campaña en el
+  Hub, para que después sea fácil cruzar los números.
+
+### 3.4 — Audiencia
+
+Definila según el objetivo del Paso 1 -- para growth/awareness, audiencia amplia por intereses
+relevantes (ej. fitness, deporte, según el rubro del cliente); para B2B/distribuidores, audiencia
+mucho más acotada (rubro, cargo/función, ubicación geográfica concreta). Si ya existe una
+campaña hermana con la misma audiencia (ej. otra campaña de growth del mismo cliente), reusá la
+misma definición en vez de rearmarla de cero. Nada de públicos similares/lookalike con una base
+de seguidores chica (mínimo recomendado ~1.000+).
+
+### 3.5 — Ubicaciones
+
+Si el creativo es un video vertical (9:16), elegí ubicaciones **manuales** restringidas a
+Stories/Reels/Historias -- en ubicaciones automáticas Meta puede mostrarlo también en formatos
+horizontales donde un video vertical se recorta mal.
 
 ## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
 
