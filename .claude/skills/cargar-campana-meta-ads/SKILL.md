@@ -337,16 +337,19 @@ dos variantes. No es para el armado inicial.
 Pasa seguido si se cierra el flujo antes de llegar al nivel de Anuncio (ej. para forzar que Ads
 Manager recargue algo). La campaña y el conjunto de anuncios ya creados quedan guardados como
 borrador, pero al volver a entrar no te vuelve a aparecer automáticamente el paso de crear el
-anuncio. Para retomarlo:
+anuncio. **Camino confirmado (septiembre 2026)** para retomarlo:
 
-1. En Ads Manager, arriba de la tabla principal hay tres pestañas: **Campañas / Conjuntos de
-   anuncios / Anuncios**. Andá a **"Anuncios"**.
-2. Botón **"+ Crear"** (o el "+") → elegí la opción de usar una **campaña/conjunto de anuncios
-   existente** (no la de crear una campaña nueva de cero).
-3. Seleccioná la campaña y el conjunto de anuncios que ya armaste (van a figurar en estado
-   Borrador) y confirmá.
-4. Esto te lleva directo a la pantalla del anuncio (Identidad, Destino, creativo, copy, CTA) para
-   terminar de cargarlo, sin tener que rehacer la campaña ni el conjunto de anuncios de nuevo.
+1. En Ads Manager, andá a la pestaña **"Campañas"** y buscá la que quedó en Borrador (ej. "Nueva
+   campaña de Tráfico").
+2. Al entrar/editarla, se abre el editor en modo standalone (URL tipo
+   `adsmanager.facebook.com/adsmanager/manage/adsets/edit/standalone?...`), con un árbol a la
+   izquierda: la campaña arriba (ej. "Nueva campaña de Tráfico") y el conjunto de anuncios debajo
+   (ej. "Lambo IG Growth - Fitness/Pádel CABA-ZN"). Ahí podés seguir editando el conjunto de
+   anuncios donde lo dejaste.
+3. Para crear el Anuncio en sí desde esa vista: probá el menú **"..."** (tres puntos) al lado del
+   nombre del conjunto de anuncios en ese árbol de la izquierda -- debería tener una opción para
+   agregar/crear un anuncio nuevo debajo de ese conjunto. Si no aparece ahí, mandá captura de las
+   opciones del "..." para confirmar el paso exacto y actualizar esto.
 
 ## Paso 4 — El anuncio: creativo, copy y el botón de CTA correcto
 
