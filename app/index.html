@@ -439,6 +439,28 @@
   </div>
 </div>
 
+<!-- Modal: Actualización rápida de Estado/Notas/Comentario por Excel -->
+<div id="quickUpdateContenidoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h3>Actualizar estado/notas por Excel</h3>
+      <button class="modal-close" id="closeQuickUpdateModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Para actualizar varios contenidos ya cargados sin abrir uno por uno. Subí un Excel simple con columna <strong>Título del contenido</strong> (obligatoria, para encontrarlo) y las que quieras completar: <strong>Estado</strong>, <strong>Notas internas</strong> y/o <strong>Comentario</strong> (si escribís @Nombre ahí, se manda el aviso por mail como cualquier mención). Solo se tocan esas columnas -- el resto del contenido (copy, formato, links, etc.) queda intacto, y una celda vacía no borra nada.
+      </p>
+      <input type="file" id="quick-update-file-input" accept=".xlsx,.xls" class="form-control">
+      <div id="quick-update-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+      <div id="quick-update-preview" style="margin-top:14px;max-height:420px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeQuickUpdateModal2">Cancelar</button>
+      <button class="btn btn-primary" id="confirmQuickUpdateBtn" disabled>Actualizar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Detectar duplicados en Contenidos -->
 <div id="duplicadosContenidoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:760px;">
