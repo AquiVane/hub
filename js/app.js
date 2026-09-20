@@ -1407,6 +1407,14 @@ let activeContTab = 'banco';
 // los dos, no porque estén ambos botones prendidos.
 let pautaFiltroSel = 'organico';
 
+// Filtros de plataforma y fecha del Banco de contenidos -- pedido de
+// Vaneh (21/09): "necesito poder filtrar por plataforma... y también por
+// fecha".
+let _bancoFiltroPlataforma = 'todas';
+let _bancoFiltroFechaDesde = '';
+let _bancoFiltroFechaHasta = '';
+const BANCO_PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn', 'Twitter / X', 'TikTok', 'YouTube', 'Sitio Web', 'Blog'];
+
 function renderContenidos(container) {
   container.innerHTML = `
     <div class="mb-16" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -1551,7 +1559,10 @@ function matchPautaFilter(c) {
 }
 
 function renderBancoContenidos(container) {
-  const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter);
+  const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter)
+    .filter(c => _bancoFiltroPlataforma === 'todas' || (c.plataformas || []).includes(_bancoFiltroPlataforma))
+    .filter(c => !_bancoFiltroFechaDesde || (c.fechaPub && c.fechaPub >= _bancoFiltroFechaDesde))
+    .filter(c => !_bancoFiltroFechaHasta || (c.fechaPub && c.fechaPub <= _bancoFiltroFechaHasta));
   const archivados = STATE.contenidos.filter(c => c.archivado);
   const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
 
@@ -1587,8 +1598,24 @@ function renderBancoContenidos(container) {
   }).join('');
 
   const hayAlgunContenido = STATE.contenidos.some(c => !c.archivado);
+  const hayFiltroActivo = _bancoFiltroPlataforma !== 'todas' || _bancoFiltroFechaDesde || _bancoFiltroFechaHasta;
+
+  const filtrosHtml = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;">
+      <select id="banco-filtro-plataforma" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" onchange="cambiarBancoFiltroPlataforma(this.value)">
+        <option value="todas">Todas las plataformas</option>
+        ${BANCO_PLATAFORMAS.map(p => `<option value="${p}" ${_bancoFiltroPlataforma === p ? 'selected' : ''}>${p}</option>`).join('')}
+      </select>
+      <label style="font-size:12px;color:var(--text-muted);">Desde</label>
+      <input type="date" id="banco-filtro-desde" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaDesde}" onchange="cambiarBancoFiltroFecha('desde', this.value)">
+      <label style="font-size:12px;color:var(--text-muted);">Hasta</label>
+      <input type="date" id="banco-filtro-hasta" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaHasta}" onchange="cambiarBancoFiltroFecha('hasta', this.value)">
+      ${hayFiltroActivo ? `<button class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
+      <span style="font-size:12px;color:var(--text-muted);${hayFiltroActivo ? '' : 'margin-left:auto;'}">${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
+    </div>`;
 
   container.innerHTML = `
+    ${filtrosHtml}
     ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayAlgunContenido?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
@@ -1609,6 +1636,24 @@ function renderBancoContenidos(container) {
     ` : ''}
   `;
 }
+
+window.cambiarBancoFiltroPlataforma = function(val) {
+  _bancoFiltroPlataforma = val;
+  renderContTab('banco');
+};
+
+window.cambiarBancoFiltroFecha = function(cual, val) {
+  if (cual === 'desde') _bancoFiltroFechaDesde = val;
+  else _bancoFiltroFechaHasta = val;
+  renderContTab('banco');
+};
+
+window.limpiarBancoFiltros = function() {
+  _bancoFiltroPlataforma = 'todas';
+  _bancoFiltroFechaDesde = '';
+  _bancoFiltroFechaHasta = '';
+  renderContTab('banco');
+};
 
 window.bancoUpdateFecha = async function(id, fecha) {
   const c = STATE.contenidos.find(x => x.id === id);
@@ -2506,48 +2551,108 @@ window.removeDriveLink = function(type, idx) {
 };
 
 // Image paste/upload
+// Igual que las imágenes de Tareas (ver comentario en
+// renderTareaImgThumbs): se suben a R2 al toque en vez de embeberse como
+// base64 en el contenido. Acá el riesgo era mayor todavía -- este campo
+// acepta video/PDF/doc hasta 50MB (no solo imágenes de pocos MB como
+// Tareas), así que un archivo pesado embebido en el JSON de todos los
+// contenidos del cliente podía volver el guardado lentísimo o directamente
+// no completarse. Reporte de Vaneh (21/09): "en contenidos pasa lo mismo
+// que pasaba con tareas en cuanto a las imágenes".
 let _imgList = [];
 
+// Fila compacta con ícono + nombre (no una miniatura grande) -- mismo
+// motivo que en Tareas: adentro de la zona de pegado achicaba cada vez
+// más el lugar libre para agregar el siguiente archivo.
 function renderImgThumbs() {
   const wrap = document.getElementById('img-thumbnails');
   if (!wrap) return;
   wrap.innerHTML = _imgList.map((item, i) => {
+    if (item.subiendo) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
+    }
     const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
-    const preview = f.isImage
-      ? `<img class="cont-img-thumb" data-idx="${i}" src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
-      : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
-    return `<div style="position:relative;">${preview}<button type="button" data-idx="${i}" class="cont-img-remove" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+    const nombre = f.filename || f.name || `Imagen ${i + 1}`;
+    const claseClick = f.isImage ? 'cont-img-thumb' : 'cont-img-file';
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="${f.isImage ? 'image' : 'file'}" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="${claseClick}" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="cont-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
+    </div>`;
   }).join('');
-  const ph = document.querySelector('.img-paste-placeholder');
-  if (ph) ph.style.display = _imgList.length ? 'none' : '';
+  // Antes esto escondía el cartel de "Ctrl+V para pegar" cuando ya había
+  // algo cargado -- tenía sentido cuando las miniaturas vivían ADENTRO de
+  // la misma zona de pegado, pero ahora la fila de archivos está aparte
+  // (arriba), así que la zona de pegado se deja siempre visible para
+  // seguir agregando.
+  setTimeout(refreshIcons, 30);
+  // Para poder ampliar una imagen hace falta el blob (el endpoint pide
+  // auth, no se puede apuntar un <img> directo ahí) -- se carga aparte.
+  _imgList.forEach(async (item, i) => {
+    if (item.subiendo || typeof item === 'string' || !item.isImage || item.src || !item.key) return;
+    try {
+      item.src = _imgBlobUrlCache.get(item.key) || await getArchivoBlobUrl(clientId, item.key);
+      _imgBlobUrlCache.set(item.key, item.src);
+    } catch (e) {}
+  });
 }
 
-// Click para ampliar / eliminar -- listener delegado (mismo criterio que
-// tarea-img-thumbs) para no meter la imagen entera adentro de un atributo
-// onclick, que con un base64 largo puede fallar según el navegador.
+// Click para ampliar / abrir / eliminar -- listener delegado (mismo
+// criterio que tarea-img-thumbs) para no meter la imagen entera adentro
+// de un atributo onclick, que con un base64 largo puede fallar según el
+// navegador.
 document.getElementById('img-thumbnails')?.addEventListener('click', (e) => {
   const removeBtn = e.target.closest('.cont-img-remove');
   if (removeBtn) { removeImg(Number(removeBtn.dataset.idx)); return; }
   const thumb = e.target.closest('.cont-img-thumb');
-  if (thumb) ampliarImagen(thumb.getAttribute('src'));
+  if (thumb) {
+    const item = _imgList[Number(thumb.dataset.idx)];
+    const src = typeof item === 'string' ? item : item?.src;
+    if (src) ampliarImagen(src);
+    return;
+  }
+  const fileEl = e.target.closest('.cont-img-file');
+  if (fileEl) {
+    const item = _imgList[Number(fileEl.dataset.idx)];
+    if (item?.key) abrirArchivo(clientId, item.key, item.filename).catch(() => {});
+    else if (item?.src) window.open(item.src, '_blank');
+  }
 });
 
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
-function addImgFromFile(file) {
+// El objeto en memoria trae `src` como blob URL (para las subidas a R2)
+// que solo vale en esta sesión -- no se guarda. Lo que persiste es la
+// key (R2) o el objeto legado con base64 completo (sin key).
+function serializarImagenesCont(list) {
+  return list.filter(item => !item.subiendo).map(item => {
+    if (typeof item === 'string') return { src: item, name: '', isImage: true };
+    return item.key ? { key: item.key, filename: item.filename, size: item.size, isImage: item.isImage } : item;
+  });
+}
+
+async function addImgFromFile(file) {
   if (!file) return;
   const MAX = 50 * 1024 * 1024; // 50 MB
   if (file.size > MAX) {
     alert(`"${file.name}" pesa más de 50 MB. Subilo a Google Drive y pegá el link en el campo de Drive.`);
     return;
   }
-  const reader = new FileReader();
-  const isImage = file.type.startsWith('image/');
-  reader.onload = e => {
-    _imgList.push({ src: e.target.result, name: file.name, isImage });
+  const placeholder = { subiendo: true };
+  _imgList.push(placeholder);
+  renderImgThumbs();
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    const idx = _imgList.indexOf(placeholder);
+    if (idx === -1) return;
+    _imgList[idx] = { key: subido.key, filename: file.name, size: subido.size, isImage: file.type.startsWith('image/') };
     renderImgThumbs();
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    _imgList.splice(_imgList.indexOf(placeholder), 1);
+    renderImgThumbs();
+    alert('No se pudo subir el archivo: ' + (err.message || 'reintentá.'));
+  }
 }
 
 // Populate cuenta select from client data
@@ -2690,7 +2795,8 @@ document.getElementById('img-file-input').addEventListener('change', e => {
 document.addEventListener('paste', e => {
   const contenidoOpen = !document.getElementById('contenidoModal').classList.contains('hidden');
   const tareaOpen = !document.getElementById('tareaModal').classList.contains('hidden');
-  if (!contenidoOpen && !tareaOpen) return;
+  const webTaskOpen = !document.getElementById('webTaskModal').classList.contains('hidden');
+  if (!contenidoOpen && !tareaOpen && !webTaskOpen) return;
   // Si el foco está en el editor RTE de tarea, dejar que el navegador maneje el paste de texto
   if (tareaOpen && document.activeElement && document.activeElement.id === 'tf-notas') {
     const items = e.clipboardData?.items || [];
@@ -2708,6 +2814,7 @@ document.addEventListener('paste', e => {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
       if (contenidoOpen) addImgFromFile(item.getAsFile());
+      else if (webTaskOpen) addWtImgFromFile(item.getAsFile());
       else addTareaImgFromFile(item.getAsFile());
       return;
     }
@@ -2719,6 +2826,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   if (btn.disabled) return;
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
+  if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');
   const cuentaCustom = document.getElementById('cf-cuenta-custom');
@@ -2760,7 +2868,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
-    imagenes: _imgList,
+    imagenes: serializarImagenesCont(_imgList),
     notas: document.getElementById('cf-notas').value,
     comentarios: editingContenido?.comentarios || [],
     asignado: contAsignadoEmail ? (contAsignadoEmail === prevContAsignadoEmail
@@ -2869,6 +2977,10 @@ const IMPORT_HEADER_MAP = {
   'link material de referencia': 'linkDriveRef',
   'notas internas': 'notas',
   notas: 'notas',
+  'asignar a': 'asignado',
+  asignado: 'asignado',
+  responsable: 'asignado',
+  'responsable sugerido': 'asignado',
 };
 
 const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
@@ -2906,6 +3018,21 @@ function importParsePauta(val) {
   return IMPORT_PAUTA_MAP[norm] || 'organico';
 }
 
+// Resuelve la columna "Asignado" del Excel contra la misma lista de
+// candidatos que ya usa el selector "Asignar a" del modal (contacto del
+// cliente + usuarios del cliente + equipo asignado) -- matchea por
+// nombre o por email, sin importar mayúsculas/espacios.
+function importResolverAsignado(val) {
+  const n = String(val || '').trim().toLowerCase();
+  if (!n) return null;
+  const candidatos = [];
+  if (STATE.client.email) candidatos.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  (STATE.client.usuarios || []).forEach(u => candidatos.push(u));
+  _equipoDelCliente.forEach(c => candidatos.push(c));
+  const match = candidatos.find(c => (c.nombre || '').trim().toLowerCase() === n || (c.email || '').trim().toLowerCase() === n);
+  return match ? { email: match.email, nombre: match.nombre } : null;
+}
+
 // ── Importar Excel: detectar si una fila ya existe y qué cambió ──────
 // Pedido explícito de Vaneh: al volver a subir el mismo calendario (con
 // alguna fila editada), el import tiene que reconocer que ese contenido
@@ -2933,6 +3060,7 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
   { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
   { key: 'notas', label: 'Notas internas' },
+  { key: 'asignado', label: 'Asignado a', esAsignado: true },
 ];
 
 function normImportTexto(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
@@ -2947,7 +3075,12 @@ function importValoresIguales(a, b, esArray) {
 }
 
 function importDiffContenido(existente, entrante) {
-  return IMPORT_DIFF_FIELDS.filter(f => !importValoresIguales(existente[f.key], entrante[f.key], f.arr));
+  return IMPORT_DIFF_FIELDS.filter(f => {
+    if (f.esAsignado) {
+      return (existente.asignado?.email || '').toLowerCase() !== (entrante.asignado?.email || '').toLowerCase();
+    }
+    return !importValoresIguales(existente[f.key], entrante[f.key], f.arr);
+  });
 }
 
 // Clasifica cada fila válida contra STATE.contenidos: 'nuevo' (no existe
@@ -3018,7 +3151,7 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a'];
 
 function contenidoAFilaExport(c) {
   return [
@@ -3041,6 +3174,7 @@ function contenidoAFilaExport(c) {
     (c.linkDrive || []).join(', '),
     (c.linkDriveRef || []).join(', '),
     c.notas || '',
+    c.asignado ? (c.asignado.nombre || c.asignado.email) : '',
   ];
 }
 
@@ -3120,7 +3254,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30, 20][i] || 16 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
@@ -3358,7 +3492,8 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
         notas: String(obj.notas || '').trim(),
         comentarios: [],
-        asignado: null,
+        asignado: importResolverAsignado(obj.asignado),
+        asignadoOriginal: obj.asignado ? String(obj.asignado).trim() : '',
       });
     }
 
@@ -3391,7 +3526,8 @@ function importHayAccion() {
   return _importRows.some(r => r.tipo === 'nuevo' || (r.tipo === 'cambio' && r.accion === 'reemplazar'));
 }
 
-function formatoImportValor(v, esArray) {
+function formatoImportValor(v, esArray, esAsignado) {
+  if (esAsignado) return v ? (v.nombre || v.email) : 'Sin asignar';
   if (esArray) return (v || []).join(', ');
   const s = String(v || '');
   return s.length > 60 ? s.slice(0, 60) + '…' : s;
@@ -3409,6 +3545,11 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
   const nuevos = _importRows.filter(r => r.tipo === 'nuevo');
   const cambios = _importRows.filter(r => r.tipo === 'cambio');
   const iguales = _importRows.filter(r => r.tipo === 'igual');
+  // La columna Asignado traía un nombre/email que no coincide con nadie
+  // del equipo del cliente -- se importa igual pero sin asignar, así que
+  // avisamos para que lo revise (typo, o la persona todavía no está
+  // agregada como colaboradora/usuaria de este cliente).
+  const sinAsignar = _importRows.filter(r => r.row.asignadoOriginal && !r.row.asignado);
   statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${duplicadosEnArchivo ? ` · ${duplicadosEnArchivo} duplicado(s) dentro del mismo archivo (se usó la última fila de cada uno)` : ''}${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
 
   const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`;
@@ -3434,13 +3575,14 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
               </select>
             </div>
             <div style="font-size:11px;color:#92400e;margin-top:6px;line-height:1.6;">
-              ${r.cambios.map(f => `<div><strong>${f.label}:</strong> ${formatoImportValor(r.match[f.key], f.arr) || '—'} → ${formatoImportValor(r.row[f.key], f.arr) || '—'}</div>`).join('')}
+              ${r.cambios.map(f => `<div><strong>${f.label}:</strong> ${formatoImportValor(r.match[f.key], f.arr, f.esAsignado) || '—'} → ${formatoImportValor(r.row[f.key], f.arr, f.esAsignado) || '—'}</div>`).join('')}
             </div>
           </div>
         `).join('')}
       </div>
     ` : ''}
     ${iguales.length ? `<div style="font-size:12px;color:var(--text-muted);margin-top:14px;">✅ ${iguales.length} ya estaban cargados igual, no hace falta tocarlos.</div>` : ''}
+    ${sinAsignar.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fffbeb;border-radius:6px;font-size:12px;color:#92400e;">⚠️ No reconocí a quién asignar en ${sinAsignar.length} fila(s) (se importan igual, sin asignar): ${sinAsignar.map(r => `"${escapeHtml(r.row.asignadoOriginal)}"`).join(', ')}. Revisá que el nombre o email coincida con el contacto del cliente o alguien del equipo agregado a este cliente.</div>` : ''}
     ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
   `;
 }
@@ -3448,8 +3590,8 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
 // Pedido de Vaneh (07/09): poder deshacer una importación con un botón.
 // Guarda lo mínimo para revertir: los ids que se crearon (para borrarlos)
 // y el valor ANTERIOR de los campos que se pisaron en actualizaciones
-// (para restaurarlos) -- no toca comentarios/asignado/imágenes porque el
-// import tampoco los toca.
+// (para restaurarlos, "asignado" incluido) -- no toca comentarios ni
+// imágenes porque el import tampoco los toca.
 let _ultimoImportUndo = null;
 
 function mostrarBannerDeshacerImport(resumen) {
@@ -3512,9 +3654,10 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
       nuevosIds = saved.map(s => s.id);
     }
     if (aActualizar.length) {
-      // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS)
-      // -- comentarios/asignado/imágenes del contenido existente quedan
-      // intactos, no son parte de la plantilla.
+      // Solo se pisan los campos que vienen del Excel (IMPORT_DIFF_FIELDS,
+      // que desde el pedido de Vaneh del 21/09 incluye "asignado") --
+      // comentarios/imágenes del contenido existente quedan intactos, no
+      // son parte de la plantilla.
       const actualizaciones = aActualizar.map(r => {
         const u = { id: r.match.id };
         IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = r.row[f.key]; });
@@ -3694,7 +3837,7 @@ function renderTareas(container) {
               </div>
               ${t.prioridad || t.cuadrante ? `<div style="margin-top:4px;">${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}</div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</div>` : ''}
-              ${t.notas ? `<div style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
+              ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#fef9c3;color:#a16207;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
               ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.url || t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
@@ -5031,9 +5174,11 @@ function renderWeb(container) {
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
                 </div>
                 <div class="kanban-card-title" style="margin-top:6px;${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
-                ${t.notas ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+                ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
                 ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
+                ${t.asignado ? `<div style="font-size:10px;color:var(--primary);margin-top:4px;font-weight:600;">👤 ${escapeHtml(t.asignado.nombre || t.asignado.email)}</div>` : ''}
+                ${(t.subtareas || []).length ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px;">☑ ${t.subtareas.filter(s => s.done).length}/${t.subtareas.length} subtareas</div>` : ''}
               </div>
             `).join('')}
             <button class="kanban-add-btn" onclick="openWebTaskModal(null,'${estado}')">+ Agregar</button>
@@ -5055,6 +5200,7 @@ window.toggleWebTareaListo = async function(id) {
 };
 
 let _editingWebTask = null;
+let _wtSubtareas = [];
 window.openWebTaskModal = function(id, defaultEstado) {
   _editingWebTask = id ? (STATE.home.webTareas||[]).find(t => String(t.id) === String(id)) : null;
   const t = _editingWebTask || {};
@@ -5064,10 +5210,127 @@ window.openWebTaskModal = function(id, defaultEstado) {
   document.getElementById('wt-vencimiento').value = t.vencimiento || '';
   document.getElementById('wt-url').value = t.url || '';
   document.getElementById('wt-notas').value = t.notas || '';
+  const wtAsignado = document.getElementById('wt-asignado');
+  if (wtAsignado) wtAsignado.innerHTML = getAsignarOptions(t.asignado?.email || '');
+  _wtSubtareas = t.subtareas ? [...t.subtareas] : [];
+  renderWtSubtareas();
+  document.getElementById('wt-subtarea-input').value = '';
+  _wtImgList = (t.imagenes || []).map(item => typeof item === 'string' ? { src: item } : { ...item });
+  renderWtImgThumbs();
   document.getElementById('deleteWebTaskBtn').style.display = _editingWebTask ? '' : 'none';
   document.getElementById('webTaskModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('wt-titulo').focus(), 50);
 };
+
+// ── Subtareas de Tarea de Sitio Web -- versión simple (sin asignación
+// individual ni autoguardado por click, a diferencia de las subtareas de
+// Tareas normales): esto vive en STATE.home.webTareas, que se guarda
+// entero recién al tocar "Guardar", no tiene su propio endpoint.
+function renderWtSubtareas() {
+  const list = document.getElementById('wt-subtareas-list');
+  if (!list) return;
+  list.innerHTML = _wtSubtareas.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
+      <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleSubtareaWt(${i})" style="flex-shrink:0;">
+      <span style="flex:1;font-size:13px;word-break:break-word;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</span>
+      <button type="button" onclick="deleteSubtareaWt(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
+    </div>
+  `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin subtareas. Agregá una.</p>';
+}
+
+window.agregarSubtareaWt = function() {
+  const input = document.getElementById('wt-subtarea-input');
+  const titulo = input.value.trim();
+  if (!titulo) return;
+  _wtSubtareas.push({ titulo, done: false });
+  renderWtSubtareas();
+  input.value = '';
+  input.focus();
+};
+
+window.toggleSubtareaWt = function(i) {
+  if (!_wtSubtareas[i]) return;
+  _wtSubtareas[i].done = !_wtSubtareas[i].done;
+  renderWtSubtareas();
+};
+
+window.deleteSubtareaWt = function(i) {
+  _wtSubtareas.splice(i, 1);
+  renderWtSubtareas();
+};
+
+// ── Imágenes adjuntas de Tarea de Sitio Web -- mismo mecanismo que
+// Tareas normales (subida a R2 al toque, ver comentario en
+// renderTareaImgThumbs), copiado acá porque webTareas es un objeto
+// separado de STATE.tareas.
+let _wtImgList = [];
+
+function renderWtImgThumbs() {
+  const container = document.getElementById('wt-img-thumbs');
+  if (!container) return;
+  container.innerHTML = _wtImgList.map((item, i) => {
+    if (item.subiendo) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
+    }
+    const nombre = item.filename || `Imagen ${i + 1}`;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="image" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="wt-img-thumb" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="wt-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
+    </div>`;
+  }).join('');
+  setTimeout(refreshIcons, 30);
+  _wtImgList.forEach(async (item, i) => {
+    if (item.subiendo || item.src || !item.key) return;
+    try {
+      item.src = _imgBlobUrlCache.get(item.key) || await getArchivoBlobUrl(clientId, item.key);
+      _imgBlobUrlCache.set(item.key, item.src);
+      renderWtImgThumbs();
+    } catch (e) {}
+  });
+}
+
+document.getElementById('wt-img-thumbs')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.wt-img-remove');
+  if (removeBtn) { _wtImgList.splice(Number(removeBtn.dataset.idx), 1); renderWtImgThumbs(); return; }
+  const thumb = e.target.closest('.wt-img-thumb');
+  if (thumb) {
+    const item = _wtImgList[Number(thumb.dataset.idx)];
+    if (item?.src) ampliarImagen(item.src);
+  }
+});
+
+function serializarImagenesWt(list) {
+  return list.filter(item => !item.subiendo).map(item =>
+    item.key ? { key: item.key, filename: item.filename, size: item.size } : { src: item.src }
+  );
+}
+
+async function addWtImgFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (_wtImgList.length >= 3) { alert('Máximo 3 imágenes por tarea.'); return; }
+  if (file.size > 15 * 1024 * 1024) { alert('La imagen supera 15 MB. Subíla a Drive y pegá el link.'); return; }
+  const placeholder = { subiendo: true };
+  _wtImgList.push(placeholder);
+  renderWtImgThumbs();
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    const idx = _wtImgList.indexOf(placeholder);
+    if (idx === -1) return;
+    _wtImgList[idx] = { key: subido.key, filename: subido.filename, size: subido.size };
+    renderWtImgThumbs();
+  } catch (err) {
+    _wtImgList.splice(_wtImgList.indexOf(placeholder), 1);
+    renderWtImgThumbs();
+    alert('No se pudo subir la imagen: ' + (err.message || 'reintentá.'));
+  }
+}
+
+document.getElementById('wt-img-input')?.addEventListener('change', (e) => {
+  [...e.target.files].forEach(addWtImgFromFile);
+  e.target.value = '';
+});
 
 // ──────────────────────────────────────────────────────
 // INSTRUCCIONES
@@ -5091,7 +5354,7 @@ function renderInstrucciones(container) {
           'Usalo para presentar avances a clientes o gerencia.',
         ]},
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
-          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá.',
+          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá. Se puede filtrar por plataforma y por rango de fechas (Desde/Hasta), además del filtro Orgánico/Pauta.',
           '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
           '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
           '<strong>Feed IG:</strong> "Publicado" muestra el feed real; "Borrador (pendiente de aprobación)" es una grilla de 12 casilleros en formato 4:5 donde podés arrastrar imágenes, vincular un contenido ya cargado, o armar una portada de texto con su propio color mientras no haya material -- más la pestaña "Ver como Reel" para lo que marques como tal.',
@@ -5099,7 +5362,7 @@ function renderInstrucciones(container) {
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
-          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
+          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno. La columna "Asignado a" (nombre o email del contacto del cliente o de alguien del equipo) también se puede completar ahí en vez de asignar contenido por contenido.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
           '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
@@ -5143,6 +5406,7 @@ function renderInstrucciones(container) {
           'Gestioná tareas y mejoras del sitio web del cliente.',
           'Podés cargar tareas del tipo: contenidos, arreglos, agregados o análisis.',
           'Las tareas del sitio web están separadas de las tareas de marketing pero usan la misma interfaz.',
+          'Cada tarea también se puede <strong>asignar</strong> a un colaborador o al cliente, dividir en <strong>subtareas</strong>, y llevar <strong>imágenes adjuntas</strong> (pegadas con Ctrl+V o subidas) además del link de referencia.',
         ]},
         { icon:'map-pin', title:'Google Drive', color:'#ec4899', items:[
           'Usamos Google Drive para almacenar las piezas gráficas y videos.',
@@ -5802,10 +6066,14 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
   if (btn.disabled) return;
   const titulo = document.getElementById('wt-titulo').value.trim();
   if (!titulo) { alert('La descripción es obligatoria.'); return; }
+  if (_wtImgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir la imagen.'); return; }
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
     if (!STATE.home.webTareas) STATE.home.webTareas = [];
     const wtEstadoVal = document.getElementById('wt-estado').value;
+    const wtAsignadoEl = document.getElementById('wt-asignado');
+    const wtAsignadoEmail = wtAsignadoEl.value;
+    const wtAsignadoNombre = wtAsignadoEl.selectedOptions[0]?.dataset.nombre || '';
     const obj = {
       ...(_editingWebTask || {}),
       id: _editingWebTask?.id || Date.now(),
@@ -5815,6 +6083,9 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
       vencimiento: document.getElementById('wt-vencimiento').value || null,
       url: document.getElementById('wt-url').value.trim() || null,
       notas: document.getElementById('wt-notas').value.trim(),
+      asignado: wtAsignadoEmail ? { email: wtAsignadoEmail, nombre: wtAsignadoNombre } : null,
+      subtareas: [..._wtSubtareas],
+      imagenes: serializarImagenesWt(_wtImgList),
       completadoEn: wtEstadoVal === 'Listo' ? (_editingWebTask?.estado === 'Listo' ? _editingWebTask.completadoEn : new Date().toISOString().split('T')[0]) : null,
     };
     if (_editingWebTask) {

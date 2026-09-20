@@ -367,6 +367,7 @@
 
         <div class="form-group" style="grid-column:span 3;">
           <label>📎 Archivos adjuntos</label>
+          <div id="img-thumbnails" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
           <div id="img-paste-area" class="img-paste-area" style="cursor:default;">
             <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
               <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
@@ -376,7 +377,6 @@
               <button type="button" onclick="document.getElementById('img-file-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
             <p style="font-size:10px;color:#94a3b8;margin-top:4px;">Videos o archivos pesados → subí a Drive y pegá el link arriba. Límite sugerido: 50 MB.</p>
-            <div id="img-thumbnails" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             <input type="file" id="img-file-input" accept="image/*,video/*,.pdf,.doc,.docx" multiple style="display:none;">
           </div>
         </div>
@@ -525,6 +525,40 @@
         <div class="form-group" style="grid-column:span 2;">
           <label>Notas</label>
           <textarea id="wt-notas" class="form-control" rows="2" placeholder="Detalles, contexto, pantalla afectada..."></textarea>
+        </div>
+
+        <!-- Asignar -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Asignar a</label>
+          <select id="wt-asignado" class="form-control">
+            <option value="">Sin asignar</option>
+          </select>
+        </div>
+
+        <!-- Subtareas -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Subtareas</label>
+          <div id="wt-subtareas-list" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <input type="text" id="wt-subtarea-input" class="form-control" placeholder="Nueva subtarea..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarSubtareaWt();}">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="agregarSubtareaWt()" style="flex-shrink:0;">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- Imágenes adjuntas -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>🖼 Imágenes adjuntas</label>
+          <div id="wt-img-thumbs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+          <div id="wt-img-area" class="img-paste-area" style="cursor:default;">
+            <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
+                <i data-lucide="clipboard" style="width:15px;height:15px;opacity:.5;"></i>
+                Presioná <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:3px;padding:1px 5px;font-size:11px;">Ctrl+V</kbd> para pegar una imagen
+              </span>
+              <button type="button" onclick="document.getElementById('wt-img-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
+            </div>
+            <input type="file" id="wt-img-input" accept="image/*" multiple style="display:none;">
+          </div>
         </div>
       </div>
     </div>

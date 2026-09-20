@@ -6851,11 +6851,12 @@
     const texto = input.value.trim();
     if (!texto) return;
 
-    let item, guardar, contexto, clientIdComentario;
+    let item, guardar, contexto, clientIdComentario, tipoItem;
     if (prefix === 'in') {
       if (!_editingInterna) { alert('Guardá primero la tarea para poder comentar.'); return; }
       item = _editingInterna;
       clientIdComentario = INTERNAS_CLIENT_ID;
+      tipoItem = 'tarea';
       guardar = () => saveTarea(INTERNAS_CLIENT_ID, item, _internasCache);
     } else {
       if (_misTareaModalIdx === null) { alert('Guardá primero la tarea para poder comentar.'); return; }
@@ -6863,6 +6864,7 @@
       if (!wrap) return;
       item = wrap.tarea;
       clientIdComentario = wrap.clientId;
+      tipoItem = wrap.tipo;
       guardar = () => wrap.tipo === 'tarea' ? saveTarea(wrap.clientId, item) : saveContenido(wrap.clientId, item);
     }
     contexto = item.titulo || '';
@@ -6893,7 +6895,7 @@
           fetch(WORKER_URL + '/email/mencion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
-            body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto, tipo: 'tarea', itemId: item.id, clientId: clientIdComentario }),
+            body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto, tipo: tipoItem, itemId: item.id, clientId: clientIdComentario }),
           }).catch(() => {});
         }
       });
