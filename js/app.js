@@ -476,6 +476,12 @@ function renderSection(sec) {
       dupBtn.title = 'Buscar contenidos cargados dos veces con el mismo título';
       dupBtn.onclick = () => abrirDuplicadosContenidoModal();
       actions.appendChild(dupBtn);
+      const quickBtn = document.createElement('button');
+      quickBtn.className = 'btn btn-secondary';
+      quickBtn.textContent = '⚡ Actualizar estado/notas';
+      quickBtn.title = 'Subí un Excel simple (Título + Estado/Notas/Comentario) para actualizar contenidos ya cargados sin tocar el resto de los campos';
+      quickBtn.onclick = () => openQuickUpdateModal();
+      actions.appendChild(quickBtn);
     }
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
@@ -2508,13 +2514,23 @@ function renderImgThumbs() {
   wrap.innerHTML = _imgList.map((item, i) => {
     const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
     const preview = f.isImage
-      ? `<img src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;">`
+      ? `<img class="cont-img-thumb" data-idx="${i}" src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
       : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
-    return `<div style="position:relative;">${preview}<button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+    return `<div style="position:relative;">${preview}<button type="button" data-idx="${i}" class="cont-img-remove" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
   }).join('');
   const ph = document.querySelector('.img-paste-placeholder');
   if (ph) ph.style.display = _imgList.length ? 'none' : '';
 }
+
+// Click para ampliar / eliminar -- listener delegado (mismo criterio que
+// tarea-img-thumbs) para no meter la imagen entera adentro de un atributo
+// onclick, que con un base64 largo puede fallar según el navegador.
+document.getElementById('img-thumbnails')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.cont-img-remove');
+  if (removeBtn) { removeImg(Number(removeBtn.dataset.idx)); return; }
+  const thumb = e.target.closest('.cont-img-thumb');
+  if (thumb) ampliarImagen(thumb.getAttribute('src'));
+});
 
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
@@ -3112,6 +3128,168 @@ async function exportarContenidosExcel() {
 }
 document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
 document.getElementById('closeImportModal2').addEventListener('click', closeImportModal);
+
+// ── Actualización rápida (Estado/Notas/Comentario) por Excel ──────────
+// Pedido de Vaneh (19/09): una forma menos engorrosa que abrir contenido
+// por contenido para poner varios "En revisión" con una nota. A diferencia
+// de "Importar Excel" (exige título+cuenta+plataformas+formato y pisa
+// TODOS los campos de la plantilla), esto matchea solo por título y solo
+// toca las columnas que vengan completas en el archivo -- una celda vacía
+// no borra nada, porque no se arma un objeto nuevo: se edita el contenido
+// real ya cargado.
+let _quickUpdateRows = []; // { titulo, estado, notas, comentario, matches: [contenido,...] }
+
+const QUICK_UPDATE_HEADER_MAP = {
+  'titulo del contenido': 'titulo',
+  titulo: 'titulo',
+  estado: 'estado',
+  'notas internas': 'notas',
+  notas: 'notas',
+  comentario: 'comentario',
+  comentarios: 'comentario',
+  'link pieza terminada': 'linkDrive',
+  'link drive': 'linkDrive',
+  link: 'linkDrive',
+};
+
+window.openQuickUpdateModal = function() {
+  _quickUpdateRows = [];
+  document.getElementById('quick-update-file-input').value = '';
+  document.getElementById('quick-update-status').textContent = '';
+  document.getElementById('quick-update-preview').innerHTML = '';
+  document.getElementById('confirmQuickUpdateBtn').disabled = true;
+  document.getElementById('quickUpdateContenidoModal').classList.remove('hidden');
+  loadXLSXLib();
+};
+
+window.closeQuickUpdateModal = function() {
+  document.getElementById('quickUpdateContenidoModal').classList.add('hidden');
+};
+document.getElementById('closeQuickUpdateModal').addEventListener('click', closeQuickUpdateModal);
+document.getElementById('closeQuickUpdateModal2').addEventListener('click', closeQuickUpdateModal);
+
+document.getElementById('quick-update-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('quick-update-status');
+  const previewEl = document.getElementById('quick-update-preview');
+  const confirmBtn = document.getElementById('confirmQuickUpdateBtn');
+  previewEl.innerHTML = '';
+  confirmBtn.disabled = true;
+  _quickUpdateRows = [];
+  if (!file) return;
+
+  statusEl.textContent = 'Leyendo archivo…';
+  try {
+    await loadXLSXLib();
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+
+    const headerRow = raw[0].map(normalizeHeader);
+    const fieldByCol = headerRow.map(h => QUICK_UPDATE_HEADER_MAP[h] || null);
+    if (!fieldByCol.includes('titulo')) {
+      statusEl.textContent = 'No encontré una columna "Título del contenido" en la primera fila.';
+      return;
+    }
+
+    const sinMatch = [];
+    for (let r = 1; r < raw.length; r++) {
+      const dataRow = raw[r];
+      if (!dataRow || dataRow.every(v => v === '' || v == null)) continue;
+      const obj = {};
+      fieldByCol.forEach((field, ci) => { if (field) obj[field] = dataRow[ci]; });
+      const titulo = String(obj.titulo || '').trim();
+      if (!titulo) continue;
+      const estado = obj.estado != null ? String(obj.estado).trim() : '';
+      const notas = obj.notas != null ? String(obj.notas).trim() : '';
+      const comentario = obj.comentario != null ? String(obj.comentario).trim() : '';
+      const linkDrive = importSplitMulti(obj.linkDrive);
+      if (!estado && !notas && !comentario && !linkDrive.length) continue; // fila sin nada para actualizar
+      const matches = STATE.contenidos.filter(c => normImportTexto(c.titulo) === normImportTexto(titulo));
+      if (!matches.length) { sinMatch.push(titulo); continue; }
+      _quickUpdateRows.push({ titulo, estado, notas, comentario, linkDrive, matches });
+    }
+
+    renderQuickUpdatePreview(sinMatch);
+    confirmBtn.disabled = !_quickUpdateRows.length;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+  }
+});
+
+function renderQuickUpdatePreview(sinMatch) {
+  const statusEl = document.getElementById('quick-update-status');
+  const previewEl = document.getElementById('quick-update-preview');
+  const totalContenidos = _quickUpdateRows.reduce((n, r) => n + r.matches.length, 0);
+  statusEl.textContent = `${_quickUpdateRows.length} fila(s) para aplicar (${totalContenidos} contenido${totalContenidos !== 1 ? 's' : ''})${sinMatch.length ? ` · ${sinMatch.length} sin encontrar` : ''}.`;
+  previewEl.innerHTML = `
+    ${_quickUpdateRows.map(r => `
+      <div style="border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:13px;">${escapeHtml(r.titulo)} ${r.matches.length > 1 ? `<span style="color:#b45309;font-weight:400;">(⚠ ${r.matches.length} contenidos con este título, se actualizan todos)</span>` : ''}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+          ${r.estado ? `<div><strong>Estado →</strong> ${escapeHtml(r.estado)}</div>` : ''}
+          ${r.notas ? `<div><strong>Notas →</strong> ${escapeHtml(r.notas)}</div>` : ''}
+          ${r.linkDrive.length ? `<div><strong>Link pieza terminada →</strong> ${escapeHtml(r.linkDrive.join(', '))}</div>` : ''}
+          ${r.comentario ? `<div><strong>Comentario nuevo →</strong> ${escapeHtml(r.comentario)}</div>` : ''}
+        </div>
+      </div>
+    `).join('')}
+    ${sinMatch.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">No encontré ningún contenido con estos títulos (revisá que coincidan exacto): ${sinMatch.map(t => escapeHtml(t)).join(', ')}</div>` : ''}
+  `;
+}
+
+document.getElementById('confirmQuickUpdateBtn').addEventListener('click', async () => {
+  if (!_quickUpdateRows.length) return;
+  const btn = document.getElementById('confirmQuickUpdateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Actualizando…';
+  const autorNombre = user.name || user.email.split('@')[0];
+  const allMentionUsers = getMentionUsers();
+  const { WORKER_URL } = await import('./firebase.js');
+  const { getSessionToken } = await import('./auth.js');
+  try {
+    for (const r of _quickUpdateRows) {
+      for (const match of r.matches) {
+        const idx = STATE.contenidos.findIndex(c => c.id === match.id);
+        const contenido = idx > -1 ? STATE.contenidos[idx] : match;
+        if (r.estado) contenido.estado = r.estado;
+        if (r.notas) contenido.notas = r.notas;
+        if (r.linkDrive.length) contenido.linkDrive = r.linkDrive;
+        if (r.comentario) {
+          if (!contenido.comentarios) contenido.comentarios = [];
+          contenido.comentarios.push({ autor: autorNombre, email: user.email, fecha: new Date().toLocaleDateString('es-AR'), texto: r.comentario });
+        }
+        const saved = await saveContenido(clientId, contenido, STATE.contenidos);
+        if (idx > -1) STATE.contenidos[idx] = saved;
+        if (r.comentario) {
+          const mencionados = detectarUsuariosMencionados(r.comentario, allMentionUsers);
+          mencionados.forEach(u => {
+            if (u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
+              fetch(WORKER_URL + '/email/mencion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+                body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto: saved.titulo || '', tipo: 'contenido', itemId: saved.id, clientId }),
+              }).catch(() => {});
+            }
+          });
+        }
+      }
+    }
+    closeQuickUpdateModal();
+    renderContTab(activeContTab);
+    if (currentSection === 'home') renderSection('home');
+    alert('Listo, se actualizaron los contenidos.');
+  } catch (err) {
+    console.error(err);
+    alert('Hubo un error actualizando. Revisá el Banco de contenidos -- algunos contenidos pueden haberse actualizado igual antes del error.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Actualizar';
+  }
+});
 
 document.getElementById('import-file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -4924,6 +5102,7 @@ function renderInstrucciones(container) {
           '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
+          '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
           '<strong>🔗 Copiar link:</strong> dentro de cada contenido hay un botón para copiar un link directo a esa tarjeta puntual -- ideal para mandarlo por WhatsApp y que lo encuentren con un clic.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
