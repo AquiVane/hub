@@ -445,6 +445,20 @@ export async function abrirArchivo(clientId, key, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+// Para mostrar inline (miniatura o lightbox) un archivo subido a R2 --
+// a diferencia de abrirArchivo() no abre pestaña ni descarga, solo
+// devuelve una URL de blob usable en un <img src>. El endpoint necesita
+// el Authorization header, así que no se puede apuntar un <img> directo
+// a /archivo-file/... -- hay que traerlo como blob primero.
+export async function getArchivoBlobUrl(clientId, key) {
+  const res = await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
+    headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+  });
+  if (!res.ok) throw new Error('No se pudo cargar la imagen');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
 // ── Ideas ─────────────────────────────────────────────────────
 
 export async function getIdeas(clientId) {

@@ -695,6 +695,7 @@
         <!-- Imágenes adjuntas -->
         <div class="form-group" style="grid-column:span 2;">
           <label>🖼 Imágenes adjuntas</label>
+          <div id="tarea-img-thumbs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
           <div id="tarea-img-area" class="img-paste-area" style="cursor:default;">
             <div class="img-paste-placeholder" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
               <span style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">
@@ -703,7 +704,6 @@
               </span>
               <button type="button" onclick="document.getElementById('tarea-img-input').click()" class="btn btn-secondary btn-sm" style="font-size:11px;">📎 Subir archivo</button>
             </div>
-            <div id="tarea-img-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
             <input type="file" id="tarea-img-input" accept="image/*" multiple style="display:none;">
           </div>
         </div>

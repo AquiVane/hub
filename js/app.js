@@ -8,7 +8,7 @@ import {
   getPlan, savePlan,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
-  uploadArchivo, abrirArchivo, getAllClients, getEquipo
+  uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo
 } from './data.js';
 
 // ── Helpers de texto ────────────────────────────────────
@@ -2514,39 +2514,23 @@ function renderImgThumbs() {
   wrap.innerHTML = _imgList.map((item, i) => {
     const f = typeof item === 'string' ? { src: item, name: '', isImage: true } : item;
     const preview = f.isImage
-      ? `<img src="${f.src}" onclick="openImgLightboxFromList(_imgList,${i})" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
+      ? `<img class="cont-img-thumb" data-idx="${i}" src="${f.src}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
       : `<div style="width:72px;height:72px;border-radius:6px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#64748b;padding:4px;text-align:center;overflow:hidden;"><span style="font-size:24px;">📄</span><span style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">${f.name}</span></div>`;
-    return `<div style="position:relative;">${preview}<button type="button" onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
+    return `<div style="position:relative;">${preview}<button type="button" data-idx="${i}" class="cont-img-remove" style="position:absolute;top:-6px;right:-6px;background:#E02020;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">×</button></div>`;
   }).join('');
   const ph = document.querySelector('.img-paste-placeholder');
   if (ph) ph.style.display = _imgList.length ? 'none' : '';
 }
 
-// Lightbox simple para ampliar cualquier imagen pegada/adjunta (Contenidos y Tareas) --
-// Vaneh reportó (19/09) que tocar una miniatura no hacía nada y por eso no podía
-// confirmar si se habían guardado bien. Se creaba sí (viaja en el payload de guardado),
-// solo faltaba esta forma de verlas grandes.
-function openImgLightbox(src) {
-  let ov = document.getElementById('img-lightbox-overlay');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'img-lightbox-overlay';
-    ov.className = 'hidden';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px;cursor:zoom-out;display:flex;';
-    ov.innerHTML = '<img id="img-lightbox-img" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);">';
-    ov.addEventListener('click', () => ov.classList.add('hidden'));
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') ov.classList.add('hidden'); });
-    document.body.appendChild(ov);
-  }
-  document.getElementById('img-lightbox-img').src = src;
-  ov.classList.remove('hidden');
-}
-window.openImgLightbox = openImgLightbox;
-window.openImgLightboxFromList = function(list, i) {
-  const item = list[i];
-  const src = typeof item === 'string' ? item : item?.src;
-  if (src) openImgLightbox(src);
-};
+// Click para ampliar / eliminar -- listener delegado (mismo criterio que
+// tarea-img-thumbs) para no meter la imagen entera adentro de un atributo
+// onclick, que con un base64 largo puede fallar según el navegador.
+document.getElementById('img-thumbnails')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.cont-img-remove');
+  if (removeBtn) { removeImg(Number(removeBtn.dataset.idx)); return; }
+  const thumb = e.target.closest('.cont-img-thumb');
+  if (thumb) ampliarImagen(thumb.getAttribute('src'));
+});
 
 window.removeImg = function(i) { _imgList.splice(i, 1); renderImgThumbs(); };
 
@@ -3849,29 +3833,111 @@ window.rteColor = function(color) {
   document.execCommand('foreColor', false, color);
 };
 
+// Las imagenes de una tarea se suben a R2 al toque (como ya hacia
+// "Archivos adjuntos"), no se embeben como base64 dentro de la tarea.
+// Antes cada imagen quedaba pegada entera (base64, ~33% mas pesada) adentro
+// del JSON de TODAS las tareas del cliente -- eso hacia que guardar la
+// tarea mandara un POST enorme que podia tardar, fallar en silencio o
+// directamente no completarse nunca ("al guardar no pasa nada, quedan
+// ahi" -- reporte de Vaneh, 19/09). Ahora la tarea solo guarda la
+// referencia (key) al archivo ya subido, igual que "Archivos adjuntos".
+// Tareas viejas guardadas con imagenes en base64 se siguen mostrando bien
+// (quedan como estan, no se migran).
+const _imgBlobUrlCache = new Map();
+
+// Antes las miniaturas (72x72) quedaban adentro de la zona de pegado --
+// ocupaban lugar justo donde hay que hacer click/Ctrl+V para agregar la
+// siguiente, y cada vez achicaban más ese espacio. Pedido de Vaneh
+// (19/09): que queden arriba, como una fila compacta con el nombre
+// (igual que "Archivos adjuntos" debajo), dejando la zona de pegado
+// siempre libre.
 function renderTareaImgThumbs() {
   const container = document.getElementById('tarea-img-thumbs');
   if (!container) return;
-  container.innerHTML = _tareaImgList.map((src, i) => `
-    <div style="position:relative;display:inline-block;">
-      <img src="${src}" onclick="openImgLightboxFromList(_tareaImgList,${i})" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;">
-      <button onclick="removeTareaImg(${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:18px;padding:0;">×</button>
-    </div>
-  `).join('');
+  container.innerHTML = _tareaImgList.map((item, i) => {
+    if (item.subiendo) {
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-muted);"><i data-lucide="loader" style="width:14px;height:14px;flex-shrink:0;"></i>Subiendo…</div>`;
+    }
+    const nombre = item.filename || `Imagen ${i + 1}`;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
+      <i data-lucide="image" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
+      <span class="tarea-img-thumb" data-idx="${i}" style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(nombre)}</span>
+      <button type="button" data-idx="${i}" class="tarea-img-remove" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar">×</button>
+    </div>`;
+  }).join('');
+  setTimeout(refreshIcons, 30);
+  // Miniaturas subidas a R2 necesitan el blob (el endpoint pide auth, no
+  // se puede apuntar un <img> directo ahi) -- se cargan aparte y se
+  // pisa el src cuando estan listas.
+  _tareaImgList.forEach(async (item, i) => {
+    if (item.subiendo || item.src || !item.key) return;
+    try {
+      item.src = _imgBlobUrlCache.get(item.key) || await getArchivoBlobUrl(clientId, item.key);
+      _imgBlobUrlCache.set(item.key, item.src);
+      renderTareaImgThumbs();
+    } catch (e) {}
+  });
 }
+
+// Click para ampliar / eliminar -- con un listener delegado (fijo, una
+// sola vez) en vez de meter la imagen entera adentro de un atributo
+// onclick="...", que con un base64 largo (imágenes viejas) podía fallar
+// según el navegador y quedaba "sin hacer nada" al tocarla. Pedido de
+// Vaneh (19/09): "la toco y no pasa nada y quedó ahí".
+document.getElementById('tarea-img-thumbs')?.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.tarea-img-remove');
+  if (removeBtn) { removeTareaImg(Number(removeBtn.dataset.idx)); return; }
+  const thumb = e.target.closest('.tarea-img-thumb');
+  if (thumb) {
+    const item = _tareaImgList[Number(thumb.dataset.idx)];
+    if (item?.src) ampliarImagen(item.src);
+  }
+});
+
+// Lightbox simple: pedido de Vaneh -- "necesito tocar la imagen y que se
+// amplie asi se entiende si se cargo o no".
+window.ampliarImagen = function(src) {
+  if (!src) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);">`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+};
 
 window.removeTareaImg = function(i) {
   _tareaImgList.splice(i, 1);
   renderTareaImgThumbs();
 };
 
-function addTareaImgFromFile(file) {
+// El objeto en memoria trae `src` como blob URL (para las subidas a R2)
+// que solo vale en esta sesión -- no se guarda. Lo que persiste es la
+// key (R2) o el base64 completo (legado, sin key).
+function serializarImagenesTarea(list) {
+  return list.filter(item => !item.subiendo).map(item =>
+    item.key ? { key: item.key, filename: item.filename, size: item.size } : { src: item.src }
+  );
+}
+
+async function addTareaImgFromFile(file) {
   if (!file || !file.type.startsWith('image/')) return;
   if (_tareaImgList.length >= 3) { alert('M\u00e1ximo 3 im\u00e1genes por tarea.'); return; }
-  if (file.size > 4 * 1024 * 1024) { alert('La imagen supera 4 MB. Sub\u00edla a Drive y peg\u00e1 el link.'); return; }
-  const reader = new FileReader();
-  reader.onload = e => { _tareaImgList.push(e.target.result); renderTareaImgThumbs(); };
-  reader.readAsDataURL(file);
+  if (file.size > 15 * 1024 * 1024) { alert('La imagen supera 15 MB. Sub\u00edla a Drive y peg\u00e1 el link.'); return; }
+  const placeholder = { subiendo: true };
+  _tareaImgList.push(placeholder);
+  renderTareaImgThumbs();
+  try {
+    const subido = await uploadArchivo(clientId, file);
+    const idx = _tareaImgList.indexOf(placeholder);
+    if (idx === -1) return; // se saco mientras subia
+    _tareaImgList[idx] = { key: subido.key, filename: subido.filename, size: subido.size };
+    renderTareaImgThumbs();
+  } catch (err) {
+    _tareaImgList.splice(_tareaImgList.indexOf(placeholder), 1);
+    renderTareaImgThumbs();
+    alert('No se pudo subir la imagen: ' + (err.message || 'reintenta.'));
+  }
 }
 
 // \u2500\u2500 Archivos adjuntos de una tarea -- viven en STATE.home.archivos (la
@@ -4007,8 +4073,10 @@ window.openTareaModal = function(id, defaultEstado) {
   toggleTfEsProyecto();
   document.getElementById('tf-recurrencia').value = t.recurrencia || '';
   document.getElementById('tf-link').value = t.url || t.linkRef || '';
-  // Imágenes
-  _tareaImgList = t.imagenes ? [...t.imagenes] : [];
+  // Imágenes -- tareas viejas tienen strings base64 sueltos, las nuevas
+  // objetos {key,filename,size} subidos a R2 (ver comentario en
+  // renderTareaImgThumbs). Normalizamos las dos formas a {src|key}.
+  _tareaImgList = (t.imagenes || []).map(item => typeof item === 'string' ? { src: item } : { ...item });
   renderTareaImgThumbs();
   // Archivos adjuntos (referencias a STATE.home.archivos, no el archivo en sí)
   _tareaArchivosPendientes = t.archivosAdjuntos ? [...t.archivosAdjuntos] : [];
@@ -4251,6 +4319,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
   if (btn.disabled) return;
   const titulo = document.getElementById('tf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); return; }
+  if (_tareaImgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir la imagen.'); return; }
   const draftIdAlGuardar = editingTarea?.id || null;
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
@@ -4271,7 +4340,7 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, cuadrante: document.getElementById('tf-cuadrante').value || null, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: [..._tareaImgList], archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, cuadrante: document.getElementById('tf-cuadrante').value || null, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: serializarImagenesTarea(_tareaImgList), archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
     // Recién se marcó "Lista" en este mismo guardado (no ya lo estaba) --
     // si es recurrente, regenerarSiRecurrente crea el próximo ciclo de una,
     // sin esperar el cron, y esta misma (obj) queda "Lista" para siempre.
