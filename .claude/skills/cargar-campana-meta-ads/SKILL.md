@@ -45,6 +45,32 @@ concreta quiero que haga la persona que ve el anuncio?**
 Si tenés dudas sobre cuál corresponde a tu caso y no es ninguno de estos tres, no adivines --
 preguntá antes de crear la campaña.
 
+Esta elección de destino la hacés en una pantalla que se llama **"Conversión" → "Ubicación de
+la conversión"**, con estas opciones (confirmado en pantalla real, septiembre 2026): Video en
+directo de Instagram, Sitio web, Aplicación, Destinos del mensaje, **Instagram o Facebook**
+("Envía tráfico a un perfil de Instagram, a una página de Facebook o a ambos"), Llamadas. Para
+"quiero que me sigan" elegís **Instagram o Facebook**.
+
+### ⚠ Problema común: "Conectar perfil" pide loguearse de nuevo aunque Instagram ya esté vinculado
+
+Si en el nivel del anuncio, en "Destino", el checkbox de **Perfil de Instagram** aparece con un
+botón **"Conectar perfil"** en vez de dejarte tildarlo directo -- incluso si el cliente te dijo
+que "ya conectó Instagram" -- es porque **hay dos vínculos distintos y son independientes**:
+
+1. **Vincular Instagram a la Página de Facebook** (`facebook.com/settings/?tab=linked_profiles`
+   → Cuentas vinculadas → Instagram). Esto es un vínculo orgánico entre la Página y el
+   Instagram -- típicamente lo hace el cliente. **No alcanza para poder usarlo en anuncios.**
+2. **Agregar la cuenta de Instagram como activo del Business Manager** de la agencia
+   (Configuración del negocio → Cuentas → Cuentas de Instagram → Agregar → Conectar una cuenta
+   de Instagram, con usuario y contraseña de esa cuenta de IG). Esto es lo que realmente
+   habilita que la cuenta publicitaria pueda usar ese perfil como destino de un anuncio.
+
+Si el cliente dice que "ya está conectado" pero el checkbox sigue pidiendo login, es casi
+seguro que solo se hizo el paso 1. Solución: pedile al cliente el usuario/contraseña de esa
+cuenta de Instagram y hacé el paso 2 (podés tocar directo "Conectar perfil" en la pantalla del
+anuncio, o hacerlo una vez desde el Business Manager para que quede disponible en todas las
+campañas futuras sin repetir el login cada vez).
+
 ## Paso 2 — CBO o ABO (Estrategia de presupuesto)
 
 Esta decisión aparece en la pantalla de **Presupuesto**, dentro de "Estrategia de presupuesto",
