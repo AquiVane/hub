@@ -1407,6 +1407,14 @@ let activeContTab = 'banco';
 // los dos, no porque estén ambos botones prendidos.
 let pautaFiltroSel = 'organico';
 
+// Filtros de plataforma y fecha del Banco de contenidos -- pedido de
+// Vaneh (21/09): "necesito poder filtrar por plataforma... y también por
+// fecha".
+let _bancoFiltroPlataforma = 'todas';
+let _bancoFiltroFechaDesde = '';
+let _bancoFiltroFechaHasta = '';
+const BANCO_PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn', 'Twitter / X', 'TikTok', 'YouTube', 'Sitio Web', 'Blog'];
+
 function renderContenidos(container) {
   container.innerHTML = `
     <div class="mb-16" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -1551,7 +1559,10 @@ function matchPautaFilter(c) {
 }
 
 function renderBancoContenidos(container) {
-  const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter);
+  const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter)
+    .filter(c => _bancoFiltroPlataforma === 'todas' || (c.plataformas || []).includes(_bancoFiltroPlataforma))
+    .filter(c => !_bancoFiltroFechaDesde || (c.fechaPub && c.fechaPub >= _bancoFiltroFechaDesde))
+    .filter(c => !_bancoFiltroFechaHasta || (c.fechaPub && c.fechaPub <= _bancoFiltroFechaHasta));
   const archivados = STATE.contenidos.filter(c => c.archivado);
   const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
 
@@ -1587,8 +1598,24 @@ function renderBancoContenidos(container) {
   }).join('');
 
   const hayAlgunContenido = STATE.contenidos.some(c => !c.archivado);
+  const hayFiltroActivo = _bancoFiltroPlataforma !== 'todas' || _bancoFiltroFechaDesde || _bancoFiltroFechaHasta;
+
+  const filtrosHtml = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;">
+      <select id="banco-filtro-plataforma" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" onchange="cambiarBancoFiltroPlataforma(this.value)">
+        <option value="todas">Todas las plataformas</option>
+        ${BANCO_PLATAFORMAS.map(p => `<option value="${p}" ${_bancoFiltroPlataforma === p ? 'selected' : ''}>${p}</option>`).join('')}
+      </select>
+      <label style="font-size:12px;color:var(--text-muted);">Desde</label>
+      <input type="date" id="banco-filtro-desde" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaDesde}" onchange="cambiarBancoFiltroFecha('desde', this.value)">
+      <label style="font-size:12px;color:var(--text-muted);">Hasta</label>
+      <input type="date" id="banco-filtro-hasta" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaHasta}" onchange="cambiarBancoFiltroFecha('hasta', this.value)">
+      ${hayFiltroActivo ? `<button class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
+      <span style="font-size:12px;color:var(--text-muted);${hayFiltroActivo ? '' : 'margin-left:auto;'}">${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
+    </div>`;
 
   container.innerHTML = `
+    ${filtrosHtml}
     ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayAlgunContenido?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
@@ -1609,6 +1636,24 @@ function renderBancoContenidos(container) {
     ` : ''}
   `;
 }
+
+window.cambiarBancoFiltroPlataforma = function(val) {
+  _bancoFiltroPlataforma = val;
+  renderContTab('banco');
+};
+
+window.cambiarBancoFiltroFecha = function(cual, val) {
+  if (cual === 'desde') _bancoFiltroFechaDesde = val;
+  else _bancoFiltroFechaHasta = val;
+  renderContTab('banco');
+};
+
+window.limpiarBancoFiltros = function() {
+  _bancoFiltroPlataforma = 'todas';
+  _bancoFiltroFechaDesde = '';
+  _bancoFiltroFechaHasta = '';
+  renderContTab('banco');
+};
 
 window.bancoUpdateFecha = async function(id, fecha) {
   const c = STATE.contenidos.find(x => x.id === id);
@@ -5309,7 +5354,7 @@ function renderInstrucciones(container) {
           'Usalo para presentar avances a clientes o gerencia.',
         ]},
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
-          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá.',
+          '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá. Se puede filtrar por plataforma y por rango de fechas (Desde/Hasta), además del filtro Orgánico/Pauta.',
           '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
           '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
           '<strong>Feed IG:</strong> "Publicado" muestra el feed real; "Borrador (pendiente de aprobación)" es una grilla de 12 casilleros en formato 4:5 donde podés arrastrar imágenes, vincular un contenido ya cargado, o armar una portada de texto con su propio color mientras no haya material -- más la pestaña "Ver como Reel" para lo que marques como tal.',
