@@ -207,12 +207,21 @@ campaña hermana con la misma audiencia (ej. otra campaña de growth del mismo c
 misma definición en vez de rearmarla de cero. Nada de públicos similares/lookalike con una base
 de seguidores chica (mínimo recomendado ~1.000+).
 
-**Ubicación -- si necesitás varias zonas puntuales (ej. "CABA y Zona Norte"), no uses un solo
-círculo/radio en el mapa.** Un radio centrado en "Buenos Aires" no coincide con lo que
-entendemos por zonas específicas como "Zona Norte" (San Isidro, Vicente López, Olivos, San
-Fernando, Tigre, Martínez) y puede terminar cubriendo de más hacia otros lados que no interesan.
-Mejor: **"Buscar lugares" o "Añadir lugares de forma masiva"** y cargar cada localidad puntual
-por separado, además de CABA si corresponde.
+**Ubicación -- primero preguntate si la campaña necesita geo-restricción real, no la copies de
+otra campaña del mismo cliente sin pensarlo.** Restringir a zonas puntuales (ej. "CABA y Zona
+Norte") tiene sentido cuando la lógica del negocio lo pide -- típicamente **B2B/distribuidores**,
+donde limitar el territorio es parte de la estrategia (exclusividad, "quedan pocas zonas
+disponibles"). Para growth/awareness de un producto de consumo que se puede comprar en
+cualquier lado (tienda online, expansión de puntos de venta), restringir geografía no suma nada
+y solo achica el alcance sin motivo. No asumas que la misma restricción geográfica de una
+campaña aplica a todas las demás del mismo cliente -- cada campaña puede necesitar un alcance
+distinto según su objetivo real.
+
+Si de verdad necesitás varias zonas puntuales dentro de una ciudad y buscarlas por nombre "no
+las toma" (localidades del conurbano a veces no aparecen como resultado de búsqueda de lugar en
+Meta), la alternativa simple es un **radio amplio centrado en la ciudad principal** (ej. "Buenos
+Aires (+40 km) CABA") en vez de insistir con nombres de localidad puntuales -- cubre la zona
+metropolitana sin depender de que cada suburbio exista como resultado de búsqueda.
 
 Vas a ver un checkbox tipo **"Llegar a más personas con probabilidades de responder a tus
 anuncios"** (expande a gente "interesada en" esa ubicación o cerca de ella, no solo a quien vive
@@ -237,6 +246,14 @@ switch simple para "apagarlo": ahora viene **activado por defecto siempre** (vas
    cargues en "Limitar más tu audiencia" sí actúa como tope, a diferencia de dejarlo en la
    configuración sugerida por default.
 4. Guardá con **"Guardar audiencia"**.
+
+**Ojo al buscar intereses -- revisá bajo qué categoría cae cada resultado que agregás.** El
+buscador de segmentación detallada a veces devuelve resultados de categorías que no son
+"Intereses" y no sirven para esto -- por ejemplo, buscar "Gym" puede devolver un resultado bajo
+**"Datos demográficos > Trabajo > Empresas"**, que apunta a gente que TRABAJA en una empresa
+llamada así (empleados), no a gente que va al gimnasio. Antes de confirmar un resultado, fijate
+la categoría completa que muestra arriba de cada ítem (Intereses > ... vs. Datos demográficos >
+Trabajo > ...) y sacá los que no correspondan.
 
 **Regla práctica para clientes nuevos de COSMART** (cuenta/píxel recién creado, sin historial de
 conversión): usá **"Limitar más tu audiencia"** y cargá ahí ubicación/edad/intereses como límite
