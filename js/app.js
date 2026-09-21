@@ -127,6 +127,15 @@ if (!clientId) { window.location.href = '../admin/index.html'; }
 // demasiado grandes para mantener dos copias sincronizadas a mano.
 const esPropioAgencia = clientId === '_cosmart';
 
+// `embed=1`: este mismo panel se está mostrando adentro de un <iframe>
+// dentro de admin/index.html (sección "Contenidos propios"), en vez de
+// abrirse como página aparte -- pedido de Vaneh (21/09) después de ver
+// que el link a un panel de cliente distinto "no queda dentro del panel
+// de admin". Oculta todo el chrome de panel-de-cliente (logo, cambiar
+// de cliente, Puertos COSMART, cerrar sesión) y deja solo la navegación
+// entre secciones (ver init()).
+const embedMode = params.get('embed') === '1';
+
 let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
 let _tareasView = 'kanban';
@@ -185,7 +194,19 @@ async function init() {
       ['home', 'tareas', 'web', 'plan', 'reportes', 'links', 'instrucciones'].forEach(sec => {
         document.querySelector(`.nav-item[data-section="${sec}"]`)?.classList.add('hidden');
       });
-    } else {
+    }
+    if (embedMode) {
+      // Adentro del iframe de "Contenidos propios" (admin/index.html) no
+      // tiene sentido nada de esto -- es chrome de panel-de-cliente
+      // (logo/nombre a subir, cambiar de cliente, Puertos COSMART,
+      // cerrar sesión: el admin ya tiene el suyo afuera). Deja SOLO la
+      // navegación entre secciones para que se vea como parte del admin,
+      // no como una pantalla aparte.
+      ['.sidebar-logo', '.sidebar-hub-label', '.sidebar-client', '.sidebar-cosmart', '.sidebar-footer', '#sidebar-toggle', '#fab-btn', '#mobile-bottom-nav'].forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
+      });
+    }
+    if (!esPropioAgencia && !embedMode) {
       if (user.role !== 'client') setupClientSwitcher();
       else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
       if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
@@ -307,8 +328,10 @@ async function cargarDatosSecundarios() {
   STATE.plan = r.plan || { html: '' };
   STATE.reportes = (r.reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
   STATE.guiones = r.guiones || [];
-  if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan')?.classList.remove('hidden');
-  if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes')?.classList.remove('hidden');
+  if (!esPropioAgencia) {
+    if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan')?.classList.remove('hidden');
+    if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes')?.classList.remove('hidden');
+  }
   // Si el usuario ya está mirando una sección que depende de estos datos
   // (pauta, ideas, plan, reportes, dashboard, guiones) se refresca sola con
   // lo que acaba de llegar -- si está en Home o Tareas, no hace falta, esas
