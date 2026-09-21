@@ -196,15 +196,31 @@ async function init() {
       });
     }
     if (embedMode) {
-      // Adentro del iframe de "Contenidos propios" (admin/index.html) no
-      // tiene sentido nada de esto -- es chrome de panel-de-cliente
-      // (logo/nombre a subir, cambiar de cliente, Puertos COSMART,
-      // cerrar sesión: el admin ya tiene el suyo afuera). Deja SOLO la
-      // navegación entre secciones para que se vea como parte del admin,
-      // no como una pantalla aparte.
-      ['.sidebar-logo', '.sidebar-hub-label', '.sidebar-client', '.sidebar-cosmart', '.sidebar-footer', '#sidebar-toggle', '#fab-btn', '#mobile-bottom-nav'].forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
+      // Adentro del iframe de "Contenidos propios" (admin/index.html):
+      // un segundo menú lateral al lado del del admin se veía como "dos
+      // menús" (Vaneh: "no me gusta cómo quedó"). Se saca el sidebar
+      // entero y se reemplaza por solapas horizontales arriba del
+      // contenido -- mismo estilo `.tabs`/`.tab-btn` que ya se usa para
+      // las sub-secciones de Contenidos, para que se sienta parte del
+      // mismo panel en vez de otro menú aparte.
+      document.querySelector('.sidebar').style.display = 'none';
+      document.getElementById('sidebar-toggle').style.display = 'none';
+      document.getElementById('fab-btn').style.display = 'none';
+      document.getElementById('mobile-bottom-nav').style.display = 'none';
+      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard']];
+      const tabBar = document.createElement('div');
+      tabBar.id = 'embed-tabs';
+      tabBar.className = 'tabs';
+      tabBar.style.cssText = 'margin:16px 24px 0;flex-shrink:0;';
+      tabBar.innerHTML = EMBED_TABS.map(([sec, label], i) => `<button type="button" class="tab-btn${i === 0 ? ' active' : ''}" data-embed-sec="${sec}">${label}</button>`).join('');
+      tabBar.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderSection(btn.dataset.embedSec);
+        });
       });
+      document.querySelector('.main').insertBefore(tabBar, document.getElementById('main-content'));
     }
     if (!esPropioAgencia && !embedMode) {
       if (user.role !== 'client') setupClientSwitcher();
