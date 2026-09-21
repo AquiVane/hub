@@ -13,7 +13,7 @@ Documento pensado para adjuntar al trámite de **Inscripción de obra publicada/
 - **Titular**: COSMART (Conglomerado Contacto Smart) — Vanesa Anahí Fernández.
 - **Autor/desarrollo**: Vanesa Anahí Fernández, con desarrollo asistido por IA (Claude, de Anthropic) bajo su dirección y especificación en todas las decisiones de producto.
 - **Estado**: en producción, en uso activo por COSMART y sus clientes/colaboradores desde agosto de 2026. Desde el 29/08/2026 es multi-tenant: otras agencias pueden darse de alta y usarlo con sus propios clientes.
-- **Última actualización de este documento**: 12/09/2026.
+- **Última actualización de este documento**: 21/09/2026.
 
 ## 2. Descripción general (memoria descriptiva)
 
@@ -39,8 +39,11 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 ### Contenidos para redes sociales
 - Banco de contenidos con calendario editorial, filtrable por plataforma, estado del contenido, cuenta y por Orgánico/Pauta/Ambas.
 - Vistas especializadas: Feed de Instagram (grilla), Muro de Facebook, Stories, Kanban por estado, banco de ideas.
-- Importación masiva desde una plantilla Excel: detecta contenidos ya cargados (por título) para no duplicarlos, muestra qué campos cambiaron y deja elegir reemplazar u omitir fila por fila; permite deshacer una importación completa con un botón.
+- Importación masiva desde una plantilla Excel: detecta contenidos ya cargados (por título) para no duplicarlos, muestra qué campos cambiaron y deja elegir reemplazar u omitir fila por fila; permite deshacer una importación completa con un botón; permite además asignar cada contenido a una persona del equipo o del cliente directamente desde el Excel, y una herramienta separada para actualizar en lote solo el estado, las notas o un comentario de varios contenidos ya cargados sin abrir uno por uno.
+- Archivos adjuntos por contenido (imágenes, videos, documentos), con vista previa ampliable y almacenamiento en un servicio de archivos en la nube.
+- **Guion y modo Teleprompter**: cada pieza de contenido puede tener su guion completo cargado (a mano o por la misma importación masiva de Excel), y abrirse en una vista de pantalla completa pensada para grabar — fondo negro, texto blanco, desplazamiento automático a velocidad ajustable, tamaño de letra configurable y modo espejado.
 - Dashboard editorial por cliente: mapa de calor de frecuencia de publicación, gráfico de distribución por tipo de contenido, resumen de trabajo realizado en el mes (tareas, subtareas, contenidos publicados y campañas activas).
+- Banco de contenidos filtrable también por plataforma y por rango de fechas, combinable con el filtro de Orgánico/Pauta.
 
 ### Pauta digital (campañas pagas)
 - Registro de campañas por cliente y plataforma, con presupuesto, gasto, alcance, impresiones, clics, CPM/CPC/CTR, conversiones, ingresos y ROAS (calculado automáticamente), comparado contra un ROAS de equilibrio definido por la agencia.
@@ -82,6 +85,8 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 
 ## 5. Historial de cambios relevantes (para actualizar)
 
+- **21/09/2026**: nuevo campo de guion por contenido con modo teleprompter a pantalla completa para grabar (fondo negro, texto blanco, desplazamiento automático); asignación de contenidos a una persona del equipo o del cliente desde la importación masiva de Excel; filtro del banco de contenidos por plataforma y por rango de fechas; corrección en los archivos adjuntos de tareas y contenidos (subida real a almacenamiento en la nube en vez de embeberse en el registro, evitando que el guardado fallara silenciosamente) con vista previa ampliable; corrección del link de los emails de notificación por mención para que lleven directo al comentario puntual (tarea o contenido) en vez de a la pantalla principal del cliente.
+- **19-20/09/2026**: herramienta de actualización rápida en lote (estado, notas, comentario) para varios contenidos ya cargados, sin necesidad de reemplazar el calendario completo.
 - **12/09/2026**: tareas recurrentes ahora se clonan en vez de mutarse — la instancia cumplida queda como registro histórico permanente ("Lista", con su propia fecha) en vez de desaparecer al generarse el siguiente ciclo; sección de Reportes mensuales (subida y navegación mes a mes) en el panel de cada cliente; sección de Instrucciones agregada al panel de administración; ideas transformadas en proyecto quedan marcadas como tales en vez de borrarse, evitando duplicar el proyecto; roles del equipo de un cliente ampliados (SMM, Paid Media, Trafficker, Asistente, Líder, PM, y rol libre a texto).
 - **07/09/2026**: corrección de detección de duplicados en la importación de contenidos (ahora matchea por título, con la cuenta solo como desempate); botón para deshacer una importación; columna visible de Orgánico/Pauta en el banco de contenidos; estado "Borrador" para campañas de pauta recién cargadas; endpoint de equipo accesible para colaboradores (antes solo veían al admin en listas de asignación si eran admin ellos mismos); mail de tareas del equipo ahora incluye vencidas, no solo las del día.
 - **03/09/2026 y anteriores**: ver `HANDOFF.md` de este repo y de `cosmart-workers` para el detalle completo, tanda por tanda, de todo lo construido desde el inicio del proyecto (multi-tenancy, CRM de leads, tareas asignadas a IA, sistema de comentarios y menciones, importación de Excel, dashboard editorial, etc.).
