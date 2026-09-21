@@ -196,6 +196,29 @@ export async function deleteContenido(clientId, id, knownList) {
   await api('POST', `/data/${clientId}/contenidos`, list.filter(c => c.id !== id));
 }
 
+// ── Guiones (repositorio propio, vinculado o no a un contenido) ──
+
+export async function getGuiones(clientId) {
+  if (DEMO_MODE) return [];
+  return api('GET', `/data/${clientId}/guiones`);
+}
+
+export async function saveGuion(clientId, guion, knownList) {
+  if (DEMO_MODE) { guion.id = guion.id || 'g' + Date.now(); return guion; }
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/guiones`);
+  const idx = list.findIndex(g => g.id === guion.id);
+  if (idx >= 0) list[idx] = guion;
+  else { guion.id = 'g' + Date.now(); list.push(guion); }
+  await api('POST', `/data/${clientId}/guiones`, list);
+  return guion;
+}
+
+export async function deleteGuion(clientId, id, knownList) {
+  if (DEMO_MODE) return;
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/guiones`);
+  await api('POST', `/data/${clientId}/guiones`, list.filter(g => g.id !== id));
+}
+
 // ── Procesos ──────────────────────────────────────────────────
 
 export async function getProcesos(clientId) {

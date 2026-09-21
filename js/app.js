@@ -1,6 +1,7 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
+  getGuiones, saveGuion, deleteGuion,
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
@@ -241,6 +242,7 @@ async function loadAllData() {
   STATE.ideas = STATE.ideas || [];
   STATE.plan = STATE.plan || { html: '' };
   STATE.reportes = STATE.reportes || [];
+  STATE.guiones = STATE.guiones || [];
   _equipoDelCliente = _equipoDelCliente || [];
   // Links guardados antes de que existiera el campo `id` (o cargados a mano
   // en Firestore) llegan sin id -- eso hace que openLinkModal('undefined')
@@ -265,6 +267,7 @@ async function cargarDatosSecundarios() {
   const calls = {
     equipo: getEquipo(), campanas: getCampanas(clientId), metricas: getMetricas(clientId),
     ideas: getIdeas(clientId), plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
+    guiones: getGuiones(clientId),
   };
   const keys = Object.keys(calls);
   const settled = await Promise.allSettled(keys.map(k => calls[k]));
@@ -279,13 +282,14 @@ async function cargarDatosSecundarios() {
   STATE.ideas = r.ideas || [];
   STATE.plan = r.plan || { html: '' };
   STATE.reportes = (r.reportesIndice || []).slice().sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más nuevo primero, sin el html todavía
+  STATE.guiones = r.guiones || [];
   if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan')?.classList.remove('hidden');
   if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes')?.classList.remove('hidden');
   // Si el usuario ya está mirando una sección que depende de estos datos
-  // (pauta, ideas, plan, reportes, dashboard) se refresca sola con lo que
-  // acaba de llegar -- si está en Home o Tareas, no hace falta, esas no
-  // usan nada de acá.
-  if (['pauta', 'ideas', 'plan', 'reportes', 'dashboard'].includes(currentSection)) renderSection(currentSection);
+  // (pauta, ideas, plan, reportes, dashboard, guiones) se refresca sola con
+  // lo que acaba de llegar -- si está en Home o Tareas, no hace falta, esas
+  // no usan nada de acá.
+  if (['pauta', 'ideas', 'plan', 'reportes', 'dashboard', 'guiones'].includes(currentSection)) renderSection(currentSection);
 }
 
 function applyClientLogo(src) {
@@ -421,8 +425,8 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones' };
-  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones' };
+  const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', guiones: 'Repositorio de guiones para grabar, vinculados o no a un contenido', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -489,6 +493,29 @@ function renderSection(sec) {
     btn.onclick = () => openContenidoModal(null);
     actions.appendChild(btn);
     renderContenidos(content);
+    setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'guiones') {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control';
+    searchInput.placeholder = '🔎 Buscar por título...';
+    searchInput.style.cssText = 'width:180px;font-size:12px;padding:6px 10px;';
+    searchInput.value = _guionesBusqueda;
+    searchInput.oninput = (e) => { _guionesBusqueda = e.target.value.trim().toLowerCase(); renderSection('guiones'); };
+    actions.appendChild(searchInput);
+    const traerBtn = document.createElement('button');
+    traerBtn.className = 'btn btn-secondary';
+    traerBtn.textContent = '📥 Traer desde un contenido';
+    traerBtn.title = 'Copiar el guion ya escrito en un contenido existente a este repositorio';
+    traerBtn.onclick = () => openTraerGuionModal();
+    actions.appendChild(traerBtn);
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Nuevo guion';
+    btn.onclick = () => openGuionModal(null);
+    actions.appendChild(btn);
+    renderGuionesSection(content);
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'tareas') {
@@ -2849,6 +2876,16 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const contAsignadoNombre = contAsignadoEl ? (contAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
   const prevContAsignadoEmail = editingContenido?.asignado?.email || '';
 
+  // Auto-vínculo con un guion suelto del repositorio (pedido de Vaneh:
+  // "el título es el que se transforma en contenido después") -- solo
+  // al crear un contenido nuevo, sin guion tipeado a mano todavía.
+  let guionTexto = document.getElementById('cf-guion').value;
+  let guionAVincular = null;
+  if (!editingContenido && !guionTexto.trim()) {
+    guionAVincular = buscarGuionSueltoPorTitulo(titulo);
+    if (guionAVincular) guionTexto = guionAVincular.texto || '';
+  }
+
   const obj = {
     ...(editingContenido || {}),
     titulo,
@@ -2866,7 +2903,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     textoPantalla: document.getElementById('cf-texto-pantalla').value,
     promptIA: document.getElementById('cf-prompt-ia').value,
     sugerenciaVisual: document.getElementById('cf-sugerencia-visual').value,
-    guion: document.getElementById('cf-guion').value,
+    guion: guionTexto,
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
@@ -2885,6 +2922,10 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
       STATE.contenidos[i] = saved;
     } else {
       STATE.contenidos.push(saved);
+    }
+    if (guionAVincular) {
+      const gSaved = await saveGuion(clientId, { ...guionAVincular, contenidoId: saved.id }, STATE.guiones);
+      STATE.guiones[STATE.guiones.findIndex(g => g.id === gSaved.id)] = gSaved;
     }
     notifyAsignacion('contenido', saved, prevContAsignadoEmail);
     closeContenidoModal();
@@ -2928,6 +2969,214 @@ window.eliminarContenidoDirecto = async function(id) {
   await deleteContenido(clientId, id);
   STATE.contenidos = STATE.contenidos.filter(c => c.id !== id);
   renderContTab(activeContTab);
+};
+
+// ──────────────────────────────────────────────────────
+// GUIONES -- repositorio propio, vinculado o no a un contenido.
+// Pedido de Vaneh (21/09): poder cargar/acumular guiones sueltos (ej.
+// grabar 60 videos de una) sin necesidad de crear el contenido primero,
+// y que el título sea lo que después conecta el guion con el contenido
+// real cuando se termine de crear. Vive en STATE.guiones, cargado en la
+// wave 2 de cargarDatosSecundarios junto con campañas/ideas/plan.
+// ──────────────────────────────────────────────────────
+let editingGuion = null;
+let _guionesBusqueda = '';
+let _guionesVerArchivados = false;
+
+function normGuionTitulo(s) { return normImportTexto(s); }
+
+// Si se crea un contenido NUEVO con un título que matchea un guion suelto
+// (sin contenido vinculado todavía) y el contenido no trae ya su propio
+// texto de guion, se linkea solo -- así se cumple "el título es el que
+// se transforma en contenido después" sin tener que hacerlo a mano.
+function buscarGuionSueltoPorTitulo(titulo) {
+  const n = normGuionTitulo(titulo);
+  if (!n) return null;
+  return STATE.guiones.find(g => !g.contenidoId && normGuionTitulo(g.titulo) === n) || null;
+}
+
+window.openGuionModal = function(g) {
+  editingGuion = g || null;
+  document.getElementById('modal-guion-title').textContent = editingGuion ? 'Editar guion' : 'Nuevo guion';
+  document.getElementById('gn-titulo').value = editingGuion?.titulo || '';
+  document.getElementById('gn-texto').value = editingGuion?.texto || '';
+  const sel = document.getElementById('gn-vinculo');
+  sel.innerHTML = '<option value="">-- Sin vincular a ningún contenido --</option>' +
+    STATE.contenidos.slice().sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''))
+      .map(c => `<option value="${c.id}" ${editingGuion?.contenidoId === c.id ? 'selected' : ''}>${escapeHtml(c.titulo)}</option>`).join('');
+  document.getElementById('deleteGuionBtn').style.display = editingGuion ? '' : 'none';
+  document.getElementById('guionModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('gn-titulo').focus(), 50);
+};
+
+window.openGuionModalById = function(id) {
+  const g = STATE.guiones.find(x => x.id === id);
+  if (g) openGuionModal(g);
+};
+
+function closeGuionModal() { document.getElementById('guionModal').classList.add('hidden'); }
+document.getElementById('closeGuionModal').addEventListener('click', closeGuionModal);
+
+document.getElementById('saveGuionBtn').addEventListener('click', async () => {
+  const titulo = document.getElementById('gn-titulo').value.trim();
+  if (!titulo) { alert('El título es obligatorio.'); document.getElementById('gn-titulo').focus(); return; }
+  const contenidoId = document.getElementById('gn-vinculo').value || null;
+  const texto = document.getElementById('gn-texto').value;
+  const obj = { ...(editingGuion || {}), titulo, texto, contenidoId, fecha: editingGuion?.fecha || new Date().toISOString().split('T')[0] };
+  const btn = document.getElementById('saveGuionBtn');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    const saved = await saveGuion(clientId, obj, STATE.guiones);
+    if (editingGuion) STATE.guiones[STATE.guiones.findIndex(g => g.id === saved.id)] = saved;
+    else STATE.guiones.push(saved);
+    // Vinculado -- se copia también al campo `guion` del contenido, para
+    // que abrirlo desde ahí (o desde el import de Excel) muestre lo mismo.
+    if (contenidoId) {
+      const c = STATE.contenidos.find(x => x.id === contenidoId);
+      if (c && c.guion !== texto) {
+        c.guion = texto;
+        const savedC = await saveContenido(clientId, c, STATE.contenidos);
+        STATE.contenidos[STATE.contenidos.findIndex(x => x.id === savedC.id)] = savedC;
+      }
+    }
+    closeGuionModal();
+    renderSection('guiones');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+});
+
+document.getElementById('deleteGuionBtn').addEventListener('click', async () => {
+  if (!editingGuion || !confirm('¿Eliminar este guion del repositorio? (el contenido vinculado, si lo tiene, no se borra)')) return;
+  await deleteGuion(clientId, editingGuion.id, STATE.guiones);
+  STATE.guiones = STATE.guiones.filter(g => g.id !== editingGuion.id);
+  closeGuionModal();
+  renderSection('guiones');
+});
+
+window.abrirTeleprompterDesdeModalGuion = function() {
+  abrirTeleprompterConTexto(document.getElementById('gn-texto').value);
+};
+
+window.archivarGuion = async function(id) {
+  const g = STATE.guiones.find(x => x.id === id);
+  if (!g) return;
+  g.archivado = !g.archivado;
+  const saved = await saveGuion(clientId, g, STATE.guiones);
+  STATE.guiones[STATE.guiones.findIndex(x => x.id === id)] = saved;
+  renderSection('guiones');
+};
+
+window.eliminarGuionDirecto = async function(id) {
+  if (!confirm('¿Eliminar este guion del repositorio?')) return;
+  await deleteGuion(clientId, id, STATE.guiones);
+  STATE.guiones = STATE.guiones.filter(g => g.id !== id);
+  renderSection('guiones');
+};
+
+function guionRowHtml(g) {
+  const contenido = g.contenidoId ? STATE.contenidos.find(c => c.id === g.contenidoId) : null;
+  return `
+    <div class="card" style="padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;cursor:pointer;" onclick="openGuionModalById('${g.id}')">
+        <div style="font-weight:600;font-size:13.5px;">${escapeHtml(g.titulo)}</div>
+        ${contenido
+          ? `<div style="font-size:11px;color:var(--text-muted);">🔗 vinculado a: ${escapeHtml(contenido.titulo)}</div>`
+          : `<div style="font-size:11px;color:#94a3b8;">Sin vincular</div>`}
+      </div>
+      <button class="btn btn-secondary btn-sm" title="Abrir teleprompter" onclick="event.stopPropagation();abrirTeleprompterGuion('${g.id}')">📺</button>
+      <button class="btn btn-secondary btn-sm" title="Editar" onclick="event.stopPropagation();openGuionModalById('${g.id}')">✏️</button>
+      <button class="btn btn-secondary btn-sm" title="${g.archivado ? 'Restaurar' : 'Archivar'}" onclick="event.stopPropagation();archivarGuion('${g.id}')">${g.archivado ? '♻️' : '🗄'}</button>
+      <button class="btn btn-danger btn-sm" title="Eliminar" onclick="event.stopPropagation();eliminarGuionDirecto('${g.id}')">🗑</button>
+    </div>`;
+}
+
+function renderGuionesSection(container) {
+  const busqueda = _guionesBusqueda;
+  const base = STATE.guiones.filter(g => !!g.archivado === _guionesVerArchivados)
+    .filter(g => !busqueda || normGuionTitulo(g.titulo).includes(busqueda));
+  const all = base.slice().sort((a, b) => (a.fecha || '') < (b.fecha || '') ? 1 : -1);
+
+  const hoy = new Date();
+  const mesActualClave = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+
+  const grupos = new Map(); // fecha (YYYY-MM-DD, o 'sin-fecha') -> guiones
+  all.forEach(g => {
+    const clave = g.fecha || 'sin-fecha';
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(g);
+  });
+  const fechasConFecha = [...grupos.keys()].filter(f => f !== 'sin-fecha').sort((a, b) => b.localeCompare(a));
+  const mesesMap = new Map(); // mes (YYYY-MM) -> fechas del mes
+  fechasConFecha.forEach(f => {
+    const mes = f.slice(0, 7);
+    if (!mesesMap.has(mes)) mesesMap.set(mes, []);
+    mesesMap.get(mes).push(f);
+  });
+
+  const diaGroupHtml = (label, items) => `
+    <div style="margin:8px 0;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">${label}</div>
+      ${items.map(guionRowHtml).join('')}
+    </div>`;
+
+  const mesesHtml = [...mesesMap.keys()].map(mes => {
+    const fechas = mesesMap.get(mes);
+    const total = fechas.reduce((n, f) => n + grupos.get(f).length, 0);
+    return `
+      <details class="banco-mes-group" ${mes === mesActualClave ? 'open' : ''}>
+        <summary class="banco-mes-header">${mesAnioLabel(mes)} <span class="banco-mes-count">${total}</span></summary>
+        ${fechas.map(f => diaGroupHtml(fmtDate(f), grupos.get(f))).join('')}
+      </details>`;
+  }).join('');
+
+  const sinFechaHtml = grupos.has('sin-fecha') ? diaGroupHtml('📌 Sin fecha', grupos.get('sin-fecha')) : '';
+
+  const totalActivos = STATE.guiones.filter(g => !g.archivado).length;
+  const totalArchivados = STATE.guiones.filter(g => g.archivado).length;
+
+  container.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn btn-sm ${!_guionesVerArchivados ? 'btn-primary' : 'btn-secondary'}" onclick="cambiarGuionesVista(false)">Activos (${totalActivos})</button>
+      <button class="btn btn-sm ${_guionesVerArchivados ? 'btn-primary' : 'btn-secondary'}" onclick="cambiarGuionesVista(true)">Archivados (${totalArchivados})</button>
+    </div>
+    ${all.length ? sinFechaHtml + mesesHtml : `<div class="empty-state"><p>${busqueda ? 'Sin guiones con ese título.' : (_guionesVerArchivados ? 'No hay guiones archivados.' : 'Sin guiones todavía -- creá uno nuevo o traelo desde un contenido que ya tenga guion escrito.')}</p></div>`}
+  `;
+}
+
+window.cambiarGuionesVista = function(archivados) {
+  _guionesVerArchivados = archivados;
+  renderSection('guiones');
+};
+
+// ── Traer guion desde un contenido existente (dirección inversa) ──
+window.openTraerGuionModal = function() {
+  const disponibles = STATE.contenidos.filter(c => (c.guion || '').trim());
+  const box = document.getElementById('traer-guion-list');
+  box.innerHTML = disponibles.length ? disponibles.map(c => {
+    const yaVinculado = STATE.guiones.some(g => g.contenidoId === c.id);
+    return `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+        <div style="flex:1;font-size:13px;">${escapeHtml(c.titulo)} ${yaVinculado ? '<span style="font-size:10px;color:#94a3b8;">(ya está en el repositorio)</span>' : ''}</div>
+        <button class="btn btn-secondary btn-sm" onclick="traerGuionDeContenido('${c.id}')">${yaVinculado ? 'Actualizar' : '📥 Traer'}</button>
+      </div>`;
+  }).join('') : '<p style="font-size:12px;color:var(--text-muted);">Ningún contenido tiene guion escrito todavía.</p>';
+  document.getElementById('traerGuionModal').classList.remove('hidden');
+};
+
+function closeTraerGuionModal() { document.getElementById('traerGuionModal').classList.add('hidden'); }
+document.getElementById('closeTraerGuionModal').addEventListener('click', closeTraerGuionModal);
+
+window.traerGuionDeContenido = async function(contenidoId) {
+  const c = STATE.contenidos.find(x => x.id === contenidoId);
+  if (!c) return;
+  const existente = STATE.guiones.find(g => g.contenidoId === contenidoId);
+  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
+  const saved = await saveGuion(clientId, obj, STATE.guiones);
+  if (existente) STATE.guiones[STATE.guiones.findIndex(g => g.id === saved.id)] = saved;
+  else STATE.guiones.push(saved);
+  closeTraerGuionModal();
+  renderSection('guiones');
 };
 
 // ──────────────────────────────────────────────────────
@@ -4069,9 +4318,13 @@ window.ampliarImagen = function(src) {
 // graba sin tocar el teclado.
 let _tpScrollTimer = null;
 let _tpFontSize = 42;
-window.abrirTeleprompter = function() {
-  const texto = (document.getElementById('cf-guion').value || '').trim();
-  if (!texto) { alert('Escribí el guion primero (arriba, en el campo "Guion").'); return; }
+
+// Función base: cualquier lugar que tenga un texto de guion en memoria
+// (el textarea del contenido, o un guion de STATE.guiones) puede abrir
+// el teleprompter con él, sin pasar por el DOM del contenido.
+function abrirTeleprompterConTexto(texto) {
+  texto = (texto || '').trim();
+  if (!texto) { alert('Ese guion todavía no tiene texto.'); return; }
   const txtEl = document.getElementById('tp-text');
   txtEl.textContent = texto;
   _tpFontSize = 42;
@@ -4081,6 +4334,21 @@ window.abrirTeleprompter = function() {
   txtEl.style.transform = '';
   teleprompterSetPlaying(false);
   document.getElementById('teleprompterModal').classList.remove('hidden');
+}
+
+// Entrada desde el modal de Contenido: lee el textarea en vivo.
+window.abrirTeleprompter = function() {
+  const texto = (document.getElementById('cf-guion').value || '').trim();
+  if (!texto) { alert('Escribí el guion primero (arriba, en el campo "Guion").'); return; }
+  abrirTeleprompterConTexto(texto);
+};
+
+// Entrada desde el repositorio de Guiones: por id, sin pasar el texto
+// por ningún atributo HTML (strings largos en onclick fallan en
+// silencio -- ver el bug real de la lightbox de imágenes).
+window.abrirTeleprompterGuion = function(id) {
+  const g = STATE.guiones.find(x => x.id === id);
+  if (g) abrirTeleprompterConTexto(g.texto);
 };
 
 window.cerrarTeleprompter = function() {
@@ -5431,6 +5699,13 @@ function renderInstrucciones(container) {
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
           '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
           '<strong>🔗 Copiar link:</strong> dentro de cada contenido hay un botón para copiar un link directo a esa tarjeta puntual -- ideal para mandarlo por WhatsApp y que lo encuentren con un clic.',
+        ]},
+        { icon:'clapperboard', title:'Guiones', color:'#f97316', items:[
+          'Repositorio propio de guiones, separado de Contenidos -- pensado para cargar de una varios guiones sueltos (ej. grabar 60 videos juntos) sin tener que crear cada contenido primero.',
+          '<strong>+ Nuevo guion:</strong> título + texto, y opcionalmente "Vincular a un contenido" ya cargado. Si más adelante creás un contenido con el MISMO título, se vincula solo.',
+          '<strong>📥 Traer desde un contenido:</strong> copia al repositorio el guion que ya esté escrito adentro de un contenido existente (dirección inversa).',
+          '<strong>📺 Teleprompter</strong> disponible por guion, igual que en Contenidos: pantalla completa, fondo negro, letras blancas, auto-scroll.',
+          'Se pueden <strong>archivar</strong> (🗄) para sacarlos de la vista activa sin borrarlos, y se listan agrupados por mes y día.',
         ]},
         { icon:'list-checks', title:'Tareas', color:'#10b981', items:[
           'Organizadas en tres columnas: <strong>Sin empezar → En progreso → Listo</strong>.',
