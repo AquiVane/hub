@@ -110,6 +110,12 @@ function saveDemoData(clientId, data) {
 
 export async function getClientData(clientId) {
   if (DEMO_MODE) return getDemoData(clientId);
+  // '_cosmart'/'_personal' son pseudo-clientes internos (Gestión COSMART,
+  // Mis Tareas, y ahora Contenidos/Pauta propios de la agencia) -- nunca
+  // están en la lista real de clientes (`_clients`), así que pedir su
+  // `clientinfo` da 404. No hace falta el dato real, alcanza con un
+  // objeto mínimo.
+  if (clientId === '_cosmart' || clientId === '_personal') return { id: clientId };
   // Admins usan /admin/clients (lista completa); clientes usan su propio endpoint
   const user = JSON.parse(localStorage.getItem('mh_user') || '{}');
   if (user.role === 'admin') {

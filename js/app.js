@@ -115,6 +115,18 @@ const params = new URLSearchParams(window.location.search);
 const clientId = params.get('client') || user.clientId;
 if (!clientId) { window.location.href = '../admin/index.html'; }
 
+// "Contenidos propios" / "Pauta propia" de la agencia (pedido de Vaneh,
+// 21/09): mismo pseudo-cliente `_cosmart` que ya usan Gestión COSMART y
+// Mis Tareas para lo interno -- el backend YA lo permite para cualquier
+// `type` en /data/:clientId/:type (ver ['_cosmart','_personal'] en
+// handleGetData/handleSaveData de cosmart-workers), y como la clave real
+// en KV es `agencyId:_cosmart:tipo`, sirve igual para CUALQUIER agencia,
+// no solo COSMART -- cada una aislada por su propio agencyId. Reusa
+// ÍNTEGRAMENTE este mismo panel (Contenidos, Guiones/Teleprompter,
+// Pauta) en vez de duplicar código en admin/index.html -- son módulos
+// demasiado grandes para mantener dos copias sincronizadas a mano.
+const esPropioAgencia = clientId === '_cosmart';
+
 let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
 let _tareasView = 'kanban';
@@ -163,13 +175,23 @@ async function init() {
 
     await loadAllData(); // trae client, equipo y todo lo demás en una sola tanda -- ver el comentario ahí
     window.STATE = STATE; // necesario para inline handlers en módulos ES
-    document.getElementById('sb-client-name').textContent = STATE.client.nombre || STATE.client.name || clientId;
-    document.getElementById('sb-client-ig').textContent = STATE.client.instagram || '';
-    if (user.role !== 'client') setupClientSwitcher();
-    else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
-    if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
-    if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan').classList.remove('hidden');
-    if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes').classList.remove('hidden');
+    document.getElementById('sb-client-name').textContent = esPropioAgencia ? 'Contenidos propios' : (STATE.client.nombre || STATE.client.name || clientId);
+    document.getElementById('sb-client-ig').textContent = esPropioAgencia ? '' : (STATE.client.instagram || '');
+    if (esPropioAgencia) {
+      // Solo Contenidos, Guiones y Pauta tienen sentido acá -- lo demás
+      // (Home con recordatorios de facturación, Tareas que ya se ve
+      // aparte como "Gestión COSMART", Web, Plan, Reportes, Links,
+      // Instrucciones) es de un cliente real, no de la agencia misma.
+      ['home', 'tareas', 'web', 'plan', 'reportes', 'links', 'instrucciones'].forEach(sec => {
+        document.querySelector(`.nav-item[data-section="${sec}"]`)?.classList.add('hidden');
+      });
+    } else {
+      if (user.role !== 'client') setupClientSwitcher();
+      else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
+      if (STATE.home.logoEmpresa) applyClientLogo(STATE.home.logoEmpresa);
+      if ((STATE.plan && STATE.plan.html) || user.role !== 'client') document.getElementById('nav-plan').classList.remove('hidden');
+      if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes').classList.remove('hidden');
+    }
     setupNav();
     const openTipo = params.get('open');
     const openId = params.get('id');
@@ -179,6 +201,8 @@ async function init() {
     } else if (openTipo === 'tarea' && openId && STATE.tareas.some(t => t.id === openId)) {
       renderSection('tareas');
       openTareaModal(openId);
+    } else if (esPropioAgencia) {
+      renderSection('contenidos');
     } else {
       renderSection('home');
     }
@@ -450,11 +474,13 @@ function renderSection(sec) {
   }
   else if (sec === 'dashboard') { renderDashboard(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
-    const rptBtn = document.createElement('button');
-    rptBtn.className = 'btn btn-secondary';
-    rptBtn.textContent = '📊 Reporte';
-    rptBtn.onclick = () => openReporteModal();
-    actions.appendChild(rptBtn);
+    if (!esPropioAgencia) {
+      const rptBtn = document.createElement('button');
+      rptBtn.className = 'btn btn-secondary';
+      rptBtn.textContent = '📊 Reporte';
+      rptBtn.onclick = () => openReporteModal();
+      actions.appendChild(rptBtn);
+    }
     const plantillaBtn = document.createElement('a');
     plantillaBtn.className = 'btn btn-secondary';
     plantillaBtn.textContent = '📄 Plantilla Excel';
