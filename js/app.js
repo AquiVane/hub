@@ -2697,6 +2697,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
   document.getElementById('cf-prompt-ia').value = c.promptIA || '';
   document.getElementById('cf-sugerencia-visual').value = c.sugerenciaVisual || '';
+  document.getElementById('cf-guion').value = c.guion || '';
   document.getElementById('cf-notas').value = c.notas || '';
   setTimeout(() => {
     const df = document.getElementById('cf-duracion');
@@ -2865,6 +2866,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     textoPantalla: document.getElementById('cf-texto-pantalla').value,
     promptIA: document.getElementById('cf-prompt-ia').value,
     sugerenciaVisual: document.getElementById('cf-sugerencia-visual').value,
+    guion: document.getElementById('cf-guion').value,
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
@@ -2972,6 +2974,8 @@ const IMPORT_HEADER_MAP = {
   'sugerencia de pieza creativa visual / secuencia': 'sugerenciaVisual',
   'sugerencia visual': 'sugerenciaVisual',
   'sugerencia creativa': 'sugerenciaVisual',
+  guion: 'guion',
+  script: 'guion',
   pauta: 'pauta',
   'link pieza terminada': 'linkDrive',
   'link material de referencia': 'linkDriveRef',
@@ -3056,6 +3060,7 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'textoPantalla', label: 'Texto en pantalla' },
   { key: 'promptIA', label: 'Prompt sugerido para IA' },
   { key: 'sugerenciaVisual', label: 'Sugerencia de pieza creativa' },
+  { key: 'guion', label: 'Guion' },
   { key: 'pauta', label: 'Pauta' },
   { key: 'linkDrive', label: 'Link pieza terminada', arr: true },
   { key: 'linkDriveRef', label: 'Link material de referencia', arr: true },
@@ -3151,7 +3156,7 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a'];
 
 function contenidoAFilaExport(c) {
   return [
@@ -3170,6 +3175,7 @@ function contenidoAFilaExport(c) {
     c.textoPantalla || '',
     c.promptIA || '',
     c.sugerenciaVisual || '',
+    c.guion || '',
     EXPORT_PAUTA_LABEL[c.pauta] || '',
     (c.linkDrive || []).join(', '),
     (c.linkDriveRef || []).join(', '),
@@ -3254,7 +3260,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 18, 28, 28, 30, 20][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20][i] || 16 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
@@ -3487,6 +3493,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         textoPantalla: String(obj.textoPantalla || '').trim(),
         promptIA: String(obj.promptIA || '').trim(),
         sugerenciaVisual: String(obj.sugerenciaVisual || '').trim(),
+        guion: String(obj.guion || '').trim(),
         pauta: importParsePauta(obj.pauta),
         linkDrive: importSplitMulti(obj.linkDrive),
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
@@ -4053,6 +4060,62 @@ window.ampliarImagen = function(src) {
   overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);">`;
   overlay.onclick = () => overlay.remove();
   document.body.appendChild(overlay);
+};
+
+// ── Teleprompter (guion de Contenidos, pedido de Vaneh para grabar) ──
+// Lee el textarea del guion EN VIVO (no hace falta guardar el contenido
+// primero) y lo muestra a pantalla completa, fondo negro/letras blancas,
+// con auto-scroll a velocidad ajustable -- así se puede leer mientras se
+// graba sin tocar el teclado.
+let _tpScrollTimer = null;
+let _tpFontSize = 42;
+window.abrirTeleprompter = function() {
+  const texto = (document.getElementById('cf-guion').value || '').trim();
+  if (!texto) { alert('Escribí el guion primero (arriba, en el campo "Guion").'); return; }
+  const txtEl = document.getElementById('tp-text');
+  txtEl.textContent = texto;
+  _tpFontSize = 42;
+  txtEl.style.fontSize = _tpFontSize + 'px';
+  document.getElementById('tp-scroll').scrollTop = 0;
+  document.getElementById('tp-mirror').checked = false;
+  txtEl.style.transform = '';
+  teleprompterSetPlaying(false);
+  document.getElementById('teleprompterModal').classList.remove('hidden');
+};
+
+window.cerrarTeleprompter = function() {
+  teleprompterSetPlaying(false);
+  document.getElementById('teleprompterModal').classList.add('hidden');
+};
+
+function teleprompterSetPlaying(on) {
+  if (_tpScrollTimer) { clearInterval(_tpScrollTimer); _tpScrollTimer = null; }
+  const btn = document.getElementById('tp-play-btn');
+  if (on) {
+    btn.textContent = '⏸ Pausar';
+    const box = document.getElementById('tp-scroll');
+    _tpScrollTimer = setInterval(() => {
+      const speed = Number(document.getElementById('tp-speed').value || 4);
+      box.scrollTop += speed * 0.6;
+      if (box.scrollTop >= box.scrollHeight - box.clientHeight) teleprompterSetPlaying(false);
+    }, 30);
+  } else {
+    btn.textContent = '▶ Iniciar';
+  }
+}
+
+window.teleprompterTogglePlay = function() {
+  teleprompterSetPlaying(!_tpScrollTimer);
+};
+
+window.teleprompterFont = function(delta) {
+  _tpFontSize = Math.max(20, Math.min(96, _tpFontSize + delta));
+  document.getElementById('tp-text').style.fontSize = _tpFontSize + 'px';
+};
+
+window.teleprompterMirror = function() {
+  const on = document.getElementById('tp-mirror').checked;
+  document.getElementById('tp-text').style.transform = on ? 'scaleX(-1)' : '';
 };
 
 window.removeTareaImg = function(i) {
@@ -5362,7 +5425,8 @@ function renderInstrucciones(container) {
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
-          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno. La columna "Asignado a" (nombre o email del contacto del cliente o de alguien del equipo) también se puede completar ahí en vez de asignar contenido por contenido.',
+          '<strong>🎬 Guion + Teleprompter:</strong> cada contenido tiene su propio campo de guion. Con el botón "📺 Abrir teleprompter" se abre a pantalla completa, fondo negro y letras blancas, con auto-scroll a velocidad ajustable, tamaño de letra y modo espejado -- pensado para leerlo cómodo mientras grabás.',
+          '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno. Las columnas "Guion" y "Asignado a" (nombre o email del contacto del cliente o de alguien del equipo) también se pueden completar ahí en vez de contenido por contenido.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
           '<strong>⚡ Actualizar estado/notas</strong> (equipo de la agencia): para actualizar varios contenidos ya cargados sin abrir uno por uno -- un Excel simple con columnas Título, Estado, Notas internas, Link pieza terminada y/o Comentario. Solo toca las columnas que completes; el resto del contenido queda intacto. Si escribís @Nombre en Comentario, manda el aviso por mail como cualquier mención.',
