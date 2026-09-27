@@ -598,6 +598,146 @@ function tareasVisibles(lista) {
   return lista.filter(t => t.visibleParaCliente === true);
 }
 
+// ══════════════════════════════════════════════════════════════
+// PERMISOS POR TAREA + HISTORIAL DE CAMBIOS -- pedido de Vaneh (27/09):
+// "cada colaborador tiene que ver solo sus tareas... también restringir
+// quién del equipo la puede ver". Mismo bloque duplicado en
+// admin/index.html (script aparte). Acá aplica solo al tablero de Tareas
+// del cliente real (`tf-*`) -- Gestión COSMART/Mis Tareas viven enteras
+// en admin/index.html.
+// ══════════════════════════════════════════════════════════════
+
+// t.restringidaA: null/ausente (todo el equipo la ve, default) |
+// 'creador' (solo quien la creó) | array de emails (esos + el creador).
+// El admin siempre ve todo. Un CLIENTE no pasa por acá -- lo que ve o no
+// ve un cliente lo decide únicamente visibleParaCliente (control aparte,
+// ya existente), restringidaA es una regla solo para el equipo interno.
+function puedeVerTarea(t, u) {
+  if (!t) return true;
+  if (u.role === 'admin') return true;
+  if (!t.restringidaA) return true;
+  const email = (u.email || '').toLowerCase();
+  if (t.restringidaA === 'creador') return (t.creadoPor || '').toLowerCase() === email;
+  if (Array.isArray(t.restringidaA)) {
+    return t.restringidaA.map(e => (e || '').toLowerCase()).includes(email) || (t.creadoPor || '').toLowerCase() === email;
+  }
+  return true;
+}
+
+// Normaliza un título para comparar duplicados: minúsculas, sin acentos
+// ni puntuación, espacios colapsados. normImportTexto (import de Excel,
+// más abajo en este archivo) no saca acentos/puntuación -- para detectar
+// "Publicar post IG" vs "publicar post ig!" hace falta algo más agresivo.
+function normTituloDup(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Advertencia de posible duplicado al CREAR una tarea -- NO bloquea, solo
+// avisa. Coincide si el título normalizado es idéntico, o si uno de los
+// dos contiene casi entero al otro (>=85% de la longitud del más corto,
+// mínimo 6 caracteres para no disparar con títulos cortos genéricos).
+// Umbral elegido a criterio, ajustable si Vaneh lo ve muy sensible o muy
+// laxo. Solo mira tareas no archivadas sin terminar (estado != 'Listo')
+// o recurrentes (una recurrente "Lista" vuelve sola, también cuenta).
+function buscarTareaSimilar(titulo, lista, excludeId) {
+  const norm = normTituloDup(titulo);
+  if (!norm) return null;
+  const candidatas = (lista || []).filter(t => !t.archivado && t.id !== excludeId && (t.estado !== 'Listo' || t.recurrencia));
+  for (const t of candidatas) {
+    const n2 = normTituloDup(t.titulo);
+    if (!n2) continue;
+    if (n2 === norm) return t;
+    const corto = n2.length <= norm.length ? n2 : norm;
+    const largo = n2.length <= norm.length ? norm : n2;
+    if (corto.length >= 6 && largo.includes(corto) && corto.length / largo.length >= 0.85) return t;
+  }
+  return null;
+}
+
+// Historial de cambios -- se calcula comparando la tarea ANTES de abrir
+// el modal (snapshot tomado al abrir) contra lo que se va a guardar.
+// Solo aplica al EDITAR una tarea ya existente, nunca al crear.
+const CAMPOS_HISTORIAL_LABEL = { titulo: 'el título', estado: 'el estado', prioridad: 'la prioridad', vencimiento: 'el vencimiento', visibleParaCliente: 'la visibilidad para el cliente', restringidaA: 'la visibilidad para el equipo' };
+function valorLegibleHistorial(campo, valor) {
+  if (campo === 'visibleParaCliente') return valor === true ? 'Visible' : 'No visible';
+  if (campo === 'restringidaA') {
+    if (!valor) return 'Todo el equipo';
+    if (valor === 'creador') return 'Solo el creador';
+    if (Array.isArray(valor)) return `Colaboradores específicos (${valor.length})`;
+    return String(valor);
+  }
+  return (valor == null || valor === '') ? '(vacío)' : String(valor);
+}
+function calcularHistorialCambios(anterior, nuevo, u) {
+  if (!anterior) return [];
+  const entradas = [];
+  Object.keys(CAMPOS_HISTORIAL_LABEL).forEach(campo => {
+    const vAnt = anterior[campo] ?? null;
+    const vNue = nuevo[campo] ?? null;
+    const igual = campo === 'restringidaA' ? JSON.stringify(vAnt || null) === JSON.stringify(vNue || null) : vAnt === vNue;
+    if (!igual) entradas.push({ campo: CAMPOS_HISTORIAL_LABEL[campo], anterior: valorLegibleHistorial(campo, vAnt), nuevo: valorLegibleHistorial(campo, vNue), quien: u.email, quienNombre: u.name || u.email, fecha: new Date().toISOString() });
+  });
+  const emailAnt = (anterior.asignado?.email || '').toLowerCase();
+  const emailNue = (nuevo.asignado?.email || '').toLowerCase();
+  if (emailAnt !== emailNue) entradas.push({ campo: 'el asignado', anterior: anterior.asignado?.nombre || (emailAnt || 'Sin asignar'), nuevo: nuevo.asignado?.nombre || (emailNue || 'Sin asignar'), quien: u.email, quienNombre: u.name || u.email, fecha: new Date().toISOString() });
+  return entradas;
+}
+// Muta `obj` sumando las entradas nuevas a su historial (tope 50, más
+// recientes al final -- se listan invertidas al renderizar).
+function aplicarHistorial(obj, anterior, u) {
+  if (!anterior) { obj.historialCambios = obj.historialCambios || []; return obj; }
+  const nuevas = calcularHistorialCambios(anterior, obj, u);
+  obj.historialCambios = [...(anterior.historialCambios || []), ...nuevas].slice(-50);
+  return obj;
+}
+function fmtFechaHistorial(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
+function renderHistorialHtml(historial) {
+  if (!historial || !historial.length) return '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin cambios registrados todavía.</p>';
+  return [...historial].reverse().map(h => `<div style="font-size:12px;color:var(--text-muted);padding:4px 0;border-bottom:1px solid var(--border);">· ${fmtFechaHistorial(h.fecha)} — <strong>${escapeHtml(h.quienNombre || h.quien || '')}</strong> cambió ${escapeHtml(h.campo)} de "${escapeHtml(String(h.anterior ?? '(vacío)'))}" a "${escapeHtml(String(h.nuevo ?? '(vacío)'))}"</div>`).join('');
+}
+
+// Control "Visible para el equipo" (tf-*, único modal de este archivo).
+// El listado de "colaboradores específicos" es _equipoDelCliente (el
+// equipo de la agencia con acceso a ESTE cliente, mismo universo que ya
+// usa getAsignarOptions) -- no el contacto/equipo del cliente, porque la
+// restricción es "otro colaborador", no "el cliente" (eso ya lo maneja
+// visibleParaCliente aparte).
+window.toggleTfRestrEspecificos = function() {
+  const modo = document.getElementById('tf-restr-modo')?.value;
+  document.getElementById('tf-restr-especificos')?.classList.toggle('hidden', modo !== 'especificos');
+};
+function poblarTfRestrEspecificos(seleccionados) {
+  const cont = document.getElementById('tf-restr-especificos');
+  if (!cont) return;
+  const emails = (seleccionados || []).map(e => (e || '').toLowerCase());
+  const seen = new Set();
+  const equipo = _equipoDelCliente.filter(c => { if (!c.email || seen.has(c.email.toLowerCase())) return false; seen.add(c.email.toLowerCase()); return true; });
+  cont.innerHTML = equipo.length
+    ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="tf-restr-chk" value="${c.email.toLowerCase()}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${c.nombre}</label>`).join('')
+    : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores con acceso a este cliente.</p>';
+}
+function setTfRestrUI(restringidaA) {
+  const sel = document.getElementById('tf-restr-modo');
+  if (!sel) return;
+  sel.value = !restringidaA ? '' : (restringidaA === 'creador' ? 'creador' : 'especificos');
+  window.toggleTfRestrEspecificos();
+  poblarTfRestrEspecificos(Array.isArray(restringidaA) ? restringidaA : []);
+}
+function leerTfRestrUI() {
+  const sel = document.getElementById('tf-restr-modo');
+  if (!sel) return null;
+  const modo = sel.value;
+  if (!modo) return null;
+  if (modo === 'creador') return 'creador';
+  const arr = Array.from(document.querySelectorAll('.tf-restr-chk:checked')).map(cb => cb.value);
+  return arr.length ? arr : null;
+}
+
 function updateBadges() {
   const pending = tareasVisibles(STATE.tareas).filter(t => t.estado !== 'Listo').length;
   document.getElementById('badge-tareas').textContent = pending;
@@ -4223,6 +4363,10 @@ function regenerarSiRecurrente(t, list) {
     vencimiento: siguiente.toISOString().split('T')[0],
     comentarios: [],
     historialCompletados: undefined,
+    // Historial de cambios (27/09): el ciclo nuevo arranca su propia
+    // hoja en blanco -- restringidaA/creadoPor SÍ se heredan (misma regla
+    // de permisos y mismo creador de la serie recurrente).
+    historialCambios: [],
     subtareas: (t.subtareas || []).map(s => ({ ...s, done: false, completadoEn: null, historialCompletados: undefined })),
   };
   list.push(nuevo);
@@ -4260,6 +4404,11 @@ function renderTareas(container) {
     { key: 'Listo', label: 'Listo', color: '#10b981' },
   ];
   let tareasBase = tareasVisibles(STATE.tareas);
+  // Permisos por tarea (27/09): restringidaA es una regla del EQUIPO, no
+  // del cliente -- un cliente real ya filtró por visibleParaCliente arriba,
+  // así que no vuelve a filtrar acá (evita ocultarle al cliente algo que
+  // sí debería ver por error de configuración de restringidaA).
+  if (user.role !== 'client') tareasBase = tareasBase.filter(t => puedeVerTarea(t, user));
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
@@ -4358,6 +4507,7 @@ function renderTareasCalendario(container) {
   const hoy = new Date();
   let viewYear = hoy.getFullYear(), viewMonth = hoy.getMonth();
   let tareasBase = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
+  if (user.role !== 'client') tareasBase = tareasBase.filter(t => puedeVerTarea(t, user));
   if (_tareasBusqueda) tareasBase = tareasBase.filter(t => (t.titulo || '').toLowerCase().includes(_tareasBusqueda));
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
@@ -4801,12 +4951,50 @@ window.openTareaModal = function(id, defaultEstado) {
   if (_tinputWrap) _tinputWrap.style.display = editingTarea ? '' : 'none';
   const avisoBorrador = document.getElementById('tarea-borrador-aviso');
   if (avisoBorrador) avisoBorrador.style.display = 'none';
+
+  // Permisos por tarea + historial (27/09) -- "restringidaA" es una regla
+  // del EQUIPO, no del cliente: un cliente real logueado no la ve ni la
+  // puede tocar (ya tiene su propio control, "Visible para el cliente").
+  const tfRestrGroup = document.getElementById('tf-restr-modo')?.closest('.form-group');
+  if (tfRestrGroup) tfRestrGroup.style.display = user.role === 'client' ? 'none' : '';
+  setTfRestrUI(t.restringidaA || null);
+  const tfHistorialGroup = document.getElementById('tf-historial-group');
+  if (tfHistorialGroup) tfHistorialGroup.style.display = user.role === 'client' ? 'none' : '';
+  document.getElementById('tf-historial-list').innerHTML = renderHistorialHtml(t.historialCambios);
+  _tareaSnapshotHistorial = editingTarea ? JSON.parse(JSON.stringify(editingTarea)) : null;
+  const tfDupWarn = document.getElementById('tf-dup-warning');
+  if (tfDupWarn) tfDupWarn.style.display = 'none';
+  wireDupCheck('tf', 'tf-titulo', 'tf-dup-warning', () => STATE.tareas, () => !editingTarea);
+
   // El modal quedaba con el scroll de la última tarea que se había
   // visto (ej. cerrada más abajo del todo) -- una tarea nueva tiene que
   // arrancar siempre desde el título, no donde quedó la vista anterior.
   document.querySelector('#tareaModal .modal-body').scrollTop = 0;
   restaurarBorradorTarea(id || null);
 };
+let _tareaSnapshotHistorial = null;
+
+// Advertencia de duplicado -- wiring genérico del input con debounce.
+// Solo un modal en este archivo (tf-*), pero se deja parametrizado igual
+// que en admin/index.html para que ambos bloques queden espejados.
+const _dupCheckTimers = {};
+function wireDupCheck(prefix, tituloInputId, warnId, getLista, esCreacion) {
+  const input = document.getElementById(tituloInputId);
+  if (!input) return;
+  input.oninput = () => {
+    clearTimeout(_dupCheckTimers[prefix]);
+    _dupCheckTimers[prefix] = setTimeout(() => {
+      const warn = document.getElementById(warnId);
+      if (!warn) return;
+      if (!esCreacion()) { warn.style.display = 'none'; return; }
+      const match = buscarTareaSimilar(input.value, getLista(), null);
+      if (match) {
+        warn.style.display = '';
+        warn.textContent = `⚠️ Ya existe una tarea similar: "${match.titulo}" (asignada a ${match.asignado?.nombre || 'sin asignar'}, estado ${match.estado}). Revisá antes de crear otra.`;
+      } else warn.style.display = 'none';
+    }, 400);
+  };
+}
 
 // ── Borrador de tarea (localStorage) ─────────────────────────
 // Título, descripción y el comentario que se esté escribiendo se pierden
@@ -5029,7 +5217,10 @@ document.getElementById('saveTareaBtn').addEventListener('click', async (e) => {
     const tfCompletadoEn = tfEstadoVal === 'Listo' ? (editingTarea?.estado === 'Listo' ? editingTarea.completadoEn : new Date().toISOString().split('T')[0]) : null;
     const numero = editingTarea?.numero || (Math.max(0, ...STATE.tareas.map(t => t.numero || 0)) + 1);
     const esProyectoVal = document.getElementById('tf-es-proyecto')?.checked === true;
-    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, cuadrante: document.getElementById('tf-cuadrante').value || null, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: serializarImagenesTarea(_tareaImgList), archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal };
+    const obj = { ...(editingTarea||{}), numero, titulo, estado: tfEstadoVal, prioridad: document.getElementById('tf-prioridad').value, cuadrante: document.getElementById('tf-cuadrante').value || null, vencimiento: document.getElementById('tf-vencimiento').value || null, hora: document.getElementById('tf-hora').value || null, fechaInicio: esProyectoVal ? (document.getElementById('tf-fecha-inicio').value || null) : null, notas: document.getElementById('tf-notas').innerHTML, recurrencia: recurrencia || null, diasSemana, url: document.getElementById('tf-link').value || null, subtareas: [..._tareaSubtareasPendientes], imagenes: serializarImagenesTarea(_tareaImgList), archivosAdjuntos: [..._tareaArchivosPendientes], comentarios: editingTarea?.comentarios || [], asignado: tfAsignadoObj, visibleParaCliente: tfVisibleCliente, completadoEn: tfCompletadoEn, esProyecto: esProyectoVal, restringidaA: user.role !== 'client' ? leerTfRestrUI() : (editingTarea?.restringidaA ?? null), creadoPor: editingTarea ? editingTarea.creadoPor : user.email };
+    // Historial de cambios (27/09) -- solo se registra al EDITAR una tarea
+    // ya existente, comparando contra el snapshot tomado al abrir el modal.
+    if (_tareaSnapshotHistorial) aplicarHistorial(obj, _tareaSnapshotHistorial, user);
     // Recién se marcó "Lista" en este mismo guardado (no ya lo estaba) --
     // si es recurrente, regenerarSiRecurrente crea el próximo ciclo de una,
     // sin esperar el cron, y esta misma (obj) queda "Lista" para siempre.
