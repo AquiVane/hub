@@ -1268,7 +1268,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=30"></script>
+<script type="module" src="../js/app.js?v=31"></script>
 <script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
@@ -1416,6 +1416,7 @@
       <button type="button" onclick="teleprompterFont(-2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">−</button>
       <button type="button" onclick="teleprompterFont(2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">+</button>
     </label>
+    <button type="button" id="tp-fullscreen-btn" onclick="teleprompterToggleFullscreen()" style="background:#222;border:1px solid #555;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;">⛶ Pantalla completa</button>
     <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;margin-left:auto;">
       <input type="checkbox" id="tp-mirror" onchange="teleprompterMirror()"> Espejado
     </label>

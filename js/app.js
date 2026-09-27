@@ -4562,8 +4562,27 @@ window.abrirTeleprompterGuion = function(id) {
 
 window.cerrarTeleprompter = function() {
   teleprompterSetPlaying(false);
+  if (document.fullscreenElement) document.exitFullscreen?.();
   document.getElementById('teleprompterModal').classList.add('hidden');
 };
+
+// Pedido de Vaneh (27/09): "tiene que poder expandirse a toda la pantalla
+// de la computadora" -- el modal ya ocupaba todo el VIEWPORT del navegador
+// (position:fixed;inset:0), pero seguía compartiendo pantalla con la barra
+// de pestañas/dirección. Fullscreen API real sobre el propio modal, así al
+// grabar queda de borde a borde del monitor sin salir del Hub.
+window.teleprompterToggleFullscreen = function() {
+  const el = document.getElementById('teleprompterModal');
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  }
+};
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('tp-fullscreen-btn');
+  if (btn) btn.textContent = document.fullscreenElement ? '⛶ Salir de pantalla completa' : '⛶ Pantalla completa';
+});
 
 function teleprompterSetPlaying(on) {
   if (_tpScrollTimer) { clearInterval(_tpScrollTimer); _tpScrollTimer = null; }
@@ -5916,7 +5935,7 @@ function renderInstrucciones(container) {
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
           '<strong>+ Nuevo contenido:</strong> Completá plataformas, formato, dimensión, copy, pieza terminada y material. Podés pegar imágenes con Ctrl+V.',
           '<strong>¿Es contenido para pauta?</strong> Marcá si es dark post u orgánico; si va a pauta te lleva a campañas.',
-          '<strong>🎬 Guion + Teleprompter:</strong> cada contenido tiene su propio campo de guion. Con el botón "📺 Abrir teleprompter" se abre a pantalla completa, fondo negro y letras blancas, con auto-scroll a velocidad ajustable, tamaño de letra y modo espejado -- pensado para leerlo cómodo mientras grabás.',
+          '<strong>🎬 Guion + Teleprompter:</strong> cada contenido tiene su propio campo de guion. Con el botón "📺 Abrir teleprompter" se abre a pantalla completa, fondo negro y letras blancas, con auto-scroll a velocidad ajustable, tamaño de letra y modo espejado -- pensado para leerlo cómodo mientras grabás. El botón "⛶ Pantalla completa" lo expande a todo el monitor, sin la barra del navegador.',
           '<strong>📥 Importar Excel:</strong> subí un calendario armado con la plantilla base y se cargan todos los contenidos de una — no hace falta tipearlos uno por uno. Las columnas "Guion" y "Asignado a" (nombre o email del contacto del cliente o de alguien del equipo) también se pueden completar ahí en vez de contenido por contenido.',
           '<strong>📤 Exportar Excel:</strong> bajá el calendario ya cargado con las mismas columnas de la plantilla -- para hacer una modificación masiva afuera y volver a importarlo.',
           '<strong>🧹 Duplicados</strong> (equipo de la agencia): agrupa los contenidos que tienen el mismo título para poder revisarlos y borrar los que quedaron cargados dos veces.',
