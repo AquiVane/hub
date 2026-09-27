@@ -2,6 +2,10 @@
 
 Actualizado: 2026-09-27. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Sesión 27/09 (cont. 3): fix real -- el botón de pantalla completa del teleprompter "no hacía nada"
+
+Vaneh probó el botón "⛶ Pantalla completa" recién agregado (ver sesión anterior en este mismo archivo) y no pasaba nada al tocarlo. Causa real: lo estaba probando desde **"Contenidos propios"** en el panel de admin, que corre el mismo `app/index.html` adentro de un `<iframe>` (`#contenidos-propios-iframe`, `admin/index.html`) -- y sin el permiso `allow="fullscreen"` en ese iframe, el navegador **rechaza el pedido de pantalla completa en silencio** (promesa rechazada, sin ningún error visible ni en consola para el usuario). Se agregaron `allow="fullscreen" allowfullscreen` al iframe (los otros dos iframes del repo, `plan-frame`/`reporte-frame` en `js/app.js`, no muestran el teleprompter, no hacía falta tocarlos). Además, por si el rechazo vuelve a pasar en algún otro contexto embebido, `teleprompterToggleFullscreen()` ahora atrapa la promesa (`.catch()`) y avisa con un `alert()` en vez de quedarse en silencio, y se sumó soporte con prefijo `webkit` (Safari viejo) tanto en el toggle como en `cerrarTeleprompter()` y el listener que actualiza el texto del botón. Cache-bust `?v=32`.
+
 ## Sesión 27/09 (cont. 2): permisos por tarea + historial de cambios
 
 Feature grande pedida por Vaneh (especificación completa dada en el chat, quedaba anotada como pendiente más abajo en este mismo archivo, sección "Pendiente real"). Aplica a los 3 tableros de tareas: Tareas del cliente real (`tf-*`, `js/app.js`/`app/index.html`), Gestión COSMART (`in-*`, `admin/index.html`) y Mis Tareas (`mt-*` editar / `nmt-*` crear, `admin/index.html`).

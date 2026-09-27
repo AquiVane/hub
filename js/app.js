@@ -4712,7 +4712,9 @@ window.abrirTeleprompterGuion = function(id) {
 
 window.cerrarTeleprompter = function() {
   teleprompterSetPlaying(false);
-  if (document.fullscreenElement) document.exitFullscreen?.();
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  }
   document.getElementById('teleprompterModal').classList.add('hidden');
 };
 
@@ -4721,18 +4723,32 @@ window.cerrarTeleprompter = function() {
 // (position:fixed;inset:0), pero seguía compartiendo pantalla con la barra
 // de pestañas/dirección. Fullscreen API real sobre el propio modal, así al
 // grabar queda de borde a borde del monitor sin salir del Hub.
+// OJO si se retoca esto -- el botón "no hacía nada" en "Contenidos propios"
+// (admin) porque ese panel corre adentro de un <iframe> (ver
+// #contenidos-propios-iframe en admin/index.html) y sin el permiso
+// `allow="fullscreen"` en el iframe, el navegador rechaza el pedido de
+// pantalla completa EN SILENCIO (promesa rechazada, sin error visible) --
+// se agregó ese atributo al iframe, y acá además se atrapa el rechazo por
+// si vuelve a pasar en algún otro contexto embebido.
 window.teleprompterToggleFullscreen = function() {
   const el = document.getElementById('teleprompterModal');
-  if (!document.fullscreenElement) {
-    (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) { alert('Tu navegador no permite pantalla completa desde acá.'); return; }
+    Promise.resolve(req.call(el)).catch(() => {
+      alert('No se pudo activar la pantalla completa. Si estás viendo esto desde "Contenidos propios" dentro del panel de admin, probá abrir el guion directamente en tu propio panel.');
+    });
   } else {
     (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
   }
 };
-document.addEventListener('fullscreenchange', () => {
+function actualizarBotonFullscreenTeleprompter() {
   const btn = document.getElementById('tp-fullscreen-btn');
-  if (btn) btn.textContent = document.fullscreenElement ? '⛶ Salir de pantalla completa' : '⛶ Pantalla completa';
-});
+  const on = document.fullscreenElement || document.webkitFullscreenElement;
+  if (btn) btn.textContent = on ? '⛶ Salir de pantalla completa' : '⛶ Pantalla completa';
+}
+document.addEventListener('fullscreenchange', actualizarBotonFullscreenTeleprompter);
+document.addEventListener('webkitfullscreenchange', actualizarBotonFullscreenTeleprompter);
 
 function teleprompterSetPlaying(on) {
   if (_tpScrollTimer) { clearInterval(_tpScrollTimer); _tpScrollTimer = null; }
