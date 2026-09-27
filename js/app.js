@@ -98,6 +98,7 @@ window.iniciarTour = iniciarTour;
 
 const TOUR_CLIENTE_STEPS = [
   { selector: '[data-section="home"]', titulo: '¡Bienvenido/a a tu Hub!', texto: 'Este es tu panel: acá vas a ver el resumen de todo lo que tu agencia está haciendo por vos.' },
+  { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita te avisa cuando tu agencia te asigna algo, te menciona en un comentario, o hay novedades -- sin tener que revisar el mail. Tocala para ver el listado y marcar como leída.' },
   { selector: '[data-section="tareas"]', titulo: 'Tareas', texto: 'Las tareas que tu agencia va completando para vos, organizadas en Kanban, Lista o Calendario.' },
   { selector: '[data-section="contenidos"]', titulo: 'Contenidos', texto: 'El calendario de posteos y piezas gráficas -- podés ver el estado de cada uno y dejar comentarios.' },
   { selector: '[data-section="pauta"]', titulo: 'Pauta digital', texto: 'Tus campañas de publicidad paga, con sus métricas.' },
