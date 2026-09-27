@@ -2449,6 +2449,21 @@
     return col?.codigo || codigoDesdeNombre(col?.nombre) || 'US';
   }
   let _misTareasClientsCache = [];
+  // Pedido de Vaneh (27/09): "está tardando muchísimo en cargar Mis
+  // Tareas... esto no tiene que pasar en ninguno de los modales
+  // relacionados con tareas". Causa real: "+ Nueva tarea" e "Importar
+  // Excel" (Mis Tareas) hacían un `getAllClients()` NUEVO cada vez que se
+  // abrían, ignorando que la lista de clientes YA está en memoria (la
+  // trae `loadMisTareas()` al entrar a la sección) -- con muchos clientes
+  // cargados, ese round-trip de más se sentía cada vez que se abría
+  // cualquiera de esos dos modales. Este helper centraliza "traé la
+  // lista de clientes, pero solo si de verdad no la tenemos todavía".
+  async function getClientsCacheadoTareas() {
+    if (_misTareasClientsCache.length) return _misTareasClientsCache;
+    if (_nmtClientsCache.length) return _nmtClientsCache;
+    _misTareasClientsCache = await getAllClients();
+    return _misTareasClientsCache;
+  }
   function codigoDeItem(item) {
     if (item.tipo !== 'tarea' || !item.tarea.numero) return '';
     if (item.clientId === '_cosmart') return codigoDeInterna(item.tarea);
@@ -4409,6 +4424,7 @@
     if (!_misTareasVerDe) _misTareasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
     const clients = await getAllClients();
     _misTareasClientsCache = clients;
+    _nmtClientsCache = clients; // mismo dato -- evita que "+ Nueva tarea" arrastre una copia vieja
     const items = [];
     const subtareasItems = [];
     const pseudoClients = [
@@ -5047,7 +5063,7 @@
     const wrap = document.getElementById('misTareasArchivadasWrap');
     if (_misTareasArchivadasCache === null) {
       btn.textContent = 'Cargando…';
-      const clients = _misTareasClientsCache && _misTareasClientsCache.length ? _misTareasClientsCache : await getAllClients();
+      const clients = await getClientsCacheadoTareas();
       const pseudoClients = [{ id: '_cosmart', nombre: 'COSMART (interno)' }, { id: '_personal', nombre: 'Personal' }];
       const all = [];
       await Promise.all([...clients, ...pseudoClients].map(async c => {
@@ -5267,7 +5283,7 @@
 
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
-    const clients = await getAllClients();
+    const clients = await getClientsCacheadoTareas();
     _nmtClientsCache = clients || [];
     clienteSel.innerHTML = `
       <option value="_cosmart">COSMART (interno)</option>
@@ -5383,7 +5399,7 @@
     document.getElementById('importar-tareas-preview').innerHTML = '';
     document.getElementById('confirmImportarTareasBtn').disabled = true;
     _importarTareasRows = [];
-    _importarTareasClientesReales = await getAllClients();
+    _importarTareasClientesReales = await getClientsCacheadoTareas();
     document.getElementById('importarTareasModal').classList.remove('hidden');
     loadXLSXLibAdmin();
   };
