@@ -175,6 +175,14 @@
             <option>Media</option>
             <option>Baja</option>
           </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Vencimiento:</label>
+          <select id="misTareasFiltroFecha" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('fecha', this.value)">
+            <option value="">Todas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mes</option>
+            <option value="sinfecha">Sin fecha</option>
+          </select>
           <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
           <select id="misTareasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasOrden(this.value)">
             <option value="fecha">Fecha</option>
@@ -422,7 +430,7 @@
               <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Tu vista personal: todo lo que está asignado a vos, de cualquier cliente o interno, junto con tus tareas personales.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Kanban, Lista o Calendario -- elegí la vista que prefieras arriba.</li>
-                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"Ver de" te deja mirar las tareas de otro colaborador (si sos admin); "Ordenar por" cambia entre fecha y prioridad.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"Ver de" te deja mirar las tareas de otro colaborador (si sos admin); "Vencimiento" filtra por Hoy, Esta semana, Este mes o Sin fecha; "Ordenar por" cambia entre fecha y prioridad.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>Si sos admin también podés ver acá lo que tiene pendiente cada colaborador, para organizar la semana del equipo.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#10b981;">›</span>"🔗 Copiar link" genera un link directo a esa tarea puntual, para mandar por WhatsApp.</li>
               </ul>
@@ -4104,6 +4112,7 @@
   let _misTareasFiltroCliente = '';
   let _misTareasFiltroVertical = '';
   let _misTareasFiltroPrioridad = '';
+  let _misTareasFiltroFecha = '';
   let _misTareasBusqueda = '';
   let _misTareasOrden = 'fecha';
 
@@ -4113,6 +4122,27 @@
     if (fecha >= hoyStr) return 0;
     const ms = new Date(hoyStr + 'T00:00:00') - new Date(fecha + 'T00:00:00');
     return Math.round(ms / 86400000);
+  }
+
+  // Filtro "Vencimiento" de Mis tareas (hoy/semana/mes/sin fecha) -- pedido
+  // de Vaneh (27/09). "Esta semana"/"Este mes" son el rango calendario
+  // (lunes a domingo / 1 al último día del mes), no "próximos 7/30 días",
+  // así que también entran ahí las vencidas de esa misma semana/mes.
+  function fechaEnRangoFiltro(fecha, filtro) {
+    if (!filtro) return true;
+    if (filtro === 'sinfecha') return !fecha;
+    if (!fecha) return false;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const hoyStr = hoy.toISOString().split('T')[0];
+    if (filtro === 'hoy') return fecha === hoyStr;
+    if (filtro === 'semana') {
+      const diaSemana = hoy.getDay();
+      const lunes = new Date(hoy); lunes.setDate(hoy.getDate() + (diaSemana === 0 ? -6 : 1 - diaSemana));
+      const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+      return fecha >= lunes.toISOString().split('T')[0] && fecha <= domingo.toISOString().split('T')[0];
+    }
+    if (filtro === 'mes') return fecha.slice(0, 7) === hoyStr.slice(0, 7);
+    return true;
   }
 
   async function loadMisTareas() {
@@ -4219,6 +4249,7 @@
     if (tipo === 'cliente') _misTareasFiltroCliente = valor;
     if (tipo === 'vertical') _misTareasFiltroVertical = valor;
     if (tipo === 'prioridad') _misTareasFiltroPrioridad = valor;
+    if (tipo === 'fecha') _misTareasFiltroFecha = valor;
     if (tipo === 'busqueda') _misTareasBusqueda = valor.trim().toLowerCase();
     renderMisTareas();
   };
@@ -4227,6 +4258,7 @@
     _misTareasFiltroCliente = '';
     _misTareasFiltroVertical = '';
     _misTareasFiltroPrioridad = '';
+    _misTareasFiltroFecha = '';
     _misTareasBusqueda = '';
     _misTareasSoloSubtareas = false;
     // "Ver de" nunca se resetaba acá -- un admin que había elegido ver las
@@ -4241,6 +4273,7 @@
     document.getElementById('misTareasFiltroCliente').value = '';
     document.getElementById('misTareasFiltroVertical').value = '';
     document.getElementById('misTareasFiltroPrioridad').value = '';
+    document.getElementById('misTareasFiltroFecha').value = '';
     const btnSub = document.getElementById('misTareasSoloSubtareas');
     if (btnSub) btnSub.className = 'btn btn-sm btn-secondary';
     renderMisTareas();
@@ -4294,6 +4327,7 @@
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
       (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
+      fechaEnRangoFiltro(i.tarea.vencimiento || i.tarea.fechaPub || '', _misTareasFiltroFecha) &&
       (!_misTareasBusqueda || (i.tarea.titulo || '').toLowerCase().includes(_misTareasBusqueda))
     );
   }
@@ -4309,6 +4343,7 @@
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
       (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
+      fechaEnRangoFiltro(i.tarea.vencimiento || i.tarea.fechaPub || '', _misTareasFiltroFecha) &&
       (!_misTareasBusqueda || (i.sub.titulo || '').toLowerCase().includes(_misTareasBusqueda))
     );
   }

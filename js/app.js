@@ -144,7 +144,28 @@ let _tareasView = 'kanban';
 let _tareasBusqueda = '';
 let _tareasFiltroAsignado = ''; // '' = todos, '_sin_asignar' = sin asignar, o el email de un colaborador/usuario del equipo
 let _tareasFiltroPrioridad = '';
+let _tareasFiltroFecha = ''; // '' | 'hoy' | 'semana' | 'mes' | 'sinfecha' -- pedido de Vaneh (27/09), mismo filtro que ya tiene Mis Tareas del admin
 let _tareasOrden = 'fecha'; // 'fecha' | 'prioridad' -- pedido de Vaneh (08/09): "todos tienen ue tener"
+
+// "Esta semana"/"Este mes" son el rango CALENDARIO (lunes a domingo / 1 al
+// último día del mes), no "próximos N días" -- entran también las vencidas
+// de esa semana/mes. Mismo criterio que fechaEnRangoFiltro() en admin/index.html.
+function fechaEnRangoFiltro(fecha, filtro) {
+  if (!filtro) return true;
+  if (filtro === 'sinfecha') return !fecha;
+  if (!fecha) return false;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const hoyStr = hoy.toISOString().split('T')[0];
+  if (filtro === 'hoy') return fecha === hoyStr;
+  if (filtro === 'semana') {
+    const diaSemana = hoy.getDay();
+    const lunes = new Date(hoy); lunes.setDate(hoy.getDate() + (diaSemana === 0 ? -6 : 1 - diaSemana));
+    const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+    return fecha >= lunes.toISOString().split('T')[0] && fecha <= domingo.toISOString().split('T')[0];
+  }
+  if (filtro === 'mes') return fecha.slice(0, 7) === hoyStr.slice(0, 7);
+  return true;
+}
 let editingContenido = null;
 let editingTarea = null;
 let editingCampana = null;
@@ -720,6 +741,13 @@ function renderSection(sec) {
     filtroPrioridad.value = _tareasFiltroPrioridad;
     filtroPrioridad.onchange = (e) => { _tareasFiltroPrioridad = e.target.value; refreshTareasView(); };
     actions.appendChild(filtroPrioridad);
+    const filtroFecha = document.createElement('select');
+    filtroFecha.className = 'form-control';
+    filtroFecha.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
+    filtroFecha.innerHTML = '<option value="">Vencimiento: todas</option><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="sinfecha">Sin fecha</option>';
+    filtroFecha.value = _tareasFiltroFecha;
+    filtroFecha.onchange = (e) => { _tareasFiltroFecha = e.target.value; refreshTareasView(); };
+    actions.appendChild(filtroFecha);
     const ordenSel = document.createElement('select');
     ordenSel.className = 'form-control';
     ordenSel.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
@@ -727,12 +755,12 @@ function renderSection(sec) {
     ordenSel.value = _tareasOrden;
     ordenSel.onchange = (e) => { _tareasOrden = e.target.value; refreshTareasView(); };
     actions.appendChild(ordenSel);
-    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad || _tareasOrden !== 'fecha') {
+    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad || _tareasFiltroFecha || _tareasOrden !== 'fecha') {
       const clearBtn = document.createElement('button');
       clearBtn.className = 'btn btn-secondary btn-sm';
       clearBtn.title = 'Limpiar todos los filtros';
       clearBtn.textContent = '✕ Limpiar filtros';
-      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; _tareasOrden = 'fecha'; renderSection('tareas'); };
+      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; _tareasFiltroFecha = ''; _tareasOrden = 'fecha'; renderSection('tareas'); };
       actions.appendChild(clearBtn);
     }
     const viewKanbanBtn = document.createElement('button');
@@ -4236,6 +4264,7 @@ function renderTareas(container) {
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
   if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
+  if (_tareasFiltroFecha) tareasBase = tareasBase.filter(t => fechaEnRangoFiltro(t.vencimiento || '', _tareasFiltroFecha));
   const archivadas = tareasBase.filter(t => t.archivado);
 
   const PRIO_ORDEN_TAREAS = { Alta: 0, Media: 1, Baja: 2 };
@@ -4333,6 +4362,7 @@ function renderTareasCalendario(container) {
   if (_tareasFiltroAsignado) tareasBase = tareasBase.filter(t =>
     _tareasFiltroAsignado === '_sin_asignar' ? !t.asignado?.email : t.asignado?.email === _tareasFiltroAsignado);
   if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
+  if (_tareasFiltroFecha) tareasBase = tareasBase.filter(t => fechaEnRangoFiltro(t.vencimiento || '', _tareasFiltroFecha));
 
   function drawCal() {
     const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
