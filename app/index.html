@@ -160,6 +160,19 @@
         <div class="topbar-sub" id="topbar-sub">Resumen del mes</div>
       </div>
       <div class="topbar-right" id="topbar-actions"></div>
+      <div class="notif-bell-wrap">
+        <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
+          <i data-lucide="bell" style="width:16px;height:16px;"></i>
+          <span class="notif-bell-badge hidden" id="notifBellBadge"></span>
+        </button>
+        <div class="notif-dropdown hidden" id="notifDropdown">
+          <div class="notif-dropdown-head">
+            <strong style="font-size:13px;">Notificaciones</strong>
+            <button class="btn btn-secondary btn-sm" onclick="marcarTodasNotifsLeidas()" style="font-size:11px;padding:4px 8px;">Marcar todas leídas</button>
+          </div>
+          <div id="notifList"></div>
+        </div>
+      </div>
     </div>
     <div class="content" id="main-content">
       <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -1255,7 +1268,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=27"></script>
+<script type="module" src="../js/app.js?v=28"></script>
 <script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

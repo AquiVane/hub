@@ -9,7 +9,8 @@ import {
   getPlan, savePlan,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
-  uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo
+  uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
+  getNotificaciones, actualizarNotificacion,
 } from './data.js';
 
 // ── Helpers de texto ────────────────────────────────────
@@ -248,6 +249,13 @@ async function init() {
     // abrió este panel "como" el cliente (ver "Abrir en panel del
     // cliente" en Mis Tareas), no tiene sentido mostrarle el tour.
     if (user.role === 'client') setTimeout(() => iniciarTour(TOUR_CLIENTE_STEPS, 'hub_tour_cliente_v1'), 700);
+    if (!embedMode) {
+      cargarNotificaciones();
+      setInterval(cargarNotificaciones, 60000);
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.notif-bell-wrap')) document.getElementById('notifDropdown')?.classList.add('hidden');
+      });
+    }
   } catch (err) {
     const content = document.getElementById('main-content');
     const esPermisos = err.message === 'Sin permisos' || err.message === 'No autorizado';
@@ -261,6 +269,111 @@ async function init() {
     console.error('[init] Error:', err);
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICACIONES (campanita) -- pedido de Vaneh (27/09): todo lo que
+// se genere en el Hub (asignación, mención, movimiento de una tarea/
+// contenido del cliente, comentario nuevo) tiene que impulsar una
+// notificación acá además del mail que ya se manda. Mismo mecanismo
+// duplicado en admin/index.html (scripts separados).
+// ══════════════════════════════════════════════════════════════
+let _notifsCache = [];
+const NOTIF_ICONS = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil' };
+
+async function cargarNotificaciones() {
+  try {
+    _notifsCache = await getNotificaciones();
+  } catch (e) { return; }
+  const noLeidas = _notifsCache.filter(n => !n.leida).length;
+  const badge = document.getElementById('notifBellBadge');
+  if (badge) {
+    badge.textContent = noLeidas > 9 ? '9+' : String(noLeidas);
+    badge.classList.toggle('hidden', noLeidas === 0);
+  }
+  if (!document.getElementById('notifDropdown')?.classList.contains('hidden')) renderNotifList();
+}
+
+function renderNotifList() {
+  const el = document.getElementById('notifList');
+  if (!el) return;
+  if (!_notifsCache.length) { el.innerHTML = '<div class="notif-empty">Sin notificaciones todavía.</div>'; return; }
+  el.innerHTML = _notifsCache.map(n => {
+    const f = new Date(n.creadaEn);
+    const fechaTxt = f.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const estadoSel = n.itemTipo ? `
+      <select class="notif-estado-sel" onchange="event.stopPropagation();cambiarEstadoNotif('${n.id}', this.value)">
+        <option value="">Cambiar estado…</option>
+        <option value="Sin empezar" ${n.estadoActual === 'Sin empezar' ? 'selected' : ''}>Sin empezar</option>
+        <option value="En progreso" ${n.estadoActual === 'En progreso' ? 'selected' : ''}>En progreso</option>
+        <option value="Listo" ${n.estadoActual === 'Listo' ? 'selected' : ''}>Listo</option>
+      </select>` : '';
+    return `
+      <div class="notif-item ${n.leida ? '' : 'notif-unread'}">
+        <i data-lucide="${NOTIF_ICONS[n.tipo] || 'bell'}" class="notif-ico" style="width:15px;height:15px;"></i>
+        <div class="notif-body">
+          <div class="notif-msg" onclick="abrirDesdeNotif('${n.id}')">${escapeHtml(n.mensaje)}</div>
+          <div class="notif-fecha">${fechaTxt}</div>
+          ${estadoSel}
+        </div>
+        <div class="notif-acciones">
+          <button title="${n.leida ? 'Marcar no leída' : 'Marcar leída'}" onclick="toggleLeidaNotif('${n.id}', ${!n.leida})"><i data-lucide="${n.leida ? 'mail' : 'mail-open'}" style="width:14px;height:14px;"></i></button>
+          <button title="Recordar en el próximo inicio de sesión" onclick="recordarNotifDespues('${n.id}')"><i data-lucide="clock" style="width:14px;height:14px;"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+  setTimeout(refreshIcons, 30);
+}
+
+window.toggleNotifDropdown = function() {
+  const dd = document.getElementById('notifDropdown');
+  const abrir = dd.classList.contains('hidden');
+  dd.classList.toggle('hidden', !abrir);
+  if (abrir) { renderNotifList(); cargarNotificaciones(); }
+};
+
+window.toggleLeidaNotif = async function(id, leida) {
+  const n = _notifsCache.find(x => x.id === id);
+  if (n) n.leida = leida;
+  renderNotifList();
+  try { await actualizarNotificacion(id, { leida }); } catch (e) {}
+  cargarNotificaciones();
+};
+
+window.recordarNotifDespues = async function(id) {
+  _notifsCache = _notifsCache.filter(x => x.id !== id);
+  renderNotifList();
+  try { await actualizarNotificacion(id, { oculta: true }); } catch (e) {}
+  cargarNotificaciones();
+};
+
+window.cambiarEstadoNotif = async function(id, estado) {
+  if (!estado) return;
+  const n = _notifsCache.find(x => x.id === id);
+  if (n) { n.estadoActual = estado; n.leida = true; }
+  renderNotifList();
+  try { await actualizarNotificacion(id, { estado }); } catch (e) {}
+  // Si el ítem cambiado es de la sección que se está viendo ahora mismo,
+  // refresca para que el cambio se vea sin tener que navegar afuera y volver.
+  if (n?.itemTipo === 'tarea' && currentSection === 'tareas') { STATE.tareas = await getTareas(clientId); renderSection('tareas'); }
+  else if (n?.itemTipo === 'contenido' && currentSection === 'contenidos') { STATE.contenidos = await getContenidos(clientId); renderSection('contenidos'); }
+  cargarNotificaciones();
+};
+
+window.marcarTodasNotifsLeidas = async function() {
+  const noLeidas = _notifsCache.filter(n => !n.leida);
+  noLeidas.forEach(n => n.leida = true);
+  renderNotifList();
+  await Promise.all(noLeidas.map(n => actualizarNotificacion(n.id, { leida: true }).catch(() => {})));
+  cargarNotificaciones();
+};
+
+window.abrirDesdeNotif = async function(id) {
+  const n = _notifsCache.find(x => x.id === id);
+  if (!n) return;
+  if (!n.leida) { n.leida = true; actualizarNotificacion(id, { leida: true }).catch(() => {}); }
+  if (n.link) { window.location.href = n.link; return; }
+  document.getElementById('notifDropdown')?.classList.add('hidden');
+};
 
 async function loadAllData() {
   // Pedido de Vaneh (11/09, y de nuevo 13/09: "no puede tardar más de 1
@@ -5744,6 +5857,10 @@ function renderInstrucciones(container) {
       </div>
 
       ${[
+        { icon:'bell', title:'Notificaciones', color:'#E02020', items:[
+          'La campanita (arriba a la derecha) avisa de asignaciones, menciones y otros movimientos, sin tener que revisar el mail.',
+          'Tocala para ver el listado completo. Desde ahí podés marcar como leída/no leída, cambiar el estado de la tarea o contenido directamente, o tocar el relojito para que vuelva a aparecer recién en tu próximo inicio de sesión.',
+        ]},
         { icon:'bar-chart-2', title:'Dashboard Editorial', color:'#8b5cf6', items:[
           'Mostrá el resumen mensual: frecuencia por semana, formatos, ejes y tipos de contenido.',
           'Navegá entre meses con las flechas. Se actualiza solo con los contenidos cargados.',

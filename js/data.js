@@ -734,3 +734,17 @@ export async function deleteLead(id) {
   if (DEMO_MODE) return { ok: true };
   return api('DELETE', `/admin/leads/${id}`);
 }
+
+// ── Notificaciones (campanita) ─────────────────────────────────────
+export async function getNotificaciones() {
+  if (DEMO_MODE) return [];
+  return api('GET', '/notificaciones');
+}
+
+// body: { leida?, oculta?, estado? } -- `estado` además actualiza el
+// ítem real (tarea o contenido) vinculado a la notificación, ver
+// handleActualizarNotificacion en el worker.
+export async function actualizarNotificacion(id, body) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', `/notificaciones/${id}`, body);
+}

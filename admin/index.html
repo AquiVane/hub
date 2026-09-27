@@ -107,6 +107,19 @@
         </div>
         <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()">+ Nuevo cliente</button>
+        <div class="notif-bell-wrap">
+          <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
+            <i data-lucide="bell" style="width:16px;height:16px;"></i>
+            <span class="notif-bell-badge hidden" id="notifBellBadge"></span>
+          </button>
+          <div class="notif-dropdown hidden" id="notifDropdown">
+            <div class="notif-dropdown-head">
+              <strong style="font-size:13px;">Notificaciones</strong>
+              <button class="btn btn-secondary btn-sm" onclick="marcarTodasNotifsLeidas()" style="font-size:11px;padding:4px 8px;">Marcar todas leídas</button>
+            </div>
+            <div id="notifList"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -351,6 +364,20 @@
               <p>Desde acá administrás toda la parte digital de tu agencia o empresa: tus clientes, tu equipo, tus tareas internas y la configuración general. Cada cliente tiene su propio panel (contenidos, tareas, pauta digital, reportes) -- este es el panel de arriba, desde donde manejás todo.</p>
               <p>Desde el navegador del celu lo podés instalar como una app (Safari/Chrome → "Agregar a inicio"), y elegir modo claro u oscuro con el botón de abajo de todo en la barra lateral.</p>
               <button class="btn btn-secondary btn-sm" onclick="reiniciarTourAdmin()">Ver recorrido guiado de nuevo</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-header">
+              <i data-lucide="bell" style="width:16px;height:16px;color:#E02020;stroke-width:1.75;flex-shrink:0;"></i>
+              <h2 style="font-family:'Playfair Display',serif;">Notificaciones</h2>
+            </div>
+            <div class="card-body">
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;">
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#E02020;">›</span>La campanita (arriba a la derecha) avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#E02020;">›</span>Desde el listado podés marcar como leída/no leída, cambiar el estado de la tarea o contenido directamente, o tocar el relojito para que vuelva a aparecer recién en tu próximo inicio de sesión.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#E02020;">›</span>Todos los lunes a las 9 también te llega un mail con todas las tareas pendientes de todos tus clientes y de tu equipo, para arrancar la semana con foco.</li>
+              </ul>
             </div>
           </div>
 
@@ -1867,7 +1894,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2049,6 +2076,104 @@
   }
 
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // ══════════════════════════════════════════════════════════════
+  // NOTIFICACIONES (campanita) -- pedido de Vaneh (27/09), mismo
+  // mecanismo duplicado en js/app.js (scripts separados).
+  // ══════════════════════════════════════════════════════════════
+  let _notifsCacheAdmin = [];
+  const NOTIF_ICONS_ADMIN = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil' };
+
+  window.cargarNotificaciones = async function() {
+    try {
+      _notifsCacheAdmin = await getNotificaciones();
+    } catch (e) { return; }
+    const noLeidas = _notifsCacheAdmin.filter(n => !n.leida).length;
+    const badge = document.getElementById('notifBellBadge');
+    if (badge) {
+      badge.textContent = noLeidas > 9 ? '9+' : String(noLeidas);
+      badge.classList.toggle('hidden', noLeidas === 0);
+    }
+    if (!document.getElementById('notifDropdown')?.classList.contains('hidden')) renderNotifListAdmin();
+  };
+
+  function renderNotifListAdmin() {
+    const el = document.getElementById('notifList');
+    if (!el) return;
+    if (!_notifsCacheAdmin.length) { el.innerHTML = '<div class="notif-empty">Sin notificaciones todavía.</div>'; return; }
+    el.innerHTML = _notifsCacheAdmin.map(n => {
+      const f = new Date(n.creadaEn);
+      const fechaTxt = f.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+      const estadoSel = n.itemTipo ? `
+        <select class="notif-estado-sel" onchange="event.stopPropagation();cambiarEstadoNotif('${n.id}', this.value)">
+          <option value="">Cambiar estado…</option>
+          <option value="Sin empezar" ${n.estadoActual === 'Sin empezar' ? 'selected' : ''}>Sin empezar</option>
+          <option value="En progreso" ${n.estadoActual === 'En progreso' ? 'selected' : ''}>En progreso</option>
+          <option value="Listo" ${n.estadoActual === 'Listo' ? 'selected' : ''}>Listo</option>
+        </select>` : '';
+      return `
+        <div class="notif-item ${n.leida ? '' : 'notif-unread'}">
+          <i data-lucide="${NOTIF_ICONS_ADMIN[n.tipo] || 'bell'}" class="notif-ico" style="width:15px;height:15px;"></i>
+          <div class="notif-body">
+            <div class="notif-msg" onclick="abrirDesdeNotif('${n.id}')">${escapeHtml(n.mensaje)}</div>
+            <div class="notif-fecha">${fechaTxt}</div>
+            ${estadoSel}
+          </div>
+          <div class="notif-acciones">
+            <button title="${n.leida ? 'Marcar no leída' : 'Marcar leída'}" onclick="toggleLeidaNotif('${n.id}', ${!n.leida})"><i data-lucide="${n.leida ? 'mail' : 'mail-open'}" style="width:14px;height:14px;"></i></button>
+            <button title="Recordar en el próximo inicio de sesión" onclick="recordarNotifDespues('${n.id}')"><i data-lucide="clock" style="width:14px;height:14px;"></i></button>
+          </div>
+        </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  window.toggleNotifDropdown = function() {
+    const dd = document.getElementById('notifDropdown');
+    const abrir = dd.classList.contains('hidden');
+    dd.classList.toggle('hidden', !abrir);
+    if (abrir) { renderNotifListAdmin(); cargarNotificaciones(); }
+  };
+
+  window.toggleLeidaNotif = async function(id, leida) {
+    const n = _notifsCacheAdmin.find(x => x.id === id);
+    if (n) n.leida = leida;
+    renderNotifListAdmin();
+    try { await actualizarNotificacion(id, { leida }); } catch (e) {}
+    cargarNotificaciones();
+  };
+
+  window.recordarNotifDespues = async function(id) {
+    _notifsCacheAdmin = _notifsCacheAdmin.filter(x => x.id !== id);
+    renderNotifListAdmin();
+    try { await actualizarNotificacion(id, { oculta: true }); } catch (e) {}
+    cargarNotificaciones();
+  };
+
+  window.cambiarEstadoNotif = async function(id, estado) {
+    if (!estado) return;
+    const n = _notifsCacheAdmin.find(x => x.id === id);
+    if (n) { n.estadoActual = estado; n.leida = true; }
+    renderNotifListAdmin();
+    try { await actualizarNotificacion(id, { estado }); } catch (e) {}
+    cargarNotificaciones();
+  };
+
+  window.marcarTodasNotifsLeidas = async function() {
+    const noLeidas = _notifsCacheAdmin.filter(n => !n.leida);
+    noLeidas.forEach(n => n.leida = true);
+    renderNotifListAdmin();
+    await Promise.all(noLeidas.map(n => actualizarNotificacion(n.id, { leida: true }).catch(() => {})));
+    cargarNotificaciones();
+  };
+
+  window.abrirDesdeNotif = async function(id) {
+    const n = _notifsCacheAdmin.find(x => x.id === id);
+    if (!n) return;
+    if (!n.leida) { n.leida = true; actualizarNotificacion(id, { leida: true }).catch(() => {}); }
+    if (n.link) { window.location.href = n.link; return; }
+    document.getElementById('notifDropdown')?.classList.add('hidden');
+  };
   // Textarea de una línea que crece hacia abajo sola -- reemplaza <input>
   // en campos editables de texto largo (título de subtarea): un <input>
   // nunca wrappea, así que un título largo quedaba cortado y no se veía
@@ -3807,8 +3932,16 @@
     if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
       if (!_nmtClientsCache.length) { try { _nmtClientsCache = await getAllClients(); } catch (e) { _nmtClientsCache = []; } }
       const cliente = _nmtClientsCache.find(c => c.id === clientId);
+      // El contacto principal del cliente (cliente.email) nunca aparecía acá
+      // -- solo su "equipo" (cliente.usuarios). Pedido de Vaneh: tiene que
+      // poder asignarle una tarea al cliente mismo, no solo a gente de su
+      // equipo agregada aparte.
+      if (cliente?.email) {
+        html += `<option value="${cliente.email}" data-nombre="${cliente.nombre || cliente.name || 'Cliente'}"${cur === cliente.email.toLowerCase() ? ' selected' : ''}>${cliente.nombre || cliente.name || 'Cliente'} (contacto principal)</option>`;
+      }
       (cliente?.usuarios || []).forEach(u => {
         if (!u.email || u.email.toLowerCase() === miEmail) return;
+        if (cliente?.email && u.email.toLowerCase() === cliente.email.toLowerCase()) return;
         html += `<option value="${u.email}" data-nombre="${u.nombre}"${cur === u.email.toLowerCase() ? ' selected' : ''}>${u.nombre} (equipo del cliente)</option>`;
       });
     }
@@ -3839,6 +3972,11 @@
     });
     if (selectedClientId && !['_personal', '_cosmart'].includes(selectedClientId)) {
       const cliente = _nmtClientsCache.find(c => c.id === selectedClientId);
+      if (cliente?.email && ![...asignadoSel.options].some(o => o.value.toLowerCase() === cliente.email.toLowerCase())) {
+        const optCliente = document.createElement('option');
+        optCliente.value = cliente.email; optCliente.textContent = `${cliente.nombre || cliente.name || 'Cliente'} (contacto principal)`; optCliente.dataset.nombre = cliente.nombre || cliente.name || 'Cliente';
+        asignadoSel.appendChild(optCliente);
+      }
       (cliente?.usuarios || []).forEach(u => {
         if (!u.email) return;
         if ([...asignadoSel.options].some(o => o.value.toLowerCase() === u.email.toLowerCase())) return;
@@ -6712,6 +6850,7 @@
     (_equipoCache || []).forEach(c => { if (c.email && c.email.toLowerCase() !== CLAUDE_IA_EMAIL) lista.push({ nombre: c.nombre, email: c.email }); });
     if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
       const cliente = _nmtClientsCache.find(c => c.id === clientId);
+      if (cliente?.email) lista.push({ nombre: cliente.nombre || cliente.name || 'Cliente', email: cliente.email });
       (cliente?.usuarios || []).forEach(u => { if (u.email) lista.push({ nombre: u.nombre, email: u.email }); });
     }
     const seen = new Set();
@@ -6982,6 +7121,11 @@
     setTimeout(() => iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY), 600);
     crearWidgetClaude();
     abrirDesdeLinkDirecto();
+    cargarNotificaciones();
+    setInterval(cargarNotificaciones, 60000);
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.notif-bell-wrap')) document.getElementById('notifDropdown')?.classList.add('hidden');
+    });
   }
   if (window.lucide) lucide.createIcons();
 
