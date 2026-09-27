@@ -865,6 +865,7 @@
         <label>Título *</label>
         <input type="text" id="in-titulo" class="form-control">
       </div>
+      <div id="in-dup-warning" style="display:none;background:#FEF9C3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#854d0e;margin-bottom:14px;"></div>
       <div class="form-group">
         <label>Descripción</label>
         <textarea id="in-descripcion" class="form-control" rows="2" placeholder="Mini descripción (opcional)"></textarea>
@@ -974,6 +975,16 @@
         <div id="in-colaboracion-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
       </div>
       <div class="form-group">
+        <label>Visible para el equipo</label>
+        <select id="in-restr-modo" class="form-control" onchange="toggleRestrEspecificos('in')">
+          <option value="">Todo el equipo</option>
+          <option value="creador">🔒 Solo yo</option>
+          <option value="especificos">Colaboradores específicos…</option>
+        </select>
+        <div id="in-restr-especificos" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto la ve todo el equipo con acceso. Restringila si es algo personal o de un proyecto puntual.</span>
+      </div>
+      <div class="form-group">
         <label>Subtareas</label>
         <div id="in-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:6px;">
@@ -982,6 +993,10 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="agregarInSubtarea()">+ Agregar</button>
         </div>
       </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);">🕘 Historial</summary>
+        <div id="in-historial-list" style="margin-top:8px;max-height:160px;overflow-y:auto;"></div>
+      </details>
       <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:4px;">
         <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
         <div id="in-new-note" style="font-size:12px;color:var(--text-muted);padding:8px 12px;background:var(--surface);border-radius:6px;margin-bottom:8px;display:none;">Los comentarios estarán disponibles después de guardar la tarea.</div>
@@ -1125,6 +1140,16 @@
         <label>Proyecto en colaboración con</label>
         <div id="mt-colaboracion-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
       </div>
+      <div class="form-group" id="mt-restr-group">
+        <label>Visible para el equipo</label>
+        <select id="mt-restr-modo" class="form-control" onchange="toggleRestrEspecificos('mt')">
+          <option value="">Todo el equipo</option>
+          <option value="creador">🔒 Solo yo</option>
+          <option value="especificos">Colaboradores específicos…</option>
+        </select>
+        <div id="mt-restr-especificos" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto la ve todo el equipo con acceso. Restringila si es algo personal o de un proyecto puntual.</span>
+      </div>
       <div class="form-group" id="mt-subtareas-group">
         <label>Subtareas</label>
         <div id="mt-subtareas-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
@@ -1135,6 +1160,10 @@
         </div>
       </div>
       <div id="mt-asignadopor" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+      <details id="mt-historial-group" style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);">🕘 Historial</summary>
+        <div id="mt-historial-list" style="margin-top:8px;max-height:160px;overflow-y:auto;"></div>
+      </details>
       <div style="padding:14px 0 0;border-top:1px solid var(--border-strong);margin-top:10px;">
         <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">💬 Comentarios</label>
         <div id="mt-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
@@ -1190,6 +1219,7 @@
         <label>Título *</label>
         <input type="text" id="nmt-titulo" class="form-control">
       </div>
+      <div id="nmt-dup-warning" style="display:none;background:#FEF9C3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#854d0e;margin-bottom:14px;"></div>
       <div class="form-group">
         <label>Estado</label>
         <select id="nmt-estado" class="form-control">
@@ -1284,6 +1314,16 @@
       <div class="form-group hidden" id="nmt-colaboracion-group">
         <label>Proyecto en colaboración con</label>
         <div id="nmt-colaboracion-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+      </div>
+      <div class="form-group">
+        <label>Visible para el equipo</label>
+        <select id="nmt-restr-modo" class="form-control" onchange="toggleRestrEspecificos('nmt')">
+          <option value="">Todo el equipo</option>
+          <option value="creador">🔒 Solo yo</option>
+          <option value="especificos">Colaboradores específicos…</option>
+        </select>
+        <div id="nmt-restr-especificos" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto la ve todo el equipo con acceso. Restringila si es algo personal o de un proyecto puntual.</span>
       </div>
       <div class="form-group">
         <label>Subtareas</label>
@@ -2086,6 +2126,179 @@
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   // ══════════════════════════════════════════════════════════════
+  // PERMISOS POR TAREA + HISTORIAL DE CAMBIOS -- pedido de Vaneh (27/09):
+  // "cada colaborador tiene que ver solo sus tareas... si quiere ver las
+  // de otro colaborador lo tiene que poder hacer... también restringir
+  // quién del equipo la puede ver". Mismo mecanismo duplicado en
+  // js/app.js (scripts separados, ver HANDOFF). Aplica a los 3 tableros
+  // de tareas: Gestión COSMART (in-*), Mis Tareas (mt-*/nmt-*) y, del
+  // lado de js/app.js, Tareas del cliente real (tf-*).
+  // ══════════════════════════════════════════════════════════════
+
+  // t.restringidaA: null/ausente (todo el equipo la ve, default) |
+  // 'creador' (solo quien la creó) | array de emails (esos + el creador).
+  // El admin siempre ve todo, sin excepción.
+  function puedeVerTarea(t, u) {
+    if (!t) return true;
+    if (u.role === 'admin') return true;
+    if (!t.restringidaA) return true;
+    const email = (u.email || '').toLowerCase();
+    if (t.restringidaA === 'creador') return (t.creadoPor || '').toLowerCase() === email;
+    if (Array.isArray(t.restringidaA)) {
+      return t.restringidaA.map(e => (e || '').toLowerCase()).includes(email) || (t.creadoPor || '').toLowerCase() === email;
+    }
+    return true;
+  }
+
+  // Filtro "Ver de" (default-visibility, punto 1): un colaborador ve por
+  // default sus tareas asignadas O las que él creó -- no solo asignado,
+  // porque una tarea creada para otra persona (ej. delegada) sigue siendo
+  // "suya" a los fines de no perderla de vista. '_todos' es el valor
+  // sentinel de "Todo el equipo" (NO usar '' -- con '' el chequeo
+  // `if (!_internasVerDe)` en el load la pisaría de nuevo al reentrar a
+  // la sección, ver loadInternas/loadMisTareas).
+  function matchVerDe(asignadoEmail, creadoPorEmail, verDeValue) {
+    if (!verDeValue || verDeValue === '_todos') return true;
+    return (asignadoEmail || '') === verDeValue || (creadoPorEmail || '') === verDeValue;
+  }
+
+  // Normaliza un título para comparar duplicados: minúsculas, sin acentos
+  // ni puntuación, espacios colapsados. normImportTexto (import de Excel)
+  // no saca acentos/puntuación -- para detectar "Publicar post IG" vs
+  // "publicar post ig!" hace falta algo un poco más agresivo, así que se
+  // suma esta variante en vez de tocar la que ya usa el import.
+  function normTituloDup(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // Advertencia de posible duplicado al CREAR una tarea (punto 2) -- NO
+  // bloquea, solo avisa. Coincide si el título normalizado es idéntico, o
+  // si uno de los dos títulos contiene casi entero al otro (>=85% de la
+  // longitud del más corto, con un mínimo de 6 caracteres para no disparar
+  // con títulos cortos genéricos) -- pensado para variantes chicas
+  // ("Publicar post IG" vs "Publicar post IG "), no para títulos que solo
+  // comparten una palabra suelta. Umbral elegido a criterio, ajustable si
+  // Vaneh lo ve muy sensible o muy laxo. Solo mira tareas NO archivadas
+  // que están sin terminar (estado != 'Listo') o que son recurrentes
+  // (una recurrente "Lista" va a volver sola, así que también cuenta).
+  function buscarTareaSimilar(titulo, lista, excludeId) {
+    const norm = normTituloDup(titulo);
+    if (!norm) return null;
+    const candidatas = (lista || []).filter(t => !t.archivado && t.id !== excludeId && (t.estado !== 'Listo' || t.recurrencia));
+    for (const t of candidatas) {
+      const n2 = normTituloDup(t.titulo);
+      if (!n2) continue;
+      if (n2 === norm) return t;
+      const corto = n2.length <= norm.length ? n2 : norm;
+      const largo = n2.length <= norm.length ? norm : n2;
+      if (corto.length >= 6 && largo.includes(corto) && corto.length / largo.length >= 0.85) return t;
+    }
+    return null;
+  }
+
+  // Historial de cambios (punto 4) -- se calcula comparando la tarea ANTES
+  // de abrir el modal (snapshot tomado al abrir) contra lo que se va a
+  // guardar. Solo aplica al EDITAR una tarea ya existente, nunca al crear.
+  const CAMPOS_HISTORIAL_LABEL = { titulo: 'el título', estado: 'el estado', prioridad: 'la prioridad', vencimiento: 'el vencimiento', visibleParaCliente: 'la visibilidad para el cliente', restringidaA: 'la visibilidad para el equipo' };
+  function valorLegibleHistorial(campo, valor) {
+    if (campo === 'visibleParaCliente') return valor === true ? 'Visible' : 'No visible';
+    if (campo === 'restringidaA') {
+      if (!valor) return 'Todo el equipo';
+      if (valor === 'creador') return 'Solo el creador';
+      if (Array.isArray(valor)) return `Colaboradores específicos (${valor.length})`;
+      return String(valor);
+    }
+    return (valor == null || valor === '') ? '(vacío)' : String(valor);
+  }
+  function calcularHistorialCambios(anterior, nuevo, u) {
+    if (!anterior) return [];
+    const entradas = [];
+    Object.keys(CAMPOS_HISTORIAL_LABEL).forEach(campo => {
+      const vAnt = anterior[campo] ?? null;
+      const vNue = nuevo[campo] ?? null;
+      const igual = campo === 'restringidaA' ? JSON.stringify(vAnt || null) === JSON.stringify(vNue || null) : vAnt === vNue;
+      if (!igual) entradas.push({ campo: CAMPOS_HISTORIAL_LABEL[campo], anterior: valorLegibleHistorial(campo, vAnt), nuevo: valorLegibleHistorial(campo, vNue), quien: u.email, quienNombre: u.name || u.email, fecha: new Date().toISOString() });
+    });
+    const emailAnt = (anterior.asignado?.email || '').toLowerCase();
+    const emailNue = (nuevo.asignado?.email || '').toLowerCase();
+    if (emailAnt !== emailNue) entradas.push({ campo: 'el asignado', anterior: anterior.asignado?.nombre || (emailAnt || 'Sin asignar'), nuevo: nuevo.asignado?.nombre || (emailNue || 'Sin asignar'), quien: u.email, quienNombre: u.name || u.email, fecha: new Date().toISOString() });
+    return entradas;
+  }
+  // Muta `obj` sumando las entradas nuevas a su historial (tope 50, más
+  // recientes al final -- se listan invertidas al renderizar).
+  function aplicarHistorial(obj, anterior, u) {
+    if (!anterior) { obj.historialCambios = obj.historialCambios || []; return obj; }
+    const nuevas = calcularHistorialCambios(anterior, obj, u);
+    obj.historialCambios = [...(anterior.historialCambios || []), ...nuevas].slice(-50);
+    return obj;
+  }
+  function fmtFechaHistorial(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function renderHistorialHtml(historial) {
+    if (!historial || !historial.length) return '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin cambios registrados todavía.</p>';
+    return [...historial].reverse().map(h => `<div style="font-size:12px;color:var(--text-muted);padding:4px 0;border-bottom:1px solid var(--border);">· ${fmtFechaHistorial(h.fecha)} — <strong>${escapeHtml(h.quienNombre || h.quien || '')}</strong> cambió ${escapeHtml(h.campo)} de "${escapeHtml(String(h.anterior ?? '(vacío)'))}" a "${escapeHtml(String(h.nuevo ?? '(vacío)'))}"</div>`).join('');
+  }
+
+  // Control "Visible para el equipo" (punto 3) -- genérico por prefijo,
+  // reusado en los 3 modales de tarea del admin (in-/mt-/nmt-). El
+  // listado de "colaboradores específicos" es el equipo completo de la
+  // agencia (getEquipoCache, mismo que ya usa "Asignar a"), sin Claude IA.
+  window.toggleRestrEspecificos = function(prefix) {
+    const modo = document.getElementById(`${prefix}-restr-modo`)?.value;
+    document.getElementById(`${prefix}-restr-especificos`)?.classList.toggle('hidden', modo !== 'especificos');
+  };
+  async function poblarRestrEspecificos(prefix, seleccionados) {
+    const cont = document.getElementById(`${prefix}-restr-especificos`);
+    if (!cont) return;
+    const equipo = (await getEquipoCache()).filter(c => c.email !== CLAUDE_IA_EMAIL);
+    const emails = (seleccionados || []).map(e => (e || '').toLowerCase());
+    cont.innerHTML = equipo.length
+      ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="${prefix}-restr-chk" value="${c.email.toLowerCase()}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${c.nombre}</label>`).join('')
+      : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores todavía.</p>';
+  }
+  function setRestrUI(prefix, restringidaA) {
+    const sel = document.getElementById(`${prefix}-restr-modo`);
+    if (!sel) return;
+    sel.value = !restringidaA ? '' : (restringidaA === 'creador' ? 'creador' : 'especificos');
+    window.toggleRestrEspecificos(prefix);
+    poblarRestrEspecificos(prefix, Array.isArray(restringidaA) ? restringidaA : []);
+  }
+  function leerRestrUI(prefix) {
+    const sel = document.getElementById(`${prefix}-restr-modo`);
+    if (!sel) return null;
+    const modo = sel.value;
+    if (!modo) return null;
+    if (modo === 'creador') return 'creador';
+    const arr = Array.from(document.querySelectorAll(`.${prefix}-restr-chk:checked`)).map(cb => cb.value);
+    return arr.length ? arr : null;
+  }
+
+  // Advertencia de duplicado -- wiring genérico del input con debounce.
+  // Solo se activa cuando `esCreacion()` da true (nunca al editar).
+  const _dupCheckTimers = {};
+  function wireDupCheck(prefix, tituloInputId, warnId, getLista, esCreacion) {
+    const input = document.getElementById(tituloInputId);
+    if (!input) return;
+    input.oninput = () => {
+      clearTimeout(_dupCheckTimers[prefix]);
+      _dupCheckTimers[prefix] = setTimeout(() => {
+        const warn = document.getElementById(warnId);
+        if (!warn) return;
+        if (!esCreacion()) { warn.style.display = 'none'; return; }
+        const match = buscarTareaSimilar(input.value, getLista(), null);
+        if (match) {
+          warn.style.display = '';
+          warn.textContent = `⚠️ Ya existe una tarea similar: "${match.titulo}" (asignada a ${match.asignado?.nombre || 'sin asignar'}, estado ${match.estado}). Revisá antes de crear otra.`;
+        } else warn.style.display = 'none';
+      }, 400);
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // NOTIFICACIONES (campanita) -- pedido de Vaneh (27/09), mismo
   // mecanismo duplicado en js/app.js (scripts separados).
   // ══════════════════════════════════════════════════════════════
@@ -2551,7 +2764,7 @@
     const sel = document.getElementById('internasVerDe');
     if (!sel || (sel.dataset.poblado && !forzar)) return;
     const miEmail = (user.email || '').toLowerCase();
-    let opciones = [`<option value="">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    let opciones = [`<option value="_todos">Todo el equipo</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -2603,12 +2816,15 @@
     _internasVerticalFiltro = '';
     _internasPrioridadFiltro = '';
     _internasBusqueda = '';
-    _internasVerDe = '';
+    // Permisos por tarea (27/09): "Limpiar filtros" vuelve al default de
+    // cada rol -- admin ve todo el equipo, colaborador vuelve a "Yo"
+    // (mismo criterio que ya tenía Mis Tareas, limpiarMisTareasFiltros).
+    _internasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
     _internasOrden = 'fecha';
     document.getElementById('internasVerticalFiltro').value = '';
     document.getElementById('internasPrioridadFiltro').value = '';
     document.getElementById('internasBuscar').value = '';
-    document.getElementById('internasVerDe').value = '';
+    document.getElementById('internasVerDe').value = _internasVerDe;
     document.getElementById('internasOrden').value = 'fecha';
     renderInternasBoard();
   };
@@ -2620,6 +2836,11 @@
     // todo con "Cargando..." cada vez que se reentra a la sección.
     if (_internasCache.length) renderInternasBoard();
     else board.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
+    // Default-visibility (punto 1, 27/09): un colaborador ve por default
+    // solo lo suyo; el admin sigue viendo todo el equipo sin restricción.
+    // El valor sentinel '_todos' (no '') evita que este chequeo pise una
+    // elección explícita de "Todo el equipo" en cada reingreso a la sección.
+    if (!_internasVerDe) _internasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
     poblarInternasVerDe();
     try {
       _internasCache = await getTareas(INTERNAS_CLIENT_ID);
@@ -2647,7 +2868,8 @@
     const cacheFiltrado = _internasCache.filter(t =>
       (!_internasVerticalFiltro || (_internasVerticalFiltro === '_general' ? !t.vertical : t.vertical === _internasVerticalFiltro)) &&
       (!_internasPrioridadFiltro || t.prioridad === _internasPrioridadFiltro) &&
-      (!_internasVerDe || (t.asignado?.email || '').toLowerCase() === _internasVerDe) &&
+      matchVerDe((t.asignado?.email || '').toLowerCase(), (t.creadoPor || '').toLowerCase(), _internasVerDe) &&
+      puedeVerTarea(t, user) &&
       (!_internasBusqueda || (t.titulo || '').toLowerCase().includes(_internasBusqueda))
     );
     board.innerHTML = cols.map(col => {
@@ -3221,9 +3443,17 @@
     const _copyLinkInternaBtn = document.getElementById('copyLinkInternaBtn');
     _copyLinkInternaBtn.classList.toggle('hidden', !_editingInterna);
     _copyLinkInternaBtn.onclick = () => copiarLinkAdmin(`?open=interna&id=${t.id}`);
+    // Permisos por tarea (27/09): "Visible para el equipo" + historial +
+    // aviso de duplicado al crear -- ver bloque de helpers compartidos.
+    setRestrUI('in', t.restringidaA || null);
+    document.getElementById('in-historial-list').innerHTML = renderHistorialHtml(t.historialCambios);
+    _editingInternaSnapshot = _editingInterna ? JSON.parse(JSON.stringify(_editingInterna)) : null;
+    document.getElementById('in-dup-warning').style.display = 'none';
+    wireDupCheck('in', 'in-titulo', 'in-dup-warning', () => _internasCache, () => !_editingInterna);
     document.getElementById('internaModal').classList.remove('hidden');
     document.querySelector('#internaModal .modal-body').scrollTop = 0;
   };
+  let _editingInternaSnapshot = null;
   window.closeInternaModal = () => document.getElementById('internaModal').classList.add('hidden');
 
   let _inSubtareas = [];
@@ -3410,7 +3640,12 @@
         ? Array.from(document.querySelectorAll('.in-colab-check:checked')).map(cb => ({ email: cb.value, nombre: cb.dataset.nombre }))
         : [],
       completadoEn: inEstadoVal === 'Listo' ? (_editingInterna?.estado === 'Listo' ? _editingInterna.completadoEn : new Date().toISOString().split('T')[0]) : null,
+      restringidaA: leerRestrUI('in'),
+      creadoPor: _editingInterna ? _editingInterna.creadoPor : user.email,
     };
+    // Historial de cambios (27/09) -- solo se registra al EDITAR una tarea
+    // ya existente, comparando contra el snapshot tomado al abrir el modal.
+    if (_editingInternaSnapshot) aplicarHistorial(obj, _editingInternaSnapshot, user);
     // Si se marcó "Lista" recién en este guardado (no ya lo estaba) y es
     // recurrente, se genera el próximo ciclo de una -- este modal no tenía
     // este llamado (a diferencia del checkbox rápido y el drag&drop del
@@ -3873,6 +4108,10 @@
       vencimiento: siguiente.toISOString().split('T')[0],
       comentarios: [],
       historialCompletados: undefined,
+      // Historial de cambios (27/09): el ciclo nuevo arranca su propia
+      // hoja en blanco -- restringidaA/creadoPor SÍ se heredan (misma
+      // regla de permisos y mismo creador de la serie recurrente).
+      historialCambios: [],
       subtareas: (t.subtareas || []).map(s => ({ ...s, done: false, completadoEn: null, historialCompletados: undefined })),
     };
     list.push(nuevo);
@@ -4010,6 +4249,9 @@
     // reflejar el equipo de ESE cliente (no el del anterior).
     poblarSelectConYoYColaboradores(document.getElementById('nmt-subtarea-asignado'), '', clientId);
     renderNmtSubtareas();
+    // Re-chequear duplicados contra el tablero del cliente nuevo, no del
+    // anterior -- el título puede haberse tipeado antes de cambiar de cliente.
+    document.getElementById('nmt-titulo')?.dispatchEvent(new Event('input'));
   };
   function renderColaboradores() {
     const listEl = document.getElementById('colabList');
@@ -4153,7 +4395,11 @@
     // (pedido de Vaneh: "Gestión COSMART, Mis tareas, tardan en cargar").
     if (_misTareasCache.length) renderMisTareas();
     else listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>`;
-    if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase();
+    // Default-visibility (punto 1, 27/09): admin ve todo el equipo por
+    // default, un colaborador ve solo lo suyo -- pero ahora SÍ puede
+    // cambiarlo (antes el select venía deshabilitado para ese rol). Ver
+    // comentario de matchVerDe sobre por qué '_todos' y no ''.
+    if (!_misTareasVerDe) _misTareasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
     const clients = await getAllClients();
     _misTareasClientsCache = clients;
     const items = [];
@@ -4188,11 +4434,11 @@
             subtareasItems.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t, subIndex: si, sub: s, personal: esPersonal, subAsignadoEmail: s.asignado.email.toLowerCase() });
           });
           if (esPersonal && asignadoEmail !== uEmail && !esGerViendoVaneh) return;
-          items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail });
+          items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'tarea', tarea: t, personal: esPersonal, asignadoEmail, creadoPorEmail: (t.creadoPor || '').toLowerCase() });
         });
         (contenidos || []).forEach(t => {
           if (t.asignado?.email && t.estado !== 'Publicado') {
-            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t, personal: false, asignadoEmail: t.asignado.email.toLowerCase() });
+            items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t, personal: false, asignadoEmail: t.asignado.email.toLowerCase(), creadoPorEmail: '' });
           }
         });
       } catch (e) { console.error('No se pudieron cargar tareas/contenidos de', c.id, e); }
@@ -4208,20 +4454,21 @@
     const sel = document.getElementById('misTareasVerDe');
     if (!sel || (sel.dataset.poblado && !forzar)) return;
     const miEmail = (user.email || '').toLowerCase();
-    let opciones = [`<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
-    if (user.role === 'admin') {
-      opciones.unshift(`<option value="">Todos</option>`);
-      try {
-        const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-        colaboradores.forEach(c => {
-          if (c.email.toLowerCase() === miEmail) return;
-          opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
-        });
-      } catch (e) {}
-    }
+    // Permisos por tarea (27/09): antes este select venía deshabilitado
+    // para cualquiera que no fuera admin (un colaborador solo podía verse
+    // a sí mismo) -- pedido explícito de Vaneh: "si quiere ver las tareas
+    // de otro colaborador lo tiene que poder hacer". Ahora cualquiera
+    // puede elegir "Todo el equipo" o a otro colaborador puntual.
+    let opciones = [`<option value="_todos">Todo el equipo</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    try {
+      const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
+      colaboradores.forEach(c => {
+        if (c.email.toLowerCase() === miEmail) return;
+        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+      });
+    } catch (e) {}
     sel.innerHTML = opciones.join('');
     sel.value = _misTareasVerDe;
-    sel.disabled = user.role !== 'admin';
     sel.dataset.poblado = '1';
   }
 
@@ -4263,10 +4510,9 @@
     _misTareasSoloSubtareas = false;
     // "Ver de" nunca se resetaba acá -- un admin que había elegido ver las
     // tareas de un colaborador puntual se quedaba trabado ahí para
-    // siempre. Un colaborador no tiene "Todos" (el select viene
-    // deshabilitado, solo puede verse a sí mismo), así que para ese rol
-    // vuelve a su propio email -- es su equivalente de "sin filtro".
-    _misTareasVerDe = user.role === 'admin' ? '' : (user.email || '').toLowerCase();
+    // siempre. Vuelve al default de cada rol: admin a "Todo el equipo",
+    // colaborador a "Yo" (puede volver a cambiarlo, ya no está bloqueado).
+    _misTareasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
     const verDeSel = document.getElementById('misTareasVerDe');
     if (verDeSel) verDeSel.value = _misTareasVerDe;
     document.getElementById('misTareasBuscar').value = '';
@@ -4323,7 +4569,8 @@
     // que mostrar SOLO lo que está asignado a esa persona.
     return _misTareasCache.filter(i =>
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
-      (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe) &&
+      matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) &&
+      (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user)) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
       (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
@@ -4339,7 +4586,8 @@
   function misSubtareasFiltradas() {
     return _misSubtareasCache.filter(i =>
       (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
-      (!_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
+      (_misTareasVerDe === '_todos' || !_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
+      puedeVerTarea(i.tarea, user) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
       (!_misTareasFiltroPrioridad || i.tarea.prioridad === _misTareasFiltroPrioridad) &&
@@ -4436,8 +4684,8 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    const totalLaboral = _misTareasCache.filter(i => !i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
-    const totalPersonal = _misTareasCache.filter(i => i.personal && (!_misTareasVerDe || i.asignadoEmail === _misTareasVerDe)).length;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
@@ -4685,6 +4933,7 @@
 
   let _misTareaModalIdx = null;
   let _mtSubtareas = [];
+  let _mtSnapshot = null; // estado de la tarea al abrir el modal, para el historial de cambios
   window.openMisTareaModal = function(idx) {
     const item = _misTareasCache[idx];
     if (!item) return;
@@ -4735,6 +4984,17 @@
     renderComentarios('mt', t.comentarios || []);
     document.getElementById('mt-comment-input').value = '';
     restaurarBorradorAdmin('mt', idx, ['mt-titulo', 'mt-descripcion', 'mt-comment-input']);
+    // Permisos por tarea + historial (27/09) -- solo aplican a tipo
+    // 'tarea' (un contenido no tiene restringidaA/historialCambios).
+    document.getElementById('mt-restr-group').style.display = tipo === 'tarea' ? '' : 'none';
+    document.getElementById('mt-historial-group').style.display = tipo === 'tarea' ? '' : 'none';
+    if (tipo === 'tarea') {
+      setRestrUI('mt', t.restringidaA || null);
+      document.getElementById('mt-historial-list').innerHTML = renderHistorialHtml(t.historialCambios);
+      _mtSnapshot = JSON.parse(JSON.stringify(t));
+    } else {
+      _mtSnapshot = null;
+    }
     document.getElementById('misTareaModal').classList.remove('hidden');
     document.querySelector('#misTareaModal .modal-body').scrollTop = 0;
   };
@@ -4786,7 +5046,9 @@
       await Promise.all([...clients, ...pseudoClients].map(async c => {
         try {
           const tareas = await getTareas(c.id);
-          (tareas || []).filter(t => t.archivado).forEach(t => all.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t }));
+          // Permisos por tarea (27/09): "Ver archivadas" es parte del
+          // mismo tablero -- respeta restringidaA igual que Kanban/Lista.
+          (tareas || []).filter(t => t.archivado && puedeVerTarea(t, user)).forEach(t => all.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t }));
         } catch (e) {}
       }));
       _misTareasArchivadasCache = all;
@@ -4939,6 +5201,7 @@
         ? Array.from(document.querySelectorAll('.mt-dia-check:checked')).map(cb => cb.value)
         : [];
       item.tarea.subtareas = _mtSubtareas;
+      item.tarea.restringidaA = leerRestrUI('mt');
       const esPseudoClienteSave = ['_cosmart', '_personal'].includes(item.clientId);
       let nuevo = null;
       if (nuevoEstado === 'Listo') {
@@ -4952,6 +5215,10 @@
         item.tarea.completadoEn = null;
         if (!esPseudoClienteSave) item.tarea.visibleParaCliente = document.getElementById('mt-visible-cliente').checked;
       }
+      // Historial de cambios (27/09) -- Mis Tareas siempre edita una tarea
+      // ya existente (la creación pasa por nuevaMiTareaModal), así que
+      // siempre hay snapshot contra el que comparar.
+      if (_mtSnapshot) aplicarHistorial(item.tarea, _mtSnapshot, user);
       item.tarea = await saveTarea(item.clientId, item.tarea);
       notifyAsignacionAdmin('tarea', item.tarea, prevMtAsignadoEmail, item.clientId);
       if (nuevo) {
@@ -4985,6 +5252,11 @@
     document.getElementById('nmt-fecha-inicio').value = '';
     toggleNmtEsProyecto();
     renderColaboracionList('nmt-colaboracion-list', 'nmt-colab-check', []);
+    setRestrUI('nmt', null);
+    document.getElementById('nmt-dup-warning').style.display = 'none';
+    wireDupCheck('nmt', 'nmt-titulo', 'nmt-dup-warning',
+      () => _misTareasCache.filter(i => i.clientId === document.getElementById('nmt-cliente').value && i.tipo === 'tarea').map(i => i.tarea),
+      () => true); // siempre es creación en este modal
 
     const clienteSel = document.getElementById('nmt-cliente');
     clienteSel.innerHTML = '<option value="">Cargando...</option>';
@@ -5305,6 +5577,7 @@
             notas: f.notas,
             asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
             visibleParaCliente: false,
+            creadoPor: user.email,
           });
         }
         ok++;
@@ -5503,6 +5776,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento,
             asignado: asignadoObj,
+            creadoPor: user.email,
           });
         }
         ok++;
@@ -5557,6 +5831,9 @@
       asignado: { email: asignadoEmail, nombre: asignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       subtareas: _nmtSubtareas,
       visibleParaCliente: !['_cosmart', '_personal'].includes(clientId) && document.getElementById('nmt-visible-cliente').checked,
+      restringidaA: leerRestrUI('nmt'),
+      creadoPor: user.email,
+      historialCambios: [],
     };
     try {
       const saved = await saveTarea(clientId, obj);
@@ -6743,6 +7020,7 @@
               <div class="kanban-card" draggable="true" data-id="${l.id}" onclick="if(!this._dragged)openLeadModal('${l.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)">
                 <div class="kanban-card-title">${[l.nombre, l.apellido].filter(Boolean).join(' ') || l.email || l.telefono || 'Sin nombre'}</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                  ${l.etiqueta === 'Suscriptor' ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:#64748b;font-weight:700;">🔔 Suscriptor</span>` : ''}
                   ${l.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[l.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[l.vertical] || '#64748b'};font-weight:700;">${l.vertical}</span>` : ''}
                   ${l.empresa ? `<span style="font-size:10px;color:var(--text-muted);">🏢 ${l.empresa}</span>` : ''}
                 </div>

@@ -691,6 +691,9 @@
           <input type="text" id="tf-titulo" class="form-control" placeholder="¿Qué hay que hacer?">
         </div>
 
+        <!-- Aviso de posible duplicado (solo al crear) -->
+        <div id="tf-dup-warning" style="display:none;grid-column:span 2;background:#FEF9C3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#854d0e;"></div>
+
         <!-- Estado + Prioridad -->
         <div class="form-group">
           <label>Estado</label>
@@ -866,6 +869,24 @@
           </label>
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se resalta en el tablero con una barra de progreso según las subtareas completadas.</span>
         </div>
+
+        <!-- Visible para el equipo (permisos por tarea, 27/09) -->
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Visible para el equipo</label>
+          <select id="tf-restr-modo" class="form-control" onchange="toggleTfRestrEspecificos()">
+            <option value="">Todo el equipo</option>
+            <option value="creador">🔒 Solo yo</option>
+            <option value="especificos">Colaboradores específicos…</option>
+          </select>
+          <div id="tf-restr-especificos" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;max-height:140px;overflow-y:auto;"></div>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Por defecto la ve todo el equipo con acceso a este cliente. Restringila si es algo personal o de un proyecto puntual.</span>
+        </div>
+
+        <!-- Historial de cambios -->
+        <details id="tf-historial-group" style="grid-column:span 2;">
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);">🕘 Historial</summary>
+          <div id="tf-historial-list" style="margin-top:8px;max-height:160px;overflow-y:auto;"></div>
+        </details>
 
         <!-- Comentarios tarea -->
         <div class="form-group" style="grid-column:span 2;border-top:1px solid var(--border-strong);padding-top:14px;margin-top:4px;">
