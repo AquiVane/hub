@@ -5666,19 +5666,19 @@ function renderWeb(container) {
     <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <div style="font-size:13px;color:var(--text-muted);">${tasks.length} tareas · ${byEstado['Listo'].length} completadas</div>
     </div>
-    <div class="kanban-board">
+    <div class="kanban-board" id="kanban-web">
       ${WEB_ESTADOS.map(estado => {
         const items = byEstado[estado];
         return `
-        <div class="kanban-col" style="flex:1;max-width:none;">
+        <div class="kanban-col" data-col="${estado}" style="flex:1;max-width:none;">
           <div class="kanban-col-header">
             <span class="kanban-col-dot" style="background:${colors[estado]};"></span>
             <span class="col-title">${estado}</span>
             <span class="col-count">${items.length}</span>
           </div>
-          <div class="kanban-cards">
+          <div class="kanban-cards" data-col="${estado}">
             ${items.map(t => `
-              <div class="kanban-card" onclick="openWebTaskModal('${t.id}')">
+              <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openWebTaskModal('${t.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)">
                 <div style="display:flex;align-items:flex-start;gap:6px;">
                   <button onclick="event.stopPropagation();toggleWebTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#22c55e' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#22c55e' : 'transparent'};color:#fff;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
@@ -5697,6 +5697,16 @@ function renderWeb(container) {
       }).join('')}
     </div>
   `;
+
+  initKanbanDrag('#kanban-web', tasks, async (id, newCol) => {
+    const t = (STATE.home.webTareas || []).find(x => String(x.id) === String(id));
+    if (!t || t.estado === newCol) return;
+    t.estado = newCol;
+    t.completadoEn = newCol === 'Listo' ? new Date().toISOString().split('T')[0] : null;
+    renderWeb(container);
+    await saveHomeData(clientId, STATE.home);
+    if (currentSection === 'home') renderSection('home');
+  });
 }
 
 window.toggleWebTareaListo = async function(id) {
