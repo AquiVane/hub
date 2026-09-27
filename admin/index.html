@@ -6708,6 +6708,7 @@
               <div class="kanban-card" draggable="true" data-id="${l.id}" onclick="if(!this._dragged)openLeadModal('${l.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)">
                 <div class="kanban-card-title">${[l.nombre, l.apellido].filter(Boolean).join(' ') || l.email || l.telefono || 'Sin nombre'}</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                  ${l.etiqueta === 'Suscriptor' ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:#64748b;font-weight:700;">🔔 Suscriptor</span>` : ''}
                   ${l.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[l.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[l.vertical] || '#64748b'};font-weight:700;">${l.vertical}</span>` : ''}
                   ${l.empresa ? `<span style="font-size:10px;color:var(--text-muted);">🏢 ${l.empresa}</span>` : ''}
                 </div>
