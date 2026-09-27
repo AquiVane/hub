@@ -5577,6 +5577,7 @@
             notas: f.notas,
             asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
             visibleParaCliente: false,
+            creadoPor: user.email,
           });
         }
         ok++;
@@ -5775,6 +5776,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento,
             asignado: asignadoObj,
+            creadoPor: user.email,
           });
         }
         ok++;
