@@ -538,7 +538,6 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>El uso se cobra en tu cuenta de Anthropic, aparte del plan del Hub -- el costo real es muy bajo, del orden de centavos de dólar por tarea resuelta.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Sin esa clave cargada, "Claude IA" no ejecuta nada -- ninguna tarea asignada a ella se va a resolver sola.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>El botón flotante 💬 (abajo a la derecha, en cualquier sección) abre un chat con el mismo asistente. Con "📊 Incluir datos de mis clientes" tildado (viene tildado de entrada), cada pregunta le suma un resumen real de tareas pendientes/vencidas, contenidos por estado y campañas activas de todos tus clientes activos -- podés pedirle reportes y análisis ("¿qué cliente tiene más atrasos?", "¿cómo viene el mes de tal cliente?") y responde con tus datos de verdad, no en general.</li>
-                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span><strong>🔑 Clave de API del Hub (más abajo, en "Configuración")</strong>: distinto del chat de acá arriba -- esta clave es para cuando ponés a Claude Code a trabajar en el repositorio del Hub y necesitás que pueda leer o modificar los datos reales de tus clientes (no solo el código). Generála y pasásela a esa sesión cuando la necesite. ⚠️ Da acceso total (lectura y escritura) a todos tus clientes -- tratala como una contraseña.</li>
               </ul>
             </div>
           </div>
@@ -718,23 +717,6 @@
               <button class="btn btn-primary btn-sm" onclick="guardarClaudeApiKey()">Guardar</button>
             </div>
             <p id="claude-config-status" style="font-size:12px;margin-top:10px;"></p>
-          </div>
-        </div>
-        <div class="card" style="max-width:600px;margin-bottom:20px;">
-          <div class="card-header"><h2>🔑 Clave de API del Hub</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Para cuando ponés a Claude Code a trabajar en el repositorio del Hub y necesitás que pueda ver o modificar los datos reales de tus clientes (tareas, contenidos, campañas, informes), no solo el código. Generá la clave acá y pasásela a esa sesión cuando la necesite -- la puede usar directo con un simple pedido HTTP, sin instalar nada.</p>
-            <button class="btn btn-primary btn-sm" onclick="generarHubApiKey()">Generar clave nueva</button>
-            <button class="btn btn-danger btn-sm" id="hub-api-key-revoke-btn" style="display:none;" onclick="revocarHubApiKey()">Revocar clave</button>
-            <div id="hub-api-key-result" class="hidden" style="margin-top:14px;">
-              <label style="font-size:11px;">Clave (pasásela a la sesión de Claude Code)</label>
-              <div style="display:flex;gap:8px;margin-top:4px;">
-                <input type="text" id="hub-api-key-url" class="form-control" readonly style="font-size:12px;">
-                <button class="btn btn-secondary btn-sm" onclick="copiarHubApiKeyUrl()">Copiar</button>
-              </div>
-              <p style="font-size:11px;color:#dc2626;margin-top:8px;">⚠️ Esta clave da acceso de LECTURA Y ESCRITURA a los datos de TODOS tus clientes en el Hub -- tratala como una contraseña, guardala en un lugar seguro y no la compartas. Solo se muestra esta vez.</p>
-            </div>
-            <p id="hub-api-key-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
@@ -1976,7 +1958,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, getHubApiKeyStatus, generarHubApiKeyReq, revocarHubApiKeyReq } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2147,7 +2129,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarHubApiKeyStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
     if (sec === 'recursos') loadRecursos();
   };
 
@@ -7023,55 +7005,6 @@
       await cargarClaudeConfigStatus();
     } catch (e) {
       alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
-    }
-  };
-
-  // ── Clave de API del Hub -- pedido de Vaneh (28/09). Primer intento fue
-  // un conector de claude.ai (como Google Analytics), pero ella aclaró
-  // que quería algo más simple: "si yo estoy creando el hub acá, quiero
-  // simplemente que pueda acceder a todo lo que cargo cuando lo pongo a
-  // trabajar en ese repositorio" -- o sea, que una sesión de Claude Code
-  // trabajando en el repo del Hub pueda leer/escribir datos reales con
-  // un `curl` (ver CLAUDE.md/HANDOFF de cosmart-workers para el detalle
-  // y los endpoints), sin conectores ni workers-puente de por medio. La
-  // clave es literalmente un token de sesión permanente de este mismo
-  // Hub (ver handleGenerarHubApiKey en cosmart-workers) -- da acceso
-  // TOTAL de lectura Y escritura a todos los clientes, se muestra una
-  // sola vez (si se pierde, hay que generar otra).
-  async function cargarHubApiKeyStatus() {
-    const el = document.getElementById('hub-api-key-status');
-    if (!el) return;
-    try {
-      const { configurada } = await getHubApiKeyStatus();
-      el.textContent = configurada ? 'Ya tenés una clave generada (no se puede volver a mostrar -- si la perdiste, generá una nueva).' : 'Todavía no generaste una clave.';
-      el.style.color = configurada ? '#10b981' : 'var(--text-muted)';
-      document.getElementById('hub-api-key-revoke-btn').style.display = configurada ? '' : 'none';
-    } catch (e) {}
-  }
-  window.generarHubApiKey = async function() {
-    if (!confirm('¿Generar una clave nueva? Si ya había una, deja de funcionar al toque -- cualquier sesión de Claude Code que la estuviera usando va a tener que pedirte la nueva.')) return;
-    try {
-      const { apiKey } = await generarHubApiKeyReq();
-      document.getElementById('hub-api-key-url').value = apiKey;
-      document.getElementById('hub-api-key-result').classList.remove('hidden');
-      await cargarHubApiKeyStatus();
-    } catch (e) {
-      alert('Error al generar la clave: ' + (e.message || 'intentá de nuevo.'));
-    }
-  };
-  window.copiarHubApiKeyUrl = function() {
-    const input = document.getElementById('hub-api-key-url');
-    input.select();
-    navigator.clipboard?.writeText(input.value).catch(() => {});
-  };
-  window.revocarHubApiKey = async function() {
-    if (!confirm('¿Revocar la clave? Deja de funcionar al toque -- cualquier sesión de Claude Code que la estuviera usando va a tener que pedirte una nueva.')) return;
-    try {
-      await revocarHubApiKeyReq();
-      document.getElementById('hub-api-key-result').classList.add('hidden');
-      await cargarHubApiKeyStatus();
-    } catch (e) {
-      alert('Error al revocar: ' + (e.message || 'intentá de nuevo.'));
     }
   };
 

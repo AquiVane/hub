@@ -2,15 +2,9 @@
 
 Actualizado: 2026-09-28. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
-## Sesión 28/09 (cont.): "🔑 Clave de API del Hub" en Configuración (no un conector de claude.ai)
+## Sesión 28/09 (cont.): "Clave de API del Hub" -- probada y RECHAZADA por Vaneh, sacada del todo
 
-Pedido original: "quiero que pueda ver Claude Code en mi usuario... lo que tenemos en el hub de cada cliente (así como puede ver Google Analytics o Google Ads)". Primer intento: un conector remoto de Claude (MCP), con worker puente `cosmart-hub-mcp`. **Vaneh lo corrigió antes de deployar nada**: no quería un conector de claude.ai, quería algo más simple -- "si yo estoy creando el hub acá, quiero simplemente que pueda acceder a todo lo que cargo cuando lo pongo a trabajar en ese repositorio". O sea: que una sesión de Claude Code trabajando en `hub`/`cosmart-workers` pueda leer/escribir datos reales del Hub con un `curl`, sin conectores ni workers-puente. Se borró `cosmart-hub-mcp` (nunca llegó a deployarse) y quedó solo la parte que sí sirve -- documentada en detalle en el HANDOFF de `cosmart-workers` (ahí vive el backend real: `handleGenerarHubApiKey` y los endpoints útiles con ejemplos de `curl`).
-
-- **Card "🔑 Clave de API del Hub"** en Configuración (admin), junto a "🤖 Asistente Claude" -- son DOS cosas distintas: "Asistente Claude" es el chat 💬 embebido (usa la clave de Anthropic de Vaneh, responde adentro del Hub); "Clave de API del Hub" es para dársela a una sesión de Claude Code que necesite leer/modificar datos reales mientras trabaja en el repo.
-- **"Generar clave nueva"** → `generarHubApiKeyReq()` (`js/data.js` → `POST /admin/hub-api-key/generar`) → muestra la clave en un input de solo lectura + botón "Copiar" -- **se muestra una sola vez** (si se pierde, generar otra). Advertencia en rojo: da acceso de lectura Y escritura a TODOS los clientes.
-- **"Revocar clave"** (solo visible si ya hay una generada) → `revocarHubApiKeyReq()` (`DELETE /admin/hub-api-key`).
-- **Instrucciones**: ítem en la card "Asistente Claude / Claude IA" explicando la diferencia entre el chat embebido y esta clave.
-- **`CLAUDE.md` actualizado** con un párrafo corto que apunta al de `cosmart-workers` para el detalle completo de uso.
+Se había armado una card "🔑 Clave de API del Hub" en Configuración (generar/revocar un token para que una sesión de Claude Code leyera/escribiera datos reales de clientes vía `curl`) como segundo intento después de que ella misma rechazara un conector MCP más temprano ese día. **Vaneh también rechazó esto, con mucha fuerza** -- nunca llegó a generar una clave, y no quiere ningún mecanismo de acceso especial para el Hub: "no quiero ese comportamiento en el hub... cuando haga algo en claude code dentro del repositorio de github, [quiero que] termine y lo suba al hub". Se sacó TODO: la card y sus funciones (`generarHubApiKey`/`revocarHubApiKey`/`copiarHubApiKeyUrl`/`cargarHubApiKeyStatus`) de `admin/index.html`, `getHubApiKeyStatus`/`generarHubApiKeyReq`/`revocarHubApiKeyReq` de `js/data.js`, el ítem de Instrucciones, y las referencias en `CLAUDE.md` (acá y en `cosmart-workers`, donde vivía el backend). Ver el HANDOFF de `cosmart-workers` para el historial completo de los dos intentos. **Regla que queda, ver `CLAUDE.md`**: nunca más ofrecer ni pedir un token/clave/conector para que una sesión "opere" el Hub -- un pedido de feature se resuelve con código y push, como siempre.
 
 ## Sesión 28/09 (cont.): botón "Contactos" en Links y Archivos -- reusa "Equipo del cliente", NO una sección nueva
 

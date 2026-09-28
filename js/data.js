@@ -679,22 +679,6 @@ export async function setClaudeApiKey(apiKey) {
   return api('POST', '/admin/claude-config', { apiKey });
 }
 
-// ── Conector para Claude (MCP) -- ver comentario largo en admin/index.html ──
-export async function getHubApiKeyStatus() {
-  if (DEMO_MODE) return { configurada: false };
-  return api('GET', '/admin/hub-api-key');
-}
-
-export async function generarHubApiKeyReq() {
-  if (DEMO_MODE) { alert('En modo demo no se puede generar una clave real.'); return { apiKey: '' }; }
-  return api('POST', '/admin/hub-api-key/generar');
-}
-
-export async function revocarHubApiKeyReq() {
-  if (DEMO_MODE) return { ok: true };
-  return api('DELETE', '/admin/hub-api-key');
-}
-
 // Verticales/proyectos propios de una agencia (no-COSMART) -- ver comentario
 // en el worker (handleGetVerticales/handleSetVerticales).
 export async function getVerticalesAgencia() {
