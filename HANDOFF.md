@@ -1,6 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-09-27. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-09-28. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## Sesión 28/09: elegir cliente puntual al generar informes
+
+Pedido de Vaneh: "también necesito elegir de qué cliente se hace el informe, no necesariamente hacerlo de todos cada vez" -- "Generar mes pasado"/"Generar mes actual" (sesión anterior) siempre corrían sobre TODOS los clientes activos. Select nuevo "Generar para: [Todos los clientes ▾]" en `#sec-informes` (admin, arriba de los dos botones de generar), poblado por `poblarInformesClienteSel()` (reusa `getClientsCacheadoTareas()`, el mismo helper cacheado de la sesión anterior -- no dispara un `getAllClients()` de más). Vacío ("Todos los clientes") mantiene el comportamiento de siempre; elegir uno puntual manda su `clientId` a `generarInformesManual(mes, anio, clientId)` (`js/data.js` → `POST /admin/informes/generar`), y el backend (`handleGenerarInformesManual`, cosmart-workers) filtra la lista de clientes a ese único antes de generar. El `confirm()` de cada botón ahora dice explícitamente "de TODOS los clientes" o `de "Nombre del cliente"` para que quede claro qué se va a generar antes de tocar el botón.
 
 ## Sesión 27/09 (cont. 6): Informes clientes -- generar mes actual + exportar Excel, y Claude IA con datos reales
 

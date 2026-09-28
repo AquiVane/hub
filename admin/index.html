@@ -634,11 +634,17 @@
 
       <!-- Config -->
       <div id="sec-informes" class="hidden">
-        <div class="mb-20 flex items-center gap-8">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
           <h2 style="font-size:18px;font-weight:700;">Informes mensuales</h2>
           <span id="informesCount" class="text-muted text-sm"></span>
           <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportarInformesExcel()">⬇️ Exportar Excel</button>
           <button class="btn btn-secondary btn-sm" onclick="abrirPreviewResumenEquipo()">👁 Vista previa: resumen de equipo</button>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-top:-8px;margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-muted);">Generar para:</label>
+          <select id="informes-cliente-sel" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;">
+            <option value="">Todos los clientes</option>
+          </select>
           <button class="btn btn-secondary btn-sm" onclick="generarInformesAhora()">Generar mes pasado</button>
           <button class="btn btn-secondary btn-sm" onclick="generarInformesMesActual()">📅 Generar mes actual (anticipado)</button>
         </div>
@@ -6453,6 +6459,23 @@
     } catch (e) {
       if (!_informesCache.length) listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
     }
+    poblarInformesClienteSel();
+  }
+
+  // Pedido de Vaneh (28/09): "necesito elegir de qué cliente se hace el
+  // informe, no necesariamente hacerlo de todos cada vez" -- antes
+  // "Generar mes pasado/actual" siempre corría sobre TODOS los clientes
+  // activos. El select vacío ("Todos los clientes") mantiene ese
+  // comportamiento de siempre; elegir uno puntual manda su clientId y el
+  // backend genera solo el de ese cliente (ver handleGenerarInformesManual).
+  async function poblarInformesClienteSel() {
+    const sel = document.getElementById('informes-cliente-sel');
+    if (!sel) return;
+    const valorActual = sel.value;
+    const clients = await getClientsCacheadoTareas();
+    sel.innerHTML = `<option value="">Todos los clientes</option>` +
+      clients.filter(c => c.activo).map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('');
+    sel.value = valorActual;
   }
 
   function renderInformes() {
@@ -6566,10 +6589,17 @@
     }
   };
 
+  function informesClienteSeleccionadoTexto() {
+    const sel = document.getElementById('informes-cliente-sel');
+    if (!sel || !sel.value) return 'de TODOS los clientes';
+    return `de "${sel.options[sel.selectedIndex].textContent}"`;
+  }
+
   window.generarInformesAhora = async function() {
-    if (!confirm('¿Generar los informes del mes pasado ahora? Esto no se los envía a los clientes, solo los deja listos para revisar.')) return;
+    const clientId = document.getElementById('informes-cliente-sel')?.value || undefined;
+    if (!confirm(`¿Generar los informes del mes pasado ahora (${informesClienteSeleccionadoTexto()})? Esto no se los envía a los clientes, solo los deja listos para revisar.`)) return;
     try {
-      const res = await generarInformesManual();
+      const res = await generarInformesManual(undefined, undefined, clientId);
       alert(`Se generaron ${res.generados} informe(s) nuevos.`);
       await loadInformes();
     } catch (e) {
@@ -6588,10 +6618,11 @@
   // (mientras no esté aprobado) con lo nuevo que se completó desde la
   // última vez -- mismo comportamiento que ya tenía "Generar ahora".
   window.generarInformesMesActual = async function() {
-    if (!confirm('¿Generar los informes del MES ACTUAL con lo que se completó hasta hoy? El mes no tiene por qué haber terminado -- podés volver a generarlo más adelante para actualizarlo. Esto no se los envía a los clientes, solo los deja listos para revisar.')) return;
+    const clientId = document.getElementById('informes-cliente-sel')?.value || undefined;
+    if (!confirm(`¿Generar los informes del MES ACTUAL (${informesClienteSeleccionadoTexto()}) con lo que se completó hasta hoy? El mes no tiene por qué haber terminado -- podés volver a generarlo más adelante para actualizarlo. Esto no se los envía a los clientes, solo los deja listos para revisar.`)) return;
     try {
       const hoy = new Date();
-      const res = await generarInformesManual(hoy.getMonth(), hoy.getFullYear());
+      const res = await generarInformesManual(hoy.getMonth(), hoy.getFullYear(), clientId);
       alert(`Se generaron ${res.generados} informe(s) del mes actual.`);
       await loadInformes();
     } catch (e) {

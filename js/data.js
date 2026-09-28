@@ -616,9 +616,9 @@ export async function eliminarInforme(id) {
   return api('DELETE', `/admin/informes/${encodeURIComponent(id)}`);
 }
 
-export async function generarInformesManual(mes, anio) {
+export async function generarInformesManual(mes, anio, clientId) {
   if (DEMO_MODE) { alert('En modo demo no se pueden generar informes reales.'); return { generados: 0 }; }
-  return api('POST', '/admin/informes/generar', { mes, anio });
+  return api('POST', '/admin/informes/generar', { mes, anio, clientId });
 }
 
 export async function previewResumenEquipo(dias = 30) {
