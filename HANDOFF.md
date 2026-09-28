@@ -2,6 +2,16 @@
 
 Actualizado: 2026-09-28. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Sesión 28/09 (cont.): "🔌 Conector para Claude (MCP)" en Configuración
+
+Pedido de Vaneh: "quiero que pueda ver Claude Code en mi usuario... lo que tenemos en el hub de cada cliente (así como puede ver Google Analytics o Google Ads)". Es un conector remoto de Claude (MCP) -- el backend real (worker nuevo `cosmart-hub-mcp`, autenticación, etc.) está documentado en el HANDOFF de `cosmart-workers`; acá solo la UI para generar/revocar la clave.
+
+- **Card nueva "🔌 Conector para Claude (MCP)"** en Configuración (admin), junto a "🤖 Asistente Claude" -- son DOS cosas distintas, no confundir: "Asistente Claude" es el chat 💬 embebido en el Hub (usa la clave de Anthropic de Vaneh); "Conector para Claude" es para que sesiones de Claude EXTERNAS (Claude Code, claude.ai) accedan al Hub como si fueran ella.
+- **"Generar clave nueva"** → `generarHubApiKeyReq()` (`js/data.js` → `POST /admin/hub-api-key/generar`) → arma la URL completa (`https://cosmart-hub-mcp.<subdominio>.workers.dev/mcp/<clave>`) y la muestra en un input de solo lectura + botón "Copiar" -- **se muestra una sola vez**, no hay forma de volver a verla después (mismo criterio que cualquier secreto -- si la perdió, generar una nueva). Advertencia en rojo explícita: dar esa URL es dar acceso de lectura Y escritura a TODOS los clientes.
+- **"Revocar clave"** (solo visible si ya hay una generada) → `revocarHubApiKeyReq()` (`DELETE /admin/hub-api-key`) -- invalida el conector al toque, ella tendría que generar una nueva y actualizar la URL en claude.ai si lo revoca por error.
+- **Instrucciones**: se sumó un ítem nuevo a la card "Asistente Claude / Claude IA" explicando la diferencia entre el chat embebido y este conector, y remarcando que es acceso total.
+- **Lo que falta y NO es responsabilidad de este repo**: (1) que alguien dispare el deploy manual de `marketing-hub` y `cosmart-hub-mcp` (ver "El deploy es MANUAL" en el HANDOFF de `cosmart-workers` -- el código en `main` no alcanza solo); (2) que Vaneh agregue la URL generada como conector personalizado en claude.ai → Configuración → Conectores -- ningún código de este repo puede hacer eso por ella.
+
 ## Sesión 28/09: elegir cliente puntual al generar informes
 
 Pedido de Vaneh: "también necesito elegir de qué cliente se hace el informe, no necesariamente hacerlo de todos cada vez" -- "Generar mes pasado"/"Generar mes actual" (sesión anterior) siempre corrían sobre TODOS los clientes activos. Select nuevo "Generar para: [Todos los clientes ▾]" en `#sec-informes` (admin, arriba de los dos botones de generar), poblado por `poblarInformesClienteSel()` (reusa `getClientsCacheadoTareas()`, el mismo helper cacheado de la sesión anterior -- no dispara un `getAllClients()` de más). Vacío ("Todos los clientes") mantiene el comportamiento de siempre; elegir uno puntual manda su `clientId` a `generarInformesManual(mes, anio, clientId)` (`js/data.js` → `POST /admin/informes/generar`), y el backend (`handleGenerarInformesManual`, cosmart-workers) filtra la lista de clientes a ese único antes de generar. El `confirm()` de cada botón ahora dice explícitamente "de TODOS los clientes" o `de "Nombre del cliente"` para que quede claro qué se va a generar antes de tocar el botón.
