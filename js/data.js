@@ -692,9 +692,9 @@ export async function setVerticalesAgencia(verticales) {
   return api('POST', '/admin/verticales', { verticales });
 }
 
-export async function preguntarClaude(mensaje, historial) {
+export async function preguntarClaude(mensaje, historial, incluirDatos) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
-  return api('POST', '/ai/preguntar', { mensaje, historial });
+  return api('POST', '/ai/preguntar', { mensaje, historial, incluirDatos });
 }
 
 // ── Cuentas publicitarias propias de la agencia (Meta/Google/TikTok/LinkedIn) ──

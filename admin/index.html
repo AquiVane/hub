@@ -537,6 +537,7 @@
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Una vez conectada, podés asignarle una tarea directamente a "Claude IA" (aparece como una persona más en "Asignar a") -- la resuelve sola a la hora que le pongas de vencimiento, y deja el resultado como comentario en la tarea.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>El uso se cobra en tu cuenta de Anthropic, aparte del plan del Hub -- el costo real es muy bajo, del orden de centavos de dólar por tarea resuelta.</li>
                 <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>Sin esa clave cargada, "Claude IA" no ejecuta nada -- ninguna tarea asignada a ella se va a resolver sola.</li>
+                <li style="font-size:13px;color:var(--text-muted);padding-left:16px;position:relative;line-height:1.6;"><span style="position:absolute;left:0;color:#7c3aed;">›</span>El botón flotante 💬 (abajo a la derecha, en cualquier sección) abre un chat con el mismo asistente. Con "📊 Incluir datos de mis clientes" tildado (viene tildado de entrada), cada pregunta le suma un resumen real de tareas pendientes/vencidas, contenidos por estado y campañas activas de todos tus clientes activos -- podés pedirle reportes y análisis ("¿qué cliente tiene más atrasos?", "¿cómo viene el mes de tal cliente?") y responde con tus datos de verdad, no en general.</li>
               </ul>
             </div>
           </div>
@@ -636,10 +637,12 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Informes mensuales</h2>
           <span id="informesCount" class="text-muted text-sm"></span>
-          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="abrirPreviewResumenEquipo()">👁 Vista previa: resumen de equipo</button>
-          <button class="btn btn-secondary btn-sm" onclick="generarInformesAhora()">Generar ahora</button>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportarInformesExcel()">⬇️ Exportar Excel</button>
+          <button class="btn btn-secondary btn-sm" onclick="abrirPreviewResumenEquipo()">👁 Vista previa: resumen de equipo</button>
+          <button class="btn btn-secondary btn-sm" onclick="generarInformesAhora()">Generar mes pasado</button>
+          <button class="btn btn-secondary btn-sm" onclick="generarInformesMesActual()">📅 Generar mes actual (anticipado)</button>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno. El resumen de equipo (un mail por colaborador, con lo que cada uno completó) se envía automáticamente ese mismo día -- desde acá podés previsualizarlo y mandarlo antes si querés.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;">Se generan solos el día 1 de cada mes. No se le envían al cliente hasta que apruebes cada uno. "Generar mes actual" arma el informe con lo hecho HASTA HOY (aunque el mes no haya terminado) -- podés volver a generarlo más veces para actualizarlo antes de aprobarlo. El resumen de equipo (un mail por colaborador, con lo que cada uno completó) se envía automáticamente ese mismo día -- desde acá podés previsualizarlo y mandarlo antes si querés.</p>
         <div id="informesList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
@@ -6574,6 +6577,49 @@
     }
   };
 
+  // Pedido de Vaneh (27/09): "tengo que poder generar el resumen antes si
+  // quiero el de los clientes" -- "Generar ahora" solo generaba el mes
+  // PASADO (ya cerrado); no había forma de adelantar el informe del mes
+  // en curso. `generarInformesManual` ya aceptaba mes/año como parámetro
+  // opcional (el backend arma el informe con lo que haya hasta la fecha
+  // que sea, no hace falta que el mes ya haya terminado), solo faltaba
+  // un botón que lo llamara con el mes actual en vez del default.
+  // Volver a tocar este botón más tarde en el mes actualiza el informe
+  // (mientras no esté aprobado) con lo nuevo que se completó desde la
+  // última vez -- mismo comportamiento que ya tenía "Generar ahora".
+  window.generarInformesMesActual = async function() {
+    if (!confirm('¿Generar los informes del MES ACTUAL con lo que se completó hasta hoy? El mes no tiene por qué haber terminado -- podés volver a generarlo más adelante para actualizarlo. Esto no se los envía a los clientes, solo los deja listos para revisar.')) return;
+    try {
+      const hoy = new Date();
+      const res = await generarInformesManual(hoy.getMonth(), hoy.getFullYear());
+      alert(`Se generaron ${res.generados} informe(s) del mes actual.`);
+      await loadInformes();
+    } catch (e) {
+      alert('Error al generar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  // Exportar TODOS los informes cargados (los que ya se ven en pantalla,
+  // aprobados y pendientes) a un Excel -- una fila por ítem, para poder
+  // filtrar/armar tablas dinámicas afuera del Hub. Pedido de Vaneh
+  // (27/09): "tengo que poder exportar los reportes también".
+  window.exportarInformesExcel = async function() {
+    if (!_informesCache.length) { alert('No hay informes cargados para exportar.'); return; }
+    await loadXLSXLibAdmin();
+    const headers = ['Cliente', 'Mes', 'Año', 'Ítem', 'Tipo', 'Fecha', 'Estado del informe'];
+    const filas = [];
+    _informesCache.forEach(inf => {
+      const estadoInforme = inf.aprobado ? 'Aprobado y enviado' : 'Pendiente de revisión';
+      if (!inf.items.length) { filas.push([inf.clientNombre, MESES_NOMBRE_JS[inf.mes], inf.anio, '(sin ítems)', '', '', estadoInforme]); return; }
+      inf.items.forEach(it => filas.push([inf.clientNombre, MESES_NOMBRE_JS[inf.mes], inf.anio, it.titulo, it.tipo, it.fecha || '', estadoInforme]));
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...filas]);
+    ws['!cols'] = [22, 12, 8, 40, 14, 12, 20].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Informes');
+    XLSX.writeFile(wb, `Informes_clientes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   let _resumenPreviewDias = 30;
   window.abrirPreviewResumenEquipo = async function() {
     const modal = document.getElementById('resumenPreviewModal');
@@ -7421,24 +7467,35 @@
     panel.style.cssText = 'position:fixed;bottom:82px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
       <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">🤖 Asistente Claude</div>
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;" title="Le suma al mensaje un resumen de tareas/contenidos/campañas de tus clientes activos, para que pueda responder con datos reales en vez de en general.">
+        <input type="checkbox" id="claude-widget-incluir-datos" onchange="localStorage.setItem('hub_claude_incluir_datos', this.checked ? '1' : '0')">
+        📊 Incluir datos de mis clientes (para reportes/análisis)
+      </label>
       <div id="claude-widget-msgs" style="flex:1;overflow-y:auto;padding:12px;font-size:13px;"></div>
       <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);">
         <input type="text" id="claude-widget-input" class="form-control" placeholder="Escribí tu pregunta..." style="font-size:12px;padding:6px 8px;" onkeydown="if(event.key==='Enter')enviarMensajeClaudeWidget();">
         <button class="btn btn-primary btn-sm" onclick="enviarMensajeClaudeWidget()">➤</button>
       </div>`;
     document.body.appendChild(panel);
+    // Default ON: pedido explícito de Vaneh ("tengo que permitirte ver
+    // los datos de los clientes... para que vos puedas hacer reportes y
+    // análisis") -- se persiste en localStorage para que, una vez que la
+    // apague si quiere charlas más genéricas/livianas, se quede apagada.
+    const chkDatos = document.getElementById('claude-widget-incluir-datos');
+    chkDatos.checked = localStorage.getItem('hub_claude_incluir_datos') !== '0';
   }
   window.enviarMensajeClaudeWidget = async function() {
     const input = document.getElementById('claude-widget-input');
     const mensaje = input.value.trim();
     if (!mensaje) return;
     input.value = '';
+    const incluirDatos = document.getElementById('claude-widget-incluir-datos')?.checked !== false;
     const msgs = document.getElementById('claude-widget-msgs');
     msgs.innerHTML += `<div style="margin-bottom:10px;text-align:right;"><span style="background:var(--primary-light);color:var(--primary-dark);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;">${escapeHtml(mensaje)}</span></div>`;
-    msgs.innerHTML += `<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">Pensando...</div>`;
+    msgs.innerHTML += `<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">${incluirDatos ? 'Mirando tus datos y pensando...' : 'Pensando...'}</div>`;
     msgs.scrollTop = msgs.scrollHeight;
     try {
-      const { respuesta } = await preguntarClaude(mensaje, _claudeChatHistorial);
+      const { respuesta } = await preguntarClaude(mensaje, _claudeChatHistorial, incluirDatos);
       _claudeChatHistorial.push({ role: 'user', content: mensaje }, { role: 'assistant', content: respuesta });
       document.getElementById('claude-widget-loading')?.remove();
       msgs.innerHTML += `<div style="margin-bottom:10px;"><span style="background:#f1f5f9;color:var(--text);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(respuesta)}</span></div>`;
