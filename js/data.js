@@ -679,8 +679,8 @@ export async function setClaudeApiKey(apiKey) {
   return api('POST', '/admin/claude-config', { apiKey });
 }
 
-// Verticales/proyectos propios de una agencia (no-COSMART) -- ver comentario
-// en el worker (handleGetVerticales/handleSetVerticales).
+// Verticales/proyectos propios de una agencia (COSMART incluida desde el
+// 28/09) -- ver comentario en el worker (handleGetVerticales/handleSetVerticales).
 export async function getVerticalesAgencia() {
   if (DEMO_MODE) return [];
   const r = await api('GET', '/admin/verticales');

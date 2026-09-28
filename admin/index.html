@@ -2018,15 +2018,22 @@
       }));
     }
   }
-  // Verticales: COSMART sigue con su lista fija de siempre en estos 7
-  // selects (cero riesgo de tocar datos ya cargados). Cualquier OTRA
-  // agencia arranca sin ningún rastro de las verticales propias de
-  // COSMART (Brújula, Euforia, etc.) -- puede armar su propia lista
-  // desde Configuración, pensada para usarla como quiera (verticales
-  // propias o simplemente proyectos internos). Pedido de Vaneh (13/09):
-  // "que en el logueo de agencia no queden rasgos de verticales de
-  // COSMART... de COSMART nada".
+  // Verticales: cada agencia (COSMART incluida, desde el 28/09) maneja su
+  // propia lista editable desde Configuración -- guardada vía
+  // getVerticalesAgencia/setVerticalesAgencia, aislada por agencyId. Antes
+  // COSMART tenía esta lista fija hardcodeada en 7 selects distintos y no
+  // la podía tocar sin pedirle un cambio de código a Claude; cualquier
+  // OTRA agencia sí arrancaba con la card de "Verticales propias" (y
+  // siempre sin ningún rastro de las verticales de COSMART, como pidió
+  // Vaneh el 13/09: "que en el logueo de agencia no queden rasgos de
+  // verticales de COSMART... de COSMART nada" -- eso se sigue respetando,
+  // cada agencyId tiene su propia lista en KV, nunca se mezclan). Para no
+  // perder las que ya estaban en uso en tareas/contenidos viejos de
+  // COSMART, si su lista todavía no fue seedeada (primera vez que corre
+  // esto) se la inicializa con la misma lista fija que tenía antes, más
+  // "VAMA Academy" y "VAMA Tienda" (pedido de Vaneh, 28/09).
   const VERTICAL_SELECT_IDS = ['misTareasFiltroVertical', 'internasVerticalFiltro', 'leadsVerticalFiltro', 'in-vertical', 'mt-vertical', 'nmt-vertical', 'lead-vertical'];
+  const VERTICALES_COSMART_SEED = ['Brújula', 'Rumbo Voraz', 'Design', 'ComuniCOS', 'Talent', 'Shows', 'Euforia', 'Training', 'MPG', 'Home COSMART', 'Hub', 'VAMA Academy', 'VAMA Tienda'];
   let _verticalesPropias = [];
   function aplicarVerticalesPropiasEnSelects() {
     VERTICAL_SELECT_IDS.forEach(id => {
@@ -2038,8 +2045,12 @@
       sel.value = valorPrevio;
     });
   }
-  if (!esCosmart) {
+  {
     try { _verticalesPropias = await getVerticalesAgencia(); } catch (e) { _verticalesPropias = []; }
+    if (esCosmart && !_verticalesPropias.length) {
+      _verticalesPropias = [...VERTICALES_COSMART_SEED];
+      try { await setVerticalesAgencia(_verticalesPropias); } catch (e) {}
+    }
     aplicarVerticalesPropiasEnSelects();
     document.getElementById('cardVerticalesPropias').classList.remove('hidden');
     renderVerticalesPropiasList();
@@ -5681,11 +5692,14 @@
     loadMisTareas();
   };
 
-  const VERTICALES_VALIDAS = ['Brújula','Rumbo Voraz','Design','ComuniCOS','Talent','Shows','Euforia','Training','MPG','Home COSMART','Hub'];
+  // Antes era una lista fija aparte (`VERTICALES_VALIDAS`) que se
+  // desincronizaba de la real -- ahora matchea contra las verticales
+  // propias de la agencia (`_verticalesPropias`, editable desde
+  // Configuración), la misma fuente que ya usan los selects.
   function adivinarVerticalImport(val) {
     const n = normalizarTextoImport(val);
     if (!n) return null;
-    const match = VERTICALES_VALIDAS.find(v => normalizarTextoImport(v) === n);
+    const match = _verticalesPropias.find(v => normalizarTextoImport(v) === n);
     return match || null;
   }
 
