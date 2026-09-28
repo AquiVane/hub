@@ -2,15 +2,26 @@
 
 Actualizado: 2026-09-28. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
-## Sesión 28/09 (cont.): "🔌 Conector para Claude (MCP)" en Configuración
+## Sesión 28/09 (cont.): "🔑 Clave de API del Hub" en Configuración (no un conector de claude.ai)
 
-Pedido de Vaneh: "quiero que pueda ver Claude Code en mi usuario... lo que tenemos en el hub de cada cliente (así como puede ver Google Analytics o Google Ads)". Es un conector remoto de Claude (MCP) -- el backend real (worker nuevo `cosmart-hub-mcp`, autenticación, etc.) está documentado en el HANDOFF de `cosmart-workers`; acá solo la UI para generar/revocar la clave.
+Pedido original: "quiero que pueda ver Claude Code en mi usuario... lo que tenemos en el hub de cada cliente (así como puede ver Google Analytics o Google Ads)". Primer intento: un conector remoto de Claude (MCP), con worker puente `cosmart-hub-mcp`. **Vaneh lo corrigió antes de deployar nada**: no quería un conector de claude.ai, quería algo más simple -- "si yo estoy creando el hub acá, quiero simplemente que pueda acceder a todo lo que cargo cuando lo pongo a trabajar en ese repositorio". O sea: que una sesión de Claude Code trabajando en `hub`/`cosmart-workers` pueda leer/escribir datos reales del Hub con un `curl`, sin conectores ni workers-puente. Se borró `cosmart-hub-mcp` (nunca llegó a deployarse) y quedó solo la parte que sí sirve -- documentada en detalle en el HANDOFF de `cosmart-workers` (ahí vive el backend real: `handleGenerarHubApiKey` y los endpoints útiles con ejemplos de `curl`).
 
-- **Card nueva "🔌 Conector para Claude (MCP)"** en Configuración (admin), junto a "🤖 Asistente Claude" -- son DOS cosas distintas, no confundir: "Asistente Claude" es el chat 💬 embebido en el Hub (usa la clave de Anthropic de Vaneh); "Conector para Claude" es para que sesiones de Claude EXTERNAS (Claude Code, claude.ai) accedan al Hub como si fueran ella.
-- **"Generar clave nueva"** → `generarHubApiKeyReq()` (`js/data.js` → `POST /admin/hub-api-key/generar`) → arma la URL completa (`https://cosmart-hub-mcp.<subdominio>.workers.dev/mcp/<clave>`) y la muestra en un input de solo lectura + botón "Copiar" -- **se muestra una sola vez**, no hay forma de volver a verla después (mismo criterio que cualquier secreto -- si la perdió, generar una nueva). Advertencia en rojo explícita: dar esa URL es dar acceso de lectura Y escritura a TODOS los clientes.
-- **"Revocar clave"** (solo visible si ya hay una generada) → `revocarHubApiKeyReq()` (`DELETE /admin/hub-api-key`) -- invalida el conector al toque, ella tendría que generar una nueva y actualizar la URL en claude.ai si lo revoca por error.
-- **Instrucciones**: se sumó un ítem nuevo a la card "Asistente Claude / Claude IA" explicando la diferencia entre el chat embebido y este conector, y remarcando que es acceso total.
-- **Lo que falta y NO es responsabilidad de este repo**: (1) que alguien dispare el deploy manual de `marketing-hub` y `cosmart-hub-mcp` (ver "El deploy es MANUAL" en el HANDOFF de `cosmart-workers` -- el código en `main` no alcanza solo); (2) que Vaneh agregue la URL generada como conector personalizado en claude.ai → Configuración → Conectores -- ningún código de este repo puede hacer eso por ella.
+- **Card "🔑 Clave de API del Hub"** en Configuración (admin), junto a "🤖 Asistente Claude" -- son DOS cosas distintas: "Asistente Claude" es el chat 💬 embebido (usa la clave de Anthropic de Vaneh, responde adentro del Hub); "Clave de API del Hub" es para dársela a una sesión de Claude Code que necesite leer/modificar datos reales mientras trabaja en el repo.
+- **"Generar clave nueva"** → `generarHubApiKeyReq()` (`js/data.js` → `POST /admin/hub-api-key/generar`) → muestra la clave en un input de solo lectura + botón "Copiar" -- **se muestra una sola vez** (si se pierde, generar otra). Advertencia en rojo: da acceso de lectura Y escritura a TODOS los clientes.
+- **"Revocar clave"** (solo visible si ya hay una generada) → `revocarHubApiKeyReq()` (`DELETE /admin/hub-api-key`).
+- **Instrucciones**: ítem en la card "Asistente Claude / Claude IA" explicando la diferencia entre el chat embebido y esta clave.
+- **`CLAUDE.md` actualizado** con un párrafo corto que apunta al de `cosmart-workers` para el detalle completo de uso.
+
+## Sesión 28/09 (cont.): sección "Contactos" en Links y Archivos del cliente
+
+Pedido de Vaneh: "nunca agregaste la sección de contactos dentro de los links del cliente" (quedó pendiente de una sesión anterior). Tercera columna en `sec === 'links'` (`js/app.js`), al lado de Links y Archivos -- mismo patrón que Links: vive en `STATE.home.contactos` (array), se guarda con `saveHomeData` (no hizo falta ningún endpoint nuevo). Cada contacto: `{id, nombre, cargo, telefono, email, notas}`. Modal `contactoModal` (`app/index.html`) + `openContactoModal`/`renderContactos` (`js/app.js`), mismo look que las tarjetas de Links (`.link-card`). `.links-archivos-split` pasó de 2 a 3 columnas (`css/style.css`, con un breakpoint intermedio a 2 columnas en pantallas medianas antes de bajar a 1 en mobile). Cache-bust `js/app.js?v=33` en `app/index.html`, y `&hv=2` en el iframe de "Contenidos propios" (aunque Contactos no aplica ahí -- esa sección está oculta para `_cosmart`/`_personal`, se bumpeó igual por prolijidad ya que `app/index.html` cambió).
+
+## Sesión 28/09 (cont.): los informes aprobados aparecen en "Reportes" del cliente
+
+Pedido de Vaneh: "los reportes que se generan y se envían a los clientes, también tienen que aparecer en la sección reportes de los clientes como un archivo descargable bonito para presentar". El backend real (reusa el mismo html de marca del mail, guardado con el mecanismo ya existente de "Reportes") está en el HANDOFF de `cosmart-workers`. Acá, del lado del cliente:
+- **Badge 📈 en la pestaña del mes** (`renderReportes`, `js/app.js`) cuando `r.origen === 'informe-mensual'` -- distingue un informe automático de uno subido a mano por Vaneh.
+- **Botón "⬇️ Descargar"** (nuevo, arriba de las pestañas) → `descargarReporteActual()`: baja el html del mes actual como un `.html` standalone (Blob + `<a download>`), nombrado `Reporte_<Cliente>_<Mes>.html` -- se abre solo en cualquier navegador, no depende de tener el Hub abierto. Es el "archivo descargable" que pidió; no se generó un PDF real (hubiera necesitado una librería nueva del lado del cliente o server-side) -- si en algún momento hace falta específicamente PDF, evaluar `html2pdf.js` o similar ahí.
+- Instrucciones actualizadas en la card "Reportes".
 
 ## Sesión 28/09: elegir cliente puntual al generar informes
 

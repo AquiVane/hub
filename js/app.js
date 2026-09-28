@@ -455,6 +455,8 @@ async function loadAllData() {
   });
   STATE.home.links = STATE.links;
   if (_linksSinId) saveHomeData(clientId, STATE.home).catch(() => {});
+  STATE.contactos = home?.contactos || [];
+  STATE.home.contactos = STATE.contactos;
   updateBadges();
   cargarDatosSecundarios(); // en segundo plano, no se espera
 }
@@ -942,6 +944,11 @@ function renderSection(sec) {
     linkBtn.textContent = '+ Nuevo link';
     linkBtn.onclick = () => openLinkModal(null);
     actions.appendChild(linkBtn);
+    const contactoBtn = document.createElement('button');
+    contactoBtn.className = 'btn btn-secondary';
+    contactoBtn.textContent = '+ Nuevo contacto';
+    contactoBtn.onclick = () => openContactoModal(null);
+    actions.appendChild(contactoBtn);
     const archivoBtn = document.createElement('button');
     archivoBtn.className = 'btn btn-primary';
     archivoBtn.textContent = '+ Nuevo archivo';
@@ -954,12 +961,17 @@ function renderSection(sec) {
           <div id="links-col-body"></div>
         </div>
         <div class="links-archivos-col">
+          <h3 class="links-archivos-col-title"><i data-lucide="contact" style="width:15px;height:15px;"></i> Contactos</h3>
+          <div id="contactos-col-body"></div>
+        </div>
+        <div class="links-archivos-col">
           <h3 class="links-archivos-col-title"><i data-lucide="folder-open" style="width:15px;height:15px;"></i> Archivos</h3>
           <div id="archivos-col-body"></div>
         </div>
       </div>
     `;
     renderLinks(document.getElementById('links-col-body'));
+    renderContactos(document.getElementById('contactos-col-body'));
     renderArchivos(document.getElementById('archivos-col-body'));
     setTimeout(refreshIcons, 50);
   }
@@ -1072,8 +1084,11 @@ async function renderReportes(container) {
   }
   const actual = STATE.reportes.find(r => r.mes === _reporteMesSeleccionado);
   container.innerHTML = `
-    <div class="tabs" style="margin-bottom:14px;">
-      ${STATE.reportes.map(r => `<button class="tab-btn ${r.mes === _reporteMesSeleccionado ? 'active' : ''}" onclick="verReporteDeMes('${r.mes}')">${mesLabel(r.mes)}</button>`).join('')}
+    <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;justify-content:space-between;">
+      <div class="tabs">
+        ${STATE.reportes.map(r => `<button class="tab-btn ${r.mes === _reporteMesSeleccionado ? 'active' : ''}" onclick="verReporteDeMes('${r.mes}')">${r.origen === 'informe-mensual' ? '📈 ' : ''}${mesLabel(r.mes)}</button>`).join('')}
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="descargarReporteActual()">⬇️ Descargar</button>
     </div>
     <div id="reporte-frame-wrap"></div>
   `;
@@ -1105,6 +1120,24 @@ async function renderReportes(container) {
     } catch (e) {}
   });
 }
+// "archivo descargable" (pedido de Vaneh, 28/09) -- el reporte ya se ve
+// en pantalla dentro del iframe, esto lo baja como un .html standalone
+// (mismo contenido, se abre solo en cualquier navegador) para que lo
+// pueda guardar/mandar/presentar sin depender de tener el Hub abierto.
+window.descargarReporteActual = function() {
+  const actual = STATE.reportes.find(r => r.mes === _reporteMesSeleccionado);
+  if (!actual || !actual.html) { alert('Todavía se está cargando el reporte, esperá un segundo y probá de nuevo.'); return; }
+  const blob = new Blob([actual.html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Reporte_${(STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_')}_${mesLabel(actual.mes).replace(/\s+/g, '_')}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 window.verReporteDeMes = function(mes) {
   _reporteMesSeleccionado = mes;
   renderSection('reportes');
@@ -5523,6 +5556,67 @@ window.openLinkModal = function(id) {
 };
 
 // ──────────────────────────────────────────────────────
+// CONTACTOS -- pedido de Vaneh (28/09): "nunca agregaste la sección de
+// contactos dentro de los links del cliente". Mismo patrón que Links
+// (vive en STATE.home.contactos, se guarda con saveHomeData), tercera
+// columna al lado de Links y Archivos en la sección "Links y Archivos".
+// ──────────────────────────────────────────────────────
+function renderContactos(container) {
+  const contactos = STATE.contactos || [];
+  container.innerHTML = `
+    ${contactos.length ? `
+      <div class="links-grid">
+        ${contactos.map(c => `
+          <div class="link-card" style="cursor:default;align-items:flex-start;">
+            <div class="link-card-icon" style="margin-top:2px;">
+              <i data-lucide="contact" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre}</div>
+              ${c.cargo ? `<div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${c.cargo}</div>` : ''}
+              ${c.telefono ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;"><a href="tel:${c.telefono.replace(/\s+/g,'')}" style="color:inherit;text-decoration:none;">📞 ${c.telefono}</a></div>` : ''}
+              ${c.email ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="mailto:${c.email}" style="color:inherit;text-decoration:none;">✉️ ${c.email}</a></div>` : ''}
+              ${c.notas ? `<div class="link-card-desc" style="margin-top:4px;">${c.notas}</div>` : ''}
+            </div>
+            <button class="link-card-edit" onclick="event.stopPropagation();openContactoModal('${c.id}')" title="Editar">
+              <i data-lucide="pencil" style="width:13px;height:13px;stroke-width:2;"></i>
+            </button>
+          </div>
+        `).join('')}
+        <div class="link-card" onclick="openContactoModal(null)"
+          style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
+          <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
+          <span style="font-size:13px;color:var(--text-muted);">Agregar contacto</span>
+        </div>
+      </div>
+    ` : `
+      <div class="empty-state">
+        <i data-lucide="contact" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
+        <h3>Sin contactos guardados</h3>
+        <p>Guardá los contactos clave del cliente: quién decide, quién aprueba, a quién llamar si hay una urgencia.</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="openContactoModal(null)">+ Agregar primer contacto</button>
+      </div>
+    `}
+  `;
+  setTimeout(refreshIcons, 30);
+}
+
+let _editingContacto = null;
+window.openContactoModal = function(id) {
+  _editingContacto = id ? STATE.contactos.find(c => String(c.id) === String(id)) : null;
+  const c = _editingContacto || {};
+  document.getElementById('contacto-modal-title').textContent = _editingContacto ? 'Editar contacto' : 'Nuevo contacto';
+  document.getElementById('cf-nombre').value = c.nombre || '';
+  document.getElementById('cf-cargo').value = c.cargo || '';
+  document.getElementById('cf-telefono').value = c.telefono || '';
+  document.getElementById('cf-email').value = c.email || '';
+  document.getElementById('cf-notas').value = c.notas || '';
+  document.getElementById('deleteContactoBtn').style.display = _editingContacto ? '' : 'none';
+  document.getElementById('contactoModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cf-nombre').focus(), 50);
+};
+
+// ──────────────────────────────────────────────────────
 // ARCHIVOS IMPORTANTES
 // ──────────────────────────────────────────────────────
 const ARCHIVO_ICONS = {
@@ -6179,7 +6273,8 @@ function renderInstrucciones(container) {
         ]},
         { icon:'bar-chart-2', title:'Reportes', color:'#16a34a', items:[
           'Reportes de resultados armados afuera (ej. un análisis con gráficos exportado a HTML) que tu agencia sube mes a mes.',
-          'Navegá entre meses anteriores desde acá mismo, sin que te lo tengan que volver a mandar por mail.',
+          'Navegá entre meses anteriores desde acá mismo, sin que te lo tengan que volver a mandar por mail. Los meses marcados con 📈 son el resumen mensual automático de tu agencia (el mismo que te llega por mail al aprobarlo).',
+          'Botón "⬇️ Descargar" para guardarte el reporte del mes que estés viendo como archivo, listo para reenviar o presentar.',
         ]},
         { icon:'folder-open', title:'Archivos importantes', color:'#7c3aed', items:[
           'Guardá los documentos clave del cliente: contratos, briefings, manuales de marca, carpetas de Drive/Dropbox.',
@@ -6189,6 +6284,7 @@ function renderInstrucciones(container) {
           'Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes, portales.',
           'Tocá "+ Nuevo link" o el botón "+" en la grilla para agregar uno.',
           'Tocá el ✏️ sobre un link para editarlo o eliminarlo.',
+          '<strong>Contactos</strong> (columna del medio, misma sección): guardá el nombre, cargo, teléfono y email de las personas clave del cliente -- quién decide, quién aprueba, a quién llamar si hay una urgencia.',
         ]},
         { icon:'globe', title:'Sitio Web', color:'#64748b', items:[
           'Gestioná tareas y mejoras del sitio web del cliente.',
@@ -6819,6 +6915,44 @@ document.getElementById('deleteLinkBtn').addEventListener('click', async () => {
   await saveHomeData(clientId, STATE.home);
   closeLinkModal();
   renderLinks(document.getElementById('links-col-body'));
+  setTimeout(refreshIcons, 50);
+});
+
+// ── Contacto modal wiring ──────────────────────────────
+function closeContactoModal() { document.getElementById('contactoModal').classList.add('hidden'); }
+document.getElementById('closeContactoModal').addEventListener('click', closeContactoModal);
+document.getElementById('closeContactoModal2').addEventListener('click', closeContactoModal);
+document.getElementById('saveContactoBtn').addEventListener('click', async () => {
+  const nombre = document.getElementById('cf-nombre').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio.'); return; }
+  const obj = {
+    ...(_editingContacto || {}),
+    id: _editingContacto?.id || Date.now(),
+    nombre,
+    cargo: document.getElementById('cf-cargo').value.trim(),
+    telefono: document.getElementById('cf-telefono').value.trim(),
+    email: document.getElementById('cf-email').value.trim(),
+    notas: document.getElementById('cf-notas').value.trim(),
+  };
+  if (_editingContacto) {
+    const i = STATE.contactos.findIndex(c => c.id === obj.id);
+    STATE.contactos[i] = obj;
+  } else {
+    STATE.contactos.push(obj);
+  }
+  STATE.home.contactos = STATE.contactos;
+  await saveHomeData(clientId, STATE.home);
+  closeContactoModal();
+  renderContactos(document.getElementById('contactos-col-body'));
+  setTimeout(refreshIcons, 50);
+});
+document.getElementById('deleteContactoBtn').addEventListener('click', async () => {
+  if (!_editingContacto || !confirm('¿Eliminar este contacto?')) return;
+  STATE.contactos = STATE.contactos.filter(c => c.id !== _editingContacto.id);
+  STATE.home.contactos = STATE.contactos;
+  await saveHomeData(clientId, STATE.home);
+  closeContactoModal();
+  renderContactos(document.getElementById('contactos-col-body'));
   setTimeout(refreshIcons, 50);
 });
 
