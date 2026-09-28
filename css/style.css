@@ -860,6 +860,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   /* FAB visible */
   .fab-btn { display: flex !important; }
 
+  /* Que no quede tapado por el bottom nav (58px + safe-area) */
+  .contactos-fab { bottom: 74px; padding: 10px 16px; font-size: 13px; }
+
   /* Ocultar toggle avanzado en desktop → solo mobile lo muestra */
   .advanced-toggle-btn { display: flex; }
 
@@ -919,6 +922,19 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   transition: transform .15s, box-shadow .15s;
 }
 .fab-btn:active { transform: scale(.93); }
+
+/* ── Botón flotante "Contactos" (sección Links y Archivos) ── */
+.contactos-fab {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 90;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  border-radius: 999px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
 /* ── Banco de contenidos — grupos por año/mes ── */
 .banco-anio-group { margin-bottom: 8px; }

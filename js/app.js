@@ -958,9 +958,9 @@ function renderSection(sec) {
           <div id="archivos-col-body"></div>
         </div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <button class="btn btn-secondary" onclick="openEquipoModal()"><i data-lucide="contact" style="width:14px;height:14px;"></i> Contactos</button>
-      </div>
+      <button class="btn btn-primary contactos-fab" onclick="openEquipoModal()">
+        <i data-lucide="contact" style="width:16px;height:16px;"></i> Contactos
+      </button>
     `;
     renderLinks(document.getElementById('links-col-body'));
     renderArchivos(document.getElementById('archivos-col-body'));
