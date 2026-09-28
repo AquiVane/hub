@@ -353,3 +353,18 @@ Los tres Kanban (Tareas del panel cliente, Gestión COSMART, Mis Tareas admin) t
 - **Drag and drop de Mis Tareas / Kanban en general sigue sin funcionar bien para Vaneh** (ver sección de arriba) — es lo más urgente para retomar.
 - Newsletter evergreen (12 ediciones) vive en `cosmart-training-core` (otro repo), no en este.
 - Analytics: confirmado que se quiere conectar más adelante, no arrancado.
+
+## Reporte de un mes se veía negro al subir el reporte de otro mes (28/09)
+
+Vaneh subió el reporte de septiembre de Ando Reciclaje y el de agosto (que antes se veía bien) pasó a mostrarse como un rectángulo negro sin contenido en la sección Reportes del cliente.
+
+Dos bugs reales encontrados por revisión de código (sin tocar KV en vivo, como corresponde):
+
+1. **`js/app.js` (reporteSaveBtn)**: al subir un mes nuevo, el índice se reconstruía quedándose solo con `mes`/`subidoEn` de los otros meses -- perdía el `origen` (desaparecía el badge 📈) y el `.html` ya cacheado, forzando un refetch de meses que no se habían tocado. Fix: preserva `origen` y el cache de `.html` en memoria.
+2. **`cosmart-workers` (`handleAprobarInforme`)**: al aprobar un informe mensual automático, se guardaba como reporte descargable del cliente **sin chequear si ya había uno subido a mano para ese mes** -- lo pisaba en silencio. Esto es lo que probablemente rompió el de agosto: tenía un reporte subido a mano y quedó reemplazado por el informe automático (más simple). Fix: solo escribe si no hay reporte previo para ese mes, o si el que había también era automático -- nunca pisa uno manual.
+
+Además, si `getReporteHtml` vuelve vacío (por lo que sea) ya no se cachea como "cargado" mostrando un iframe vacío (que se ve negro por el `background` propio del iframe) -- ahora se muestra un mensaje claro invitando a reintentar/resubir.
+
+`js/app.js` bumpeado a `?v=36`, `hv=3` en el iframe embebido de `admin/index.html`.
+
+Si el HTML original de agosto que Vaneh había subido a mano ya fue sobreescrito por el informe automático antes de este fix, no hay forma de recuperarlo desde acá (no se toca KV en vivo) -- si todavía lo tiene, tiene que volver a subirlo con "+ Subir reporte".
