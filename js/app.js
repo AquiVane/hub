@@ -1097,6 +1097,14 @@ async function renderReportes(container) {
       return;
     }
     if (_reporteMesSeleccionado !== actual.mes) return; // se cambió de mes mientras cargaba
+    // Si vuelve vacío no lo guardamos como "ya cargado" -- antes quedaba
+    // cacheado como '' para siempre (no es null) y el iframe se mostraba
+    // vacío, un rectángulo negro sin ninguna explicación (el color de
+    // fondo del propio iframe). Mejor avisar claro y permitir reintentar.
+    if (!html) {
+      wrap.innerHTML = `<div class="empty-state"><p>Este mes todavía no tiene un reporte cargado. Probá volver a entrar en unos segundos o subilo de nuevo.</p></div>`;
+      return;
+    }
     actual.html = html;
   }
   wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
@@ -1167,10 +1175,19 @@ document.getElementById('reporteSaveBtn')?.addEventListener('click', async () =>
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
     await saveReporteHtml(clientId, mes, window._reporteHtmlPendiente);
-    const otrosDelIndice = STATE.reportes.filter(r => r.mes !== mes).map(r => ({ mes: r.mes, subidoEn: r.subidoEn }));
+    // Ojo: acá se arma el índice que se persiste (liviano, sin el html de
+    // cada mes -- eso vive aparte en `reporte-YYYY-MM`), pero hay que
+    // preservar `origen` de los otros meses (si no, el badge 📈 de un
+    // informe automático desaparece en cuanto se sube un reporte manual
+    // de OTRO mes) y el `.html` ya cacheado en memoria (si no, cambiar de
+    // mes fuerza un refetch innecesario de un mes que no se tocó).
+    const cacheHtmlPorMes = {};
+    STATE.reportes.forEach(r => { if (r.html != null) cacheHtmlPorMes[r.mes] = r.html; });
+    const otrosDelIndice = STATE.reportes.filter(r => r.mes !== mes).map(r => ({ mes: r.mes, subidoEn: r.subidoEn, ...(r.origen ? { origen: r.origen } : {}) }));
     const nuevoIndice = [...otrosDelIndice, { mes, subidoEn: new Date().toISOString() }];
     await saveReportesIndice(clientId, nuevoIndice);
     STATE.reportes = nuevoIndice.slice().sort((a, b) => (a.mes < b.mes ? 1 : -1));
+    STATE.reportes.forEach(r => { if (cacheHtmlPorMes[r.mes] != null) r.html = cacheHtmlPorMes[r.mes]; });
     STATE.reportes.find(r => r.mes === mes).html = window._reporteHtmlPendiente; // ya lo tenemos, no hace falta pedirlo de nuevo
     _reporteMesSeleccionado = mes;
     document.getElementById('nav-reportes').classList.remove('hidden');
