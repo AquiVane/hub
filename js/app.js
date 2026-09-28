@@ -4439,8 +4439,17 @@ window.toggleTareaListo = async function(id) {
 function refreshTareasView() {
   const el = document.getElementById('main-content');
   if (!el) return;
+  // Pedido de Vaneh (28/09): al crear/marcar una tarea, la vista volvía
+  // siempre al principio -- porque `el` (`.content`, el contenedor que
+  // scrollea) es justo el que se reescribe con `innerHTML`, y reemplazar
+  // el contenido de un elemento resetea su propio scroll a 0. Se guarda
+  // la posición antes y se restaura después de repintar (el
+  // requestAnimationFrame espera a que el navegador termine el reflow
+  // con el contenido nuevo, si no la restauración no tiene efecto).
+  const scrollPos = el.scrollTop;
   if (_tareasView === 'calendario') renderTareasCalendario(el);
   else renderTareas(el);
+  requestAnimationFrame(() => { el.scrollTop = scrollPos; });
 }
 
 function renderTareas(container) {

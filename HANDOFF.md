@@ -382,3 +382,11 @@ El import de Excel de **Contenidos** (el que se abre desde adentro de un cliente
 Aclaración de Vaneh sobre su pedido anterior (que yo entendí mal): no era sobre el import de Mis Tareas, sino sobre el import de Excel de **Contenidos** (`importResolverAsignado` en `js/app.js`) -- cuando la fila no trae "Asignar a"/"Responsable", antes quedaba `null` (sin asignar). Ahora, por default, el responsable de resolver ese contenido pasa a ser el CLIENTE mismo (mismo contacto que ya se usaba como primer candidato de match), no hace falta que la planilla lo especifique fila por fila. Si la fila sí especifica un nombre/email que matchea a alguien (equipo del cliente, usuarios cargados), sigue ganando ese match como antes.
 
 Cache-bust `js/app.js?v=37`.
+
+## Al crear/marcar una tarea la vista volvía siempre arriba (28/09)
+
+Vaneh preguntó si estaba arreglado -- no lo estaba. Confirmado por código:
+- **Panel de cliente** (`js/app.js`, `refreshTareasView`): `el` (`#main-content`, que es el propio `.content` con `overflow-y:auto`) se reescribía entero con `innerHTML` -- reemplazar el contenido de un elemento resetea su propio scroll a 0, ese es el mecanismo real.
+- **Admin, Mis Tareas** (`renderMisTareas`): mismo síntoma reportado, se agregó la misma protección aunque `#misTareasList` no sea el elemento que scrollea directamente (es `.content` un nivel más arriba) -- por las dudas y porque es gratis.
+
+Fix en los dos lugares: guardar `scrollTop` antes de repintar y restaurarlo después con `requestAnimationFrame` (para que corra después de que el navegador ya recalculó el alto con el contenido nuevo). Cache-bust `js/app.js?v=38`.

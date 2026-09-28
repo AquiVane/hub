@@ -4713,6 +4713,14 @@
   }
 
   function renderMisTareas() {
+    // Pedido de Vaneh (28/09): al crear una tarea nueva o marcar una como
+    // hecha, la lista volvía siempre arriba de todo en vez de quedarse
+    // donde estabas viendo. `.content` es el contenedor que scrollea acá
+    // -- se guarda su posición antes de repintar Mis Tareas y se
+    // restaura después (requestAnimationFrame espera a que termine el
+    // reflow con el contenido nuevo).
+    const contentEl = document.querySelector('.content');
+    const scrollPos = contentEl ? contentEl.scrollTop : 0;
     const countEl = document.getElementById('misTareasCount');
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
@@ -4724,6 +4732,7 @@
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
     else if (_misTareasView === 'kanban') renderMisTareasKanban();
     else renderMisTareasLista();
+    if (contentEl) requestAnimationFrame(() => { contentEl.scrollTop = scrollPos; });
   }
 
   function tareaCardHtml(item, idx, estaListo) {
