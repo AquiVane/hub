@@ -376,3 +376,9 @@ Vaneh preguntó "está hecho esto?" sobre asignar contenidos al cliente desde la
 Ahora, si la columna **Categoría** de la fila dice "Contenido" (o "Contenidos"), esa fila se crea como un Contenido real (`estado: 'Idea'`, `fechaPub` = la fecha de la fila) en la sección Contenidos del cliente elegido como destino, en vez de una tarea genérica -- reusa el mismo selector de destino/duplicados que ya tenía el import, agregando un chequeo de duplicados aparte contra `getContenidos` (antes solo comparaba contra tareas). La columna nueva "Tipo" en el preview muestra qué va a crear cada fila.
 
 El import de Excel de **Contenidos** (el que se abre desde adentro de un cliente puntual, con `cuenta`/`plataformas`/`copy`/etc.) no necesitaba este cambio -- ya crea todo en el cliente actual, no hay ambigüedad de destino ahí.
+
+## Import de Contenidos: "Asignar a" vacío ahora es el cliente por default (28/09)
+
+Aclaración de Vaneh sobre su pedido anterior (que yo entendí mal): no era sobre el import de Mis Tareas, sino sobre el import de Excel de **Contenidos** (`importResolverAsignado` en `js/app.js`) -- cuando la fila no trae "Asignar a"/"Responsable", antes quedaba `null` (sin asignar). Ahora, por default, el responsable de resolver ese contenido pasa a ser el CLIENTE mismo (mismo contacto que ya se usaba como primer candidato de match), no hace falta que la planilla lo especifique fila por fila. Si la fila sí especifica un nombre/email que matchea a alguien (equipo del cliente, usuarios cargados), sigue ganando ese match como antes.
+
+Cache-bust `js/app.js?v=37`.

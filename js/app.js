@@ -3664,10 +3664,15 @@ function importParsePauta(val) {
 // cliente + usuarios del cliente + equipo asignado) -- matchea por
 // nombre o por email, sin importar mayúsculas/espacios.
 function importResolverAsignado(val) {
+  const clienteComoAsignado = STATE.client.email ? { nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email } : null;
   const n = String(val || '').trim().toLowerCase();
-  if (!n) return null;
+  // Pedido de Vaneh (28/09): si la fila no trae "Asignar a", el responsable
+  // por default de resolver ese contenido es el cliente mismo (antes
+  // quedaba "sin asignar") -- no hace falta que cada fila del Excel
+  // especifique explícitamente al cliente para que quede asignado a él.
+  if (!n) return clienteComoAsignado;
   const candidatos = [];
-  if (STATE.client.email) candidatos.push({ nombre: STATE.client.nombre || STATE.client.name || 'Cliente', email: STATE.client.email });
+  if (clienteComoAsignado) candidatos.push(clienteComoAsignado);
   (STATE.client.usuarios || []).forEach(u => candidatos.push(u));
   _equipoDelCliente.forEach(c => candidatos.push(c));
   const match = candidatos.find(c => (c.nombre || '').trim().toLowerCase() === n || (c.email || '').trim().toLowerCase() === n);
