@@ -1368,6 +1368,7 @@
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
         Columnas esperadas: <strong>Categoría, Área/Cliente, Tarea, Prioridad, Día sugerido, Horario, Fecha límite, Notas</strong>.
         Revisá el destino de cada fila antes de confirmar — las que queden en "Elegí destino" no se van a importar.
+        Si la <strong>Categoría</strong> dice "Contenido", esa fila se crea como Contenido en la sección Contenidos del cliente destino (no como tarea).
       </p>
       <input type="file" id="importar-tareas-input" accept=".xlsx,.xls">
       <div id="importar-tareas-status" style="font-size:13px;margin-top:8px;color:var(--text-muted);"></div>
@@ -5468,11 +5469,39 @@
     return _importDestinoTareasCache[destino];
   }
 
+  // Pedido de Vaneh (28/09): "agregar la asignación de contenidos hacia el
+  // cliente desde la importación" -- hasta ahora este import SIEMPRE creaba
+  // una Tarea, aunque la fila fuera en realidad una pieza de Contenido (ej.
+  // "Categoría" = "Contenido" en la planilla). Ahora, si la categoría de la
+  // fila normaliza a "contenido", se crea un Contenido real en la sección
+  // Contenidos del cliente elegido como destino (misma fecha/título/notas),
+  // en vez de una tarea genérica.
+  let _importDestinoContenidosCache = {};
+  async function obtenerContenidosDestinoImport(destino) {
+    if (!destino) return [];
+    if (!_importDestinoContenidosCache[destino]) {
+      try { _importDestinoContenidosCache[destino] = await getContenidos(destino); }
+      catch (e) { _importDestinoContenidosCache[destino] = []; }
+    }
+    return _importDestinoContenidosCache[destino];
+  }
+
+  function esFilaDeContenidoImport(categoria) {
+    const catN = normalizarTextoImport(categoria);
+    return catN === 'contenido' || catN === 'contenidos';
+  }
+
   async function chequearDuplicadoImport(f) {
     f.duplicadoId = null;
     if (!f.destino) return;
-    const tareasDestino = await obtenerTareasDestinoImport(f.destino);
     const tituloN = normalizarTextoImport(f.titulo);
+    if (f.tipo === 'contenido') {
+      const contenidosDestino = await obtenerContenidosDestinoImport(f.destino);
+      const existente = contenidosDestino.find(c => !c.archivado && normalizarTextoImport(c.titulo) === tituloN);
+      if (existente) { f.duplicadoId = existente.id; f.accionDuplicado = f.accionDuplicado || 'omitir'; }
+      return;
+    }
+    const tareasDestino = await obtenerTareasDestinoImport(f.destino);
     const existente = tareasDestino.find(t => !t.archivado && normalizarTextoImport(t.titulo) === tituloN);
     if (existente) { f.duplicadoId = existente.id; f.accionDuplicado = f.accionDuplicado || 'omitir'; }
   }
@@ -5483,13 +5512,15 @@
     const filas = _importarTareasRows;
     const sinDestino = filas.filter(f => !f.destino).length;
     const duplicados = filas.filter(f => f.duplicadoId).length;
-    statusEl.textContent = `${filas.length} tarea(s) encontradas${sinDestino ? ` · ${sinDestino} sin destino asignado todavía` : ''}${duplicados ? ` · ${duplicados} ya existen (revisá qué hacer)` : ''}.`;
+    const contenidos = filas.filter(f => f.tipo === 'contenido').length;
+    statusEl.textContent = `${filas.length} fila(s) encontradas${contenidos ? ` · ${contenidos} se van a crear como Contenido` : ''}${sinDestino ? ` · ${sinDestino} sin destino asignado todavía` : ''}${duplicados ? ` · ${duplicados} ya existen (revisá qué hacer)` : ''}.`;
 
     previewEl.innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
-      <thead><tr><th>Tarea</th><th>Prioridad</th><th>Fecha</th><th>Categoría / Área</th><th>Destino</th><th>Si ya existe</th></tr></thead>
+      <thead><tr><th>Tipo</th><th>Tarea / Contenido</th><th>Prioridad</th><th>Fecha</th><th>Categoría / Área</th><th>Destino</th><th>Si ya existe</th></tr></thead>
       <tbody>
         ${filas.map((f, i) => `
           <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
+            <td style="font-size:11px;">${f.tipo === 'contenido' ? '📣 Contenido' : '✅ Tarea'}</td>
             <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}</td>
             <td>${f.prioridad}</td>
             <td>${f.vencimiento || '—'}</td>
@@ -5560,6 +5591,7 @@
 
         filas.push({
           titulo,
+          tipo: esFilaDeContenidoImport(obj.categoria) ? 'contenido' : 'tarea',
           prioridad: normalizarPrioridadImport(obj.prioridad),
           vencimiento: parseFechaCortaImport(obj.fecha, anioDefault),
           notas: notasPartes.join(' · '),
@@ -5591,7 +5623,25 @@
     let ok = 0, error = 0;
     for (const f of aProcesar) {
       try {
-        if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
+        if (f.tipo === 'contenido') {
+          if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
+            const contenidosDestino = await obtenerContenidosDestinoImport(f.destino);
+            const existente = contenidosDestino.find(c => c.id === f.duplicadoId);
+            await saveContenido(f.destino, {
+              ...existente,
+              fechaPub: f.vencimiento || existente.fechaPub,
+              notas: f.notas || existente.notas,
+            });
+          } else {
+            await saveContenido(f.destino, {
+              titulo: f.titulo,
+              estado: 'Idea',
+              fechaPub: f.vencimiento || null,
+              notas: f.notas,
+              creadoPor: user.email,
+            });
+          }
+        } else if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
           const tareasDestino = await obtenerTareasDestinoImport(f.destino);
           const existente = tareasDestino.find(t => t.id === f.duplicadoId);
           await saveTarea(f.destino, {
@@ -5616,7 +5666,8 @@
       } catch (e) { console.error(e); error++; }
     }
     btn.disabled = false; btn.textContent = 'Importar';
-    alert(`Se procesaron ${ok} tarea(s)${error ? ` · ${error} con error` : ''}.`);
+    const contenidosOk = aProcesar.filter(f => f.tipo === 'contenido').length;
+    alert(`Se procesaron ${ok} fila(s)${contenidosOk ? ` (${contenidosOk} como Contenido)` : ''}${error ? ` · ${error} con error` : ''}.`);
     closeImportarTareasModal();
     loadMisTareas();
   };

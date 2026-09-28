@@ -368,3 +368,11 @@ Además, si `getReporteHtml` vuelve vacío (por lo que sea) ya no se cachea como
 `js/app.js` bumpeado a `?v=36`, `hv=3` en el iframe embebido de `admin/index.html`.
 
 Si el HTML original de agosto que Vaneh había subido a mano ya fue sobreescrito por el informe automático antes de este fix, no hay forma de recuperarlo desde acá (no se toca KV en vivo) -- si todavía lo tiene, tiene que volver a subirlo con "+ Subir reporte".
+
+## Importar Excel de Mis Tareas ahora también puede crear Contenidos (28/09)
+
+Vaneh preguntó "está hecho esto?" sobre asignar contenidos al cliente desde la importación -- no lo estaba: el import de Excel de "Mis tareas" (multi-cliente, con columna Categoría/Área que arma el "destino") solo creaba Tareas, sin importar qué decía la categoría.
+
+Ahora, si la columna **Categoría** de la fila dice "Contenido" (o "Contenidos"), esa fila se crea como un Contenido real (`estado: 'Idea'`, `fechaPub` = la fecha de la fila) en la sección Contenidos del cliente elegido como destino, en vez de una tarea genérica -- reusa el mismo selector de destino/duplicados que ya tenía el import, agregando un chequeo de duplicados aparte contra `getContenidos` (antes solo comparaba contra tareas). La columna nueva "Tipo" en el preview muestra qué va a crear cada fila.
+
+El import de Excel de **Contenidos** (el que se abre desde adentro de un cliente puntual, con `cuenta`/`plataformas`/`copy`/etc.) no necesitaba este cambio -- ya crea todo en el cliente actual, no hay ambigüedad de destino ahí.
