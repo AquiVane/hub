@@ -7153,12 +7153,34 @@ function getMentionUsers() {
 // primera palabra y nunca encontraba al usuario, así que nunca le llegaba
 // el mail. Pedido de Vaneh (14/09): que arrobar a cualquiera le mande un mail.
 function detectarUsuariosMencionados(texto, candidatos) {
-  const ordenados = [...candidatos].filter(u => u.nombre && u.email).sort((a, b) => b.nombre.length - a.nombre.length);
+  const validos = candidatos.filter(u => u.nombre && u.email);
+  const porNombreCompleto = [...validos].sort((a, b) => b.nombre.length - a.nombre.length);
+  // Pedido de Vaneh (29/09): "no estoy segura que le esté llegando al que
+  // arrobo" -- el matching original SOLO reconocía el nombre completo
+  // exacto (ej. "@Vale Díaz"), así que arrobar por el nombre de pila
+  // (ej. "@Vale", muy común si no se espera al autocomplete) no
+  // encontraba a nadie y el mail nunca se mandaba, en silencio, sin
+  // ningún aviso de que había fallado. Ahora, si no matcheó el nombre
+  // completo, se prueba también contra la PRIMERA PALABRA de cada
+  // candidato, exigiendo que después venga un límite de palabra (espacio,
+  // puntuación o fin del texto) para no confundir "@Vale" con "Valeria".
+  const porPrimerNombre = validos
+    .map(u => ({ u, primera: u.nombre.split(' ')[0].toLowerCase() }))
+    .filter(({ primera }) => primera.length >= 3)
+    .sort((a, b) => b.primera.length - a.primera.length);
   const encontrados = new Map();
   let idx = 0;
   while ((idx = texto.indexOf('@', idx)) !== -1) {
     const resto = texto.slice(idx + 1).toLowerCase();
-    const match = ordenados.find(u => resto.startsWith(u.nombre.toLowerCase()));
+    let match = porNombreCompleto.find(u => resto.startsWith(u.nombre.toLowerCase()));
+    if (!match) {
+      const hit = porPrimerNombre.find(({ primera }) => {
+        if (!resto.startsWith(primera)) return false;
+        const siguiente = resto[primera.length];
+        return siguiente === undefined || /[\s,.;:!?]/.test(siguiente);
+      });
+      if (hit) match = hit.u;
+    }
     if (match) encontrados.set(match.email.toLowerCase(), match);
     idx++;
   }
@@ -7218,24 +7240,38 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
   // Notificar por email a los usuarios mencionados con @
   const allUsers = getMentionUsers();
   const mencionados = detectarUsuariosMencionados(texto, allUsers);
+  const statusEl = document.getElementById(`${prefix}-mencion-status`);
+  const aAvisar = mencionados.filter(u => u.email && u.email.toLowerCase() !== user.email.toLowerCase());
+  // Feedback visible (29/09, Vaneh: "no estoy segura que le esté llegando
+  // al que arrobo") -- antes esto fallaba en silencio si el @mención no
+  // matcheaba a nadie, sin ningún indicio de que no se avisó a nadie.
+  if (statusEl) {
+    if (texto.includes('@') && !aAvisar.length) {
+      statusEl.textContent = '⚠ No reconocimos a quién arrobaste -- no se avisó a nadie por mail.';
+      statusEl.style.color = '#c0392b';
+    } else if (aAvisar.length) {
+      statusEl.textContent = `✓ Se avisó por mail a ${aAvisar.map(u => u.nombre).join(', ')}.`;
+      statusEl.style.color = '';
+    } else {
+      statusEl.textContent = '';
+    }
+  }
   const { WORKER_URL } = await import('./firebase.js');
   const { getSessionToken } = await import('./auth.js');
-  mencionados.forEach(u => {
-    if (u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
-      fetch(WORKER_URL + '/email/mencion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
-        body: JSON.stringify({
-          toEmail: u.email,
-          toName: u.nombre,
-          mencionador: autorNombre,
-          contexto: editingObj.titulo || '',
-          tipo: ctx === 'cont' ? 'contenido' : 'tarea',
-          itemId: editingObj.id,
-          clientId,
-        }),
-      }).catch(() => {});
-    }
+  aAvisar.forEach(u => {
+    fetch(WORKER_URL + '/email/mencion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+      body: JSON.stringify({
+        toEmail: u.email,
+        toName: u.nombre,
+        mencionador: autorNombre,
+        contexto: editingObj.titulo || '',
+        tipo: ctx === 'cont' ? 'contenido' : 'tarea',
+        itemId: editingObj.id,
+        clientId,
+      }),
+    }).catch(() => {});
   });
 }
 

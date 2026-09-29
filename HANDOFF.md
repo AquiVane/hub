@@ -396,3 +396,14 @@ Fix en los dos lugares: guardar `scrollTop` antes de repintar y restaurarlo desp
 Vaneh: "tengo que poder agregar verticales al hub, igual agregame las nuevas vos que son VAMA Academy y VAMA Tienda". Antes la lista de Verticales de COSMART (Brújula, Rumbo Voraz, Design, ComuniCOS, Talent, Shows, Euforia, Training, MPG, Home COSMART, Hub) estaba hardcodeada en 7 `<select>` distintos de `admin/index.html` + un array aparte (`VERTICALES_VALIDAS`) para el import de Excel de Gestión interna -- cualquier vertical nueva necesitaba un cambio de código. La card "🏷️ Verticales / proyectos" (Configuración) ya existía y funcionaba para cualquier OTRA agencia (`getVerticalesAgencia`/`setVerticalesAgencia`, aislado por `agencyId`) pero estaba oculta para COSMART a propósito (ver comentario viejo: pedido de Vaneh del 13/09 de que otras agencias no vean rastro de las verticales de COSMART).
 
 Ahora esa misma card también se muestra para COSMART. Para no perder las que ya estaban en uso, la primera vez que corre esto para COSMART (lista todavía vacía en KV) se la seedea sola con la lista fija de siempre + **VAMA Academy** y **VAMA Tienda** ya agregadas -- se dispara automáticamente la próxima vez que Vaneh entre a Configuración, sin que nadie tenga que tocar KV a mano. `VERTICALES_VALIDAS` (el array aparte del import) se eliminó -- `adivinarVerticalImport` ahora matchea contra `_verticalesPropias`, la misma fuente que ya usan los selects, así que de acá en más agregar una vertical nueva alcanza con hacerlo una sola vez desde esa card.
+
+## Arrobar por nombre de pila no avisaba a nadie, en silencio (29/09)
+
+Vaneh: "No estoy segura que al dejar un comentario en cualquier tarea o contenido le esté llegando al que arrobo, revisalo por favor."
+
+Confirmado el bug leyendo el código: `detectarUsuariosMencionados` (duplicada en `js/app.js` y `admin/index.html`) matcheaba SOLO contra el nombre completo exacto del candidato (ej. "@Vale Díaz") -- si escribía "@Vale" sin esperar/clickear el autocomplete, no encontraba a nadie y el mail nunca se mandaba, **sin ningún aviso de que había fallado**. Dos fixes:
+
+1. **Matching más robusto**: si no matcheó el nombre completo, ahora también prueba contra la primera palabra de cada candidato (con límite de palabra después, para no confundir "@Vale" con "Valeria").
+2. **Feedback visible, siempre**: nuevo `<p id="{prefix}-mencion-status">` debajo del input de comentario (en las 4 pantallas: `cont-`/`tarea-` en `app/index.html`, `in-`/`mt-` en `admin/index.html`) que muestra "✓ Se avisó por mail a [nombres]" o "⚠ No reconocimos a quién arrobaste -- no se avisó a nadie" según corresponda. Antes no había ningún indicio, ni de éxito ni de fallo.
+
+Cache-bust `js/app.js?v=39`.

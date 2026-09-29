@@ -1023,6 +1023,7 @@
             <input type="text" id="in-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="agregarComentario('in')">Comentar</button>
           </div>
+          <p id="in-mencion-status" style="font-size:11px;color:var(--text-muted);margin:4px 0 0;min-height:14px;"></p>
         </div>
       </div>
     </div>
@@ -1189,6 +1190,7 @@
             <input type="text" id="mt-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="agregarComentario('mt')">Comentar</button>
           </div>
+          <p id="mt-mencion-status" style="font-size:11px;color:var(--text-muted);margin:4px 0 0;min-height:14px;"></p>
         </div>
       </div>
     </div>
@@ -7297,12 +7299,33 @@
   // al usuario, así que nunca le llegaba el mail. Pedido de Vaneh (14/09):
   // que arrobar a cualquiera (equipo COSMART o cliente) le mande un mail.
   function detectarUsuariosMencionados(texto, candidatos) {
-    const ordenados = [...candidatos].filter(u => u.nombre && u.email).sort((a, b) => b.nombre.length - a.nombre.length);
+    const validos = candidatos.filter(u => u.nombre && u.email);
+    const porNombreCompleto = [...validos].sort((a, b) => b.nombre.length - a.nombre.length);
+    // Pedido de Vaneh (29/09): "no estoy segura que le esté llegando al
+    // que arrobo" -- el matching original SOLO reconocía el nombre
+    // completo exacto (ej. "@Vale Díaz"), así que arrobar por el nombre
+    // de pila (ej. "@Vale") no encontraba a nadie y el mail nunca se
+    // mandaba, en silencio. Ahora, si no matcheó el nombre completo, se
+    // prueba también contra la PRIMERA PALABRA de cada candidato,
+    // exigiendo un límite de palabra después para no confundir "@Vale"
+    // con "Valeria".
+    const porPrimerNombre = validos
+      .map(u => ({ u, primera: u.nombre.split(' ')[0].toLowerCase() }))
+      .filter(({ primera }) => primera.length >= 3)
+      .sort((a, b) => b.primera.length - a.primera.length);
     const encontrados = new Map();
     let idx = 0;
     while ((idx = texto.indexOf('@', idx)) !== -1) {
       const resto = texto.slice(idx + 1).toLowerCase();
-      const match = ordenados.find(u => resto.startsWith(u.nombre.toLowerCase()));
+      let match = porNombreCompleto.find(u => resto.startsWith(u.nombre.toLowerCase()));
+      if (!match) {
+        const hit = porPrimerNombre.find(({ primera }) => {
+          if (!resto.startsWith(primera)) return false;
+          const siguiente = resto[primera.length];
+          return siguiente === undefined || /[\s,.;:!?]/.test(siguiente);
+        });
+        if (hit) match = hit.u;
+      }
       if (match) encontrados.set(match.email.toLowerCase(), match);
       idx++;
     }
@@ -7539,17 +7562,29 @@
     // Notificar por mail a quien fue mencionado con @
     const allUsersMencion = getMentionUsersInterno(prefix === 'mt' ? clientIdComentario : null);
     const mencionados = detectarUsuariosMencionados(texto, allUsersMencion);
-    if (mencionados.length) {
-      mencionados.forEach(u => {
-        if (u.email && u.email.toLowerCase() !== user.email.toLowerCase()) {
-          fetch(WORKER_URL + '/email/mencion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
-            body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto, tipo: tipoItem, itemId: item.id, clientId: clientIdComentario }),
-          }).catch(() => {});
-        }
-      });
+    const aAvisar = mencionados.filter(u => u.email && u.email.toLowerCase() !== user.email.toLowerCase());
+    // Feedback visible (29/09, Vaneh: "no estoy segura que le esté
+    // llegando al que arrobo") -- antes fallaba en silencio si el
+    // @mención no matcheaba a nadie.
+    const statusEl = document.getElementById(`${prefix}-mencion-status`);
+    if (statusEl) {
+      if (texto.includes('@') && !aAvisar.length) {
+        statusEl.textContent = '⚠ No reconocimos a quién arrobaste -- no se avisó a nadie por mail.';
+        statusEl.style.color = '#c0392b';
+      } else if (aAvisar.length) {
+        statusEl.textContent = `✓ Se avisó por mail a ${aAvisar.map(u => u.nombre).join(', ')}.`;
+        statusEl.style.color = '';
+      } else {
+        statusEl.textContent = '';
+      }
     }
+    aAvisar.forEach(u => {
+      fetch(WORKER_URL + '/email/mencion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSessionToken()}` },
+        body: JSON.stringify({ toEmail: u.email, toName: u.nombre, mencionador: autorNombre, contexto, tipo: tipoItem, itemId: item.id, clientId: clientIdComentario }),
+      }).catch(() => {});
+    });
   };
 
   // Widget flotante -- disponible en cualquier sección del admin, no

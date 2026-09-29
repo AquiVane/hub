@@ -429,6 +429,7 @@
             <input type="text" id="cont-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="addContenidoComment()">Comentar</button>
           </div>
+          <p id="cont-mencion-status" style="font-size:11px;color:var(--text-muted);margin:4px 0 0;min-height:14px;"></p>
         </div>
       </div>
     </div>
@@ -899,6 +900,7 @@
               <input type="text" id="tarea-comment-input" class="form-control" placeholder="@usuario — escribí un comentario..." style="flex:1;">
               <button type="button" class="btn btn-secondary btn-sm" onclick="addTareaComment()">Comentar</button>
             </div>
+            <p id="tarea-mencion-status" style="font-size:11px;color:var(--text-muted);margin:4px 0 0;min-height:14px;"></p>
           </div>
         </div>
 
@@ -1289,7 +1291,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=38"></script>
+<script type="module" src="../js/app.js?v=39"></script>
 <script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
