@@ -407,3 +407,19 @@ Confirmado el bug leyendo el código: `detectarUsuariosMencionados` (duplicada e
 2. **Feedback visible, siempre**: nuevo `<p id="{prefix}-mencion-status">` debajo del input de comentario (en las 4 pantallas: `cont-`/`tarea-` en `app/index.html`, `in-`/`mt-` en `admin/index.html`) que muestra "✓ Se avisó por mail a [nombres]" o "⚠ No reconocimos a quién arrobaste -- no se avisó a nadie" según corresponda. Antes no había ningún indicio, ni de éxito ni de fallo.
 
 Cache-bust `js/app.js?v=39`.
+
+## Notificaciones para el cliente: asignación de Sitio Web + resolución del equipo (29/09)
+
+Vaneh: "el cliente además tiene que ver ahí si se le asignó una tarea ya sea general o de sitio web o si se lo arrobó en un comentario. Y también tiene que ver si dentro de su hub de cliente los colaboradores resolvieron tareas como notificación."
+
+Investigando encontré un gap real: asignar una **tarea de Sitio Web** (`STATE.home.webTareas`, vive en `type:'home'`, no pasa por `saveTarea`/webhook) nunca llamaba a `notifyAsignacion` -- a diferencia de Tareas y Contenidos, que sí. Arreglado:
+- `saveWebTaskBtn` (`js/app.js`) ahora llama a `notifyAsignacion('web', obj, prevWtAsignadoEmail)`.
+- Nuevo tipo `'web'` reconocido en `linkAvisoHub`/`tplAsignacion`/`handleEmailAsignacion` (`cosmart-workers`) -- antes el texto del mail asumía binario tarea/contenido.
+- Deep-link nuevo `?open=web&id=...` en `js/app.js` para que el link del mail/notificación abra la tarea de Sitio Web puntual (antes no existía ningún manejo para ese caso, caía al Home genérico).
+- El selector rápido de "Cambiar estado" de la campanita ahora solo se muestra para `itemTipo` tarea/contenido (antes se mostraba para cualquiera, pero para `web` no tenía a dónde apuntar -- fallaba en silencio).
+
+Asignación a un @mención en comentario ya funcionaba (y se mejoró la detección hoy mismo, ver entrada anterior) -- el cliente ya es un candidato válido en `getMentionUsers`/`getAsignarOptions`.
+
+**Feature nueva**: `generarNotificacionesPorResolucionEquipo` (`cosmart-workers`) -- lo inverso de `generarNotificacionesPorCambioCliente`: si alguien del EQUIPO (no el cliente) marca una tarea como "Listo", y esa tarea es visible para el cliente (`visibleParaCliente:true`), se le crea una notificación in-app avisándole. Solo tareas (no se pidió para contenidos), enganchado en el mismo `handleSaveData` que ya dispara la de arriba.
+
+Cache-bust `js/app.js?v=40`.

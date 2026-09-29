@@ -2355,7 +2355,10 @@
     el.innerHTML = _notifsCacheAdmin.map(n => {
       const f = new Date(n.creadaEn);
       const fechaTxt = f.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-      const estadoSel = n.itemTipo ? `
+      // Solo tarea/contenido tienen este cambio rápido de estado -- una
+      // tarea de Sitio Web (itemTipo:'web') vive en otro tipo de dato
+      // (STATE.home, no 'tareas') y este selector no sabría a qué apuntar.
+      const estadoSel = (n.itemTipo === 'tarea' || n.itemTipo === 'contenido') ? `
         <select class="notif-estado-sel" onchange="event.stopPropagation();cambiarEstadoNotif('${n.id}', this.value)">
           <option value="">Cambiar estado…</option>
           <option value="Sin empezar" ${n.estadoActual === 'Sin empezar' ? 'selected' : ''}>Sin empezar</option>

@@ -261,6 +261,9 @@ async function init() {
     } else if (openTipo === 'tarea' && openId && STATE.tareas.some(t => t.id === openId)) {
       renderSection('tareas');
       openTareaModal(openId);
+    } else if (openTipo === 'web' && openId && (STATE.home.webTareas || []).some(t => String(t.id) === String(openId))) {
+      renderSection('web');
+      openWebTaskModal(openId);
     } else if (esPropioAgencia) {
       renderSection('contenidos');
     } else {
@@ -322,7 +325,10 @@ function renderNotifList() {
   el.innerHTML = _notifsCache.map(n => {
     const f = new Date(n.creadaEn);
     const fechaTxt = f.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-    const estadoSel = n.itemTipo ? `
+    // Solo tarea/contenido tienen este cambio rápido de estado -- una
+    // tarea de Sitio Web (itemTipo:'web') vive en otro tipo de dato
+    // (STATE.home, no 'tareas') y este selector no sabría a qué apuntar.
+    const estadoSel = (n.itemTipo === 'tarea' || n.itemTipo === 'contenido') ? `
       <select class="notif-estado-sel" onchange="event.stopPropagation();cambiarEstadoNotif('${n.id}', this.value)">
         <option value="">Cambiar estado…</option>
         <option value="Sin empezar" ${n.estadoActual === 'Sin empezar' ? 'selected' : ''}>Sin empezar</option>
@@ -6919,6 +6925,7 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
     const wtAsignadoEl = document.getElementById('wt-asignado');
     const wtAsignadoEmail = wtAsignadoEl.value;
     const wtAsignadoNombre = wtAsignadoEl.selectedOptions[0]?.dataset.nombre || '';
+    const prevWtAsignadoEmail = _editingWebTask?.asignado?.email || '';
     const obj = {
       ...(_editingWebTask || {}),
       id: _editingWebTask?.id || Date.now(),
@@ -6940,6 +6947,11 @@ document.getElementById('saveWebTaskBtn').addEventListener('click', async (e) =>
       STATE.home.webTareas.push(obj);
     }
     await saveHomeData(clientId, STATE.home);
+    // Pedido de Vaneh (29/09): asignar una tarea de Sitio Web nunca avisaba
+    // a nadie -- a diferencia de Tareas/Contenidos, este guardado no pasa
+    // por saveTarea/saveContenido (vive en STATE.home, sin webhook) así
+    // que había que llamar a notifyAsignacion a mano, como corresponde.
+    notifyAsignacion('web', obj, prevWtAsignadoEmail);
     closeWebTaskModal();
     renderSection(currentSection);
   } finally {
