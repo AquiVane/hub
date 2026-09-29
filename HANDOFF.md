@@ -391,6 +391,13 @@ Vaneh preguntó si estaba arreglado -- no lo estaba. Confirmado por código:
 
 Fix en los dos lugares: guardar `scrollTop` antes de repintar y restaurarlo después con `requestAnimationFrame` (para que corra después de que el navegador ya recalculó el alto con el contenido nuevo). Cache-bust `js/app.js?v=38`.
 
+## VAMA Academy en el Hub: leads al CRM + código de tareas (29/09)
+
+Pedido de Vaneh: "preparar el hub para incorporar esta vertical: leads, CRM, tareas". La vertical **VAMA Academy** ya existía en la lista de verticales de COSMART (28/09). Ahora:
+- **CRM Leads**: el backend de academy (`cosmart-training-core`, ver HANDOFF de `cosmart-workers`) le pega a `POST /leads/captura` con `vertical:'VAMA Academy'`: quien deja nombre+email en el checkout de Plata en Orden y quien se suscribe al newsletter de academy entran como lead en "Potencial"; quien compra entra directo en "Nuevo cliente" (`nuevoCliente:true`) con el producto en el origen. Filtro por vertical en el tablero: usa el nombre "VAMA Academy".
+- **Tareas / Procesos**: `VERTICAL_CODIGO` (admin/index.html) suma `VAMA Academy → VA` y `VAMA Tienda → VT`: las tareas internas de esas verticales numeran como `VA-01`, `VT-01` (antes caían en `CS-`), y ambas aparecen en el selector de vertical de Procesos.
+- Pendiente (no pedido todavía): tile de Ventas/Facturación de Métricas con las ventas de academy; tareas iniciales de la vertical (hay que decidir con Vaneh cuáles).
+
 ## COSMART ya puede editar sus propias Verticales desde Configuración (28/09)
 
 Vaneh: "tengo que poder agregar verticales al hub, igual agregame las nuevas vos que son VAMA Academy y VAMA Tienda". Antes la lista de Verticales de COSMART (Brújula, Rumbo Voraz, Design, ComuniCOS, Talent, Shows, Euforia, Training, MPG, Home COSMART, Hub) estaba hardcodeada en 7 `<select>` distintos de `admin/index.html` + un array aparte (`VERTICALES_VALIDAS`) para el import de Excel de Gestión interna -- cualquier vertical nueva necesitaba un cambio de código. La card "🏷️ Verticales / proyectos" (Configuración) ya existía y funcionaba para cualquier OTRA agencia (`getVerticalesAgencia`/`setVerticalesAgencia`, aislado por `agencyId`) pero estaba oculta para COSMART a propósito (ver comentario viejo: pedido de Vaneh del 13/09 de que otras agencias no vean rastro de las verticales de COSMART).
