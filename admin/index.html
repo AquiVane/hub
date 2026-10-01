@@ -15,7 +15,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=3">
+  <link rel="stylesheet" href="../css/style.css?v=4">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -101,6 +101,13 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
+        <div id="btnAgregarMenuWrap" style="position:relative;flex-shrink:0;">
+          <button class="btn btn-secondary" id="btnAgregarMenu" onclick="toggleAgregarMenu(event)" title="Dar de alta"><i data-lucide="plus" style="width:14px;height:14px;"></i> <span class="btn-label">Nuevo ▾</span></button>
+          <div id="agregarMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:180px;">
+            <button onclick="toggleAgregarMenu(); showSection('clientes'); openNewClientModal();">+ Nuevo cliente</button>
+            <button onclick="toggleAgregarMenu(); showSection('colaboradores'); openNewColaboradorModal();">+ Nuevo colaborador</button>
+          </div>
+        </div>
         <div style="position:relative;flex-shrink:0;">
           <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> <span class="btn-label">Clientes ▾</span></button>
           <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
@@ -142,52 +149,24 @@
             <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
             <span id="misTareasCount" class="text-muted text-sm"></span>
           </div>
-          <div class="flex gap-8">
-            <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="btn btn-secondary btn-sm" style="text-decoration:none;">⬇️ Plantilla Excel</a>
-            <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
+          <div class="flex items-center gap-8" style="flex-wrap:wrap;">
+            <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:160px;font-size:12px;padding:7px 10px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
             <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
-            <button id="misTareasViewLista" class="btn btn-secondary btn-sm" onclick="setMisTareasView('lista')"><i data-lucide="list" style="width:14px;height:14px;"></i> Lista</button>
-            <button id="misTareasViewKanban" class="btn btn-primary btn-sm" onclick="setMisTareasView('kanban')"><i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban</button>
-            <button id="misTareasViewCal" class="btn btn-secondary btn-sm" onclick="setMisTareasView('calendario')"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario</button>
-            <button id="misTareasSoloSubtareas" class="btn btn-secondary btn-sm" onclick="toggleSoloSubtareas()"><i data-lucide="corner-down-right" style="width:14px;height:14px;"></i> Solo subtareas</button>
           </div>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
-          <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
           <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
           <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
           <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
           <select id="misTareasFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
             <option value="">Todos</option>
           </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Vertical:</label>
-          <select id="misTareasFiltroVertical" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('vertical', this.value)">
-            <option value="">Todas</option>
-            <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
-            <option>Talent</option><option>Shows</option><option>Euforia</option><option>Training</option><option>MPG</option>
-            <option>Home COSMART</option><option>Hub</option>
+          <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:6px;" onchange="setMisTareasView(this.value)">
+            <option value="kanban">📊 Kanban</option>
+            <option value="lista">📋 Lista</option>
+            <option value="calendario">📅 Calendario</option>
           </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Prioridad:</label>
-          <select id="misTareasFiltroPrioridad" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('prioridad', this.value)">
-            <option value="">Todas</option>
-            <option>Alta</option>
-            <option>Media</option>
-            <option>Baja</option>
-          </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Vencimiento:</label>
-          <select id="misTareasFiltroFecha" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('fecha', this.value)">
-            <option value="">Todas</option>
-            <option value="hoy">Hoy</option>
-            <option value="semana">Esta semana</option>
-            <option value="mes">Este mes</option>
-            <option value="sinfecha">Sin fecha</option>
-          </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
-          <select id="misTareasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasOrden(this.value)">
-            <option value="fecha">Fecha</option>
-            <option value="prioridad">Prioridad</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" onclick="limpiarMisTareasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
+          <button class="btn btn-secondary btn-sm" onclick="abrirFiltrosMisTareas()" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i> Más filtros</button>
         </div>
         <div class="tabs" style="margin-bottom:14px;">
           <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
@@ -199,6 +178,53 @@
         <div style="margin-top:16px;">
           <button class="btn btn-secondary btn-sm" onclick="toggleVerArchivadasMT(this)">▼ Ver archivadas</button>
           <div id="misTareasArchivadasWrap" class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Filtros de Mis tareas -- menú lateral (estilo ecommerce) en vez de
+           amontonar todos los selects en el cuerpo de la sección (reporte
+           de Vaneh, 01/10: "arreglalo... que sean un menú que aparece por
+           la derecha"). Cliente y Ver de quedan afuera por ser los más
+           usados; el resto vive acá. -->
+      <div id="filtrosMisTareasOverlay" class="drawer-overlay" onclick="cerrarFiltrosMisTareas()"></div>
+      <div id="filtrosMisTareasDrawer" class="filter-drawer">
+        <div class="filter-drawer-head">
+          <strong>Más filtros</strong>
+          <button onclick="cerrarFiltrosMisTareas()" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="filter-drawer-body">
+          <label>Vertical</label>
+          <select id="misTareasFiltroVertical" class="form-control" onchange="cambiarMisTareasFiltro('vertical', this.value)">
+            <option value="">Todas</option>
+            <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
+            <option>Talent</option><option>Shows</option><option>Euforia</option><option>Training</option><option>MPG</option>
+            <option>Home COSMART</option><option>Hub</option>
+          </select>
+          <label>Prioridad</label>
+          <select id="misTareasFiltroPrioridad" class="form-control" onchange="cambiarMisTareasFiltro('prioridad', this.value)">
+            <option value="">Todas</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+          <label>Vencimiento</label>
+          <select id="misTareasFiltroFecha" class="form-control" onchange="cambiarMisTareasFiltro('fecha', this.value)">
+            <option value="">Todas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mes</option>
+            <option value="sinfecha">Sin fecha</option>
+          </select>
+          <label>Ordenar por</label>
+          <select id="misTareasOrden" class="form-control" onchange="cambiarMisTareasOrden(this.value)">
+            <option value="fecha">Fecha</option>
+            <option value="prioridad">Prioridad</option>
+          </select>
+          <button id="misTareasSoloSubtareas" class="btn btn-secondary btn-sm" style="width:100%;margin-top:4px;" onclick="toggleSoloSubtareas()"><i data-lucide="corner-down-right" style="width:14px;height:14px;"></i> Solo subtareas</button>
+          <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
+          <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="btn btn-secondary btn-sm" style="width:100%;text-decoration:none;margin-bottom:8px;">⬇️ Plantilla Excel</a>
+          <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px;" onclick="openImportarTareasModal()">📥 Importar Excel</button>
+          <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="limpiarMisTareasFiltros()">✕ Limpiar filtros</button>
         </div>
       </div>
 
@@ -2000,6 +2026,7 @@
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
     document.getElementById('btnNuevoColaborador').style.display = 'none';
+    document.getElementById('btnAgregarMenuWrap').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
@@ -2862,6 +2889,11 @@
     const btn = document.getElementById('btnClientesMenu');
     if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && e.target !== btn) dd.classList.add('hidden');
   });
+
+  window.toggleAgregarMenu = function(ev) {
+    if (ev) ev.stopPropagation();
+    document.getElementById('agregarMenuDropdown').classList.toggle('hidden');
+  };
 
   const INTERNAS_CLIENT_ID = '_cosmart';
   let _internasCache = [];
@@ -4652,13 +4684,18 @@
 
   window.setMisTareasView = function(v) {
     _misTareasView = v;
-    const btnLista = document.getElementById('misTareasViewLista');
-    const btnKanban = document.getElementById('misTareasViewKanban');
-    const btnCal = document.getElementById('misTareasViewCal');
-    btnLista.className = 'btn btn-sm ' + (v === 'lista' ? 'btn-primary' : 'btn-secondary');
-    btnKanban.className = 'btn btn-sm ' + (v === 'kanban' ? 'btn-primary' : 'btn-secondary');
-    btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
+    const sel = document.getElementById('misTareasVistaSelect');
+    if (sel) sel.value = v;
     renderMisTareas();
+  };
+
+  window.abrirFiltrosMisTareas = function() {
+    document.getElementById('filtrosMisTareasOverlay').classList.add('open');
+    document.getElementById('filtrosMisTareasDrawer').classList.add('open');
+  };
+  window.cerrarFiltrosMisTareas = function() {
+    document.getElementById('filtrosMisTareasOverlay').classList.remove('open');
+    document.getElementById('filtrosMisTareasDrawer').classList.remove('open');
   };
 
   // "Solo subtareas" es un FILTRO, no una vista aparte -- las subtareas
@@ -6114,11 +6151,11 @@
         <span class="client-row-name" title="${nombre}">${nombre}</span>
         ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
-        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="copyLogin('${c.email || ''}')">Copiar acceso</button>
         <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
+            <button onclick="copyLogin('${c.email || ''}')">🔑 Copiar acceso</button>
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
             <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
             <button onclick="openFacturacionModal('${c.id}')">🧾 Facturación</button>
