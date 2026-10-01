@@ -15,7 +15,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=4">
+  <link rel="stylesheet" href="../css/style.css?v=5">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -101,16 +101,9 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
-        <div id="btnAgregarMenuWrap" style="position:relative;flex-shrink:0;">
-          <button class="btn btn-secondary" id="btnAgregarMenu" onclick="toggleAgregarMenu(event)" title="Dar de alta"><i data-lucide="plus" style="width:14px;height:14px;"></i> <span class="btn-label">Nuevo ▾</span></button>
-          <div id="agregarMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:180px;">
-            <button onclick="toggleAgregarMenu(); showSection('clientes'); openNewClientModal();">+ Nuevo cliente</button>
-            <button onclick="toggleAgregarMenu(); showSection('colaboradores'); openNewColaboradorModal();">+ Nuevo colaborador</button>
-          </div>
-        </div>
         <div style="position:relative;flex-shrink:0;">
-          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> <span class="btn-label">Clientes ▾</span></button>
-          <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
+          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()" title="Ir a un cliente"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
+          <div id="clientesMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:220px;max-height:60vh;overflow-y:auto;"></div>
         </div>
         <div class="notif-bell-wrap">
           <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
@@ -150,27 +143,16 @@
             <span id="misTareasCount" class="text-muted text-sm"></span>
           </div>
           <div class="flex items-center gap-8" style="flex-wrap:wrap;">
-            <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:160px;font-size:12px;padding:7px 10px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
+            <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:140px;font-size:12px;padding:7px 10px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
             <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
           </div>
         </div>
-        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
-          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
-          <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
-          <select id="misTareasFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
-            <option value="">Todos</option>
-          </select>
-          <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:6px;" onchange="setMisTareasView(this.value)">
-            <option value="kanban">📊 Kanban</option>
-            <option value="lista">📋 Lista</option>
-            <option value="calendario">📅 Calendario</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" onclick="abrirFiltrosMisTareas()" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i> Más filtros</button>
-        </div>
-        <div class="tabs" style="margin-bottom:14px;">
-          <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
-          <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
+        <div class="flex items-center gap-8" style="justify-content:space-between;margin-bottom:14px;">
+          <div class="tabs">
+            <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
+            <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnMisTareasFiltros" onclick="abrirFiltrosMisTareas()" title="Filtros y vista"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
         </div>
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -181,18 +163,29 @@
         </div>
       </div>
 
-      <!-- Filtros de Mis tareas -- menú lateral (estilo ecommerce) en vez de
-           amontonar todos los selects en el cuerpo de la sección (reporte
-           de Vaneh, 01/10: "arreglalo... que sean un menú que aparece por
-           la derecha"). Cliente y Ver de quedan afuera por ser los más
-           usados; el resto vive acá. -->
+      <!-- Filtros de Mis tareas -- menú lateral (estilo ecommerce), todo
+           adentro (vista, filtros, Excel) menos la búsqueda y "+ Nueva
+           tarea" -- pedido de Vaneh (01/10) de dejar el cuerpo de la
+           sección con lo mínimo posible. -->
       <div id="filtrosMisTareasOverlay" class="drawer-overlay" onclick="cerrarFiltrosMisTareas()"></div>
       <div id="filtrosMisTareasDrawer" class="filter-drawer">
         <div class="filter-drawer-head">
-          <strong>Más filtros</strong>
+          <strong>Filtros y vista</strong>
           <button onclick="cerrarFiltrosMisTareas()" aria-label="Cerrar">✕</button>
         </div>
         <div class="filter-drawer-body">
+          <label>Vista</label>
+          <select id="misTareasVistaSelect" class="form-control" onchange="setMisTareasView(this.value)">
+            <option value="kanban">📊 Kanban</option>
+            <option value="lista">📋 Lista</option>
+            <option value="calendario">📅 Calendario</option>
+          </select>
+          <label>Ver de</label>
+          <select id="misTareasVerDe" class="form-control" onchange="cambiarMisTareasVerDe(this.value)"></select>
+          <label>Cliente</label>
+          <select id="misTareasFiltroCliente" class="form-control" onchange="cambiarMisTareasFiltro('cliente', this.value)">
+            <option value="">Todos</option>
+          </select>
           <label>Vertical</label>
           <select id="misTareasFiltroVertical" class="form-control" onchange="cambiarMisTareasFiltro('vertical', this.value)">
             <option value="">Todas</option>
@@ -2026,7 +2019,6 @@
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
     document.getElementById('btnNuevoColaborador').style.display = 'none';
-    document.getElementById('btnAgregarMenuWrap').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
@@ -2891,7 +2883,7 @@
     const clients = await getAllClients();
     const ordenados = [...clients].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
     dd.innerHTML = ordenados.length ? ordenados.map(c => `
-      <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;text-decoration:none;color:var(--text);font-size:13px;">
+      <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:7px;">
         <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
         ${c.nombre || c.name || c.id}
       </a>
@@ -2902,11 +2894,6 @@
     const btn = document.getElementById('btnClientesMenu');
     if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && e.target !== btn) dd.classList.add('hidden');
   });
-
-  window.toggleAgregarMenu = function(ev) {
-    if (ev) ev.stopPropagation();
-    document.getElementById('agregarMenuDropdown').classList.toggle('hidden');
-  };
 
   const INTERNAS_CLIENT_ID = '_cosmart';
   let _internasCache = [];

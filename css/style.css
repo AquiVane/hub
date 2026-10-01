@@ -707,8 +707,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .client-row-menu-btn:hover { background: var(--surface-sunken); }
 .client-row-menu { position: fixed; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 150px; z-index: 500; overflow: hidden; }
 .client-row-menu.hidden { display: none; }
-.client-row-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; font-size: 12px; background: none; border: none; cursor: pointer; color: var(--text); }
-.client-row-menu button:hover { background: var(--surface-sunken); }
+.client-row-menu button, .client-row-menu a { display: block; width: 100%; text-align: left; padding: 8px 12px; font-size: 12px; background: none; border: none; cursor: pointer; color: var(--text); text-decoration: none; box-sizing: border-box; }
+.client-row-menu button:hover, .client-row-menu a:hover { background: var(--surface-sunken); }
 .client-row-menu button.danger { color: #E02020; }
 
 /* ── Menú de filtros lateral (estilo ecommerce) ── */
@@ -827,10 +827,6 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .topbar { padding: 0 12px; gap: 8px; }
   .topbar-title { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
   .topbar-sub { display: none; }
-  #btnClientesMenu { padding: 7px 10px; }
-  #btnClientesMenu .btn-label { display: none; }
-  #btnAgregarMenu { padding: 7px 10px; }
-  #btnAgregarMenu .btn-label { display: none; }
 
   /* Filas de cliente: en vez de scrollear horizontal para llegar a los
      botones (reporte de Vaneh, 01/10: "todavía me tengo que mover para
