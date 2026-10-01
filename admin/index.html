@@ -157,8 +157,10 @@
           <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="setMisTareasView(this.value)">
             <option value="kanban">📊 Kanban</option>
             <option value="lista">📋 Lista</option>
-            <option value="calendario">📅 Calendario</option>
           </select>
+          <button class="btn btn-secondary btn-sm" id="btnMisTareasCal" onclick="setMisTareasView('calendario')">📅 Calendario</button>
+          <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="btn btn-secondary btn-sm" style="text-decoration:none;">⬇️ Plantilla Excel</a>
+          <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
           <button class="btn btn-secondary btn-sm" id="btnMisTareasFiltros" onclick="abrirFiltrosMisTareas()" title="Más filtros" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
         </div>
         <div id="misTareasList">
@@ -617,6 +619,20 @@
             <option>Alta</option>
             <option>Media</option>
             <option>Baja</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Vertical:</label>
+          <select id="proyectosFiltroVertical" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarProyectos('vertical', this.value)">
+            <option value="">Todas</option>
+            <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
+            <option>Talent</option><option>Shows</option><option>Euforia</option><option>Training</option><option>MPG</option>
+            <option>Home COSMART</option><option>Hub</option>
+          </select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Estado:</label>
+          <select id="proyectosFiltroEstado" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarProyectos('estado', this.value)">
+            <option value="">Todos</option>
+            <option value="Sin empezar">Sin empezar</option>
+            <option value="En progreso">En progreso</option>
+            <option value="Listo">Listo</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="limpiarProyectosFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
         </div>
@@ -2878,11 +2894,20 @@
       ? `<button onclick="document.getElementById('clientesMenuDropdown').classList.add('hidden');showSection('colaboradores');openNewColaboradorModal();">👤➕ Nuevo colaborador</button>
          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>`
       : '';
-    dd.innerHTML = colabHtml + '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Cargando clientes...</div>';
-    dd.classList.remove('hidden');
+    // Reusa _clientsCache (la misma que ya pobló loadClients()) en vez de
+    // un getAllClients() propio -- un fetch nuevo acá, independiente del
+    // de la sección Clientes, es la misma tanda de pedidos simultáneos
+    // que ya rompió loadClients() una vez (HANDOFF, 03/09: "no repetir el
+    // mismo problema"). Solo pide de nuevo si todavía no hay nada cacheado.
     try {
-      const clients = await getAllClients();
-      const ordenados = [...clients].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
+      if (!_clientsCache.length) {
+        dd.innerHTML = colabHtml + '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Cargando clientes...</div>';
+        dd.classList.remove('hidden');
+        _clientsCache = await getAllClients();
+      } else {
+        dd.classList.remove('hidden');
+      }
+      const ordenados = [..._clientsCache].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
       const listaHtml = ordenados.length ? ordenados.map(c => `
         <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:7px;">
           <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
@@ -2891,6 +2916,7 @@
       `).join('') : '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Sin clientes todavía.</div>';
       dd.innerHTML = colabHtml + listaHtml;
     } catch (e) {
+      dd.classList.remove('hidden');
       dd.innerHTML = colabHtml + `<div style="padding:10px;font-size:12px;color:#E02020;">No se pudo cargar: ${e.message || 'revisá tu conexión.'}</div>`;
     }
   };
@@ -4116,17 +4142,23 @@
   let _proyectosBusqueda = '';
   let _proyectosFiltroCliente = '';
   let _proyectosFiltroPrioridad = '';
+  let _proyectosFiltroVertical = '';
+  let _proyectosFiltroEstado = '';
   window.filtrarProyectos = function(tipo, valor) {
     if (tipo === 'busqueda') _proyectosBusqueda = valor.trim().toLowerCase();
     if (tipo === 'cliente') _proyectosFiltroCliente = valor;
     if (tipo === 'prioridad') _proyectosFiltroPrioridad = valor;
+    if (tipo === 'vertical') _proyectosFiltroVertical = valor;
+    if (tipo === 'estado') _proyectosFiltroEstado = valor;
     renderProyectos();
   };
   window.limpiarProyectosFiltros = function() {
-    _proyectosBusqueda = ''; _proyectosFiltroCliente = ''; _proyectosFiltroPrioridad = '';
+    _proyectosBusqueda = ''; _proyectosFiltroCliente = ''; _proyectosFiltroPrioridad = ''; _proyectosFiltroVertical = ''; _proyectosFiltroEstado = '';
     document.getElementById('proyectosBuscar').value = '';
     document.getElementById('proyectosFiltroCliente').value = '';
     document.getElementById('proyectosFiltroPrioridad').value = '';
+    document.getElementById('proyectosFiltroVertical').value = '';
+    document.getElementById('proyectosFiltroEstado').value = '';
     renderProyectos();
   };
   function poblarProyectosFiltroCliente(proyectos) {
@@ -4154,6 +4186,8 @@
     const proyectos = todos.filter(i =>
       (!_proyectosFiltroCliente || i.clientId === _proyectosFiltroCliente) &&
       (!_proyectosFiltroPrioridad || i.tarea.prioridad === _proyectosFiltroPrioridad) &&
+      (!_proyectosFiltroVertical || i.tarea.vertical === _proyectosFiltroVertical) &&
+      (!_proyectosFiltroEstado || i.tarea.estado === _proyectosFiltroEstado) &&
       (!_proyectosBusqueda || (i.tarea.titulo || '').toLowerCase().includes(_proyectosBusqueda))
     );
     if (!proyectos.length) {
@@ -4703,7 +4737,9 @@
   window.setMisTareasView = function(v) {
     _misTareasView = v;
     const sel = document.getElementById('misTareasVistaSelect');
-    if (sel) sel.value = v;
+    if (sel && v !== 'calendario') sel.value = v;
+    const btnCal = document.getElementById('btnMisTareasCal');
+    if (btnCal) btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
     renderMisTareas();
   };
 

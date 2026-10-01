@@ -1,6 +1,16 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-09-28. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-10-01. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## ⚠️ REGLA DURA, no repetir: nunca un `getAllClients()` suelto nuevo
+
+Ya rompió `loadClients()` una vez (ver "Quinta/Sexta tanda del 03/09" más abajo) y se volvió a romper el 01/10 por la misma razón exacta: cualquier pedazo de UI nuevo que necesite la lista de clientes y llame a `getAllClients()` por su cuenta, en vez de reusar lo que ya está cacheado, puede disparar una tanda de pedidos simultáneos al mismo origen que termina colgando `loadClients()` mismo (pantalla de Clientes trabada en "Cargando..." para siempre, sin botón de Reintentar porque el pedido ni siquiera llega a fallar, queda pendiente).
+
+**Antes de agregar cualquier botón/menú/modal nuevo que necesite clientes**: usar `_clientsCache` (si ya estás en código cerca de Clientes/`loadClients()`) o `getClientsCacheadoTareas()` (si estás en el lado de Mis Tareas) -- nunca `getAllClients()` a secas, salvo que sea el primer fetch real de la sesión y la variable de caché correspondiente esté vacía.
+
+**Qué pasó el 01/10**: se agregó un menú "⋮" nuevo en el topbar (`toggleClientesMenu`, lista rápida para saltar a un cliente) que llamaba a `getAllClients()` directo cada vez que se abría, sin tocar `_clientsCache`. Vaneh lo pescó porque el Hub se le quedó colgado en "Cargando..." -- y con razón, porque este MISMO problema ya estaba documentado acá abajo y no se revisó antes de escribir código nuevo que lo tocaba. Fix: `toggleClientesMenu` ahora lee `_clientsCache` y solo hace `getAllClients()` si todavía está vacía (y si lo hace, guarda el resultado en `_clientsCache` para que quede compartido con el resto de la página, no un fetch paralelo descartable).
+
+**Para quien retome esto tras una compactación de contexto**: este archivo es la única memoria real entre sesiones -- si hiciste un cambio de verdad (no un typo), escribilo acá ANTES de seguir con lo próximo, no al final "cuando haya tiempo". Un cambio sin documentar acá es un cambio que la próxima sesión no sabe que existió, y es exactamente así como se repite un bug ya resuelto.
 
 ## Sesión 28/09 (cont.): "Clave de API del Hub" -- probada y RECHAZADA por Vaneh, sacada del todo
 
