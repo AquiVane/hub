@@ -699,6 +699,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 .client-row-list { display: flex; flex-direction: column; gap: 6px; }
 .client-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow-x: auto; }
+.client-row-main { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
 .client-row-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .client-row-name { font-size: 13px; font-weight: 700; flex: 1 1 auto; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .client-row > .btn { flex-shrink: 0; white-space: nowrap; }
@@ -830,8 +831,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
   /* Filas de cliente: en vez de scrollear horizontal para llegar a los
      botones (reporte de Vaneh, 01/10: "todavía me tengo que mover para
-     en clientes ver todos"), que pasen a una segunda línea. */
+     en clientes ver todos"), que pasen a una segunda línea. El nombre
+     (.client-row-main) ocupa toda la primera línea él solo -- "fija" como
+     pidió, nunca se achica ni se tapa con el responsable de proyecto, que
+     pasa a su propia línea en vez de competirle el espacio. */
   .client-row { flex-wrap: wrap; overflow-x: visible; }
+  .client-row-main { flex-basis: 100%; }
 
   .content { padding: 14px; flex: 1; overflow-y: auto; }
 

@@ -101,8 +101,9 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
+        <button class="btn btn-primary btn-sm" id="btnNuevoCliente" style="flex-shrink:0;" onclick="showSection('clientes');openNewClientModal();">+ Nuevo cliente</button>
         <div style="position:relative;flex-shrink:0;">
-          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()" title="Ir a un cliente"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
+          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()" title="Más opciones"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
           <div id="clientesMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:220px;max-height:60vh;overflow-y:auto;"></div>
         </div>
         <div class="notif-bell-wrap">
@@ -128,7 +129,6 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Clientes</h2>
           <span id="clientCount" class="text-muted text-sm"></span>
-          <button class="btn btn-primary btn-sm" id="btnNuevoCliente" style="margin-left:auto;" onclick="openNewClientModal()">+ Nuevo cliente</button>
         </div>
         <div class="client-row-list" id="clientGrid">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -139,18 +139,22 @@
       <div id="sec-mistareas" class="hidden">
         <div class="flex items-center gap-8" style="flex-wrap:nowrap;">
           <h2 style="font-size:18px;font-weight:700;flex-shrink:0;">Mis tareas</h2>
-          <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar..." style="min-width:0;flex:1;font-size:12px;padding:7px 8px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
+          <input type="text" id="misTareasBuscar" class="form-control form-control-sm" placeholder="🔎 Buscar..." style="min-width:0;flex:1;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
           <button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
         </div>
         <div id="misTareasCount" class="text-muted text-sm" style="margin:4px 0 14px;"></div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
-          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
-          <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
-          <select id="misTareasFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
-            <option value="">Todos</option>
-          </select>
-          <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:6px;" onchange="setMisTareasView(this.value)">
+          <div class="flex items-center" style="gap:6px;flex-shrink:0;">
+            <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
+            <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
+          </div>
+          <div class="flex items-center" style="gap:6px;flex-shrink:0;">
+            <label style="font-size:12px;color:var(--text-muted);">Cliente:</label>
+            <select id="misTareasFiltroCliente" class="form-control" style="width:auto;max-width:110px;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="setMisTareasView(this.value)">
             <option value="kanban">📊 Kanban</option>
             <option value="lista">📋 Lista</option>
             <option value="calendario">📅 Calendario</option>
@@ -221,7 +225,6 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Colaboradores</h2>
           <span id="colabCount" class="text-muted text-sm"></span>
-          <button class="btn btn-primary btn-sm" id="btnNuevoColaborador" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         </div>
         <div id="colabList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -1983,7 +1986,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2013,7 +2016,6 @@
   document.getElementById('adminName').textContent = user.name || user.email;
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
-    document.getElementById('btnNuevoColaborador').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
@@ -2505,10 +2507,9 @@
   };
 
   window.marcarTodasNotifsLeidas = async function() {
-    const noLeidas = _notifsCacheAdmin.filter(n => !n.leida);
-    noLeidas.forEach(n => n.leida = true);
+    _notifsCacheAdmin.forEach(n => n.leida = true);
     renderNotifListAdmin();
-    await Promise.all(noLeidas.map(n => actualizarNotificacion(n.id, { leida: true }).catch(() => {})));
+    try { await marcarTodasNotifsLeidasApi(); } catch (e) {}
     cargarNotificaciones();
   };
 
@@ -2873,16 +2874,25 @@
     const dd = document.getElementById('clientesMenuDropdown');
     const abrir = dd.classList.contains('hidden');
     if (!abrir) { dd.classList.add('hidden'); return; }
-    dd.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Cargando...</div>';
+    const colabHtml = user.role === 'admin'
+      ? `<button onclick="document.getElementById('clientesMenuDropdown').classList.add('hidden');showSection('colaboradores');openNewColaboradorModal();">👤➕ Nuevo colaborador</button>
+         <div style="border-top:1px solid var(--border);margin:4px 0;"></div>`
+      : '';
+    dd.innerHTML = colabHtml + '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Cargando clientes...</div>';
     dd.classList.remove('hidden');
-    const clients = await getAllClients();
-    const ordenados = [...clients].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
-    dd.innerHTML = ordenados.length ? ordenados.map(c => `
-      <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:7px;">
-        <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
-        ${c.nombre || c.name || c.id}
-      </a>
-    `).join('') : '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Sin clientes todavía.</div>';
+    try {
+      const clients = await getAllClients();
+      const ordenados = [...clients].sort((a,b) => (a.nombre||a.name||a.id).localeCompare(b.nombre||b.name||b.id));
+      const listaHtml = ordenados.length ? ordenados.map(c => `
+        <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:7px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
+          ${c.nombre || c.name || c.id}
+        </a>
+      `).join('') : '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Sin clientes todavía.</div>';
+      dd.innerHTML = colabHtml + listaHtml;
+    } catch (e) {
+      dd.innerHTML = colabHtml + `<div style="padding:10px;font-size:12px;color:#E02020;">No se pudo cargar: ${e.message || 'revisá tu conexión.'}</div>`;
+    }
   };
   document.addEventListener('click', (e) => {
     const dd = document.getElementById('clientesMenuDropdown');
@@ -4161,6 +4171,7 @@
         <div class="card" style="padding:14px;background:var(--primary-dark);color:#fff;border-color:var(--primary-dark);cursor:pointer;" onclick="openMisTareaModal(${idx})">
           <div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔷 ${escapeHtml(item.clientNombre)}</div>
           <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${escapeHtml(t.titulo)}</div>
+          ${t.estado === 'Listo' ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#10b981;color:#fff;font-weight:700;">✅ Finalizado con éxito</span>` : ''}
           ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}
           ${t.asignado ? `<div style="font-size:11px;margin-top:8px;color:#93c5fd;">👤 ${escapeHtml(t.asignado.nombre)}</div>` : ''}
           ${t.colaboracionCon?.length ? `<div style="font-size:11px;margin-top:2px;color:#93c5fd;">🤝 ${escapeHtml(t.colaboracionCon.map(c => c.nombre).join(', '))}</div>` : ''}
@@ -4416,6 +4427,7 @@
           <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
             <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')">✏️ Editar</button>
             <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${col.email}')">📋 Ver tareas</button>
+            <button class="btn btn-secondary btn-sm" style="color:#E02020;" onclick="eliminarColaborador('${col.email}','${(col.nombre || '').replace(/'/g,"\\'")}')">🗑 Eliminar</button>
           </div>
         </div>
       `).join('');
@@ -4436,6 +4448,17 @@
       if (!_colaboradoresCache.length) listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar</h3><p>${e.message || ''}</p></div>`;
     }
   }
+
+  window.eliminarColaborador = async function(email, nombre) {
+    if (!confirm(`¿Eliminar a "${nombre}"? Pierde el acceso al Hub y se lo saca de todos los clientes asignados. Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteColaborador(email);
+      _colaboradoresCache = _colaboradoresCache.filter(c => c.email !== email);
+      renderColaboradores();
+    } catch (e) {
+      alert('Error al eliminar: ' + (e.message || ''));
+    }
+  };
 
   window.verTareasDeColaborador = function(email) {
     ['clientes','mistareas','colaboradores','internas','informes','email-stats','actividad','config'].forEach(s => {
@@ -5324,6 +5347,12 @@
     _mtSubtareas[i].completadoEn = _mtSubtareas[i].done ? new Date().toISOString().split('T')[0] : null;
     renderMiSubtareas();
     autoguardarMiSubtareas();
+    // La tarjeta de Proyectos (si está siendo vista de fondo, atrás del
+    // modal) quedaba con el % viejo hasta recargar -- autoguardarMiSubtareas
+    // ya actualiza _misTareasCache en memoria, solo faltaba repintar.
+    // Reporte de Vaneh (01/10): "actualicé el tildado... y no se
+    // actualizó al 100%".
+    if (!document.getElementById('sec-proyectos')?.classList.contains('hidden')) renderProyectos();
   };
   window.eliminarMiSubtarea = function(i) {
     _mtSubtareas.splice(i, 1);
@@ -6158,8 +6187,10 @@
       const nombre = c.nombre || c.name || c.id;
       return `
       <div class="client-row">
-        <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
-        <span class="client-row-name" title="${nombre}">${nombre}</span>
+        <div class="client-row-main">
+          <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
+          <span class="client-row-name" title="${nombre}">${nombre}</span>
+        </div>
         ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
         <div class="client-row-menu-wrap">
@@ -7132,7 +7163,7 @@
       { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail. Además, todos los lunes a las 9am te llega un resumen de todo lo que sigue pendiente.' },
       { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes) -- para abrirlo, entrá al cliente y buscá "Abrir panel del cliente".' },
     ];
-    if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', antes: () => showSection('clientes'), titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
+    if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
     steps.push({ selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: `Tus propias tareas, de cualquier cliente o internas de ${nombreInterno}, todas juntas -- con Kanban, Lista y Calendario. El botón "+ Nueva tarea" está arriba a la derecha.` });
     steps.push({ selector: '#navInternasBtn', titulo: 'Gestión interna', texto: `Tareas del equipo que no son de ningún cliente puntual (procesos internos de ${nombreInterno}, administrativas, etc.).` });
     steps.push({ selector: '.nav-item[onclick*="showSection(\'procesos\')"]', titulo: 'Procesos', texto: 'Documentación interna del equipo (instructivos, checklists) -- solo la ven colaboradores y admin, nunca el cliente.' });
@@ -7140,7 +7171,7 @@
     steps.push({ selector: '.nav-item[onclick*="showSection(\'proyectos\')"]', titulo: 'Proyectos', texto: 'Todas las tareas marcadas "Es un proyecto", de cualquier cliente o interna, juntas en un solo lugar.' });
     if (user.role === 'admin') {
       steps.push({ selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes.' });
-      steps.push({ selector: '#btnNuevoColaborador', antes: () => showSection('colaboradores'), titulo: 'Dar de alta un colaborador', texto: 'Tocá acá para crear su usuario, con contraseña temporal -- se lo forzamos a cambiar en su primer login.' });
+      steps.push({ selector: '#btnClientesMenu', titulo: 'Dar de alta un colaborador', texto: 'Tocá acá arriba (los 3 puntitos) y vas a encontrar "Nuevo colaborador" -- con contraseña temporal, se lo forzamos a cambiar en su primer login.' });
     }
     steps.push({ selector: '.nav-item[onclick*="showSection(\'actividad\')"]', titulo: 'Actividad', texto: 'Reporte de tareas/contenidos/campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o adjuntar a una factura.' });
     if (user.role === 'admin') {

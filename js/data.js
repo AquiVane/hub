@@ -596,6 +596,11 @@ export async function updateColaborador(email, updates) {
   return api('PATCH', `/admin/colaboradores/${encodeURIComponent(email)}`, updates);
 }
 
+export async function deleteColaborador(email) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden eliminar colaboradores reales.'); return; }
+  return api('DELETE', `/admin/colaboradores/${encodeURIComponent(email)}`);
+}
+
 export async function getInformes() {
   if (DEMO_MODE) return [];
   return api('GET', '/admin/informes');
@@ -763,4 +768,12 @@ export async function getNotificaciones() {
 export async function actualizarNotificacion(id, body) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', `/notificaciones/${id}`, body);
+}
+
+// Marca TODAS las notificaciones propias como leídas en un solo pedido
+// atómico -- ver handleMarcarTodasLeidas en el worker (antes esto se
+// hacía con un POST por notificación en paralelo y se pisaban entre sí).
+export async function marcarTodasNotifsLeidasApi() {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/notificaciones/marcar-todas');
 }
