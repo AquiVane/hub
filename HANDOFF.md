@@ -450,3 +450,9 @@ El Hub YA era una PWA instalable (`manifest.webmanifest` + `sw.js` en la raíz, 
 - **Android/Chrome**: Document Picture-in-Picture -- mueve el modal real (con todos sus controles, 100% interactivo) a una ventana aparte que flota arriba de cualquier app, incluida la cámara.
 - **iPhone/Safari** (no tiene Document PiP): fallback con Picture-in-Picture de video -- se dibuja el texto en un `<canvas>` cuadro a cuadro (mismo scroll/velocidad/tamaño/espejado), se captura como video en vivo y ESE es el que entra en PiP. Flota igual arriba de la cámara, pero no es clickeable (limitación real de la Picture-in-Picture de video en iOS) -- para pausar/cambiar velocidad hay que volver un momento al Hub.
 - **No pude probar en un iPhone/Android reales** (sin acceso a dispositivos físicos desde esta sesión) -- avisar si en la práctica algo no anda como se espera, sobre todo el fallback de iOS.
+
+## Aviso de cookies (30/09)
+
+Vaneh: "me olvidé en todas las verticales la política de cookies". La política ya existía centralizada en `cosmart.com.ar/politica-de-privacidad` (sección 8, Euforia ya la linkeaba) y describe correctamente lo que se usa en la práctica (solo localStorage técnico -- sesión, carrito -- sin cookies de seguimiento publicitario de terceros, confirmado revisando qué scripts externos carga cada sitio: solo SDKs de Mercado Pago/PayPal). Lo que faltaba era el AVISO visible.
+
+Se agregó `cosmart-workers`... no, se agregó `cookie-banner.js` en el repo `cosmart` (hosteado en cosmart.com.ar, cargado desde ahí por todos los sitios del ecosistema para poder actualizarlo en un solo lugar) y se referenció desde las páginas públicas de `cosmart`, `training`, `euforia` y acá (`login.html`, `signup.html`, `reset.html`, `index.html` -- NO en `index.html` que ya era un redirect puro a login, se le sacó). Excluidas herramientas internas de admin.
