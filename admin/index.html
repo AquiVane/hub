@@ -137,22 +137,25 @@
 
       <!-- Mis tareas -->
       <div id="sec-mistareas" class="hidden">
-        <div class="mb-20 flex items-center gap-8" style="justify-content:space-between;flex-wrap:wrap;">
-          <div class="flex items-center gap-8" style="flex-wrap:wrap;">
-            <h2 style="font-size:18px;font-weight:700;">Mis tareas</h2>
-            <span id="misTareasCount" class="text-muted text-sm"></span>
-          </div>
-          <div class="flex items-center gap-8" style="flex-wrap:wrap;">
-            <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:140px;font-size:12px;padding:7px 10px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
-            <button class="btn btn-primary btn-sm" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
-          </div>
+        <div class="flex items-center gap-8" style="flex-wrap:nowrap;">
+          <h2 style="font-size:18px;font-weight:700;flex-shrink:0;">Mis tareas</h2>
+          <input type="text" id="misTareasBuscar" class="form-control" placeholder="🔎 Buscar..." style="min-width:0;flex:1;font-size:12px;padding:7px 8px;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
         </div>
-        <div class="flex items-center gap-8" style="justify-content:space-between;margin-bottom:14px;">
-          <div class="tabs">
-            <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
-            <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
-          </div>
-          <button class="btn btn-secondary btn-sm" id="btnMisTareasFiltros" onclick="abrirFiltrosMisTareas()" title="Filtros y vista"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
+        <div id="misTareasCount" class="text-muted text-sm" style="margin:4px 0 14px;"></div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
+          <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
+          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Cliente:</label>
+          <select id="misTareasFiltroCliente" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasFiltro('cliente', this.value)">
+            <option value="">Todos</option>
+          </select>
+          <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;margin-left:6px;" onchange="setMisTareasView(this.value)">
+            <option value="kanban">📊 Kanban</option>
+            <option value="lista">📋 Lista</option>
+            <option value="calendario">📅 Calendario</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="btnMisTareasFiltros" onclick="abrirFiltrosMisTareas()" title="Más filtros" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
         </div>
         <div id="misTareasList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -163,29 +166,21 @@
         </div>
       </div>
 
-      <!-- Filtros de Mis tareas -- menú lateral (estilo ecommerce), todo
-           adentro (vista, filtros, Excel) menos la búsqueda y "+ Nueva
-           tarea" -- pedido de Vaneh (01/10) de dejar el cuerpo de la
-           sección con lo mínimo posible. -->
+      <!-- Filtros de Mis tareas -- menú lateral (estilo ecommerce). Ver de,
+           Cliente y Vista quedan visibles afuera (son los que más se usan
+           -- pedido explícito de Vaneh); acá adentro va el resto, más
+           Laborales/Personales. -->
       <div id="filtrosMisTareasOverlay" class="drawer-overlay" onclick="cerrarFiltrosMisTareas()"></div>
       <div id="filtrosMisTareasDrawer" class="filter-drawer">
         <div class="filter-drawer-head">
-          <strong>Filtros y vista</strong>
+          <strong>Más filtros</strong>
           <button onclick="cerrarFiltrosMisTareas()" aria-label="Cerrar">✕</button>
         </div>
         <div class="filter-drawer-body">
-          <label>Vista</label>
-          <select id="misTareasVistaSelect" class="form-control" onchange="setMisTareasView(this.value)">
-            <option value="kanban">📊 Kanban</option>
-            <option value="lista">📋 Lista</option>
-            <option value="calendario">📅 Calendario</option>
-          </select>
-          <label>Ver de</label>
-          <select id="misTareasVerDe" class="form-control" onchange="cambiarMisTareasVerDe(this.value)"></select>
-          <label>Cliente</label>
-          <select id="misTareasFiltroCliente" class="form-control" onchange="cambiarMisTareasFiltro('cliente', this.value)">
-            <option value="">Todos</option>
-          </select>
+          <div class="tabs" style="margin-bottom:14px;">
+            <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
+            <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
+          </div>
           <label>Vertical</label>
           <select id="misTareasFiltroVertical" class="form-control" onchange="cambiarMisTareasFiltro('vertical', this.value)">
             <option value="">Todas</option>
@@ -4786,13 +4781,18 @@
     const fecha = i.tarea.vencimiento || i.tarea.fechaPub || '';
     const atraso = diasDeAtraso(fecha);
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    // Fondo siempre clarito (verde o rosa) -- pensado para texto oscuro
+    // encima, pero sin color propio heredaba el texto claro del modo
+    // oscuro y quedaba invisible (reporte de Vaneh, 01/10).
     const bg = atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : 'background:#F0FDF4;border-color:#bbf7d0;';
+    const textoOscuro = '#1f1230';
+    const mutedOscuro = '#5b4a66';
     return `
     <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${bg}">
       <button onclick="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" title="Marcar como hecha" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid #10b981;background:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;"></button>
       <div style="flex:1;min-width:160px;${clickPadre ? 'cursor:pointer;' : ''}"${clickPadre}>
-        <div style="font-size:13px;font-weight:600;">${i.sub.titulo}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
+        <div style="font-size:13px;font-weight:600;color:${textoOscuro};">${i.sub.titulo}</div>
+        <div style="font-size:11px;color:${mutedOscuro};margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${i.tarea.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[i.tarea.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${i.tarea.prioridad}</span>` : ''}
       ${cuadranteBadge(i.tarea.cuadrante)}
@@ -4807,8 +4807,8 @@
     const bg = atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : 'background:#F0FDF4;border-color:#bbf7d0;';
     return `
     <div class="kanban-card" ${idxPadre > -1 ? `onclick="openMisTareaModal(${idxPadre})" style="cursor:pointer;${bg}"` : `style="${bg}"`}>
-      <div class="kanban-card-title">${i.personal ? '🏠 ' : ''}${i.sub.titulo}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}</div>
+      <div class="kanban-card-title" style="color:#1f1230;">${i.personal ? '🏠 ' : ''}${i.sub.titulo}</div>
+      <div style="font-size:11px;color:#5b4a66;margin-top:4px;">${i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}</div>
       ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
       <div style="margin-top:6px;"><span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">SUBTAREA</span></div>
     </div>`;
@@ -4861,14 +4861,18 @@
     const asignadoPor = t.asignado?.asignadoPor?.nombre || '';
     const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
     const esProy = tipo === 'tarea' && !!t.esProyecto;
-    const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
+    // Mismo problema de contraste que en el Kanban (ver nota más arriba):
+    // sin esto, el título y los metadatos quedaban en el color claro del
+    // modo oscuro encima del fondo rosa clarito de atraso.
+    const muted = esProy ? 'rgba(255,255,255,.75)' : (atraso > 0 ? '#9d3a66' : 'var(--text-muted)');
+    const tituloColor = esProy ? 'color:#fff;' : (atraso > 0 ? 'color:#3b0a24;' : '');
     return `
     <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${listo ? 'opacity:.55;' : ''}${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : (tipo === 'tarea' && t.recurrencia ? 'background:#c3b1d1;border-color:#af9dbd;' : ''))}">
       ${tipo === 'tarea'
         ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
         : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+        <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : tituloColor}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
         <div style="font-size:11px;color:${muted};margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
@@ -4940,7 +4944,14 @@
             const fecha = t.vencimiento || t.fechaPub || '';
             const atraso = !estaListo(item) ? diasDeAtraso(fecha) : 0;
             const esProy = item.tipo === 'tarea' && !!t.esProyecto;
-            const muted = esProy ? 'rgba(255,255,255,.75)' : 'var(--text-muted)';
+            // La tarjeta de atraso usa fondo rosa clarito (#fdf2f8) pensado
+            // para texto oscuro encima -- pero el texto normal de la tarjeta
+            // usa los colores del modo oscuro (claros), así que quedaba
+            // prácticamente invisible (reporte de Vaneh, 01/10: "las card...
+            // no se ven"). Mismo problema para el título, que no tenía color
+            // propio y heredaba el claro de siempre.
+            const muted = esProy ? 'rgba(255,255,255,.75)' : (atraso > 0 ? '#9d3a66' : 'var(--text-muted)');
+            const tituloColor = esProy ? 'color:#fff;' : (atraso > 0 ? 'color:#3b0a24;' : '');
             const arrastrable = item.tipo === 'tarea';
             // Toggle rápido de visibilidad -- pedido de Vaneh (08/09): "este
             // habría que agregarlo en mis tareas también pero en cosmart
@@ -4951,7 +4962,7 @@
             return `
             <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : (item.tipo === 'tarea' && t.recurrencia ? 'background:#c3b1d1;border-color:#af9dbd;' : ''))}">
               <div style="display:flex;align-items:flex-start;gap:6px;">
-                <div class="kanban-card-title" style="flex:1;${esProy ? 'color:#fff;' : ''}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+                <div class="kanban-card-title" style="flex:1;${tituloColor}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
                 ${puedeVisibilidad ? `<button onclick="event.stopPropagation();toggleMiTareaVisibleCliente(${idx})" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}" style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:0;font-size:13px;">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
               </div>
               <div style="font-size:11px;color:${muted};margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
@@ -6151,10 +6162,10 @@
         <span class="client-row-name" title="${nombre}">${nombre}</span>
         ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
-        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
+            <button onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
             <button onclick="copyLogin('${c.email || ''}')">🔑 Copiar acceso</button>
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
             <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
