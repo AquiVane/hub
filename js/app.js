@@ -303,7 +303,7 @@ async function init() {
 // duplicado en admin/index.html (scripts separados).
 // ══════════════════════════════════════════════════════════════
 let _notifsCache = [];
-const NOTIF_ICONS = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil' };
+const NOTIF_ICONS = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil', lead: 'target', venta: 'party-popper' };
 
 async function cargarNotificaciones() {
   try {
@@ -4776,6 +4776,8 @@ window.cerrarTeleprompter = function() {
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
   }
+  if (_tpPipWin) { try { _tpPipWin.close(); } catch (e) {} _tpPipWin = null; }
+  if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
   document.getElementById('teleprompterModal').classList.add('hidden');
 };
 
@@ -4840,6 +4842,137 @@ window.teleprompterMirror = function() {
   const on = document.getElementById('tp-mirror').checked;
   document.getElementById('tp-text').style.transform = on ? 'scaleX(-1)' : '';
 };
+
+// Modo flotante del teleprompter (29/09, pedido de Vaneh: "tiene que poder
+// salirse de la app... para poder ponerlo sobre la pantalla de la cámara y
+// filmar"). Dos caminos según lo que soporte el navegador:
+//
+// 1) Document Picture-in-Picture (Chrome/Android, y Chrome/Edge de
+//    escritorio): mueve el propio modal del teleprompter -- tal cual, con
+//    todos sus controles -- a una ventanita real, aparte, que flota
+//    siempre arriba de cualquier otra app. Sigue siendo 100% interactivo
+//    (play/pausa, velocidad, tamaño de letra) porque es el MISMO elemento
+//    del DOM, solo que reubicado en otro browsing context.
+// 2) Fallback para Safari/iPhone (no tiene Document PiP): la Picture-in-
+//    Picture de video SÍ existe en iOS, pero solo funciona sobre un
+//    elemento <video> real. El truco: se dibuja el texto en un <canvas>
+//    cuadro a cuadro (mismo scroll/velocidad/tamaño/espejado que el
+//    teleprompter normal), se captura ese canvas como un video en vivo
+//    (`canvas.captureStream`) y ESE stream es el que entra en PiP -- flota
+//    igual arriba de la cámara, aunque ya no se puede tocar (no hay forma
+//    de que un <video> en PiP reciba clicks): para pausar/cambiar
+//    velocidad hay que volver un momento al Hub.
+let _tpPipWin = null, _tpPipVideoEl = null, _tpPipCanvas = null, _tpPipRAF = null;
+
+window.teleprompterFloat = async function() {
+  if ('documentPictureInPicture' in window) {
+    try { await abrirTeleprompterPipDocumento(); return; }
+    catch (e) { console.error('Document PiP falló, probando fallback de video:', e); }
+  }
+  if (HTMLVideoElement.prototype.requestPictureInPicture) {
+    try { await abrirTeleprompterPipVideo(); return; }
+    catch (e) {
+      alert('No se pudo activar el modo flotante: ' + (e.message || e));
+      return;
+    }
+  }
+  alert('Tu navegador no soporta modo flotante. Probá desde Chrome (Android) o Safari (iPhone/Mac) actualizados.');
+};
+
+async function abrirTeleprompterPipDocumento() {
+  const modal = document.getElementById('teleprompterModal');
+  const pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 640 });
+  _tpPipWin = pipWin;
+  // Copiar las hojas de estilo (link + style) para que adentro de la
+  // ventana flotante se vea igual -- un <link> se puede volver a pedir
+  // sin problema de CORS aunque el documento original sí lo tuviera.
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+    const clone = pipWin.document.createElement('link');
+    clone.rel = 'stylesheet';
+    clone.href = link.href;
+    pipWin.document.head.appendChild(clone);
+  });
+  document.querySelectorAll('style').forEach(style => {
+    pipWin.document.head.appendChild(style.cloneNode(true));
+  });
+  pipWin.document.body.style.margin = '0';
+  pipWin.document.body.appendChild(modal);
+  pipWin.addEventListener('pagehide', () => {
+    document.body.appendChild(modal);
+    _tpPipWin = null;
+  }, { once: true });
+}
+
+async function abrirTeleprompterPipVideo() {
+  const ANCHO = 480, ALTO = 854; // 9:16, liviano
+  const canvas = document.createElement('canvas');
+  canvas.width = ANCHO; canvas.height = ALTO;
+  _tpPipCanvas = canvas;
+
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true; video.style.display = 'none';
+  document.body.appendChild(video);
+  _tpPipVideoEl = video;
+
+  const stream = canvas.captureStream(30);
+  video.srcObject = stream;
+  video.play().catch(() => {});
+
+  function dibujarFrame() {
+    const ctx = canvas.getContext('2d');
+    const box = document.getElementById('tp-scroll');
+    const texto = document.getElementById('tp-text').textContent || '';
+    const mirror = document.getElementById('tp-mirror').checked;
+    const escala = ANCHO / (box.clientWidth || ANCHO);
+    const fontPx = Math.round(_tpFontSize * escala);
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, ANCHO, ALTO);
+    ctx.save();
+    if (mirror) { ctx.translate(ANCHO, 0); ctx.scale(-1, 1); }
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${fontPx}px 'Segoe UI', Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    // Reflow simple del texto al ancho del canvas (mismo criterio que el
+    // white-space:pre-wrap del teleprompter normal: respeta saltos de
+    // línea ya existentes, y envuelve las líneas largas por palabra).
+    const lineHeight = fontPx * 1.6;
+    const maxWidth = ANCHO * 0.86;
+    const lineasFinales = [];
+    texto.split('\n').forEach(parrafo => {
+      const palabras = parrafo.split(' ');
+      let actual = '';
+      palabras.forEach(p => {
+        const prueba = actual ? actual + ' ' + p : p;
+        if (ctx.measureText(prueba).width > maxWidth && actual) {
+          lineasFinales.push(actual);
+          actual = p;
+        } else actual = prueba;
+      });
+      lineasFinales.push(actual);
+    });
+
+    const scrollFrac = box.scrollHeight > box.clientHeight ? box.scrollTop / (box.scrollHeight - box.clientHeight) : 0;
+    const altoTotalTexto = lineasFinales.length * lineHeight;
+    const offsetY = ALTO * 0.12 - scrollFrac * Math.max(0, altoTotalTexto - ALTO * 0.7);
+    lineasFinales.forEach((linea, i) => {
+      const y = offsetY + i * lineHeight;
+      if (y > -lineHeight && y < ALTO) ctx.fillText(linea, ANCHO / 2, y);
+    });
+    ctx.restore();
+    _tpPipRAF = requestAnimationFrame(dibujarFrame);
+  }
+  dibujarFrame();
+
+  await video.requestPictureInPicture();
+  video.addEventListener('leavepictureinpicture', () => {
+    if (_tpPipRAF) cancelAnimationFrame(_tpPipRAF);
+    video.remove();
+    _tpPipVideoEl = null; _tpPipCanvas = null;
+  }, { once: true });
+}
 
 window.removeTareaImg = function(i) {
   _tareaImgList.splice(i, 1);

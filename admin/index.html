@@ -55,7 +55,7 @@
       <button class="nav-item" onclick="showSection('ideas')">
         <i data-lucide="lightbulb" class="nav-icon"></i><span>Ideas</span>
       </button>
-      <button class="nav-item" onclick="showSection('crm')">
+      <button class="nav-item" id="navCrmBtn" onclick="showSection('crm')">
         <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
       </button>
       <button class="nav-item" onclick="showSection('actividad')">
@@ -101,12 +101,14 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
-        <div style="position:relative;">
-          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> Clientes ▾</button>
-          <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
+        <div class="topbar-actions-scroll">
+          <div style="position:relative;flex-shrink:0;">
+            <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> Clientes ▾</button>
+            <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
+          </div>
+          <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()" style="flex-shrink:0;">+ Nuevo colaborador</button>
+          <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()" style="flex-shrink:0;">+ Nuevo cliente</button>
         </div>
-        <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
-        <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()">+ Nuevo cliente</button>
         <div class="notif-bell-wrap">
           <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
             <i data-lucide="bell" style="width:16px;height:16px;"></i>
@@ -363,7 +365,7 @@
         navegador -- mismo problema real que ya tuvimos con js/app.js?v=NN.
         Bumpear este número cada vez que cambie algo relevante DENTRO de
         app/index.html, no solo en js/app.js). -->
-        <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=3" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+        <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=4" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
       </div>
 
       <!-- Instrucciones -- pensadas para cualquier agencia/empresa que use
@@ -691,6 +693,15 @@
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Volvé a ver la introducción al panel de administrador.</p>
             <button class="btn btn-secondary" onclick="reiniciarTourAdmin()">Ver recorrido de nuevo</button>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🔔 Notificaciones push</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Activá las notificaciones para enterarte al instante en tu celular de tareas asignadas, menciones, leads nuevos y ventas -- sin tener que tener el Hub abierto. En iPhone, primero agregá el Hub a la pantalla de inicio (Compartir → Agregar a pantalla de inicio) y abrilo desde ese ícono; si no, Safari no deja activarlas.</p>
+            <button class="btn btn-success btn-sm" id="activarPushBtn" onclick="activarPushHub()">Activar notificaciones</button>
+            <button class="btn btn-secondary btn-sm" onclick="probarPushHub()">Enviar prueba</button>
+            <p id="push-status" style="font-size:12px;margin-top:10px;color:var(--text-muted);"></p>
           </div>
         </div>
         <div class="card hidden" id="cardVerticalesPropias" style="max-width:600px;margin-bottom:20px;">
@@ -1961,7 +1972,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2020,6 +2031,62 @@
       }));
     }
   }
+  // Notificaciones push (29/09) -- mismo mecanismo ya probado en la PWA de
+  // Ventas de Training (Push API estándar, sin SDK de terceros), pero por
+  // usuario (cada colaborador activa las suyas con su propia sesión, no
+  // una clave de admin compartida) y disparadas desde la campanita del
+  // Hub (asignación, mención, estado, lead nuevo, venta).
+  const VAPID_PUBLIC_KEY_HUB = 'BEQr3XAmk6ks2lp3LQ0ZjGdwfxbVjI4KFzLVcsi0UlJnpn37bNqP1n7DDIu3jvaTBb3ied1CQnwYHcIJ0CfiH4I';
+  function urlBase64ToUint8ArrayHub(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+  function actualizarEstadoPushHub() {
+    const statusEl = document.getElementById('push-status');
+    const btn = document.getElementById('activarPushBtn');
+    if (!statusEl || !btn) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      statusEl.textContent = 'Este navegador no soporta notificaciones push.';
+      btn.disabled = true;
+      return;
+    }
+    if (Notification.permission === 'granted') { statusEl.textContent = '✓ Notificaciones activadas'; btn.disabled = true; btn.textContent = 'Activadas'; }
+    else if (Notification.permission === 'denied') { statusEl.textContent = 'Notificaciones bloqueadas -- habilitalas desde Ajustes del sistema/navegador.'; }
+    else { statusEl.textContent = ''; btn.disabled = false; btn.textContent = 'Activar notificaciones'; }
+  }
+  window.activarPushHub = async function() {
+    const statusEl = document.getElementById('push-status');
+    try {
+      // El pedido de permiso tiene que ser lo primero del handler del
+      // click, sin ningún await antes -- si no, Safari en iOS lo ignora
+      // en silencio.
+      const permiso = await Notification.requestPermission();
+      actualizarEstadoPushHub();
+      if (permiso !== 'granted') { alert('No se activaron las notificaciones (permiso: ' + permiso + ').'); return; }
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8ArrayHub(VAPID_PUBLIC_KEY_HUB) });
+      await suscribirPush(sub.toJSON());
+      actualizarEstadoPushHub();
+    } catch (e) {
+      statusEl.textContent = 'No se pudo activar: ' + (e.message || e);
+    }
+  };
+  window.probarPushHub = async function() {
+    const statusEl = document.getElementById('push-status');
+    statusEl.textContent = 'Enviando...';
+    try {
+      await probarPush();
+      statusEl.textContent = '✓ Enviada -- si no te llegó en unos segundos, confirmá que las notificaciones estén activadas arriba.';
+    } catch (e) {
+      statusEl.textContent = 'No se pudo enviar la prueba: ' + (e.message || e);
+    }
+  };
+
   // Verticales: cada agencia (COSMART incluida, desde el 28/09) maneja su
   // propia lista editable desde Configuración -- guardada vía
   // getVerticalesAgencia/setVerticalesAgencia, aislada por agencyId. Antes
@@ -2143,7 +2210,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
     if (sec === 'recursos') loadRecursos();
   };
 
@@ -2333,7 +2400,7 @@
   // mecanismo duplicado en js/app.js (scripts separados).
   // ══════════════════════════════════════════════════════════════
   let _notifsCacheAdmin = [];
-  const NOTIF_ICONS_ADMIN = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil' };
+  const NOTIF_ICONS_ADMIN = { asignacion: 'user-plus', mencion: 'at-sign', estado: 'move', comentario: 'message-circle', contenido_editado: 'pencil', lead: 'target', venta: 'party-popper' };
 
   window.cargarNotificaciones = async function() {
     try {
@@ -7695,6 +7762,12 @@
       const idx = _misTareasCache.findIndex(it => it.clientId === clientId && it.tipo === tipo && it.tarea.id === id);
       if (idx >= 0) openMisTareaModal(idx);
       else alert('Esta tarea ya no existe, fue movida, o no está entre tus tareas asignadas.');
+    } else if (open === 'leads') {
+      // Desde la notificación de "lead nuevo" (29/09) -- no apunta a un
+      // lead puntual, solo abre la sección para que lo vea en el tablero.
+      mostrarSoloSeccion('crm');
+      document.getElementById('navCrmBtn')?.classList.add('active');
+      await loadLeadsAdmin();
     }
   }
 </script>

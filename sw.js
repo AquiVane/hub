@@ -18,3 +18,35 @@ self.addEventListener('fetch', (event) => {
   // por acá también, no solo los del sitio) -- interceptarlos de más
   // agregaba una demora real y se sospecha que colgaba alguno.
 });
+
+// Notificaciones push (29/09, pedido de Vaneh: "que notifique ventas,
+// leads, tareas" -- mismo mecanismo ya probado en la PWA de Ventas de
+// Training, Push API estándar del browser, sin SDK de terceros) -- cada
+// notificación que ya se crea en la campanita (asignación, mención,
+// cambio de estado, comentario, lead nuevo, venta) llega acá también
+// como push real al dispositivo.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  const title = data.title || 'Marketing Hub';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: data.data || {},
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/admin/index.html';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url === url && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});

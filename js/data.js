@@ -692,6 +692,22 @@ export async function setVerticalesAgencia(verticales) {
   return api('POST', '/admin/verticales', { verticales });
 }
 
+// ── Notificaciones push (29/09) ──────────────────────────────────────
+export async function suscribirPush(subscription) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/push/subscribe', subscription);
+}
+
+export async function desuscribirPush() {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/push/unsubscribe', {});
+}
+
+export async function probarPush() {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/push/test', {});
+}
+
 export async function preguntarClaude(mensaje, historial, incluirDatos) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
   return api('POST', '/ai/preguntar', { mensaje, historial, incluirDatos });

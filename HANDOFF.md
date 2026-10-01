@@ -423,3 +423,23 @@ Asignación a un @mención en comentario ya funcionaba (y se mejoró la detecci�
 **Feature nueva**: `generarNotificacionesPorResolucionEquipo` (`cosmart-workers`) -- lo inverso de `generarNotificacionesPorCambioCliente`: si alguien del EQUIPO (no el cliente) marca una tarea como "Listo", y esa tarea es visible para el cliente (`visibleParaCliente:true`), se le crea una notificación in-app avisándole. Solo tareas (no se pidió para contenidos), enganchado en el mismo `handleSaveData` que ya dispara la de arriba.
 
 Cache-bust `js/app.js?v=40`.
+
+## PWA: notificaciones push (tareas/leads/ventas) + fix responsive del topbar + teleprompter flotante (29-30/09)
+
+Pedido de Vaneh: tomar el mecanismo ya probado en la PWA de Ventas de Training (push nativo, sin SDK) y traerlo al Hub para avisar de ventas, leads y tareas -- con 5 personas en el equipo, cada una necesita sus propias notificaciones, no una clave de admin compartida como la de Training.
+
+El Hub YA era una PWA instalable (`manifest.webmanifest` + `sw.js` en la raíz, ya linkeados en `admin/index.html`/`app/index.html`/`login.html`) -- solo faltaba la parte de push:
+- `sw.js`: nuevos handlers `push`/`notificationclick` (mismo patrón que `training/admin/app/sw.js`).
+- Card nueva "🔔 Notificaciones push" en Configuración del admin -- cada colaborador activa las suyas con su propia sesión (`/push/subscribe`, guardado por email en `cosmart-workers`, no una suscripción única como en Training).
+- `crearNotificacion()` (backend) ahora también manda push real al dispositivo además de guardar la notificación de la campanita -- cubre gratis TODO lo que ya generaba notificaciones (asignación, mención, estado, comentario, contenido_editado, resolución de equipo) sin tocar esos call sites.
+- Nuevo: notificación (+ push) cuando entra un **lead nuevo** al CRM.
+- Nuevo: notificación (+ push) de **ventas** de Training -- `cosmart-training-core` ahora también le pega a `POST /avisos/venta` de `marketing-hub` además de su propio push de siempre (la PWA de Ventas de Training sigue andando igual, esto es un canal adicional, no un reemplazo).
+- VAPID propio para el Hub (par de claves nuevo, no comparte el de Training) -- requiere el secret `VAPID_PRIVATE_KEY` en `marketing-hub` (ver HANDOFF de `cosmart-workers`).
+- Deep-link nuevo `?open=leads` en el admin para que la notificación de lead nuevo abra directo esa sección.
+
+**Fix responsive urgente** (reporte de Vaneh con capturas desde el celular): el topbar del admin (Clientes/+Nuevo colaborador/+Nuevo cliente/campanita) no tenía ningún manejo de overflow -- en pantallas chicas la campanita quedaba directamente fuera de la pantalla, sin scroll ni nada ("la campanita de notificaciones ni se ve"). Fix: los 3 botones de acción ahora scrollean horizontal en una tira aparte (`.topbar-actions-scroll`), la campanita queda SIEMPRE visible afuera de esa tira (nunca se la lleva el scroll).
+
+**Teleprompter en modo flotante** (pedido "súper importante": "tiene que poder salirse de la app... para poder ponerlo sobre la pantalla de la cámara y filmar"). Botón nuevo "🪟 Modo flotante":
+- **Android/Chrome**: Document Picture-in-Picture -- mueve el modal real (con todos sus controles, 100% interactivo) a una ventana aparte que flota arriba de cualquier app, incluida la cámara.
+- **iPhone/Safari** (no tiene Document PiP): fallback con Picture-in-Picture de video -- se dibuja el texto en un `<canvas>` cuadro a cuadro (mismo scroll/velocidad/tamaño/espejado), se captura como video en vivo y ESE es el que entra en PiP. Flota igual arriba de la cámara, pero no es clickeable (limitación real de la Picture-in-Picture de video en iOS) -- para pausar/cambiar velocidad hay que volver un momento al Hub.
+- **No pude probar en un iPhone/Android reales** (sin acceso a dispositivos físicos desde esta sesión) -- avisar si en la práctica algo no anda como se espera, sobre todo el fallback de iOS.
