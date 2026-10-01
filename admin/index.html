@@ -2126,7 +2126,7 @@
   // esto) se la inicializa con la misma lista fija que tenía antes, más
   // "VAMA Academy" y "VAMA Tienda" (pedido de Vaneh, 28/09).
   const VERTICAL_SELECT_IDS = ['misTareasFiltroVertical', 'internasVerticalFiltro', 'leadsVerticalFiltro', 'in-vertical', 'mt-vertical', 'nmt-vertical', 'lead-vertical'];
-  const VERTICALES_COSMART_SEED = ['Brújula', 'Rumbo Voraz', 'Design', 'ComuniCOS', 'Talent', 'Shows', 'Euforia', 'Training', 'MPG', 'Home COSMART', 'Hub', 'VAMA Academy', 'VAMA Tienda'];
+  const VERTICALES_COSMART_SEED = ['Brújula', 'Rumbo Voraz', 'Design', 'ComuniCOS', 'Talent', 'Shows', 'Euforia', 'Training', 'MPG', 'Home COSMART', 'Hub', 'VAMA', 'VAMA Academy', 'VAMA Tienda'];
   let _verticalesPropias = [];
   function aplicarVerticalesPropiasEnSelects() {
     VERTICAL_SELECT_IDS.forEach(id => {
@@ -2138,11 +2138,24 @@
       sel.value = valorPrevio;
     });
   }
+  // Ítems del seed que se agregaron DESPUÉS de que COSMART ya tenía su
+  // lista guardada en KV (el seed solo se aplica entero si la lista está
+  // vacía) -- sin este backfill puntual, quedaban solo en el código y
+  // nunca llegaban a la lista real. A propósito es una lista chica y no
+  // "todo el seed", para no revivir algo que se borró a propósito más
+  // adelante si vuelve a faltar.
+  const VERTICALES_BACKFILL = ['VAMA', 'VAMA Academy', 'VAMA Tienda'];
   {
     try { _verticalesPropias = await getVerticalesAgencia(); } catch (e) { _verticalesPropias = []; }
     if (esCosmart && !_verticalesPropias.length) {
       _verticalesPropias = [...VERTICALES_COSMART_SEED];
       try { await setVerticalesAgencia(_verticalesPropias); } catch (e) {}
+    } else if (esCosmart) {
+      const faltantes = VERTICALES_BACKFILL.filter(v => !_verticalesPropias.some(p => p.toLowerCase() === v.toLowerCase()));
+      if (faltantes.length) {
+        _verticalesPropias = [..._verticalesPropias, ...faltantes];
+        try { await setVerticalesAgencia(_verticalesPropias); } catch (e) {}
+      }
     }
     aplicarVerticalesPropiasEnSelects();
     document.getElementById('cardVerticalesPropias').classList.remove('hidden');
@@ -2544,7 +2557,7 @@
 
   // ── Códigos de tareas (cliente/vertical/persona) ────────────────
   const VANEH_CODIGO = 'VH';
-  const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF', 'Home COSMART': 'HOME', 'Hub': 'HUB', 'VAMA Academy': 'VA', 'VAMA Tienda': 'VT' };
+  const VERTICAL_CODIGO = { 'Training': 'TR', 'Rumbo Voraz': 'RV', 'ComuniCOS': 'CO', 'MPG': 'MPG', 'Design': 'DG', 'Shows': 'SW', 'Talent': 'TL', 'Brújula': 'BRJ', 'Euforia': 'EF', 'Home COSMART': 'HOME', 'Hub': 'HUB', 'VAMA': 'VM', 'VAMA Academy': 'VA', 'VAMA Tienda': 'VT' };
   function codigoDesdeNombre(nombre) {
     const palabras = (nombre || '').split(/[^a-zA-ZÀ-ÿ]+/).filter(Boolean);
     if (!palabras.length) return '';
