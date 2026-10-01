@@ -101,13 +101,9 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
-        <div class="topbar-actions-scroll">
-          <div style="position:relative;flex-shrink:0;">
-            <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> Clientes ▾</button>
-            <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
-          </div>
-          <button class="btn btn-secondary" id="btnNuevoColaborador" onclick="openNewColaboradorModal()" style="flex-shrink:0;">+ Nuevo colaborador</button>
-          <button class="btn btn-primary" id="btnNuevoCliente" onclick="openNewClientModal()" style="flex-shrink:0;">+ Nuevo cliente</button>
+        <div style="position:relative;flex-shrink:0;">
+          <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()"><i data-lucide="users" style="width:14px;height:14px;"></i> <span class="btn-label">Clientes ▾</span></button>
+          <div id="clientesMenuDropdown" class="hidden" style="position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-md);min-width:220px;max-height:320px;overflow-y:auto;z-index:50;padding:6px;"></div>
         </div>
         <div class="notif-bell-wrap">
           <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
@@ -132,6 +128,7 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Clientes</h2>
           <span id="clientCount" class="text-muted text-sm"></span>
+          <button class="btn btn-primary btn-sm" id="btnNuevoCliente" style="margin-left:auto;" onclick="openNewClientModal()">+ Nuevo cliente</button>
         </div>
         <div class="client-row-list" id="clientGrid">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -210,7 +207,7 @@
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Colaboradores</h2>
           <span id="colabCount" class="text-muted text-sm"></span>
-          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
+          <button class="btn btn-primary btn-sm" id="btnNuevoColaborador" style="margin-left:auto;" onclick="openNewColaboradorModal()">+ Nuevo colaborador</button>
         </div>
         <div id="colabList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -7042,6 +7039,7 @@
     function cerrar() { overlay.remove(); try { localStorage.setItem(storageKey, '1'); } catch (e) {} }
     function render() {
       const step = steps[i];
+      if (step.antes) { try { step.antes(); } catch (e) {} }
       const el = step.selector ? document.querySelector(step.selector) : null;
       overlay.innerHTML = '';
       let rect = el ? el.getBoundingClientRect() : { top: window.innerHeight/2 - 20, left: window.innerWidth/2 - 100, width: 200, height: 40, bottom: window.innerHeight/2 + 20 };
@@ -7086,7 +7084,7 @@
       { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail. Además, todos los lunes a las 9am te llega un resumen de todo lo que sigue pendiente.' },
       { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes) -- para abrirlo, entrá al cliente y buscá "Abrir panel del cliente".' },
     ];
-    if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
+    if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', antes: () => showSection('clientes'), titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
     steps.push({ selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: `Tus propias tareas, de cualquier cliente o internas de ${nombreInterno}, todas juntas -- con Kanban, Lista y Calendario. El botón "+ Nueva tarea" está arriba a la derecha.` });
     steps.push({ selector: '#navInternasBtn', titulo: 'Gestión interna', texto: `Tareas del equipo que no son de ningún cliente puntual (procesos internos de ${nombreInterno}, administrativas, etc.).` });
     steps.push({ selector: '.nav-item[onclick*="showSection(\'procesos\')"]', titulo: 'Procesos', texto: 'Documentación interna del equipo (instructivos, checklists) -- solo la ven colaboradores y admin, nunca el cliente.' });
@@ -7094,7 +7092,7 @@
     steps.push({ selector: '.nav-item[onclick*="showSection(\'proyectos\')"]', titulo: 'Proyectos', texto: 'Todas las tareas marcadas "Es un proyecto", de cualquier cliente o interna, juntas en un solo lugar.' });
     if (user.role === 'admin') {
       steps.push({ selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes.' });
-      steps.push({ selector: '#btnNuevoColaborador', titulo: 'Dar de alta un colaborador', texto: 'Tocá acá para crear su usuario, con contraseña temporal -- se lo forzamos a cambiar en su primer login.' });
+      steps.push({ selector: '#btnNuevoColaborador', antes: () => showSection('colaboradores'), titulo: 'Dar de alta un colaborador', texto: 'Tocá acá para crear su usuario, con contraseña temporal -- se lo forzamos a cambiar en su primer login.' });
     }
     steps.push({ selector: '.nav-item[onclick*="showSection(\'actividad\')"]', titulo: 'Actividad', texto: 'Reporte de tareas/contenidos/campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o adjuntar a una factura.' });
     if (user.role === 'admin') {

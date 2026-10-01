@@ -312,15 +312,6 @@ input, select, textarea { font-family: inherit; }
 .topbar-title { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
 .topbar-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
-/* Los botones de acción scrollean horizontal si no entran (mobile) --
-   la campanita queda AFUERA de este contenedor así nunca desaparece de
-   la pantalla por más botones que haya antes (reporte de Vaneh, 29/09:
-   "la campanita de notificaciones ni se ve"). */
-.topbar-actions-scroll {
-  display: flex; align-items: center; gap: 10px; min-width: 0;
-  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
-}
-.topbar-actions-scroll::-webkit-scrollbar { display: none; }
 .notif-bell-wrap { flex-shrink: 0; }
 
 .content { flex: 1; overflow-y: auto; padding: 28px; }
@@ -812,7 +803,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .topbar { padding: 0 12px; gap: 8px; }
   .topbar-title { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
   .topbar-sub { display: none; }
-  .topbar-actions-scroll .btn { white-space: nowrap; padding: 7px 12px; font-size: 12px; }
+  #btnClientesMenu { padding: 7px 10px; }
+  #btnClientesMenu .btn-label { display: none; }
 
   .content { padding: 14px; flex: 1; overflow-y: auto; }
 
