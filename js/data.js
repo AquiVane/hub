@@ -713,6 +713,22 @@ export async function probarPush() {
   return api('POST', '/push/test', {});
 }
 
+// ── Integración ChatGPT (solo lectura, clave propia -- ver worker) ──
+export async function getIntegracionesChatGPT() {
+  if (DEMO_MODE) return { integraciones: [] };
+  return api('GET', '/admin/integraciones/chatgpt');
+}
+
+export async function crearIntegracionChatGPT(nombre) {
+  if (DEMO_MODE) { alert('En modo demo no se puede crear una clave real.'); return null; }
+  return api('POST', '/admin/integraciones/chatgpt', { nombre });
+}
+
+export async function revocarIntegracionChatGPT(id) {
+  if (DEMO_MODE) return { ok: true };
+  return api('DELETE', `/admin/integraciones/chatgpt/${encodeURIComponent(id)}`);
+}
+
 export async function preguntarClaude(mensaje, historial, incluirDatos) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
   return api('POST', '/ai/preguntar', { mensaje, historial, incluirDatos });

@@ -2,6 +2,10 @@
 
 Actualizado: 2026-10-01. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## Integración ChatGPT (solo lectura): card en Configuración (02/10)
+
+Card "🔌 Integración ChatGPT (solo lectura)" en Configuración (`integChatgptCard`, solo admin): generar clave (nombre → `POST /admin/integraciones/chatgpt`), la clave completa se muestra UNA vez con botón Copiar (el backend guarda solo el hash), lista con prefijo/fecha/último uso y botón Revocar (`DELETE`). Funciones en `js/data.js` (`getIntegracionesChatGPT`/`crearIntegracionChatGPT`/`revocarIntegracionChatGPT`) y `cargarIntegracionesChatGPT`/`crearIntegracionChatGPTUI`/`revocarIntegracionChatGPTUI`/`copiarClaveIntegracion` en `admin/index.html`. Probado en navegador a 375px y 1200px, sin scroll horizontal. Contrato y reglas de seguridad completos en el HANDOFF de `cosmart-workers`. Rama sin mergear a `main` (el frontend deploya solo al mergear, así que **no mergear antes de que el worker esté desplegado**, o la card daría error).
+
 ## ⚠️ REGLA DURA, no repetir: nunca un `getAllClients()` suelto nuevo
 
 Ya rompió `loadClients()` una vez (ver "Quinta/Sexta tanda del 03/09" más abajo) y se volvió a romper el 01/10 por la misma razón exacta: cualquier pedazo de UI nuevo que necesite la lista de clientes y llame a `getAllClients()` por su cuenta, en vez de reusar lo que ya está cacheado, puede disparar una tanda de pedidos simultáneos al mismo origen que termina colgando `loadClients()` mismo (pantalla de Clientes trabada en "Cargando..." para siempre, sin botón de Reintentar porque el pedido ni siquiera llega a fallar, queda pendiente).
