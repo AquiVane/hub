@@ -760,6 +760,28 @@
             <p id="claude-config-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
+        <div class="card" id="integChatgptCard" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🔌 Integración ChatGPT (solo lectura)</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Generá una clave para conectar el plugin privado de ChatGPT. Le da <strong>solo lectura</strong> de los datos de tu agencia (clientes e información interna). No sirve para iniciar sesión ni para modificar nada, y la podés revocar cuando quieras. La clave se muestra <strong>una sola vez</strong>: guardala en un lugar seguro.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+              <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+                <label style="font-size:11px;">Nombre de la integración</label>
+                <input type="text" id="integNombreInput" class="form-control" maxlength="60" placeholder="Ej: ChatGPT de Vaneh">
+              </div>
+              <button class="btn btn-primary btn-sm" id="integCrearBtn" onclick="crearIntegracionChatGPTUI()">Generar clave</button>
+            </div>
+            <div id="integClaveNueva" class="hidden" style="background:var(--primary-light);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+              <p style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text);">⚠️ Copiá la clave ahora. No se vuelve a mostrar.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <input type="text" id="integClaveNuevaInput" class="form-control" readonly style="flex:1;min-width:200px;font-family:monospace;font-size:12px;" onclick="this.select()">
+                <button class="btn btn-secondary btn-sm" onclick="copiarClaveIntegracion()">Copiar</button>
+              </div>
+            </div>
+            <div id="integLista" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <p id="integ-status" style="font-size:12px;margin-top:10px;"></p>
+          </div>
+        </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>📢 Cuentas publicitarias propias</h2></div>
           <div class="card-body">
@@ -2002,7 +2024,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2252,7 +2274,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
     if (sec === 'recursos') loadRecursos();
   };
 
@@ -7264,6 +7286,67 @@
       await cargarClaudeConfigStatus();
     } catch (e) {
       alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
+    }
+  };
+
+  // ── Integración ChatGPT (solo lectura) ───────────────────────────
+  // La clave completa solo existe en esta respuesta de creación: el backend
+  // guarda únicamente su hash, así que no hay forma de volver a verla.
+  async function cargarIntegracionesChatGPT() {
+    const card = document.getElementById('integChatgptCard');
+    const lista = document.getElementById('integLista');
+    if (!card || !lista) return;
+    if (user.role !== 'admin') { card.classList.add('hidden'); return; }
+    try {
+      const { integraciones } = await getIntegracionesChatGPT();
+      const activas = (integraciones || []).filter(i => !i.revocada);
+      lista.innerHTML = (integraciones || []).length ? (integraciones || []).slice().reverse().map(i => `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:8px;padding:8px 10px;${i.revocada ? 'opacity:.55;' : ''}">
+          <div style="min-width:0;flex:1 1 200px;">
+            <div style="font-size:13px;font-weight:600;word-break:break-word;">${escapeHtml(i.nombre)} <span style="font-family:monospace;font-weight:400;color:var(--text-muted);">${escapeHtml(i.prefijo)}…</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">Creada ${new Date(i.creada).toLocaleDateString('es-AR')}${i.revocada ? ' · Revocada ' + new Date(i.revocada).toLocaleDateString('es-AR') : (i.ultimoUso ? ' · Último uso ' + new Date(i.ultimoUso).toLocaleString('es-AR') : ' · Sin uso todavía')}</div>
+          </div>
+          ${i.revocada ? '<span style="font-size:11px;color:var(--text-muted);">Revocada</span>' : `<button class="btn btn-secondary btn-sm" onclick="revocarIntegracionChatGPTUI('${escapeHtml(i.id)}')">Revocar</button>`}
+        </div>`).join('') : '<p style="font-size:12px;color:var(--text-muted);">Todavía no generaste ninguna clave.</p>';
+      const st = document.getElementById('integ-status');
+      if (st) { st.textContent = activas.length ? `${activas.length} clave(s) activa(s).` : ''; st.style.color = 'var(--text-muted)'; }
+    } catch (e) {
+      lista.innerHTML = `<p style="font-size:12px;color:#dc2626;">${escapeHtml(e.message || 'No se pudo cargar.')}</p>`;
+    }
+  }
+  window.crearIntegracionChatGPTUI = async function() {
+    const input = document.getElementById('integNombreInput');
+    const nombre = input.value.trim();
+    if (!nombre) { alert('Poné un nombre para la integración.'); return; }
+    const btn = document.getElementById('integCrearBtn');
+    btn.disabled = true;
+    try {
+      const r = await crearIntegracionChatGPT(nombre);
+      if (r && r.clave) {
+        input.value = '';
+        document.getElementById('integClaveNuevaInput').value = r.clave;
+        document.getElementById('integClaveNueva').classList.remove('hidden');
+      }
+      await cargarIntegracionesChatGPT();
+    } catch (e) {
+      alert('No se pudo crear la clave: ' + (e.message || 'intentá de nuevo.'));
+    }
+    btn.disabled = false;
+  };
+  window.copiarClaveIntegracion = async function() {
+    const input = document.getElementById('integClaveNuevaInput');
+    try { await navigator.clipboard.writeText(input.value); alert('Clave copiada.'); }
+    catch (e) { input.select(); document.execCommand('copy'); alert('Clave copiada.'); }
+  };
+  window.revocarIntegracionChatGPTUI = async function(id) {
+    if (!confirm('¿Revocar esta clave? ChatGPT va a dejar de poder leer los datos del Hub de inmediato.')) return;
+    try {
+      await revocarIntegracionChatGPT(id);
+      document.getElementById('integClaveNueva').classList.add('hidden');
+      document.getElementById('integClaveNuevaInput').value = '';
+      await cargarIntegracionesChatGPT();
+    } catch (e) {
+      alert('No se pudo revocar: ' + (e.message || 'intentá de nuevo.'));
     }
   };
 
