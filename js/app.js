@@ -7390,15 +7390,22 @@ async function doAddComment(ctx, editingObj, saveFn, stateArr, idField) {
   // Feedback visible (29/09, Vaneh: "no estoy segura que le esté llegando
   // al que arrobo") -- antes esto fallaba en silencio si el @mención no
   // matcheaba a nadie, sin ningún indicio de que no se avisó a nadie.
+  // 02/10: Vaneh se arrobó a sí misma para probar y el mensaje decía "no
+  // reconocimos a quién arrobaste", que es engañoso -- SÍ la reconoció
+  // (está en `mencionados`), lo que pasa es que a una misma no se le
+  // manda mail (ver el filtro de `aAvisar`). Separa ambos casos.
   if (statusEl) {
-    if (texto.includes('@') && !aAvisar.length) {
+    if (!texto.includes('@')) {
+      statusEl.textContent = '';
+    } else if (!mencionados.length) {
       statusEl.textContent = '⚠ No reconocimos a quién arrobaste -- no se avisó a nadie por mail.';
       statusEl.style.color = '#c0392b';
     } else if (aAvisar.length) {
       statusEl.textContent = `✓ Se avisó por mail a ${aAvisar.map(u => u.nombre).join(', ')}.`;
       statusEl.style.color = '';
     } else {
-      statusEl.textContent = '';
+      statusEl.textContent = 'ℹ Te arrobaste a vos misma/o -- no se manda mail para eso.';
+      statusEl.style.color = '';
     }
   }
   const { WORKER_URL } = await import('./firebase.js');
