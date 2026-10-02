@@ -761,20 +761,6 @@
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
-          <div class="card-header"><h2>🧠 Asistente GPT</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Conectá tu propia cuenta de OpenAI para sumar GPT como segunda opción en el asistente (selector Claude / GPT), con el uso pagado por vos. Lee los mismos datos de tus clientes que Claude. Conseguila en <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-              <div class="form-group" style="margin:0;flex:1;min-width:220px;">
-                <label style="font-size:11px;">API key (empieza con sk-)</label>
-                <input type="password" id="gptApiKeyInput" class="form-control" placeholder="sk-...">
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="guardarGptApiKey()">Guardar</button>
-            </div>
-            <p id="gpt-config-status" style="font-size:12px;margin-top:10px;"></p>
-          </div>
-        </div>
-        <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>📢 Cuentas publicitarias propias</h2></div>
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">La cuenta publicitaria de <strong id="cpa-nombre-agencia">tu agencia</strong> en cada plataforma, para tus propias campañas internas (distintas de las de tus clientes, que se cargan desde la ficha de cada cliente). Carga manual por ahora — la conexión automática vía Meta/Google/TikTok/LinkedIn está pendiente.</p>
@@ -2016,7 +2002,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getGptConfig, setGptApiKey, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2266,7 +2252,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarGptConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
     if (sec === 'recursos') loadRecursos();
   };
 
@@ -7281,29 +7267,6 @@
     }
   };
 
-  // ── Asistente GPT (propio de cada agencia) ───────────────────────
-  async function cargarGptConfigStatus() {
-    const el = document.getElementById('gpt-config-status');
-    if (!el) return;
-    try {
-      const { configurada } = await getGptConfig();
-      el.textContent = configurada ? '✓ Conectado' : 'Todavía no conectaste tu clave.';
-      el.style.color = configurada ? '#10b981' : 'var(--text-muted)';
-    } catch (e) {}
-  }
-  window.guardarGptApiKey = async function() {
-    const input = document.getElementById('gptApiKeyInput');
-    const apiKey = input.value.trim();
-    if (!apiKey) { alert('Pegá tu API key.'); return; }
-    try {
-      await setGptApiKey(apiKey);
-      input.value = '';
-      await cargarGptConfigStatus();
-    } catch (e) {
-      alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
-    }
-  };
-
   // ── Cuentas publicitarias propias de la agencia ──────────────────
   const PLATAFORMAS_PAUTA = [
     { key: 'meta', label: 'Meta Ads (Facebook/Instagram)' },
@@ -7815,7 +7778,7 @@
     if (document.getElementById('claude-widget-btn')) return;
     const btn = document.createElement('button');
     btn.id = 'claude-widget-btn';
-    btn.title = 'Preguntale a la IA';
+    btn.title = 'Preguntale a Claude';
     btn.style.cssText = 'position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
     btn.textContent = '💬';
     btn.onclick = () => document.getElementById('claude-widget-panel').classList.toggle('hidden');
@@ -7826,13 +7789,7 @@
     panel.className = 'hidden';
     panel.style.cssText = 'position:fixed;bottom:82px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
-      <div style="background:var(--primary-dark);color:#fff;padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <span>🤖 Asistente</span>
-        <select id="claude-widget-proveedor" onchange="localStorage.setItem('hub_ai_proveedor', this.value)" style="font-size:12px;padding:3px 6px;border-radius:6px;border:none;background:#fff;color:#1e293b;" title="Elegí con qué IA querés charlar. GPT suele rendir mejor para copies, guiones e ideas.">
-          <option value="claude">Claude</option>
-          <option value="gpt">GPT</option>
-        </select>
-      </div>
+      <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">🤖 Asistente Claude</div>
       <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;" title="Le suma al mensaje un resumen de tareas/contenidos/campañas de tus clientes activos, para que pueda responder con datos reales en vez de en general.">
         <input type="checkbox" id="claude-widget-incluir-datos" onchange="localStorage.setItem('hub_claude_incluir_datos', this.checked ? '1' : '0')">
         📊 Incluir datos de mis clientes (para reportes/análisis)
@@ -7849,7 +7806,6 @@
     // apague si quiere charlas más genéricas/livianas, se quede apagada.
     const chkDatos = document.getElementById('claude-widget-incluir-datos');
     chkDatos.checked = localStorage.getItem('hub_claude_incluir_datos') !== '0';
-    try { document.getElementById('claude-widget-proveedor').value = localStorage.getItem('hub_ai_proveedor') === 'gpt' ? 'gpt' : 'claude'; } catch (e) {}
   }
   window.enviarMensajeClaudeWidget = async function() {
     const input = document.getElementById('claude-widget-input');
@@ -7862,8 +7818,7 @@
     msgs.innerHTML += `<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">${incluirDatos ? 'Mirando tus datos y pensando...' : 'Pensando...'}</div>`;
     msgs.scrollTop = msgs.scrollHeight;
     try {
-      const proveedor = document.getElementById('claude-widget-proveedor')?.value === 'gpt' ? 'gpt' : 'claude';
-      const { respuesta } = await preguntarClaude(mensaje, _claudeChatHistorial, incluirDatos, proveedor);
+      const { respuesta } = await preguntarClaude(mensaje, _claudeChatHistorial, incluirDatos);
       _claudeChatHistorial.push({ role: 'user', content: mensaje }, { role: 'assistant', content: respuesta });
       document.getElementById('claude-widget-loading')?.remove();
       msgs.innerHTML += `<div style="margin-bottom:10px;"><span style="background:#f1f5f9;color:var(--text);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(respuesta)}</span></div>`;

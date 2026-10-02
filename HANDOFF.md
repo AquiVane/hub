@@ -2,11 +2,6 @@
 
 Actualizado: 2026-10-01. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
-## Asistente GPT como segunda opción junto a Claude (02/10)
-
-Pedido de Vaneh: conectar GPT (mejor para copies, guiones e ideas) SIN reemplazar a Claude, y que lea los datos de los clientes. Config → card "🧠 Asistente GPT" (key de OpenAI por agencia, `getGptConfig`/`setGptApiKey` en `js/data.js`). El widget flotante del admin tiene un selector Claude/GPT (`#claude-widget-proveedor`, persistido en `localStorage.hub_ai_proveedor`) y `preguntarClaude()` manda `proveedor`. Lee los mismos datos de clientes (el resumen de "Incluir datos de mis clientes"). Backend: ver HANDOFF de `cosmart-workers`. Pendiente: no se tocó la ejecución automática de tareas asignadas a "Claude IA" (sigue solo con Claude).
-
-
 ## ⚠️ REGLA DURA, no repetir: nunca un `getAllClients()` suelto nuevo
 
 Ya rompió `loadClients()` una vez (ver "Quinta/Sexta tanda del 03/09" más abajo) y se volvió a romper el 01/10 por la misma razón exacta: cualquier pedazo de UI nuevo que necesite la lista de clientes y llame a `getAllClients()` por su cuenta, en vez de reusar lo que ya está cacheado, puede disparar una tanda de pedidos simultáneos al mismo origen que termina colgando `loadClients()` mismo (pantalla de Clientes trabada en "Cargando..." para siempre, sin botón de Reintentar porque el pedido ni siquiera llega a fallar, queda pendiente).

@@ -713,20 +713,9 @@ export async function probarPush() {
   return api('POST', '/push/test', {});
 }
 
-export async function preguntarClaude(mensaje, historial, incluirDatos, proveedor) {
+export async function preguntarClaude(mensaje, historial, incluirDatos) {
   if (DEMO_MODE) return { respuesta: 'En modo demo el asistente no está conectado.' };
-  return api('POST', '/ai/preguntar', { mensaje, historial, incluirDatos, proveedor });
-}
-
-// ── Asistente GPT (OpenAI, propio de cada agencia) ───────────────
-export async function getGptConfig() {
-  if (DEMO_MODE) return { configurada: false };
-  return api('GET', '/admin/gpt-config');
-}
-
-export async function setGptApiKey(apiKey) {
-  if (DEMO_MODE) { alert('En modo demo no se puede guardar la clave real.'); return { configurada: false }; }
-  return api('POST', '/admin/gpt-config', { apiKey });
+  return api('POST', '/ai/preguntar', { mensaje, historial, incluirDatos });
 }
 
 // ── Cuentas publicitarias propias de la agencia (Meta/Google/TikTok/LinkedIn) ──
