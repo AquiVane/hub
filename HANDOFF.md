@@ -389,6 +389,15 @@ Los tres Kanban (Tareas del panel cliente, Gestión COSMART, Mis Tareas admin) t
 - Newsletter evergreen (12 ediciones) vive en `cosmart-training-core` (otro repo), no en este.
 - Analytics: confirmado que se quiere conectar más adelante, no arrancado.
 
+### Pendientes sin resolver de la tanda del 02-06/10 (CRM de leads + Métricas de email)
+
+Estos NO estaban escritos acá todavía -- vivían solo en el resumen de la conversación, que se pierde/distorsiona al compactar. Quedan anotados ahora para que no se repita.
+
+- **Método (el lead magnet viejo) nunca llega bien al CRM**: el imán de leads de Método no llama a `/leads/captura` -- solo entra al CRM indirectamente vía la sincronización diaria genérica de "Suscriptor" de Brevo, así que entra con la vertical/columna equivocada (o ninguna). Para arreglarlo de verdad hay que tocar el handler del lead magnet de Método en `cosmart-training-core` para que llame a `/leads/captura` como corresponde (mismo patrón que ya se aplicó a `handleLeadMagnetCaptura`/`handleSolicitudCapacitacionPresencial`). **No se tocó porque no se confirmó con Vaneh si lo quiere ahora o después.**
+- **Brújula no tiene señal de "ya se le hizo contacto real" al momento de la captura**: a diferencia de Euforia/Training, donde capturar el lead YA manda la señal de columna sugerida (`columnaSugerida`), en Brújula el primer email de verdad sale después, vía un cron separado (no en el mismo endpoint de captura) -- tocar eso implica meterse en ese cron, no solo en `/leads/captura`. **No iniciado, pendiente de que Vaneh diga si lo quiere.**
+- **¿Separar las etiquetas de email de colaborador vs. cliente en Métricas?** Pregunta que quedó sin responder cuando se armó el fix de verticales faltantes en Métricas de email (02/10) -- no se tocó nada de esto, solo quedó la duda planteada.
+- **Talent no tiene NINGÚN mecanismo de captura de leads/contacto**: se confirmó leyendo `talent/index.html` -- no hay `<form`, no hay `action=`, no hay ningún `fetch(`. Es la única vertical sin ningún camino hacia el CRM, ni bueno ni malo. **Si Vaneh quiere que Talent entre al CRM, hay que construir un formulario de contacto de cero ahí -- no es un bug, es una feature que nunca existió.**
+
 ## Reporte de un mes se veía negro al subir el reporte de otro mes (28/09)
 
 Vaneh subió el reporte de septiembre de Ando Reciclaje y el de agosto (que antes se veía bien) pasó a mostrarse como un rectángulo negro sin contenido en la sección Reportes del cliente.
