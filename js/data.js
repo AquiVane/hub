@@ -793,3 +793,21 @@ export async function marcarTodasNotifsLeidasApi() {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/notificaciones/marcar-todas');
 }
+
+// ── Chat interno de equipo (grupal + DMs) ───────────────────────────
+// `conversacionId`: 'equipo' (grupal) o 'dm:<email1>|<email2>' (ver
+// construirDmIdChat en admin/index.html, mismo cálculo que el backend).
+export async function getChatMensajes(conversacionId) {
+  if (DEMO_MODE) return [];
+  return api('GET', `/chat/mensajes/${encodeURIComponent(conversacionId)}`);
+}
+
+export async function enviarMensajeChat(conversacionId, texto) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', `/chat/mensajes/${encodeURIComponent(conversacionId)}`, { texto });
+}
+
+export async function getChatNoLeidos() {
+  if (DEMO_MODE) return { total: 0, porConversacion: {} };
+  return api('GET', '/chat/no-leidos');
+}

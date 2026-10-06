@@ -2024,7 +2024,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -7873,7 +7873,7 @@
     btn.title = 'Preguntale a Claude';
     btn.style.cssText = 'position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
     btn.textContent = '💬';
-    btn.onclick = () => document.getElementById('claude-widget-panel').classList.toggle('hidden');
+    btn.onclick = () => alternarWidgetFlotante('claude-widget-panel', 'chat-interno-widget-panel');
     document.body.appendChild(btn);
 
     const panel = document.createElement('div');
@@ -7921,6 +7921,129 @@
     msgs.scrollTop = msgs.scrollHeight;
   };
 
+  // Chat interno de equipo (06/10) -- grupal ('equipo') + DM por
+  // colaborador. Mismo cálculo de id de DM que el backend
+  // (construirDmId, cosmart-workers) para que ambos lados lleguen a la
+  // misma conversación sin necesitar un índice separado en KV.
+  function construirDmIdChat(emailA, emailB) {
+    const [a, b] = [emailA.toLowerCase().trim(), emailB.toLowerCase().trim()].sort();
+    return `dm:${a}|${b}`;
+  }
+
+  // Cierra `idCerrar` y alterna `idAbrir` -- pedido de Vaneh: el chat
+  // interno y el asistente Claude se alternan, nunca los dos abiertos
+  // a la vez.
+  function alternarWidgetFlotante(idAbrir, idCerrar) {
+    document.getElementById(idCerrar)?.classList.add('hidden');
+    document.getElementById(idAbrir)?.classList.toggle('hidden');
+  }
+
+  let _chatInternoConversacionActual = 'equipo';
+  let _chatInternoPollTimer = null;
+
+  function crearWidgetChatInterno() {
+    if (document.getElementById('chat-interno-widget-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'chat-interno-widget-btn';
+    btn.title = 'Chat interno del equipo';
+    btn.style.cssText = 'position:fixed;bottom:20px;right:84px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
+    btn.innerHTML = `👥<span id="chat-interno-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;"></span>`;
+    btn.onclick = () => {
+      alternarWidgetFlotante('chat-interno-widget-panel', 'claude-widget-panel');
+      if (!document.getElementById('chat-interno-widget-panel').classList.contains('hidden')) {
+        seleccionarConversacionChat(_chatInternoConversacionActual);
+      }
+    };
+    document.body.appendChild(btn);
+
+    const panel = document.createElement('div');
+    panel.id = 'chat-interno-widget-panel';
+    panel.className = 'hidden';
+    panel.style.cssText = 'position:fixed;bottom:82px;right:84px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.innerHTML = `
+      <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">👥 Chat interno</div>
+      <div id="chat-interno-conversaciones" style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;"></div>
+      <div id="chat-interno-msgs" style="flex:1;overflow-y:auto;padding:12px;font-size:13px;"></div>
+      <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);">
+        <input type="text" id="chat-interno-input" class="form-control" placeholder="Escribí un mensaje..." style="font-size:12px;padding:6px 8px;" onkeydown="if(event.key==='Enter')enviarMensajeChatInternoWidget();">
+        <button class="btn btn-primary btn-sm" onclick="enviarMensajeChatInternoWidget()">➤</button>
+      </div>`;
+    document.body.appendChild(panel);
+
+    renderConversacionesChatInterno();
+    if (!_chatInternoPollTimer) _chatInternoPollTimer = setInterval(() => {
+      if (!document.getElementById('chat-interno-widget-panel')?.classList.contains('hidden')) {
+        cargarMensajesChatInterno(_chatInternoConversacionActual, { silencioso: true });
+      }
+    }, 9000);
+  }
+
+  // Pestañas de conversación: grupal + una por cada colaborador (DM),
+  // derivadas de getEquipoCache() -- nunca se dispara un fetch de más,
+  // reusa el mismo cache que ya usan los selectores de "Asignar a".
+  async function renderConversacionesChatInterno() {
+    const cont = document.getElementById('chat-interno-conversaciones');
+    if (!cont) return;
+    const miEmail = (user.email || '').toLowerCase();
+    const equipo = (await getEquipoCache()).filter(c => c.email && c.email.toLowerCase() !== miEmail && c.email !== CLAUDE_IA_EMAIL);
+    const pills = [{ id: 'equipo', nombre: '👥 Equipo' }, ...equipo.map(c => ({ id: construirDmIdChat(user.email, c.email), nombre: c.nombre || c.email }))];
+    cont.innerHTML = pills.map(p => `<button type="button" data-conv="${p.id}" style="white-space:nowrap;font-size:11px;padding:4px 10px;border:none;border-radius:14px;cursor:pointer;${p.id === _chatInternoConversacionActual ? 'background:var(--primary-dark);color:#fff;' : 'background:#f1f5f9;color:var(--text);'}" onclick="seleccionarConversacionChat('${p.id}')">${escapeHtml(p.nombre)}</button>`).join('');
+  }
+
+  window.seleccionarConversacionChat = function(conversacionId) {
+    _chatInternoConversacionActual = conversacionId;
+    renderConversacionesChatInterno();
+    cargarMensajesChatInterno(conversacionId);
+  };
+
+  async function cargarMensajesChatInterno(conversacionId, opts = {}) {
+    const msgs = document.getElementById('chat-interno-msgs');
+    if (!msgs) return;
+    if (!opts.silencioso) msgs.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Cargando...</div>';
+    try {
+      const mensajes = await getChatMensajes(conversacionId);
+      if (conversacionId !== _chatInternoConversacionActual) return; // cambió de conversación mientras cargaba
+      const miEmail = (user.email || '').toLowerCase();
+      msgs.innerHTML = mensajes.map(m => {
+        const propio = m.autorEmail === miEmail;
+        return `<div style="margin-bottom:8px;${propio ? 'text-align:right;' : ''}">
+          ${propio ? '' : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${escapeHtml(m.autorNombre)}</div>`}
+          <span style="background:${propio ? 'var(--primary-light)' : '#f1f5f9'};color:${propio ? 'var(--primary-dark)' : 'var(--text)'};padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(m.texto)}</span>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-muted);font-size:12px;">Sin mensajes todavía.</div>';
+      msgs.scrollTop = msgs.scrollHeight;
+      actualizarBadgeChatInterno();
+    } catch (e) {
+      if (!opts.silencioso) msgs.innerHTML = `<div style="color:#dc2626;font-size:12px;">${escapeHtml(e.message || 'Error al cargar los mensajes.')}</div>`;
+    }
+  }
+
+  window.enviarMensajeChatInternoWidget = async function() {
+    const input = document.getElementById('chat-interno-input');
+    const texto = input.value.trim();
+    if (!texto) return;
+    input.value = '';
+    try {
+      await enviarMensajeChat(_chatInternoConversacionActual, texto);
+      cargarMensajesChatInterno(_chatInternoConversacionActual);
+    } catch (e) {
+      alert(e.message || 'Error al enviar el mensaje.');
+    }
+  };
+
+  // Alimenta el numerito del botón minimizado -- polling de 60s (mismo
+  // intervalo que la campanita), más la actualización inmediata al leer
+  // o mandar un mensaje en el panel abierto.
+  async function actualizarBadgeChatInterno() {
+    const badge = document.getElementById('chat-interno-badge');
+    if (!badge) return;
+    try {
+      const { total } = await getChatNoLeidos();
+      if (total > 0) { badge.textContent = total > 99 ? '99+' : String(total); badge.classList.remove('hidden'); }
+      else badge.classList.add('hidden');
+    } catch (e) { /* no rompe el resto de la UI si falla */ }
+  }
+
   if (user.mustChangePassword) {
     showMustChangePasswordModalAdmin();
   } else {
@@ -7929,9 +8052,12 @@
     setTimeout(precargarSeccionesComunes, 300);
     setTimeout(() => iniciarTour(construirTourAdmin(), TOUR_STORAGE_KEY), 600);
     crearWidgetClaude();
+    crearWidgetChatInterno();
     abrirDesdeLinkDirecto();
     cargarNotificaciones();
     setInterval(cargarNotificaciones, 60000);
+    actualizarBadgeChatInterno();
+    setInterval(actualizarBadgeChatInterno, 60000);
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.notif-bell-wrap')) document.getElementById('notifDropdown')?.classList.add('hidden');
     });
