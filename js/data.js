@@ -641,6 +641,18 @@ export async function getEmailStats(dias = 30) {
   return api('GET', `/admin/email-stats?dias=${dias}`);
 }
 
+// Proxy a la config de la campaña "Marketing + IA de 0 a 100" (Training) --
+// el Hub reenvía server-to-server con su propio secret, nunca expone la
+// clave de cosmart-training-core al browser. Solo COSMART.
+export async function getEmkConfig() {
+  if (DEMO_MODE) return { activo: false, dryRun: true, venta: true, ediciones: [] };
+  return api('GET', '/admin/emk-config');
+}
+export async function setEmkConfig(parcial) {
+  if (DEMO_MODE) return { ok: true };
+  return api('PUT', '/admin/emk-config', parcial);
+}
+
 export async function saveClientData(clientId, data) {
   if (DEMO_MODE) {
     const demo = getDemoData(clientId);

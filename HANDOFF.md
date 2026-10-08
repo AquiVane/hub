@@ -1,6 +1,17 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-10-06. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-10-08. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## [08/10] Card "📧 Campaña de email -- Training" en Configuración (proxy a cosmart-training-core)
+
+Otra sesión armó la campaña de email marketing completa "Marketing + IA de 0 a 100" en `cosmart-training-core` (ver su HANDOFF): 22 plantillas, motor de envíos, apagado por seguridad hasta que Vaneh confirme. Dejó la config (`activo`/`dryRun`/`venta`/`ediciones`) solo por API (`GET/PUT /admin/emk/config` en ese worker), sin pantalla. Vaneh pidió el panel **en el Hub** -- primer intento se armó por error en `training/admin/dashboard.html` (otro repo), lo rechazó ("YO NO DIJE QUE LO QUERÍA EN TRAINING DIJE QUE LO QUERÍA EN HUB") y con razón. Esta es la versión correcta/real -- la de `training` queda como código muerto, no se usa.
+
+**Por qué hace falta un proxy y no se llama directo desde el browser**: `/admin/emk/config` se autentica con `X-Admin-Key` (el secret `ADMIN_UPLOAD_KEY` de `cosmart-training-core`), no con el login por sesión del Hub -- exponer ese secret al browser del Hub lo hubiera dejado visible en cualquier pestaña de red para cualquiera que abra la consola. Server-to-server en cambio: el browser llama a `/admin/emk-config` (guión, nuevo) en el Hub con su sesión normal, y `marketing-hub` reenvía a `cosmart-training-core` agregando el secret -- mismo patrón que ya usa `otorgarPuntosPorReferido` con `EUFORIA_ADMIN_KEY` para hablarle a `euforia-worker`.
+
+- **cosmart-workers** (`workers/marketing-hub/src/index.js`): `handleEmkConfigProxy` + rutas `GET/PUT /admin/emk-config` -- `requireAdmin` + `agencyIdDe(caller) === AGENCIA_DEFAULT` (501 para otras agencias, Training es solo de COSMART), reenvía con `env.TRAINING_CORE_ADMIN_KEY`. **Nuevo secret pendiente de cargar en Cloudflare antes de que esto funcione**: `TRAINING_CORE_ADMIN_KEY` en el worker `marketing-hub`, mismo valor que `ADMIN_UPLOAD_KEY` de `cosmart-training-core` (`wrangler secret put TRAINING_CORE_ADMIN_KEY` o desde el dashboard). Documentado en el comentario de secrets de `wrangler.toml`. Sin esto, la card tira "Falta configurar el secret".
+- **hub**: `js/data.js` (`getEmkConfig`/`setEmkConfig`), card nueva en Configuración (`admin/index.html`, id `emkConfigCard`) -- oculta salvo `user.role === 'admin' && esCosmart` (mismo patrón que `integChatgptCard`). Switches activo/dryRun/venta + alta de ediciones (ID, fecha de inicio, cupos Brújula opcionales) con Cerrar/Reabrir/Eliminar por fila -- igual que `ediciones` reemplaza el array entero en cada guardado (`guardarConfig` del backend no mergea arrays campo a campo), nunca un PATCH parcial. A propósito sin editor de `clases` (fechas/links de las 4 clases en vivo) -- es "contenido chico", pedido explícito de Vaneh; eso sigue por API si hace falta.
+- `npm test` en `marketing-hub`: 47/47 OK. `node --check` OK en los 3 archivos.
+- **Pendiente real**: cargar el secret `TRAINING_CORE_ADMIN_KEY` (Vaneh, vía dashboard de Cloudflare o `wrangler secret put`) y desplegar `marketing-hub` -- sin eso la card no funciona todavía.
 
 ## Integración ChatGPT (solo lectura): card en Configuración (02/10)
 

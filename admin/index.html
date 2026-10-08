@@ -782,6 +782,40 @@
             <p id="integ-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
+        <div class="card hidden" id="emkConfigCard" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>📧 Campaña de email -- Training</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Controla la campaña "Marketing + IA de 0 a 100" (motor de envíos en <code>cosmart-training-core</code>). Si "Campaña activa" está destildado, no sale ningún mail.</p>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;"><input type="checkbox" id="emkActivoChk"> Campaña activa</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;"><input type="checkbox" id="emkDryRunChk"> Modo simulación (no envía, solo registra)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;"><input type="checkbox" id="emkVentaChk"> Venta habilitada</label>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="guardarEmkConfigUI()">Guardar</button>
+            <p id="emkConfig-status" style="font-size:12px;margin-top:10px;"></p>
+
+            <h3 style="font-size:14px;margin:22px 0 8px;">Ediciones del curso</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Cargá el ID (ej: 2026-11-a) y la fecha de inicio -- escribí el mismo ID para editar una ya creada.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:11px;">ID</label>
+                <input type="text" id="emkEdIdInput" class="form-control" style="width:150px;" placeholder="2026-11-a">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:11px;">Inicio</label>
+                <input type="datetime-local" id="emkEdInicioInput" class="form-control" style="width:200px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:11px;">Cupos Brújula (opcional)</label>
+                <input type="number" id="emkEdCuposInput" class="form-control" style="width:160px;" min="0">
+              </div>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;"><input type="checkbox" id="emkEdAbiertaChk" checked> Abierta</label>
+              <button class="btn btn-primary btn-sm" onclick="guardarEdicionEmkUI()">Guardar edición</button>
+            </div>
+            <div id="emkEdicionesLista" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <p id="emkEdicion-status" style="font-size:12px;margin-top:10px;"></p>
+          </div>
+        </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>📢 Cuentas publicitarias propias</h2></div>
           <div class="card-body">
@@ -2024,7 +2058,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2274,7 +2308,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
   };
 
@@ -7348,6 +7382,102 @@
     } catch (e) {
       alert('No se pudo revocar: ' + (e.message || 'intentá de nuevo.'));
     }
+  };
+
+  // ── Campaña de email "Marketing + IA de 0 a 100" (Training, 08/10) ──
+  // Proxeado por el Hub (ver getEmkConfig/setEmkConfig en js/data.js) --
+  // solo COSMART admin ve esta card.
+  let _emkCfgCache = null;
+  async function cargarEmkConfig() {
+    const card = document.getElementById('emkConfigCard');
+    if (!card) return;
+    if (user.role !== 'admin' || !esCosmart) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    try {
+      _emkCfgCache = await getEmkConfig();
+      document.getElementById('emkActivoChk').checked = !!_emkCfgCache.activo;
+      document.getElementById('emkDryRunChk').checked = _emkCfgCache.dryRun !== false;
+      document.getElementById('emkVentaChk').checked = _emkCfgCache.venta !== false;
+      renderEdicionesEmkUI();
+    } catch (e) {
+      document.getElementById('emkConfig-status').textContent = 'No se pudo cargar: ' + (e.message || 'intentá de nuevo.');
+    }
+  }
+  window.guardarEmkConfigUI = async function() {
+    const statusEl = document.getElementById('emkConfig-status');
+    statusEl.textContent = 'Guardando...';
+    try {
+      _emkCfgCache = await setEmkConfig({
+        activo: document.getElementById('emkActivoChk').checked,
+        dryRun: document.getElementById('emkDryRunChk').checked,
+        venta: document.getElementById('emkVentaChk').checked,
+      });
+      statusEl.textContent = '✓ Guardado.';
+    } catch (e) {
+      statusEl.textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.');
+    }
+  };
+  function fmtInicioEdicionEmk(iso) {
+    if (!iso) return '(sin fecha)';
+    return new Date(iso).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'medium', timeStyle: 'short' });
+  }
+  function renderEdicionesEmkUI() {
+    const cont = document.getElementById('emkEdicionesLista');
+    if (!cont) return;
+    const ediciones = (_emkCfgCache && _emkCfgCache.ediciones) || [];
+    if (!ediciones.length) { cont.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Todavía no hay ediciones cargadas.</p>'; return; }
+    cont.innerHTML = ediciones.map(ed => `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+        <div style="font-size:12.5px;">
+          <strong>${escapeHtml(ed.id)}</strong> -- ${escapeHtml(fmtInicioEdicionEmk(ed.inicioISO))}
+          <span style="color:var(--text-muted);">· cupos Brújula: ${ed.brujulaCupos != null ? ed.brujulaCupos : '(default)'}</span>
+          <span style="color:${ed.abierta !== false ? 'var(--primary-dark)' : 'var(--text-muted)'};">· ${ed.abierta !== false ? 'Abierta' : 'Cerrada'}</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdicionEmkUI('${escapeHtml(ed.id)}')">${ed.abierta !== false ? 'Cerrar' : 'Reabrir'}</button>
+          <button class="btn btn-secondary btn-sm" onclick="eliminarEdicionEmkUI('${escapeHtml(ed.id)}')">Eliminar</button>
+        </div>
+      </div>`).join('');
+  }
+  window.guardarEdicionEmkUI = async function() {
+    const statusEl = document.getElementById('emkEdicion-status');
+    const id = document.getElementById('emkEdIdInput').value.trim();
+    if (!id) { statusEl.textContent = 'Falta el ID de la edición.'; return; }
+    const inicioVal = document.getElementById('emkEdInicioInput').value;
+    const cuposVal = document.getElementById('emkEdCuposInput').value;
+    const nueva = { id, abierta: document.getElementById('emkEdAbiertaChk').checked, inicioISO: inicioVal ? new Date(inicioVal).toISOString() : null };
+    if (cuposVal !== '') nueva.brujulaCupos = Number(cuposVal);
+    const ediciones = ((_emkCfgCache && _emkCfgCache.ediciones) || []).slice();
+    const idx = ediciones.findIndex(e => e.id === id);
+    if (idx >= 0) ediciones[idx] = { ...ediciones[idx], ...nueva }; else ediciones.push(nueva);
+    statusEl.textContent = 'Guardando...';
+    try {
+      _emkCfgCache = await setEmkConfig({ ediciones });
+      renderEdicionesEmkUI();
+      statusEl.textContent = '✓ Guardado.';
+      document.getElementById('emkEdIdInput').value = '';
+      document.getElementById('emkEdInicioInput').value = '';
+      document.getElementById('emkEdCuposInput').value = '';
+      document.getElementById('emkEdAbiertaChk').checked = true;
+    } catch (e) {
+      statusEl.textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.');
+    }
+  };
+  window.toggleEdicionEmkUI = async function(id) {
+    const ediciones = ((_emkCfgCache && _emkCfgCache.ediciones) || []).slice();
+    const idx = ediciones.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    ediciones[idx] = { ...ediciones[idx], abierta: ediciones[idx].abierta === false };
+    document.getElementById('emkEdicion-status').textContent = 'Guardando...';
+    try { _emkCfgCache = await setEmkConfig({ ediciones }); renderEdicionesEmkUI(); document.getElementById('emkEdicion-status').textContent = '✓ Guardado.'; }
+    catch (e) { document.getElementById('emkEdicion-status').textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.'); }
+  };
+  window.eliminarEdicionEmkUI = async function(id) {
+    if (!confirm(`¿Eliminar la edición "${id}"? Esto no se puede deshacer.`)) return;
+    const ediciones = ((_emkCfgCache && _emkCfgCache.ediciones) || []).filter(e => e.id !== id);
+    document.getElementById('emkEdicion-status').textContent = 'Guardando...';
+    try { _emkCfgCache = await setEmkConfig({ ediciones }); renderEdicionesEmkUI(); document.getElementById('emkEdicion-status').textContent = '✓ Guardado.'; }
+    catch (e) { document.getElementById('emkEdicion-status').textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.'); }
   };
 
   // ── Cuentas publicitarias propias de la agencia ──────────────────
