@@ -2,6 +2,13 @@
 
 Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## [09/10] Plantilla HTML del plan de ejecución para clientes (`plantillas/Plantilla_Plan_Ejecucion_COSMART.html`)
+
+- Pedido de Vaneh: modelo genérico basado en el plan de Lambo Energy (estaba en su Drive) para reutilizar con todos los clientes. Mismo diseño oscuro/menú por pestañas con submenús; textos guía entre `[corchetes]`, sin nada específico de Lambo.
+- **Cada cliente se personaliza: no dejar nada por defecto.** Colores = variables `--gold` (acento principal) y `--violet` (secundario) en `:root`; los valores del archivo son solo de ejemplo. Usar los de la marca del cliente si los tiene, si no los de COSMART.
+- Reglas de contenido ya acordadas con Vaneh: (1) la producción de contenidos NO es parte de COSMART salvo contratación explícita y presupuestada (nota en Resumen, Calendario y Honorarios); (2) aprobado el plan, contenidos y guiones se cargan en el Hub y el cliente tiene acceso (notas en Calendario y Guiones); (3) sección final **GESTIÓN HUB** (qué es, qué incluye, acceso bonificado con la contratación del plan) + link arriba a la derecha, ambos a `https://hub.cosmart.com.ar`.
+- Pendiente: Vaneh no confirmó si "bonificado durante la vigencia del servicio" es la condición definitiva, ni si se muestra el costo habitual del Hub (por ahora sin monto).
+
 ## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
 
 Vaneh mandó captura del modal de tarea (`tf-*`, app/index.html) viéndose "encimado" en mobile. Se armó un mockup en un Artifact de tipo Design (dos artboards: "Modal de tarea" y "Panel del cliente — Inicio") para iterar visualmente con ella antes de tocar código real -- varias rondas de comentarios suyos directo en el Artifact (le faltaba el modal completo arriba, el label de Cuadrante, un hueco vacío de más en el mockup de Inicio). Una vez aprobado, esto es lo que se bajó al código real:
