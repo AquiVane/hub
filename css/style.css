@@ -864,6 +864,19 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     grid-template-columns: 1fr !important;
   }
 
+  /* Grillas de tarjetas de stats (Inicio del cliente, Dashboard) --
+     repeat(3/4,1fr) no entraba en ninguno de los selectores de arriba
+     (son literales "1fr 1fr"/"1fr 1fr 1fr") y quedaban 3-4 tarjetas
+     amontonadas en una pantalla angosta. Pasan a 2 columnas, no a 1 --
+     con 1 sola quedan demasiado anchas y vacías para solo un número y
+     un label. Reporte de Vaneh (09/10), vía mockup en Artifact. */
+  [style*="grid-template-columns:repeat(3"],
+  [style*="grid-template-columns: repeat(3"],
+  [style*="grid-template-columns:repeat(4"],
+  [style*="grid-template-columns: repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
   /* Tabs → scroll horizontal, sin wrap */
   .tabs {
     flex-wrap: nowrap !important;
@@ -884,6 +897,37 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .modal-body { padding: 16px; }
   .modal-header { padding: 14px 16px; }
   .modal-footer { padding: 12px 16px; }
+
+  /* Modal de tarea del cliente (tf-*, app/index.html): columna única
+     reforzada con selector propio por si algo pisa el genérico de
+     arriba, y footer reordenado -- "Eliminar" como link chico arriba
+     del todo (menos protagonismo para una acción destructiva),
+     Archivar/Cancelar en una fila, Guardar grande abajo. Reporte de
+     Vaneh (09/10) de que el modal se veía "encimado" en mobile, vía
+     mockup aprobado en Artifact. */
+  #tareaModal .form-grid { grid-template-columns: 1fr !important; }
+  #tareaModal .form-grid .form-group { grid-column: span 1 !important; }
+  #tareaModal .modal-footer { flex-wrap: wrap; }
+  #tareaModal .modal-footer #deleteTareaBtn {
+    order: 1; flex-basis: 100%; margin-right: 0; text-align: left;
+    background: none; border: none; color: var(--danger); padding: 4px 0;
+  }
+  #tareaModal .modal-footer #archiveTareaBtn { order: 2; flex: 1; margin-right: 0; }
+  #tareaModal .modal-footer #closeTareaModal2 { order: 3; flex: 1; }
+  #tareaModal .modal-footer #saveTareaBtn { order: 4; flex-basis: 100%; padding: 11px; }
+
+  /* Tablas chicas de "Inicio" (Próximas publicaciones / Sitio Web) --
+     en vez de scroll horizontal, cada fila pasa a ser una tarjeta con
+     un mini-label por campo (técnica clásica de tabla responsive).
+     Clase propia (`data-table-cards`), no toca el `.data-table`
+     genérico que usan otras tablas del Hub -- reporte de Vaneh (09/10)
+     vía mockup en Artifact. */
+  .data-table-cards thead { display: none; }
+  .data-table-cards, .data-table-cards tbody, .data-table-cards tr, .data-table-cards td { display: block; width: 100%; }
+  .data-table-cards tr { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .data-table-cards td { border: none; padding: 3px 0; }
+  .data-table-cards td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: var(--text-muted); font-size: 11px; }
+  .data-table-cards td:last-child { padding-top: 6px; text-align: right; }
 
   /* Dashboard */
   .dash-layout { grid-template-columns: 1fr; }

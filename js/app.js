@@ -1694,14 +1694,14 @@ function renderHome(container) {
             .sort((a,b) => a.fechaPub > b.fechaPub ? 1 : -1)
             .slice(0, 5);
           if (!proximos.length) return `<div class="empty-state" style="padding:24px;"><p>No hay contenidos programados próximamente.</p></div>`;
-          return `<div style="overflow-x:auto;"><table class="data-table">
+          return `<div style="overflow-x:auto;"><table class="data-table data-table-cards">
             <thead><tr><th>Fecha</th><th>Título</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
             <tbody>${proximos.map(c => `
               <tr>
-                <td>${fmtDate(c.fechaPub)}</td>
-                <td style="font-weight:500;">${c.titulo}</td>
-                <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
-                <td>${statusBadge(c.estado)}</td>
+                <td data-label="Fecha">${fmtDate(c.fechaPub)}</td>
+                <td data-label="Título" style="font-weight:500;">${c.titulo}</td>
+                <td data-label="Plataforma">${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
+                <td data-label="Estado">${statusBadge(c.estado)}</td>
                 <td><button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button></td>
               </tr>
             `).join('')}</tbody>
@@ -1744,14 +1744,14 @@ function renderHome(container) {
             <button class="btn btn-primary btn-sm" onclick="openWebTaskModal(null)">+</button>
           </div>
           <div style="overflow-x:auto;">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
               <thead><tr><th>Tarea</th><th>Categoría</th><th>Estado</th><th>Vence</th><th></th></tr></thead>
               <tbody>${pend.slice(0,5).map(t => `
                 <tr>
-                  <td style="font-weight:500;">${t.titulo}</td>
-                  <td><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);">${t.categoria||'Otro'}</span></td>
-                  <td>${t.estado}</td>
-                  <td style="font-size:12px;color:var(--text-muted);">${t.vencimiento ? fmtDate(t.vencimiento) : '—'}</td>
+                  <td data-label="Tarea" style="font-weight:500;">${t.titulo}</td>
+                  <td data-label="Categoría"><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);">${t.categoria||'Otro'}</span></td>
+                  <td data-label="Estado">${t.estado}</td>
+                  <td data-label="Vence" style="font-size:12px;color:var(--text-muted);">${t.vencimiento ? fmtDate(t.vencimiento) : '—'}</td>
                   <td><button class="btn btn-secondary btn-sm" onclick="openWebTaskModal('${t.id}')">✏️</button></td>
                 </tr>`).join('')}
               </tbody>

@@ -2,6 +2,20 @@
 
 Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
+
+Vaneh mandó captura del modal de tarea (`tf-*`, app/index.html) viéndose "encimado" en mobile. Se armó un mockup en un Artifact de tipo Design (dos artboards: "Modal de tarea" y "Panel del cliente — Inicio") para iterar visualmente con ella antes de tocar código real -- varias rondas de comentarios suyos directo en el Artifact (le faltaba el modal completo arriba, el label de Cuadrante, un hueco vacío de más en el mockup de Inicio). Una vez aprobado, esto es lo que se bajó al código real:
+
+- **`css/style.css`**: dentro del media query mobile (`max-width:768px`):
+  - `#tareaModal`: columna única reforzada con selector propio (por si algo pisaba el `.form-grid` genérico -- no se pudo confirmar la causa exacta de por qué se veía en 2 columnas en la captura de Vaneh, el código del override genérico ya debería alcanzar, pero se agregó este refuerzo específico igual, no hace daño) + footer reordenado: "Eliminar" como link chico arriba (menos protagonismo), Archivar/Cancelar en una fila, Guardar grande abajo.
+  - **Bug real encontrado de paso**: las grillas de stats con `grid-template-columns:repeat(3,1fr)`/`repeat(4,1fr)` (Inicio del cliente, Dashboard viejo, etc.) no estaban cubiertas por el override mobile existente (que solo capturaba los literales `"1fr 1fr"`/`"1fr 1fr 1fr"`) -- se agregó una regla nueva que las pasa a `repeat(2,1fr)` en mobile. Afecta a los 3 lugares de `js/app.js` que usan `repeat(4,1fr)` inline (línea ~1600 Inicio del cliente, ~5558, ~6482).
+  - **`.data-table-cards`** (clase nueva, NO toca `.data-table` genérico): convierte filas de tabla en tarjetas apiladas con mini-label por campo en vez de scroll horizontal -- técnica clásica (`<td data-label="...">` + `::before` con `attr(data-label)`). Aplicada solo a las dos tablas chicas de "Inicio" (Próximas publicaciones, Sitio Web pendientes) en `js/app.js` (`renderHome`), no a las demás tablas del Hub.
+- **`admin/index.html` + `app/index.html`**: label "Cuadrante (urgente / importante)" → "NIVEL DE IMPORTANCIA" en los 4 modales de tarea (tf-*, y los 3 internos de admin: in-*/mt-*/nmt-*), pedido explícito de Vaneh.
+- **Cache-bust**: `css/style.css?v=7`, `js/app.js?v=42`, iframe de "Contenidos propios" `&hv=5`.
+- **NO se portó todavía** (cosmético, menor prioridad que lo de arriba): los separadores finitos entre bloques de campo que tiene el mockup del modal -- quedó solo en el Artifact, no se replicó en el HTML real porque el formulario se arma dinámicamente con JS y hacerlo bien sin arriesgar romper algo necesitaba más tiempo. Si Vaneh lo pide puntualmente, es la próxima vuelta.
+- El Artifact sigue vivo con un tercer artboard en camino (Dashboard) -- no es parte del repo, es solo el lugar de iteración visual antes de bajar cada cosa acá.
+
+## [09/10] Ícono de la PWA: fondo azul oscuro (el de Training, #060F22) en vez del celeste claro
 ## [09/10] Lista de Clientes en mobile: "Ver panel" arrancaba en distinta posición según el cliente
 
 Vaneh, con captura de la lista de Clientes en mobile: "Esto en la versión móvil tampoco me gusta, lo quiero solo en una línea así queda desprolijo". Causa: una fix anterior (03/09, ver más abajo "Filas de cliente") había dejado un comentario diciendo que el badge de responsable de proyecto (👤) "pasa a su propia línea en vez de competirle el espacio" a los botones -- pero en el HTML el `<span>` del badge nunca tenía una clase CSS que forzara ese salto de línea, solo `.client-row-main` (el nombre) la tenía. Entonces el badge, cuando el cliente tenía responsable asignado, quedaba mezclado en la misma línea que "Ver panel"/⋮/▲▼ y los corría a la derecha -- las filas CON responsable (ej. "Minami World", "Aquí Vaneh") tenían los botones en una posición, y las filas SIN responsable en otra. Desprolijo tal cual lo describió.
