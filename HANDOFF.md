@@ -7,7 +7,8 @@ Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder pregun
 - Pedido de Vaneh: modelo genérico basado en el plan de Lambo Energy (estaba en su Drive) para reutilizar con todos los clientes. Mismo diseño oscuro/menú por pestañas con submenús; textos guía entre `[corchetes]`, sin nada específico de Lambo.
 - **Cada cliente se personaliza: no dejar nada por defecto.** Colores = variables `--gold` (acento principal) y `--violet` (secundario) en `:root`; los valores del archivo son solo de ejemplo. Usar los de la marca del cliente si los tiene, si no los de COSMART.
 - Reglas de contenido ya acordadas con Vaneh: (1) la producción de contenidos NO es parte de COSMART salvo contratación explícita y presupuestada (nota en Resumen, Calendario y Honorarios); (2) aprobado el plan, contenidos y guiones se cargan en el Hub y el cliente tiene acceso (notas en Calendario y Guiones); (3) sección final **GESTIÓN HUB** (qué es, qué incluye, acceso bonificado con la contratación del plan) + link arriba a la derecha, ambos a `https://hub.cosmart.com.ar`.
-- Pendiente: Vaneh no confirmó si "bonificado durante la vigencia del servicio" es la condición definitiva, ni si se muestra el costo habitual del Hub (por ahora sin monto).
+- Confirmado por Vaneh: la bonificación es "durante la vigencia del servicio", sin mostrar el costo habitual del Hub.
+- **Estética (09/10):** pasó de oscuro/Lambo a claro estilo viaje, tomado de la pieza "Plan de marketing" de COSMART (crema, azul marino, coral; brújula, ruta punteada con avión y pines, sellos de pasaporte en las secciones, ficha tipo boarding pass, pie con olas y flor). Tipografías: Playfair Display (títulos) + DM Sans; se eliminó la monoespaciada ("máquina de escribir") y todas las cursivas, y la barra tricolor italiana de Lambo.
 
 ## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
 
