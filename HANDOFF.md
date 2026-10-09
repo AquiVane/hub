@@ -1,6 +1,15 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-10-08. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## [09/10] Ícono de la PWA: fondo azul oscuro (el de Training, #060F22) en vez del celeste claro
+
+Vaneh: "de hub nunca arreglaste como se ve el icono cuando se baja la app. El azul de fondo tiene que ser el más oscuro, el de training diria" -- el ícono (home screen al instalar la PWA) tenía el fondo en el celeste de `theme_color` (#1A4DAA), ella lo quería en el navy oscuro que ya usa Training (#060F22, el mismo de `training/admin/app/manifest.json` y de la franja del logo en los emails de `cosmart-training-core`).
+
+- **Los 5 PNG de ícono** (`icons/icon-192.png`, `icon-512.png`, `icon-maskable-192.png`, `icon-maskable-512.png`, `icons/apple-touch-icon.png`) tenían el fondo pintado DENTRO del PNG (no es solo CSS/manifest) -- se recoloreó con un script de Python (PIL): cualquier píxel a distancia ≤14 del celeste viejo exacto `(26,77,170)` pasa a `(6,15,34)` = `#060F22`; el resto (el imán en azul medio `(0,74,173)` y el rojo) queda intacto, así el imán se sigue viendo con buen contraste contra el fondo oscuro nuevo. **Ojo si hay que volver a tocar estos PNG**: el primer intento fue escalar TODOS los píxeles azules proporcionalmente (fondo Y el imán a la vez) y quedó mal -- el imán, al ser casi del mismo celeste que el fondo viejo, se volvía casi invisible contra el navy nuevo. El fix bueno es el de arriba: tocar SOLO el fondo plano (que es un color sólido exacto, sin anti-aliasing contra sí mismo) y dejar el imán con su propio azul sin tocar.
+- **`manifest.webmanifest`**: `background_color` (color de la pantalla de splash al abrir la PWA) y `theme_color` pasaron de `#1A4DAA` a `#060F22`.
+- **`<meta name="theme-color">`** en `login.html`/`admin/index.html`/`app/index.html`: mismo cambio, para que el color de la barra de estado/dirección del navegador (instalado o no) sea consistente con el ícono nuevo.
+- **Importante para Vaneh**: los sistemas operativos (sobre todo iOS) cachean agresivamente el ícono en el momento de instalar la PWA -- probablemente tenga que **desinstalar y volver a "Agregar a inicio"** para ver el ícono nuevo; un simple refresh de la página no alcanza.
 
 ## [08/10] Card "📧 Campaña de email -- Training" en Configuración (proxy a cosmart-training-core)
 
