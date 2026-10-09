@@ -838,6 +838,13 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .client-row { flex-wrap: wrap; overflow-x: visible; }
   .client-row-main { flex-basis: 100%; }
 
+  /* El badge de responsable (si existe) también a su propia línea --
+     si no, competía por lugar en la línea de los botones y los corría
+     a una posición distinta según si el cliente tenía responsable
+     asignado o no (quedaba desprolijo, reporte de Vaneh 09/10). Así,
+     "Ver panel"/⋮/▲▼ arrancan siempre en la misma posición. */
+  .client-row-responsable { flex-basis: 100%; }
+
   .content { padding: 14px; flex: 1; overflow-y: auto; }
 
   /* Grids → columna única (override inline styles) */

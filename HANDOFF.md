@@ -2,6 +2,13 @@
 
 Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## [09/10] Lista de Clientes en mobile: "Ver panel" arrancaba en distinta posición según el cliente
+
+Vaneh, con captura de la lista de Clientes en mobile: "Esto en la versión móvil tampoco me gusta, lo quiero solo en una línea así queda desprolijo". Causa: una fix anterior (03/09, ver más abajo "Filas de cliente") había dejado un comentario diciendo que el badge de responsable de proyecto (👤) "pasa a su propia línea en vez de competirle el espacio" a los botones -- pero en el HTML el `<span>` del badge nunca tenía una clase CSS que forzara ese salto de línea, solo `.client-row-main` (el nombre) la tenía. Entonces el badge, cuando el cliente tenía responsable asignado, quedaba mezclado en la misma línea que "Ver panel"/⋮/▲▼ y los corría a la derecha -- las filas CON responsable (ej. "Minami World", "Aquí Vaneh") tenían los botones en una posición, y las filas SIN responsable en otra. Desprolijo tal cual lo describió.
+
+- **Fix**: `admin/index.html` -- el `<span>` del badge de responsable ahora tiene la clase `client-row-responsable`. `css/style.css`, dentro del mismo media query mobile donde `.client-row-main` ya tenía `flex-basis:100%`, se agregó la misma regla para `.client-row-responsable` -- así el badge (cuando existe) pasa a ser SU PROPIA línea completa, y "Ver panel"/⋮/▲▼ arrancan siempre en el mismo lugar, tenga o no tenga responsable esa fila.
+- Cache-bust `css/style.css?v=5 → v=6` en `admin/index.html`, `app/index.html` y `login.html` (los tres que ya estaban sincronizados en v=5).
+
 ## [09/10] Ícono de la PWA: fondo azul oscuro (el de Training, #060F22) en vez del celeste claro
 
 Vaneh: "de hub nunca arreglaste como se ve el icono cuando se baja la app. El azul de fondo tiene que ser el más oscuro, el de training diria" -- el ícono (home screen al instalar la PWA) tenía el fondo en el celeste de `theme_color` (#1A4DAA), ella lo quería en el navy oscuro que ya usa Training (#060F22, el mismo de `training/admin/app/manifest.json` y de la franja del logo en los emails de `cosmart-training-core`).

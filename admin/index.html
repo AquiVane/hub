@@ -15,7 +15,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=5">
+  <link rel="stylesheet" href="../css/style.css?v=6">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -6283,7 +6283,7 @@
           <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
           <span class="client-row-name" title="${nombre}">${nombre}</span>
         </div>
-        ${c.responsable?.nombre ? `<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
+        ${c.responsable?.nombre ? `<span class="client-row-responsable" style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
