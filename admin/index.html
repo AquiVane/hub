@@ -304,6 +304,11 @@
             <option>MPG</option>
             <option>Hub</option>
           </select>
+          <label style="font-size:12px;color:var(--text-muted);">Etiqueta:</label>
+          <select id="leadsEtiquetaFiltro" class="form-control" style="width:auto;max-width:100%;font-size:12px;padding:4px 8px;" onchange="filtrarLeadsPorEtiqueta(this.value)">
+            <option value="">Todas</option>
+          </select>
+          <span id="leadsEtiquetaConteo" style="font-size:12px;font-weight:700;color:var(--text);"></span>
         </div>
         <div id="leadsBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -7414,6 +7419,7 @@
   // ── CRM de leads potenciales ──────────────────────────────────────
   let _leadsCache = [];
   let _leadsVerticalFiltro = '';
+  let _leadsEtiquetaFiltro = '';
   let _leadsBusqueda = '';
   let _editingLeadId = null;
   const LEADS_COLS = [
@@ -7428,6 +7434,21 @@
     document.querySelector('.nav-item[onclick*="showSection(\'crm\')"]')?.click();
   };
   window.filtrarLeadsPorVertical = function(v) { _leadsVerticalFiltro = v; renderLeadsBoard(); };
+  window.filtrarLeadsPorEtiqueta = function(v) { _leadsEtiquetaFiltro = v; renderLeadsBoard(); };
+  // Etiquetas de un lead: las nuevas (`etiquetas`, ej. "Lista de espera curso marketing 0 a 100") + la histórica `etiqueta` ("Suscriptor").
+  function etiquetasDeLead(l) { return [...new Set([...(Array.isArray(l.etiquetas) ? l.etiquetas : []), ...(l.etiqueta ? [l.etiqueta] : [])])]; }
+  function actualizarFiltroEtiquetas() {
+    const sel = document.getElementById('leadsEtiquetaFiltro');
+    if (!sel) return;
+    const cuentas = {};
+    _leadsCache.forEach(l => etiquetasDeLead(l).forEach(e => { cuentas[e] = (cuentas[e] || 0) + 1; }));
+    const nombres = Object.keys(cuentas).sort((a, b) => a.localeCompare(b, 'es'));
+    if (_leadsEtiquetaFiltro && !cuentas[_leadsEtiquetaFiltro]) _leadsEtiquetaFiltro = '';
+    sel.innerHTML = '<option value="">Todas</option>' + nombres.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n.replace(/</g, '&lt;')} (${cuentas[n]})</option>`).join('');
+    sel.value = _leadsEtiquetaFiltro;
+    const conteo = document.getElementById('leadsEtiquetaConteo');
+    if (conteo) conteo.textContent = _leadsEtiquetaFiltro ? `${cuentas[_leadsEtiquetaFiltro]} ${cuentas[_leadsEtiquetaFiltro] === 1 ? 'persona' : 'personas'} con esta etiqueta` : '';
+  }
   window.filtrarLeadsPorBusqueda = function(v) { _leadsBusqueda = v.trim().toLowerCase(); renderLeadsBoard(); };
 
   async function loadLeadsAdmin() {
@@ -7444,8 +7465,10 @@
 
   function renderLeadsBoard() {
     const board = document.getElementById('leadsBoard');
+    actualizarFiltroEtiquetas();
     const filtrados = _leadsCache.filter(l =>
       (!_leadsVerticalFiltro || l.vertical === _leadsVerticalFiltro) &&
+      (!_leadsEtiquetaFiltro || etiquetasDeLead(l).includes(_leadsEtiquetaFiltro)) &&
       (!_leadsBusqueda || `${l.nombre} ${l.apellido} ${l.email} ${l.empresa}`.toLowerCase().includes(_leadsBusqueda))
     );
     board.innerHTML = LEADS_COLS.map(col => {
@@ -7463,6 +7486,7 @@
                 <div class="kanban-card-title">${[l.nombre, l.apellido].filter(Boolean).join(' ') || l.email || l.telefono || 'Sin nombre'}</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${l.etiqueta === 'Suscriptor' ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:#64748b;font-weight:700;">🔔 Suscriptor</span>` : ''}
+                  ${(Array.isArray(l.etiquetas) ? l.etiquetas : []).map(e => `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-weight:700;max-width:100%;white-space:normal;">🏷️ ${String(e).replace(/</g, '&lt;')}</span>`).join('')}
                   ${l.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[l.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[l.vertical] || '#64748b'};font-weight:700;">${l.vertical}</span>` : ''}
                   ${l.empresa ? `<span style="font-size:10px;color:var(--text-muted);">🏢 ${l.empresa}</span>` : ''}
                 </div>
