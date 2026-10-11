@@ -1,4 +1,5 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
+import { montarPlay, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getGuiones, saveGuion, deleteGuion,
@@ -1463,6 +1464,14 @@ function renderDashboard(container) {
       </div>
     </div>
   `;
+
+  // Botón ▶ con la explicación del dashboard (js/play.js, sin IA ni costo).
+  montarPlay(container, armarNarracionDashboard({
+    cliente: STATE.client.nombre || STATE.client.name || clientId,
+    mes: `${MESES[dashMonth]} ${dashYear}`,
+    total, publicados, programados, enProceso, formatos, ejes,
+    tareasPend: tareasPendientes, tareasEnProceso: tareasEnProceso, tareasListas: tareasListas
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'));
 }
 
 function getTrabajoRealizadoMes(year, month) {
@@ -6568,11 +6577,18 @@ window.openReporteModal = function() {
     </div>
   `;
 
+  // Botón ▶ con la explicación del reporte (js/play.js, sin IA ni costo).
+  montarPlay(body, armarNarracionReporte({
+    cliente, mes: mesLabel, total: conts.length, publicados: publicados.length, aprobados: aprobados.length,
+    formatos: fmtCount, ejes: ejeCount, campActivas: activas.length,
+    gastado: totalGastado, ingresos: totalIngresos, tareasPend, tareasOk
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'));
+
   document.getElementById('reporteModal').classList.remove('hidden');
 };
 
-document.getElementById('closeReporteModal').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
-document.getElementById('closeReporteModal2').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteModal').addEventListener('click', () => { detenerPlay(); document.getElementById('reporteModal').classList.add('hidden'); });
+document.getElementById('closeReporteModal2').addEventListener('click', () => { detenerPlay(); document.getElementById('reporteModal').classList.add('hidden'); });
 
 window.openCampanaModal = function(id) {
   editingCampana = id ? STATE.campanas.find(c => c.id === id) : null;
