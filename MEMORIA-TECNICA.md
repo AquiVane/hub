@@ -57,6 +57,9 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 - Tablero Kanban (Potencial → Email Marketing/WhatsApp → Nuevo Cliente → Seguimiento), con alta manual y alimentación automática desde eventos reales del negocio (carritos abandonados, formularios de contacto, imanes de leads, pagos fallidos/exitosos) en las distintas verticales de COSMART.
 - Filtro por vertical de negocio y buscador.
 
+### Mapas de calor y analítica de páginas
+Sección del panel de administración que muestra, para todas las páginas públicas de la marca, cómo las usa la gente: en qué lugar de la pantalla toca (mapa de clics), hasta dónde baja (mapa de scroll), cuánto tiempo permanece, cuántas veces vuelve, de qué fuente de tráfico llega (redes, buscadores, correo, acceso directo), en qué días y horarios entra y a qué otra página pasa después y qué hace allí. Permite filtrar por vertical de negocio, por página, por dispositivo, por botón, por día y hora, y por fuente. La medición es propia, no utiliza cookies de terceros ni almacena datos personales (solo un identificador anónimo y datos de uso agregados), y respeta la preferencia de "no rastrear" del navegador.
+
 ### Facturación e informes
 - Recordatorio automático a la agencia para emitir la factura mensual de cada cliente, y recordatorio automático al cliente si no se registra el pago pasado el vencimiento.
 - Generación de informes mensuales por cliente (aprobación manual antes de enviarse) y resumen cualitativo periódico para el equipo.

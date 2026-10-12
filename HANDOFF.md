@@ -1,6 +1,18 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+Actualizado: 2026-10-12. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
+
+## [12/10] 🔥 MAPAS DE CALOR — sección nueva del admin (rama `claude/mapas-calor`, SIN mergear ni desplegar)
+
+Pedido de Vaneh: ver dónde hace clic la gente, cuánto tiempo está, cuántas veces entra, si hace scroll y hasta dónde, a qué otra landing pasa y qué hace ahí; con TODAS las verticales/páginas de COSMART listadas y filtros por vertical, página, botón, scroll, sesiones, visitas, día/hora y fuente de tráfico. "QUIERO PODER OPTIMIZAR TODOOOO".
+
+- **Frontend (este repo)**: `admin/mapas-calor.js` (módulo, todo el UI), `admin/mapas-calor-inventario.js` (inventario GENERADO de 114 páginas en 12 verticales; `medida:false` = privada/redirección, no lleva tag), `getMapasCalor()` en `js/data.js`, y en `admin/index.html`: botón de nav `navMapasCalorBtn` (icono flame, visible SOLO para admin de la agencia COSMART), `<div id="sec-mapas-calor"><div id="mcRoot">` y el hook en `showSection`. 8 pestañas: Resumen (visitas por día, dispositivos, "qué optimizar primero"), Mapa de clics (heatmap de canvas SOBRE un iframe de la página real, por dispositivo), Scroll (profundidad + mapa de scroll), Botones (ranking, CTR, filtra todo por botón) + acciones, Días y horarios (grilla 7×24, tocar celda filtra), Fuentes de tráfico (+ utm), Recorrido (de dónde vienen / a dónde pasan / qué hacen ahí / salidas), Todas las páginas (ranking con estado Urgente/Mejorar/Va bien; incluye las que no tienen datos).
+- **Todo lo que viene de afuera se escapa con `esc()`**: el colector es público, un tercero podría mandar texto malicioso. Mantenerlo así.
+- **Iframe del mapa**: carga la página real con `?hm_off=1` para que ver el mapa NO sume visitas propias. Algunas páginas pueden no verse si el sitio bloquea iframes (hoy ninguna lo hace); sin fondo igual se ve el mapa (checkbox "Mostrar la página de fondo").
+- **Mobile**: filtros plegados detrás de "Mostrar filtros", KPIs 2 columnas, tablas con scroll horizontal.
+- **Preview con datos de ejemplo** (no es parte del repo): Artifact "Mapas de calor" (generador de datos demo).
+- **Para activarlo falta (en este orden, Vaneh tiene que dar el OK de cada deploy)**: 1) mergear `cosmart-workers` (rama `claude/mapas-calor`) y disparar el workflow `deploy.yml` de `marketing-hub`; 2) mergear `cosmart` (`claude/mapas-calor-tracker`: trae `hm.js`) y luego el mismo branch de cada repo; 3) recién ahí mergear ESTE branch a `main` (el Hub se despliega solo). Ver `cosmart-workers/HANDOFF.md` ("Mapas de calor") para el detalle técnico, privacidad y límites.
+- **Si se crea una página o vertical nueva**: sumarla a `mapas-calor-inventario.js` y, si es un host nuevo, a `HM_SITIOS` (worker) y `PROPIOS` (`hm.js`). Las páginas con datos que no estén en el inventario aparecen solas ("Nuevas").
 
 ## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
 
