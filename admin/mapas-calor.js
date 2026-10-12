@@ -28,7 +28,7 @@ const S = {
   f: { vertical: '', pagina: '', periodo: '30', desde: '', hasta: '', device: '', fuente: '', dow: '', hr: '', boton: '' },
   filtrosAbiertos: !(window.matchMedia && matchMedia('(max-width:768px)').matches),
   tab: 'resumen', data: {}, cargando: false, error: '', botonesLista: [], verNoMedidas: false,
-  orden: { col: 'visitas', dir: -1 }, buscar: '', pedido: 0, mostrarFondo: true,
+  orden: { col: 'visitas', dir: -1 }, buscar: '', pedido: 0, mostrarFondo: true, capas: { zonas: true, botones: true },
 };
 let ROOT = null;
 
@@ -135,6 +135,15 @@ function armar() {
     .mc-heat .in{position:absolute;left:0;top:0;transform-origin:0 0}
     .mc-heat iframe{display:block;border:0;background:#fff;pointer-events:none}
     .mc-heat canvas{position:absolute;left:0;top:0;pointer-events:none}
+    .mc-btn{position:absolute;border:2px solid var(--c);border-radius:12px;pointer-events:auto;cursor:pointer;box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 30%,transparent),0 0 26px 6px color-mix(in srgb,var(--c) 70%,transparent);animation:mcLuz 2.4s ease-in-out infinite;background:color-mix(in srgb,var(--c) 10%,transparent)}
+    .mc-btn:hover{background:color-mix(in srgb,var(--c) 28%,transparent)}
+    .mc-btn .t{position:absolute;right:-2px;top:-14px;transform:translateY(-100%);background:var(--c);color:#111;font:800 15px/1 'DM Sans',sans-serif;border-radius:8px;padding:6px 10px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+    .mc-btn .t b{background:#111;color:#fff;border-radius:50%;display:inline-block;min-width:22px;height:22px;line-height:22px;text-align:center;margin-right:6px;font-size:13px}
+    @keyframes mcLuz{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35) saturate(1.25)}}
+    @media(prefers-reduced-motion:reduce){.mc-btn{animation:none}}
+    .mc-capas{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px}
+    .mc-capas label{display:flex;gap:6px;align-items:center;cursor:pointer}
+    .mc-ptos{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:-1px}
     .mc-leyenda{height:10px;border-radius:5px;background:linear-gradient(90deg,#1d4ed8,#06b6d4,#22c55e,#facc15,#ef4444);max-width:260px}
     .mc-hgrid{display:grid;grid-template-columns:44px repeat(24,minmax(18px,1fr));gap:2px;font-size:10px;min-width:640px}
     .mc-hgrid .c{height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#0b1b44}
@@ -306,13 +315,28 @@ function necesitaPagina(nombre) {
 function selectorDevice() {
   return `<div class="mc-seg" id="mcDev">${[['mobile', 'Celular'], ['tablet', 'Tablet'], ['desktop', 'Computadora']].map(([v, t]) => `<button data-d="${v}" class="${S.f.device === v ? 'on' : ''}">${t}</button>`).join('')}</div>`;
 }
-function marcoPagina(alto, ancho, ancho_disp) {
+function colorLuz(t) { // 0..1 -> color de la paleta (azul poco, rojo mucho)
+  const c = paleta()(Math.round(Math.min(1, Math.max(0, t)) * 255)); return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+// Luces sobre cada botón/enlace tocado: más rojo = más clics. Se ubican con el rectángulo que mide hm.js.
+function lucesBotones(ancho_disp) {
+  const lista = (S.data.botones || []).filter(b => b.rect), max = Math.max(1, ...lista.map(b => b.clics));
+  return lista.map((b, i) => {
+    const r = b.rect, t = b.clics / max, n = (S.data.botones || []).indexOf(b) + 1;
+    return `<div class="mc-btn" data-el="${esc(b.el)}" title="${esc((b.txt || b.el) + ' — ' + b.clics + ' clics')}" style="left:${Math.round(r.x * ancho_disp)}px;top:${r.y}px;width:${Math.max(24, Math.round(r.w * ancho_disp))}px;height:${Math.max(24, r.h)}px;--c:${colorLuz(0.2 + 0.8 * t)}"><span class="t"><b>${n}</b>${nf(b.clics)} clics · ${pct(b.ctr)}</span></div>`;
+  }).join('');
+}
+function marcoPagina(alto, ancho, ancho_disp, conBotones) {
   const v = S.f.vertical, host = hostDe(v), esc_ = Math.min(1, ancho / ancho_disp);
   const url = `https://${host}${S.f.pagina === '/' ? '/' : S.f.pagina}?hm_off=1`;
+  const custom = window.__mcFondo ? window.__mcFondo(host, S.f.pagina, ancho_disp, alto, S.f.device) : null; // gancho solo para la vista previa de ejemplo
+  const fondo = !S.mostrarFondo ? `<div style="width:100%;height:100%;background:#f3f4f6"></div>`
+    : custom || `<iframe src="${esc(url)}" width="${ancho_disp}" height="${alto}" scrolling="no" loading="lazy" title="Página"></iframe>`;
   return `<div class="mc-heat" id="mcHeat" style="width:${Math.round(ancho_disp * esc_)}px;height:${Math.round(alto * esc_)}px">
     <div class="in" style="width:${ancho_disp}px;height:${alto}px;transform:scale(${esc_})">
-      ${S.mostrarFondo ? `<iframe src="${esc(url)}" width="${ancho_disp}" height="${alto}" scrolling="no" loading="lazy" title="Página"></iframe>` : `<div style="width:100%;height:100%;background:#f3f4f6"></div>`}
-      <canvas id="mcCanvas"></canvas></div></div>`;
+      ${fondo}
+      <canvas id="mcCanvas" style="${S.capas.zonas ? '' : 'display:none'}"></canvas>
+      <div id="mcLuces" style="${S.capas.botones && conBotones ? '' : 'display:none'}">${conBotones ? lucesBotones(ancho_disp) : ''}</div></div></div>`;
 }
 const anchoDisponible = () => Math.max(300, Math.min(1000, (ROOT.querySelector('#mcContenido')?.clientWidth || 900) - 40));
 function paleta() {
@@ -344,22 +368,29 @@ function tClics() {
   if (!S.f.pagina) return necesitaPagina('Mapa de clics');
   if (!c) return vacio('Cargando…');
   const ancho_disp = ANCHOS[S.f.device] || 390, alto = Math.max(700, Math.min(9000, c.alto_prom || 3000));
-  const topBot = (S.data.botones || []).slice(0, 8);
+  const bots = S.data.botones || [], max = Math.max(1, ...bots.map(b => b.clics));
+  const url = `https://${hostDe(S.f.vertical)}${S.f.pagina}`;
   return `<div class="mc-card"><div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:10px">${selectorDevice()}
-      <label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="mcFondo" ${S.mostrarFondo ? 'checked' : ''}> Mostrar la página de fondo</label>
-      <span class="mc-sub" style="margin-left:auto">${nf(c.total)} clics en ${nf(c.visitas)} visitas · ${esc(S.f.pagina)} · ${esc(hostDe(S.f.vertical))}</span></div>
+      <div class="mc-capas"><label><input type="checkbox" id="mcCapaZonas" ${S.capas.zonas ? 'checked' : ''}> Zonas calientes</label><label><input type="checkbox" id="mcCapaBot" ${S.capas.botones ? 'checked' : ''}> Botones iluminados</label><label><input type="checkbox" id="mcFondo" ${S.mostrarFondo ? 'checked' : ''}> Página de fondo</label></div>
+      <span class="mc-sub" style="margin-left:auto">${nf(c.total)} clics en ${nf(c.visitas)} visitas · <a href="${esc(url)}?hm_off=1" target="_blank" rel="noopener">abrir ${esc(S.f.pagina)} ↗</a></span></div>
     ${c.total === 0 ? '<div class="mc-aviso">Todavía no hay clics registrados para esta página con estos filtros.</div>' : ''}
-    ${marcoPagina(alto, anchoDisponible(), ancho_disp)}
+    ${S.f.boton ? `<div class="mc-aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a">Mostrando solo los clics del botón <b>${esc((bots.find(b => b.el === S.f.boton)?.txt || S.f.boton).slice(0, 50))}</b>. <a href="#" id="mcQuitarBoton">Ver todos</a></div>` : ''}
+    ${marcoPagina(alto, anchoDisponible(), ancho_disp, true)}
     <div class="flex items-center gap-8" style="margin-top:10px;justify-content:center"><span class="mc-sub">Pocos clics</span><div class="mc-leyenda" style="flex:1"></div><span class="mc-sub">Muchos clics</span></div>
-    <p class="mc-sub" style="text-align:center;margin-top:6px">Se muestra el diseño de ${esc({ mobile: 'celular', tablet: 'tablet', desktop: 'computadora' }[S.f.device] || '')}. Las zonas rojas son donde más tocan, aunque no haya un botón (clics "muertos" = algo que parece botón y no lo es).</p></div>
-    <div class="mc-card"><h3>Lo más tocado en esta página</h3>${tablaBotones(topBot, true)}</div>`;
+    <p class="mc-sub" style="text-align:center;margin-top:6px">Diseño de ${esc({ mobile: 'celular', tablet: 'tablet', desktop: 'computadora' }[S.f.device] || '')}. <b>Luces de colores</b>: cuanto más rojo, más tocan esa zona o ese botón. Tocá un botón iluminado para ver solo sus clics. Si hay manchas donde no hay botón, la gente intenta tocar algo que no es un botón.</p></div>
+    <div class="mc-card"><h3>Botones iluminados (en el mismo orden que los números del mapa)</h3>${bots.length ? `<div class="mc-tabla"><table class="data-table"><thead><tr><th>#</th><th>Botón / enlace</th><th>Clics</th><th></th><th>Visitas que lo tocan</th><th>Dónde está</th></tr></thead><tbody>
+      ${bots.slice(0, 15).map((b, i) => `<tr class="cl" data-boton="${esc(b.el)}"><td><span class="mc-ptos" style="--c:${colorLuz(0.2 + 0.8 * b.clics / max)}"></span><b>${i + 1}</b></td><td><b>${esc(b.txt || '(sin texto)')}</b><div class="mc-sub">${esc(b.el.split(':')[0])}${b.href ? ' → ' + esc(b.href) : ''}</div></td><td><b>${nf(b.clics)}</b></td><td style="width:90px"><div class="mc-barra"><i style="width:${100 * b.clics / max}%;background:${colorLuz(0.2 + 0.8 * b.clics / max)}"></i></div></td><td>${pct(b.ctr)}</td><td class="mc-sub">a ${nf(b.y_prom)} px del tope</td></tr>`).join('')}</tbody></table></div>` : '<div class="mc-vacio">Todavía no hay clics en botones o enlaces con estos filtros.</div>'}</div>`;
 }
 function postClics(el) {
   el.querySelectorAll('button[data-pag]').forEach(b => b.onclick = () => seleccionarPagina(b.dataset.pag));
   el.querySelector('#mcDev')?.addEventListener('click', e => { const b = e.target.closest('button[data-d]'); if (b) { S.f.device = b.dataset.d; pintarFiltros(); cargar(); } });
   const fondo = el.querySelector('#mcFondo'); if (fondo) fondo.onchange = () => { S.mostrarFondo = fondo.checked; pintarContenido(); };
+  const cz = el.querySelector('#mcCapaZonas'); if (cz) cz.onchange = () => { S.capas.zonas = cz.checked; const cv = el.querySelector('#mcCanvas'); if (cv) cv.style.display = cz.checked ? '' : 'none'; };
+  const cb = el.querySelector('#mcCapaBot'); if (cb) cb.onchange = () => { S.capas.botones = cb.checked; const l = el.querySelector('#mcLuces'); if (l) l.style.display = cb.checked ? '' : 'none'; };
+  el.querySelector('#mcQuitarBoton')?.addEventListener('click', e => { e.preventDefault(); S.f.boton = ''; pintarFiltros(); cargar(); });
+  el.querySelectorAll('.mc-btn').forEach(d => d.onclick = () => { S.f.boton = d.dataset.el; pintarFiltros(); cargar(); });
   const cv = el.querySelector('#mcCanvas'), c = S.data.clics;
-  if (cv && c) pintarCalor(cv, c.puntos, ANCHOS[S.f.device] || 390, Math.max(700, Math.min(9000, c.alto_prom || 3000)), (S.f.device === 'desktop' ? 34 : 24));
+  if (cv && c) pintarCalor(cv, c.puntos, ANCHOS[S.f.device] || 390, Math.max(700, Math.min(9000, c.alto_prom || 3000)), (S.f.device === 'desktop' ? 42 : 30));
   postBotones(el);
 }
 function seleccionarPagina(val) { const [v, p] = val.split('|'); S.f.vertical = v; S.f.pagina = p; S.f.boton = ''; if ((S.tab === 'clics' || S.tab === 'scroll') && !S.f.device) S.f.device = 'mobile'; pintarFiltros(); cargar(); }
@@ -374,7 +405,7 @@ function tScroll() {
       <span>Llegan al ${p.pct}%</span><div class="mc-barra" style="height:14px"><i style="width:${p.porcentaje}%;background:hsl(${Math.round(2 + 2.2 * p.porcentaje)},75%,48%)"></i></div><span><b>${pct(p.porcentaje)}</b> <span class="mc-sub">(${nf(p.visitas)})</span></span></div>`).join('');
   const mapa = S.f.pagina && s.visitas ? `<div class="mc-card"><h3>Mapa de scroll sobre la página</h3>
       <div class="flex items-center gap-8" style="margin-bottom:10px">${selectorDevice()}<label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="mcFondo" ${S.mostrarFondo ? 'checked' : ''}> Mostrar la página de fondo</label></div>
-      ${marcoPagina(Math.max(700, Math.min(9000, s.alto_prom || 3000)), anchoDisponible(), ANCHOS[S.f.device] || 390)}
+      ${marcoPagina(Math.max(700, Math.min(9000, s.alto_prom || 3000)), anchoDisponible(), ANCHOS[S.f.device] || 390, false)}
       <div class="flex items-center gap-8" style="margin-top:10px;justify-content:center"><span class="mc-sub">Casi nadie lo vio</span><div class="mc-leyenda" style="flex:1"></div><span class="mc-sub">Todos lo vieron</span></div></div>` : '';
   return `<div class="mc-card"><h3>Hasta dónde baja la gente</h3><p class="n">Porcentaje de visitas que llegó a cada tramo de la página. Alto promedio de la página: ${nf(s.alto_prom)} px.</p>${barras}
     ${caida && caida.d >= 8 ? `<div class="mc-aviso" style="margin-top:10px">La mayor caída está entre el <b>${caida.desde}%</b> y el <b>${caida.hasta}%</b> de la página (${pct(caida.d)} menos). Es el lugar donde conviene poner el botón o un gancho.</div>` : ''}</div>${mapa}
