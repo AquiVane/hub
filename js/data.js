@@ -636,6 +636,13 @@ export async function enviarResumenEquipoManual(dias = 30) {
   return api('POST', '/admin/resumen-equipo/enviar', { dias });
 }
 
+// Mapas de calor (sección "MAPAS DE CALOR"): agregados de hm.js. params = filtros + vista (ver worker mapas-calor.js)
+export async function getMapasCalor(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== '' && v != null) qs.set(k, v); });
+  return api('GET', '/admin/hm/datos?' + qs.toString());
+}
+
 export async function getEmailStats(dias = 30) {
   if (DEMO_MODE) return { desde: '', hasta: '', porCampana: [], demografiaEuforia: null };
   return api('GET', `/admin/email-stats?dias=${dias}`);

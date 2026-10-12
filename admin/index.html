@@ -68,6 +68,9 @@
       <button class="nav-item" onclick="showSection('email-stats')">
         <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
       </button>
+      <button class="nav-item" id="navMapasCalorBtn" onclick="showSection('mapas-calor')">
+        <i data-lucide="flame" class="nav-icon"></i><span>Mapas de calor</span>
+      </button>
       <button class="nav-item" onclick="showSection('recursos')">
         <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos</span>
       </button>
@@ -690,6 +693,9 @@
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
         </div>
       </div>
+
+      <!-- MAPAS DE CALOR (solo agencia COSMART) -- se dibuja desde admin/mapas-calor.js -->
+      <div id="sec-mapas-calor" class="hidden"><div id="mcRoot"></div></div>
 
       <!-- Métricas de email -->
       <div id="sec-email-stats" class="hidden">
@@ -2061,6 +2067,7 @@
   </div>
 </div>
 
+<script type="module" src="mapas-calor.js"></script>
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig } from '../js/data.js';
@@ -2102,6 +2109,8 @@
   // Cualquier otra agencia ve el nombre que puso al darse de alta (y su
   // logo, si cargó uno) en vez de la marca COSMART.
   const esCosmart = !user.agencyId || user.agencyId === 'cosmart';
+  // Mapas de calor: solo el admin de la agencia COSMART (mide las páginas de COSMART)
+  if (!(esCosmart && user.role === 'admin')) document.getElementById('navMapasCalorBtn').style.display = 'none';
   if (!esCosmart) {
     document.getElementById('sidebarHubLabel').textContent = user.agenciaNombre || 'Marketing Hub';
     document.title = `${user.agenciaNombre || 'Marketing Hub'} — Admin`;
@@ -2297,7 +2306,7 @@
   };
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','mapas-calor','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -2308,6 +2317,7 @@
     if (sec === 'procesos') loadProcesosSection();
     if (sec === 'informes') loadInformes();
     if (sec === 'email-stats') { loadEmailStats(); renderMetricasGenerales(); }
+    if (sec === 'mapas-calor') window.loadMapasCalor && window.loadMapasCalor();
     if (sec === 'actividad') loadActividadFiltros();
     if (sec === 'agencias') loadAgencias();
     if (sec === 'ideas') loadIdeasAdmin();
