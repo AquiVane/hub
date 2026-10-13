@@ -2,15 +2,16 @@
 
 Actualizado: 2026-10-09. Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
-## [11/10] Botón ▶ "Escuchá la explicación" en Reporte Ejecutivo y Dashboard (rama `claude/play-reportes`, pendiente de merge a main)
+## [11/10] Botón ▶ "Escuchá la explicación" en Reporte Ejecutivo y Dashboard (MERGEADO a main el 13/10)
 
 - **Pedido de Vaneh**: un play en el panel del cliente que lea y explique el **📊 Reporte** (`openReporteModal`) y el **Dashboard Calendario Editorial** (`renderDashboard`). NO aplica a los reportes HTML subidos a mano (los de pauta, todavía sin automatizar).
 - **Todo gratis, sin IA ni backend ni deploy de worker**: `js/play.js` (nuevo) arma frases fijas completadas con los números que ya están en `STATE` (contenidos, formatos, ejes, campañas/ROAS, tareas). La voz es `SpeechSynthesis` del navegador, prefiere es-AR > es-MX > es-US > es-419 > otras latinas > es-ES. Velocidad inicial 1.3x (1.3/1.6/2/1), Vaneh dijo que hasta 1.5x era demasiado lento.
+- **Estética 13/10**: tarjeta rediseñada con la identidad "Al Día Voz" (Claude Design, terracota/mostaza, Gabarito + Figtree, tokens aislados en `.av-card` para no pisar las variables del Hub). Sin azul COSMART. El chip dice "Al Día Voz". Duración mostrada = estimación (SpeechSynthesis no informa duración).
 - **Dos tonos**: `viaje` (branding COSMART, cuando `user.agencyId === 'cosmart'`) y `neutro` para el resto de las agencias. Estilo aprobado por Vaneh.
 - **Aviso fijo** en el reproductor: "generada automáticamente por inteligencia artificial... puede cometer errores". Vaneh NO va a revisar cada texto (pedido explícito, 11/10).
 - Se detiene al cerrar el modal. Se oculta al imprimir. Responsive (flex-wrap).
 - Probado: frases con datos de ejemplo (node) y botones play/pausa/detener/velocidad/resaltado en Chromium escritorio + 390px con voz simulada. NO probado con datos reales del Hub ni con voces reales del celular.
-- Pendiente: que Vaneh confirme las frases; mergear a main (auto-deploy). Ver también `AquiVane/reportes-play`.
+- Aprobado por Vaneh el 13/10 y mergeado. Falta que ella lo pruebe en producción con datos reales y voz de su celular. Ver también `AquiVane/reportes-play`.
 
 ## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
 
