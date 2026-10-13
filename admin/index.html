@@ -2191,7 +2191,16 @@
   // COSMART, si su lista todavía no fue seedeada (primera vez que corre
   // esto) se la inicializa con la misma lista fija que tenía antes, más
   // "VAMA Academy" y "VAMA Tienda" (pedido de Vaneh, 28/09).
-  const VERTICAL_SELECT_IDS = ['misTareasFiltroVertical', 'internasVerticalFiltro', 'leadsVerticalFiltro', 'in-vertical', 'mt-vertical', 'nmt-vertical', 'lead-vertical'];
+  // 11/10: "leadsVerticalFiltro" (el filtro del tablero de CRM Leads, no
+  // el "lead-vertical" del modal de agregar/editar) se sacó de esta
+  // lista a propósito. Antes esta función le pisaba las opciones con la
+  // lista editable de Configuración -- si esa lista no coincidía letra
+  // a letra con lo que mandan los workers (ej. "Euforia"), filtrar por
+  // esa vertical devolvía cero aunque el tablero sin filtrar sí tuviera
+  // leads de esa vertical (Vaneh: "la filtré por euforia y no aparece
+  // nada"). Ahora se arma solo con lo que existe de verdad en los leads
+  // cargados -- ver actualizarFiltroVertical() más abajo.
+  const VERTICAL_SELECT_IDS = ['misTareasFiltroVertical', 'internasVerticalFiltro', 'in-vertical', 'mt-vertical', 'nmt-vertical', 'lead-vertical'];
   const VERTICALES_COSMART_SEED = ['Brújula', 'Rumbo Voraz', 'Design', 'ComuniCOS', 'Talent', 'Shows', 'Euforia', 'Training', 'MPG', 'Home COSMART', 'Hub', 'VAMA', 'VAMA Academy', 'VAMA Tienda'];
   let _verticalesPropias = [];
   function aplicarVerticalesPropiasEnSelects() {
@@ -3035,7 +3044,7 @@
       return aFecha > bFecha ? 1 : -1;
     });
   }
-  const VERTICAL_COLOR = { 'Brújula':'#0ea5e9', 'Rumbo Voraz':'#e02020', 'Design':'#a855f7', 'ComuniCOS':'#3b82f6', 'Talent':'#f59e0b', 'Shows':'#ec4899', 'Euforia':'#10b981', 'Training':'#8b5cf6', 'MPG':'#06b6d4' };
+  const VERTICAL_COLOR = { 'Brújula':'#0ea5e9', 'Rumbo Voraz':'#e02020', 'Design':'#a855f7', 'ComuniCOS':'#3b82f6', 'Talent':'#f59e0b', 'Shows':'#ec4899', 'Euforia':'#10b981', 'Training':'#8b5cf6', 'MPG':'#06b6d4', 'Hub':'#1A4DAA', 'VAMA Academy':'#f97316' };
   window.filtrarInternasPorVertical = function(v) {
     _internasVerticalFiltro = v;
     renderInternasBoard();
@@ -7565,6 +7574,17 @@
   };
   window.filtrarLeadsPorVertical = function(v) { _leadsVerticalFiltro = v; renderLeadsBoard(); };
   window.filtrarLeadsPorEtiqueta = function(v) { _leadsEtiquetaFiltro = v; renderLeadsBoard(); };
+  // Mismo criterio que actualizarFiltroEtiquetas: las opciones se arman
+  // solo con los verticales que de verdad existen en los leads cargados,
+  // nunca con una lista fija ni con la editable de Configuración.
+  function actualizarFiltroVertical() {
+    const sel = document.getElementById('leadsVerticalFiltro');
+    if (!sel) return;
+    const verticales = [...new Set(_leadsCache.map(l => l.vertical).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    if (_leadsVerticalFiltro && !verticales.includes(_leadsVerticalFiltro)) _leadsVerticalFiltro = '';
+    sel.innerHTML = '<option value="">Todas</option>' + verticales.map(v => `<option value="${v.replace(/"/g, '&quot;')}">${v.replace(/</g, '&lt;')}</option>`).join('');
+    sel.value = _leadsVerticalFiltro;
+  }
   // Etiquetas de un lead: las nuevas (`etiquetas`, ej. "Lista de espera curso marketing 0 a 100") + la histórica `etiqueta` ("Suscriptor").
   function etiquetasDeLead(l) { return [...new Set([...(Array.isArray(l.etiquetas) ? l.etiquetas : []), ...(l.etiqueta ? [l.etiqueta] : [])])]; }
   function actualizarFiltroEtiquetas() {
@@ -7596,6 +7616,7 @@
   function renderLeadsBoard() {
     const board = document.getElementById('leadsBoard');
     actualizarFiltroEtiquetas();
+    actualizarFiltroVertical();
     const filtrados = _leadsCache.filter(l =>
       (!_leadsVerticalFiltro || l.vertical === _leadsVerticalFiltro) &&
       (!_leadsEtiquetaFiltro || etiquetasDeLead(l).includes(_leadsEtiquetaFiltro)) &&
