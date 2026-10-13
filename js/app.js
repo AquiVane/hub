@@ -4747,8 +4747,8 @@ window.ampliarImagen = function(src) {
 // graba sin tocar el teclado.
 let _tpScrollTimer = null;
 let _tpFontSize = 42;
-let _tpSpeed = 24;
-const TP_PX_POR_NIVEL = 0.1; // px por tick de 30ms y por nivel
+let _tpSpeed = 80; // en décimas de nivel: 80 = nivel 8,0 (se muestra con un decimal)
+const TP_PX_POR_NIVEL = 0.03; // px por tick de 30ms por cada décima de nivel (nivel 1 = 0,3 px)
 
 // Función base: cualquier lugar que tenga un texto de guion en memoria
 // (el textarea del contenido, o un guion de STATE.guiones) puede abrir
@@ -4845,13 +4845,13 @@ function teleprompterSetPlaying(on) {
   }
 }
 
-// Velocidad en 60 niveles finos (0,1 px por tick cada uno; 13/10: antes 40 niveles de 0,3 px y el salto 3→4 era muy grande).
-// afinar). Nivel 24 = la velocidad que era la de por defecto.
-window.teleprompterSpeed = function(delta) {
-  _tpSpeed = Math.max(1, Math.min(60, _tpSpeed + delta));
+// Velocidad con un decimal (13/10: Vaneh pidió un intermedio entre 3 y 4, p.ej. 3,2). Cada toque = 0,1 nivel; _tpSpeed va en décimas
+// para evitar errores de coma flotante. Nivel 8,0 = la velocidad por defecto de siempre.
+window.teleprompterSpeed = function(delta) { // delta en niveles (±1 = ±0,1)
+  _tpSpeed = Math.max(5, Math.min(200, _tpSpeed + delta));
   const doc = _tpPipWin ? _tpPipWin.document : document;
   const el = doc.getElementById('tp-speed-val');
-  if (el) el.textContent = _tpSpeed;
+  if (el) el.textContent = (_tpSpeed / 10).toFixed(1);
 };
 
 window.teleprompterTogglePlay = function() {
