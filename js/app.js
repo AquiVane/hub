@@ -1471,7 +1471,7 @@ function renderDashboard(container) {
     mes: `${MESES[dashMonth]} ${dashYear}`,
     total, publicados, programados, enProceso, formatos, ejes,
     tareasPend: tareasPendientes, tareasEnProceso: tareasEnProceso, tareasListas: tareasListas
-  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'));
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'), { etiqueta: `Dashboard de ${MESES[dashMonth]} ${dashYear}` });
 }
 
 function getTrabajoRealizadoMes(year, month) {
@@ -6582,7 +6582,7 @@ window.openReporteModal = function() {
     cliente, mes: mesLabel, total: conts.length, publicados: publicados.length, aprobados: aprobados.length,
     formatos: fmtCount, ejes: ejeCount, campActivas: activas.length,
     gastado: totalGastado, ingresos: totalIngresos, tareasPend, tareasOk
-  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'));
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'), { etiqueta: `Reporte de ${mesLabel}` });
 
   document.getElementById('reporteModal').classList.remove('hidden');
 };
