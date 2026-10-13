@@ -1432,7 +1432,9 @@
     <button type="button" id="tp-play-btn" onclick="teleprompterTogglePlay()" style="background:#1A4DAA;border:none;color:#fff;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;">▶ Iniciar</button>
     <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;">
       Velocidad
-      <input type="range" id="tp-speed" min="1" max="10" value="4" style="width:90px;">
+      <button type="button" onclick="teleprompterSpeed(-1)" aria-label="Más lento" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:16px;">−</button>
+      <span id="tp-speed-val" style="color:#fff;min-width:22px;text-align:center;font-weight:600;font-size:13px;">8</span>
+      <button type="button" onclick="teleprompterSpeed(1)" aria-label="Más rápido" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:16px;">+</button>
     </label>
     <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;">
       Tamaño de letra

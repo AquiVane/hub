@@ -561,3 +561,7 @@ Se agregó `cosmart-workers`... no, se agregó `cookie-banner.js` en el repo `co
 - **Hub:** filtro y conteo por etiqueta en CRM Leads (`#leadsEtiquetaFiltro`); `marketing-hub` acepta `etiquetas` en `/leads/captura`. Ojo: `admin/index.html` usa CRLF — editarlo conservando CRLF (un commit con LF reescribe todo el archivo y genera conflictos).
 - **Sin cambios de cron** (siguen 5 en total). Deploy hecho 11/10 (core, mp-productos-ganadores, marketing-hub).
 - **Pendiente:** subir el PDF del e-book; probar un pago real de USD 197 en MP y PayPal; decidir cuándo indexar las páginas; link de la clase gratis y config de ediciones de la campaña de mails (campaña apagada).
+
+## Sesión 13/10: teleprompter -- velocidad con más niveles
+- El slider de velocidad (10 pasos, difícil de afinar) se reemplazó por botones − / + con un número de nivel (40 niveles, default 8 = la velocidad anterior). `teleprompterSpeed(delta)` + `_tpSpeed` en `js/app.js`; markup en `app/index.html` (`#tp-speed-val`).
+- El auto-scroll ahora acumula la posición en decimales (`pos`) porque `scrollTop` se redondea a enteros y los niveles lentos no avanzaban. Si se scrollea a mano mientras corre, retoma desde ahí.
