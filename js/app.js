@@ -4747,8 +4747,8 @@ window.ampliarImagen = function(src) {
 // graba sin tocar el teclado.
 let _tpScrollTimer = null;
 let _tpFontSize = 42;
-let _tpSpeed = 8;
-const TP_PX_POR_NIVEL = 0.3; // px por tick de 30ms y por nivel
+let _tpSpeed = 24;
+const TP_PX_POR_NIVEL = 0.1; // px por tick de 30ms y por nivel
 
 // Función base: cualquier lugar que tenga un texto de guion en memoria
 // (el textarea del contenido, o un guion de STATE.guiones) puede abrir
@@ -4845,10 +4845,10 @@ function teleprompterSetPlaying(on) {
   }
 }
 
-// Velocidad en 40 niveles finos (antes eran 10 con un slider, difícil de
-// afinar). Nivel 8 = la velocidad que era la de por defecto.
+// Velocidad en 60 niveles finos (0,1 px por tick cada uno; 13/10: antes 40 niveles de 0,3 px y el salto 3→4 era muy grande).
+// afinar). Nivel 24 = la velocidad que era la de por defecto.
 window.teleprompterSpeed = function(delta) {
-  _tpSpeed = Math.max(1, Math.min(40, _tpSpeed + delta));
+  _tpSpeed = Math.max(1, Math.min(60, _tpSpeed + delta));
   const doc = _tpPipWin ? _tpPipWin.document : document;
   const el = doc.getElementById('tp-speed-val');
   if (el) el.textContent = _tpSpeed;
