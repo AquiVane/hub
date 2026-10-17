@@ -10,6 +10,17 @@ Limitación conocida, no bug: ventas en USD (PayPal) se muestran aparte, en brut
 
 Actualizado: 2026-10-09 (ver entrada de arriba para lo último, 11/10). Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 
+## [11/10] Botón ▶ "Escuchá la explicación" en Reporte Ejecutivo y Dashboard (MERGEADO a main el 13/10)
+
+- **Pedido de Vaneh**: un play en el panel del cliente que lea y explique el **📊 Reporte** (`openReporteModal`) y el **Dashboard Calendario Editorial** (`renderDashboard`). NO aplica a los reportes HTML subidos a mano (los de pauta, todavía sin automatizar).
+- **Todo gratis, sin IA ni backend ni deploy de worker**: `js/play.js` (nuevo) arma frases fijas completadas con los números que ya están en `STATE` (contenidos, formatos, ejes, campañas/ROAS, tareas). La voz es `SpeechSynthesis` del navegador, prefiere es-AR > es-MX > es-US > es-419 > otras latinas > es-ES. Velocidad inicial 1.3x (1.3/1.6/2/1), Vaneh dijo que hasta 1.5x era demasiado lento.
+- **Estética 13/10**: tarjeta rediseñada con la identidad "Al Día Voz" (Claude Design, terracota/mostaza, Gabarito + Figtree, tokens aislados en `.av-card` para no pisar las variables del Hub). Sin azul COSMART. El chip dice "Al Día Voz". Duración mostrada = estimación (SpeechSynthesis no informa duración).
+- **Dos tonos**: `viaje` (branding COSMART, cuando `user.agencyId === 'cosmart'`) y `neutro` para el resto de las agencias. Estilo aprobado por Vaneh.
+- **Aviso fijo** en el reproductor: "generada automáticamente por inteligencia artificial... puede cometer errores". Vaneh NO va a revisar cada texto (pedido explícito, 11/10).
+- Se detiene al cerrar el modal. Se oculta al imprimir. Responsive (flex-wrap).
+- Probado: frases con datos de ejemplo (node) y botones play/pausa/detener/velocidad/resaltado en Chromium escritorio + 390px con voz simulada. NO probado con datos reales del Hub ni con voces reales del celular.
+- Aprobado por Vaneh el 13/10 y mergeado. Falta que ella lo pruebe en producción con datos reales y voz de su celular. Ver también `AquiVane/reportes-play`.
+
 ## [09/10] Modal de tarea + Inicio del cliente en mobile: iterado en Artifact, bajado al código
 
 Vaneh mandó captura del modal de tarea (`tf-*`, app/index.html) viéndose "encimado" en mobile. Se armó un mockup en un Artifact de tipo Design (dos artboards: "Modal de tarea" y "Panel del cliente — Inicio") para iterar visualmente con ella antes de tocar código real -- varias rondas de comentarios suyos directo en el Artifact (le faltaba el modal completo arriba, el label de Cuadrante, un hueco vacío de más en el mockup de Inicio). Una vez aprobado, esto es lo que se bajó al código real:
@@ -19,7 +30,7 @@ Vaneh mandó captura del modal de tarea (`tf-*`, app/index.html) viéndose "enci
   - **Bug real encontrado de paso**: las grillas de stats con `grid-template-columns:repeat(3,1fr)`/`repeat(4,1fr)` (Inicio del cliente, Dashboard viejo, etc.) no estaban cubiertas por el override mobile existente (que solo capturaba los literales `"1fr 1fr"`/`"1fr 1fr 1fr"`) -- se agregó una regla nueva que las pasa a `repeat(2,1fr)` en mobile. Afecta a los 3 lugares de `js/app.js` que usan `repeat(4,1fr)` inline (línea ~1600 Inicio del cliente, ~5558, ~6482).
   - **`.data-table-cards`** (clase nueva, NO toca `.data-table` genérico): convierte filas de tabla en tarjetas apiladas con mini-label por campo en vez de scroll horizontal -- técnica clásica (`<td data-label="...">` + `::before` con `attr(data-label)`). Aplicada solo a las dos tablas chicas de "Inicio" (Próximas publicaciones, Sitio Web pendientes) en `js/app.js` (`renderHome`), no a las demás tablas del Hub.
 - **`admin/index.html` + `app/index.html`**: label "Cuadrante (urgente / importante)" → "NIVEL DE IMPORTANCIA" en los 4 modales de tarea (tf-*, y los 3 internos de admin: in-*/mt-*/nmt-*), pedido explícito de Vaneh.
-- **Cache-bust**: `css/style.css?v=7`, `js/app.js?v=42`, iframe de "Contenidos propios" `&hv=5`.
+- **Cache-bust**: `css/style.css?v=7`, `js/app.js?v=46`, iframe de "Contenidos propios" `&hv=9`.
 - **NO se portó todavía** (cosmético, menor prioridad que lo de arriba): los separadores finitos entre bloques de campo que tiene el mockup del modal -- quedó solo en el Artifact, no se replicó en el HTML real porque el formulario se arma dinámicamente con JS y hacerlo bien sin arriesgar romper algo necesitaba más tiempo. Si Vaneh lo pide puntualmente, es la próxima vuelta.
 - El Artifact sigue vivo con un tercer artboard en camino (Dashboard) -- no es parte del repo, es solo el lugar de iteración visual antes de bajar cada cosa acá.
 
@@ -558,3 +569,11 @@ Se agregó `cosmart-workers`... no, se agregó `cookie-banner.js` en el repo `co
 - **Hub:** filtro y conteo por etiqueta en CRM Leads (`#leadsEtiquetaFiltro`); `marketing-hub` acepta `etiquetas` en `/leads/captura`. Ojo: `admin/index.html` usa CRLF — editarlo conservando CRLF (un commit con LF reescribe todo el archivo y genera conflictos).
 - **Sin cambios de cron** (siguen 5 en total). Deploy hecho 11/10 (core, mp-productos-ganadores, marketing-hub).
 - **Pendiente:** subir el PDF del e-book; probar un pago real de USD 197 en MP y PayPal; decidir cuándo indexar las páginas; link de la clase gratis y config de ediciones de la campaña de mails (campaña apagada).
+
+## Sesión 13/10: teleprompter -- velocidad con más niveles
+- El slider de velocidad (10 pasos, difícil de afinar) se reemplazó por botones − / + con un número de nivel (40 niveles, default 8 = la velocidad anterior). `teleprompterSpeed(delta)` + `_tpSpeed` en `js/app.js`; markup en `app/index.html` (`#tp-speed-val`).
+- El auto-scroll ahora acumula la posición en decimales (`pos`) porque `scrollTop` se redondea a enteros y los niveles lentos no avanzaban. Si se scrollea a mano mientras corre, retoma desde ahí.
+- **Fix mismo día**: tras el primer deploy los botones − / + no respondían y el play fallaba porque olvidé bumpear el cache-bust (`app.js?v=42 → 43`, iframe `hv=5 → 6`): el HTML nuevo convivía con el `app.js` viejo cacheado. **Regla: todo cambio en `js/app.js` o `app/index.html` exige bumpear ambos.**
+- **Velocidad teleprompter, ajuste fino (13/10)**: el salto entre niveles 3 y 4 era muy grande (0,3 px/tick por nivel). Ahora 60 niveles de 0,1 px/tick (`TP_PX_POR_NIVEL`), default nivel 24 (= velocidad anterior). Equivalencias: nivel viejo 3 ≈ 9, nivel viejo 4 ≈ 12. Cache-bust v=44 / hv=7.
+- **Velocidad teleprompter con decimales (13/10)**: Vaneh pidió "3,2" (intermedio entre 3 y 4). Se volvió a la escala original (nivel 1 = 0,3 px/tick, default 8,0) pero con pasos de 0,1 y un decimal visible (`_tpSpeed` en décimas, 0,5–20,0). Cache-bust v=45 / hv=8.
+- **Teleprompter: ajustes guardados con nombre (17/10)**: select + "💾 Guardar" + "🗑" en la barra del teleprompter. Guarda velocidad, tamaño de letra y espejado por nombre; se aplica el último usado al abrir. Vive en `localStorage` (`tp_presets_v1_<email>`), o sea **por usuario Y por dispositivo/navegador**, no viaja al servidor. **Decisión de Vaneh (17/10): así alcanza** -- no se guardan en el servidor ni se setean ajustes remotos para otros usuarios (Ger usa los suyos en su propio dispositivo). No retomar salvo que ella lo pida. Cache-bust v=46 / hv=9.

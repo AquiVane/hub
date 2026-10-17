@@ -1291,7 +1291,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=42"></script>
+<script type="module" src="../js/app.js?v=46"></script>
 <script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
@@ -1432,12 +1432,19 @@
     <button type="button" id="tp-play-btn" onclick="teleprompterTogglePlay()" style="background:#1A4DAA;border:none;color:#fff;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;">▶ Iniciar</button>
     <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;">
       Velocidad
-      <input type="range" id="tp-speed" min="1" max="10" value="4" style="width:90px;">
+      <button type="button" onclick="teleprompterSpeed(-1)" aria-label="Más lento" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:16px;">−</button>
+      <span id="tp-speed-val" style="color:#fff;min-width:30px;text-align:center;font-weight:600;font-size:13px;">8.0</span>
+      <button type="button" onclick="teleprompterSpeed(1)" aria-label="Más rápido" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:16px;">+</button>
     </label>
     <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;">
       Tamaño de letra
       <button type="button" onclick="teleprompterFont(-2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">−</button>
       <button type="button" onclick="teleprompterFont(2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">+</button>
+    </label>
+    <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <select id="tp-preset-sel" onchange="teleprompterPresetElegir(this.value)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;height:30px;max-width:190px;font-size:12px;"><option value="">Ajustes guardados…</option></select>
+      <button type="button" onclick="teleprompterPresetGuardar()" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;height:30px;padding:0 10px;cursor:pointer;font-size:12px;">💾 Guardar</button>
+      <button type="button" onclick="teleprompterPresetBorrar()" aria-label="Borrar ajuste elegido" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:13px;">🗑</button>
     </label>
     <button type="button" id="tp-fullscreen-btn" onclick="teleprompterToggleFullscreen()" style="background:#222;border:1px solid #555;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;">⛶ Pantalla completa</button>
     <button type="button" id="tp-float-btn" onclick="teleprompterFloat()" style="background:#222;border:1px solid #555;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;">🪟 Modo flotante</button>

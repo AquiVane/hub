@@ -1,4 +1,5 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
+import { montarPlay, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getGuiones, saveGuion, deleteGuion,
@@ -1463,6 +1464,14 @@ function renderDashboard(container) {
       </div>
     </div>
   `;
+
+  // Botón ▶ con la explicación del dashboard (js/play.js, sin IA ni costo).
+  montarPlay(container, armarNarracionDashboard({
+    cliente: STATE.client.nombre || STATE.client.name || clientId,
+    mes: `${MESES[dashMonth]} ${dashYear}`,
+    total, publicados, programados, enProceso, formatos, ejes,
+    tareasPend: tareasPendientes, tareasEnProceso: tareasEnProceso, tareasListas: tareasListas
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'), { etiqueta: `Dashboard de ${MESES[dashMonth]} ${dashYear}` });
 }
 
 function getTrabajoRealizadoMes(year, month) {
@@ -4738,6 +4747,8 @@ window.ampliarImagen = function(src) {
 // graba sin tocar el teclado.
 let _tpScrollTimer = null;
 let _tpFontSize = 42;
+let _tpSpeed = 80; // en décimas de nivel: 80 = nivel 8,0 (se muestra con un decimal)
+const TP_PX_POR_NIVEL = 0.03; // px por tick de 30ms por cada décima de nivel (nivel 1 = 0,3 px)
 
 // Función base: cualquier lugar que tenga un texto de guion en memoria
 // (el textarea del contenido, o un guion de STATE.guiones) puede abrir
@@ -4754,6 +4765,7 @@ function abrirTeleprompterConTexto(texto) {
   txtEl.style.transform = '';
   teleprompterSetPlaying(false);
   document.getElementById('teleprompterModal').classList.remove('hidden');
+  tpRefrescarPresets(true); // vuelve a aplicar el último ajuste guardado que se usó
 }
 
 // Entrada desde el modal de Contenido: lee el textarea en vivo.
@@ -4819,15 +4831,98 @@ function teleprompterSetPlaying(on) {
   if (on) {
     btn.textContent = '⏸ Pausar';
     const box = document.getElementById('tp-scroll');
+    // Posición acumulada en decimales: scrollTop se redondea a enteros en
+    // muchos navegadores, así que los niveles lentos (<1px por tick) no
+    // avanzarían nunca si se sumaran directo sobre scrollTop.
+    let pos = box.scrollTop;
     _tpScrollTimer = setInterval(() => {
-      const speed = Number(document.getElementById('tp-speed').value || 4);
-      box.scrollTop += speed * 0.6;
-      if (box.scrollTop >= box.scrollHeight - box.clientHeight) teleprompterSetPlaying(false);
+      if (Math.abs(box.scrollTop - pos) > 2) pos = box.scrollTop; // scroll manual
+      pos += _tpSpeed * TP_PX_POR_NIVEL;
+      box.scrollTop = pos;
+      if (box.scrollTop >= box.scrollHeight - box.clientHeight - 1) teleprompterSetPlaying(false);
     }, 30);
   } else {
     btn.textContent = '▶ Iniciar';
   }
 }
+
+// Velocidad con un decimal (13/10: Vaneh pidió un intermedio entre 3 y 4, p.ej. 3,2). Cada toque = 0,1 nivel; _tpSpeed va en décimas
+// para evitar errores de coma flotante. Nivel 8,0 = la velocidad por defecto de siempre.
+window.teleprompterSpeed = function(delta) { // delta en niveles (±1 = ±0,1)
+  _tpSpeed = Math.max(5, Math.min(200, _tpSpeed + delta));
+  const doc = _tpPipWin ? _tpPipWin.document : document;
+  const el = doc.getElementById('tp-speed-val');
+  if (el) el.textContent = (_tpSpeed / 10).toFixed(1);
+};
+
+// ── Ajustes guardados con nombre (17/10, pedido de Vaneh) ──
+// Velocidad + tamaño de letra + espejado, guardados por NOMBRE y por usuario
+// (localStorage, clave con el email de quien está logueado -- así cada
+// persona tiene los suyos en su dispositivo). No viajan al servidor.
+function tpClavePresets() {
+  let email = 'anon';
+  try { email = (JSON.parse(localStorage.getItem('mh_user') || '{}').email || 'anon').toLowerCase(); } catch (e) {}
+  return 'tp_presets_v1_' + email;
+}
+function tpLeerPresets() {
+  try { const d = JSON.parse(localStorage.getItem(tpClavePresets()) || '{}'); return { items: d.items || {}, last: d.last || '' }; }
+  catch (e) { return { items: {}, last: '' }; }
+}
+function tpGuardarPresets(d) {
+  try { localStorage.setItem(tpClavePresets(), JSON.stringify(d)); return true; }
+  catch (e) { alert('No se pudo guardar en este navegador (¿modo privado o sin espacio?).'); return false; }
+}
+function tpDoc() { return _tpPipWin ? _tpPipWin.document : document; }
+function tpAplicarPreset(p) {
+  _tpSpeed = Math.max(5, Math.min(200, Number(p.speed) || 80));
+  _tpFontSize = Math.max(20, Math.min(96, Number(p.font) || 42));
+  const d = tpDoc();
+  d.getElementById('tp-text').style.fontSize = _tpFontSize + 'px';
+  d.getElementById('tp-mirror').checked = !!p.mirror;
+  d.getElementById('tp-text').style.transform = p.mirror ? 'scaleX(-1)' : '';
+  d.getElementById('tp-speed-val').textContent = (_tpSpeed / 10).toFixed(1);
+}
+function tpRefrescarPresets(aplicarUltimo) {
+  const d = tpDoc();
+  const sel = d.getElementById('tp-preset-sel');
+  if (!sel) return;
+  const { items, last } = tpLeerPresets();
+  const nombres = Object.keys(items).sort((a, b) => a.localeCompare(b, 'es'));
+  sel.innerHTML = '<option value="">Ajustes guardados…</option>' +
+    nombres.map(n => '<option></option>').join('');
+  nombres.forEach((n, i) => { // textContent: el nombre lo escribe el usuario
+    const o = sel.options[i + 1]; o.value = n;
+    o.textContent = `${n} (vel ${(items[n].speed / 10).toFixed(1)} · letra ${items[n].font})`;
+  });
+  if (aplicarUltimo && last && items[last]) { tpAplicarPreset(items[last]); sel.value = last; }
+  else if (last && items[last]) sel.value = last;
+}
+window.teleprompterPresetElegir = function(nombre) {
+  const d = tpLeerPresets();
+  if (!nombre || !d.items[nombre]) return;
+  tpAplicarPreset(d.items[nombre]);
+  d.last = nombre; tpGuardarPresets(d);
+};
+window.teleprompterPresetGuardar = function() {
+  const d = tpLeerPresets();
+  const actual = tpDoc().getElementById('tp-preset-sel')?.value || '';
+  let nombre = prompt('Nombre para este ajuste (velocidad ' + (_tpSpeed / 10).toFixed(1) + ', letra ' + _tpFontSize + '):', actual);
+  if (nombre === null) return;
+  nombre = nombre.trim().slice(0, 40);
+  if (!nombre) return;
+  if (d.items[nombre] && !confirm('Ya existe "' + nombre + '". ¿Lo reemplazo con la configuración actual?')) return;
+  d.items[nombre] = { speed: _tpSpeed, font: _tpFontSize, mirror: !!tpDoc().getElementById('tp-mirror').checked };
+  d.last = nombre;
+  if (tpGuardarPresets(d)) tpRefrescarPresets(false);
+};
+window.teleprompterPresetBorrar = function() {
+  const d = tpLeerPresets();
+  const nombre = tpDoc().getElementById('tp-preset-sel')?.value || '';
+  if (!nombre || !d.items[nombre]) { alert('Primero elegí un ajuste de la lista.'); return; }
+  if (!confirm('¿Borrar el ajuste "' + nombre + '"?')) return;
+  delete d.items[nombre]; if (d.last === nombre) d.last = '';
+  if (tpGuardarPresets(d)) tpRefrescarPresets(false);
+};
 
 window.teleprompterTogglePlay = function() {
   teleprompterSetPlaying(!_tpScrollTimer);
@@ -6568,11 +6663,18 @@ window.openReporteModal = function() {
     </div>
   `;
 
+  // Botón ▶ con la explicación del reporte (js/play.js, sin IA ni costo).
+  montarPlay(body, armarNarracionReporte({
+    cliente, mes: mesLabel, total: conts.length, publicados: publicados.length, aprobados: aprobados.length,
+    formatos: fmtCount, ejes: ejeCount, campActivas: activas.length,
+    gastado: totalGastado, ingresos: totalIngresos, tareasPend, tareasOk
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'), { etiqueta: `Reporte de ${mesLabel}` });
+
   document.getElementById('reporteModal').classList.remove('hidden');
 };
 
-document.getElementById('closeReporteModal').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
-document.getElementById('closeReporteModal2').addEventListener('click', () => document.getElementById('reporteModal').classList.add('hidden'));
+document.getElementById('closeReporteModal').addEventListener('click', () => { detenerPlay(); document.getElementById('reporteModal').classList.add('hidden'); });
+document.getElementById('closeReporteModal2').addEventListener('click', () => { detenerPlay(); document.getElementById('reporteModal').classList.add('hidden'); });
 
 window.openCampanaModal = function(id) {
   editingCampana = id ? STATE.campanas.find(c => c.id === id) : null;
