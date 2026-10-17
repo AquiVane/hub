@@ -15,7 +15,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=7">
+  <link rel="stylesheet" href="../css/style.css?v=8">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -312,6 +312,71 @@
         </div>
         <div id="leadsBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Panel de ventas (VAMA Academy / Training, 11/10) -->
+      <div id="sec-ventas-panel" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Panel de ventas</h2>
+          <span class="text-muted text-sm">Ventas reales de VAMA Academy y Training, en un solo lugar</span>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:16px;">
+          <div class="seg" id="vpVerticalSeg">
+            <button class="seg-btn active" data-v="VAMA Academy" onclick="cambiarVerticalVentasPanel('VAMA Academy')">VAMA Academy</button>
+            <button class="seg-btn" data-v="Training" onclick="cambiarVerticalVentasPanel('Training')">Training</button>
+          </div>
+          <div class="flex items-center gap-8" style="margin-left:auto;">
+            <button class="btn btn-secondary btn-sm" onclick="cambiarMesVentasPanel(-1)">←</button>
+            <span id="vpMesLabel" style="font-size:13px;font-weight:700;min-width:120px;text-align:center;"></span>
+            <button class="btn btn-secondary btn-sm" id="vpMesSiguienteBtn" onclick="cambiarMesVentasPanel(1)">→</button>
+          </div>
+        </div>
+
+        <div class="vp-panel" id="vpPanel">
+          <div class="vp-top">
+            <div>
+              <div class="vp-eyebrow" id="vpEyebrow">VAMA Academy</div>
+              <div class="vp-titulo">Panel de ventas</div>
+            </div>
+          </div>
+          <div class="vp-contador">
+            <span class="vp-num" id="vpCantidad">0</span>
+            <span class="vp-sep">/</span>
+            <span class="vp-meta-wrap">
+              <input type="number" id="vpMetaInput" class="vp-meta-input" min="1" value="30" onchange="guardarMetaVentasPanel(this.value)">
+            </span>
+          </div>
+          <div class="vp-grid" id="vpGrid"></div>
+          <div class="vp-stats">
+            <div class="vp-stat">
+              <div class="vp-stat-label">ingresos brutos</div>
+              <div class="vp-stat-val vp-verde" id="vpIngresos">—</div>
+            </div>
+            <div class="vp-stat">
+              <div class="vp-stat-label">en anuncios</div>
+              <input type="number" id="vpGastoInput" class="vp-stat-input" min="0" step="1" onchange="guardarGastoVentasPanel(this.value)">
+            </div>
+            <div class="vp-stat">
+              <div class="vp-stat-label">retención MP (%)</div>
+              <input type="number" id="vpRetencionInput" class="vp-stat-input" min="0" max="100" step="0.1" onchange="guardarRetencionVentasPanel(this.value)">
+            </div>
+            <div class="vp-stat">
+              <div class="vp-stat-label">ganancia neta</div>
+              <div class="vp-stat-val vp-amarillo" id="vpNeta">—</div>
+            </div>
+          </div>
+          <div class="vp-usd hidden" id="vpUsdRow"></div>
+        </div>
+
+        <div class="card" style="margin-top:16px;max-width:600px;">
+          <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);">Total acumulado -- todos los meses, <span id="vpAcumuladoVertical">VAMA Academy</span></div>
+              <div style="font-size:20px;font-weight:800;" id="vpAcumuladoTotal">—</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);" id="vpAcumuladoDetalle"></div>
+          </div>
         </div>
       </div>
 
@@ -2063,7 +2128,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2271,6 +2336,18 @@
     }
   }
 
+  // "Panel de ventas" (11/10): VAMA Academy y Training en un solo lugar
+  // del Hub, con toggle entre los dos -- pedido de Vaneh para no tener
+  // que ir a la PWA de ventas aparte. Mismo gate que la card de EMK
+  // (solo admin de COSMART, es la única agencia con estos verticales).
+  if (esCosmart && user.role === 'admin') {
+    const btnVentasPanel = document.createElement('button');
+    btnVentasPanel.className = 'nav-item';
+    btnVentasPanel.innerHTML = '<i data-lucide="trending-up" class="nav-icon"></i><span>Panel de ventas</span>';
+    btnVentasPanel.onclick = () => showSection('ventas-panel');
+    document.querySelector('.nav-section').appendChild(btnVentasPanel);
+  }
+
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
   // sistema) -- gestiona altas/bajas de las agencias que usan el Hub.
   // Pedido explícito: ningún otro admin de COSMART debe verla, solo ella.
@@ -2306,7 +2383,7 @@
   };
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -2322,6 +2399,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
+    if (sec === 'ventas-panel') loadVentasPanel();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
   };
@@ -7724,6 +7802,138 @@
       closeLeadModal();
       await loadLeadsAdmin();
     } catch (e) { alert('Error al eliminar: ' + (e.message || 'intentá de nuevo.')); }
+  };
+
+  // ── Panel de ventas (VAMA Academy / Training, 11/10) ──────────────────
+  // Pedido de Vaneh: mismo mecanismo visual que ya vendía como feature del
+  // Método (meta del mes, cuadraditos, ganancia neta), pero con datos
+  // REALES -- nunca se toca manualmente qué vendió, eso viene de
+  // cosmart-training-core vía el proxy del Hub (handleVentasPanelDatos).
+  // Lo único manual es meta/gasto en anuncios/retención de MercadoPago,
+  // que vive en el KV del propio Hub (handleVentasPanelConfig).
+  let _vpVertical = 'VAMA Academy';
+  let _vpMes = new Date().toISOString().slice(0, 7);
+  let _vpCargando = false;
+
+  const VP_MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function vpMesLabel(mes) {
+    const [y, m] = mes.split('-').map(Number);
+    return `${VP_MESES_NOMBRE[m - 1]} ${y}`;
+  }
+  function vpFormatoMonto(v, moneda) {
+    return (moneda === 'USD' ? 'USD ' : '$') + Number(v || 0).toLocaleString('es-AR');
+  }
+
+  window.cambiarVerticalVentasPanel = function(v) {
+    _vpVertical = v;
+    document.querySelectorAll('#vpVerticalSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+    cargarVentasPanel();
+  };
+
+  window.cambiarMesVentasPanel = function(delta) {
+    const [y, m] = _vpMes.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const nuevoMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (nuevoMes > new Date().toISOString().slice(0, 7)) return; // no ir al futuro
+    _vpMes = nuevoMes;
+    cargarVentasPanel();
+  };
+
+  async function loadVentasPanel() {
+    _vpMes = new Date().toISOString().slice(0, 7);
+    document.querySelectorAll('#vpVerticalSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === _vpVertical));
+    await cargarVentasPanel();
+  }
+
+  function renderVentasPanelGrid(cantidad, meta) {
+    const total = Math.max(cantidad, meta);
+    let html = '';
+    for (let i = 1; i <= total; i++) html += `<div class="vp-sq ${i <= cantidad ? 'lleno' : 'vacio'}">${i}</div>`;
+    document.getElementById('vpGrid').innerHTML = html;
+  }
+
+  async function cargarVentasPanel() {
+    if (_vpCargando) return;
+    _vpCargando = true;
+    document.getElementById('vpMesLabel').textContent = vpMesLabel(_vpMes);
+    document.getElementById('vpMesSiguienteBtn').disabled = (_vpMes >= new Date().toISOString().slice(0, 7));
+    document.getElementById('vpEyebrow').textContent = _vpVertical;
+    document.getElementById('vpAcumuladoVertical').textContent = _vpVertical;
+
+    try {
+      const [datosMes, cfg] = await Promise.all([
+        getVentasPanel(_vpMes),
+        getVentasPanelConfig(_vpVertical, _vpMes),
+      ]);
+      const ventas = (datosMes.ventas || []).filter(v => v.vertical === _vpVertical);
+      const meta = cfg.meta || 30;
+      document.getElementById('vpMetaInput').value = meta;
+      document.getElementById('vpGastoInput').value = cfg.gastoAnuncios || 0;
+      document.getElementById('vpRetencionInput').value = cfg.retencionMP || 0;
+
+      const porMoneda = {};
+      ventas.forEach(v => { porMoneda[v.moneda] = (porMoneda[v.moneda] || 0) + Number(v.monto || 0); });
+      const brutoARS = porMoneda['ARS'] || 0;
+      const brutoUSD = porMoneda['USD'] || 0;
+      const neta = brutoARS - (brutoARS * (cfg.retencionMP || 0) / 100) - (cfg.gastoAnuncios || 0);
+
+      document.getElementById('vpCantidad').textContent = ventas.length;
+      renderVentasPanelGrid(ventas.length, meta);
+      document.getElementById('vpIngresos').textContent = vpFormatoMonto(brutoARS, 'ARS');
+      document.getElementById('vpNeta').textContent = vpFormatoMonto(neta, 'ARS');
+      const usdRow = document.getElementById('vpUsdRow');
+      if (brutoUSD) {
+        usdRow.classList.remove('hidden');
+        usdRow.textContent = `+ ${vpFormatoMonto(brutoUSD, 'USD')} bruto (sin descontar retención ni anuncios -- esos se cargan en ARS)`;
+      } else {
+        usdRow.classList.add('hidden');
+      }
+    } catch (e) {
+      document.getElementById('vpGrid').innerHTML = `<div style="grid-column:1/-1;color:#f87171;font-size:12px;">No se pudo cargar: ${e.message || 'reintentá.'}</div>`;
+    }
+
+    cargarAcumuladoVentasPanel();
+    _vpCargando = false;
+  }
+
+  async function cargarAcumuladoVentasPanel() {
+    const det = document.getElementById('vpAcumuladoDetalle');
+    const tot = document.getElementById('vpAcumuladoTotal');
+    try {
+      const { meses } = await getVentasPanelMeses();
+      if (!meses || !meses.length) { tot.textContent = '—'; det.textContent = ''; return; }
+      const resultados = await Promise.all(meses.map(m => getVentasPanel(m).catch(() => ({ ventas: [] }))));
+      let cantidad = 0, brutoARS = 0, brutoUSD = 0;
+      resultados.forEach(r => {
+        (r.ventas || []).filter(v => v.vertical === _vpVertical).forEach(v => {
+          cantidad++;
+          if (v.moneda === 'USD') brutoUSD += Number(v.monto || 0); else brutoARS += Number(v.monto || 0);
+        });
+      });
+      tot.textContent = vpFormatoMonto(brutoARS, 'ARS') + (brutoUSD ? ` + ${vpFormatoMonto(brutoUSD, 'USD')}` : '');
+      det.textContent = `${cantidad} venta${cantidad !== 1 ? 's' : ''} en total`;
+    } catch (e) {
+      tot.textContent = '—'; det.textContent = '';
+    }
+  }
+
+  window.guardarMetaVentasPanel = async function(v) {
+    const n = parseInt(v, 10);
+    if (!n || n < 1) return;
+    try { await setVentasPanelConfig(_vpVertical, _vpMes, { meta: n }); cargarVentasPanel(); }
+    catch (e) { alert('No se pudo guardar la meta: ' + (e.message || 'reintentá.')); }
+  };
+  window.guardarGastoVentasPanel = async function(v) {
+    const n = parseFloat(v);
+    if (isNaN(n) || n < 0) return;
+    try { await setVentasPanelConfig(_vpVertical, _vpMes, { gastoAnuncios: n }); cargarVentasPanel(); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'reintentá.')); }
+  };
+  window.guardarRetencionVentasPanel = async function(v) {
+    const n = parseFloat(v);
+    if (isNaN(n) || n < 0) return;
+    try { await setVentasPanelConfig(_vpVertical, _vpMes, { retencionMP: n }); cargarVentasPanel(); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'reintentá.')); }
   };
 
   // ── Comentarios en tareas internas (Gestión COSMART / Mis Tareas) ────

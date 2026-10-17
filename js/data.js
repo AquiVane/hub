@@ -774,6 +774,24 @@ export async function getLeads() {
   return api('GET', '/admin/leads');
 }
 
+// ── Panel de ventas (VAMA Academy / Training, 11/10) ──────────────
+export async function getVentasPanel(mes) {
+  if (DEMO_MODE) return { ok: true, mes, ventas: [] };
+  return api('GET', `/admin/ventas-panel?mes=${encodeURIComponent(mes)}`);
+}
+export async function getVentasPanelMeses() {
+  if (DEMO_MODE) return { ok: true, meses: [] };
+  return api('GET', '/admin/ventas-panel/meses');
+}
+export async function getVentasPanelConfig(vertical, mes) {
+  if (DEMO_MODE) return { meta: 30, gastoAnuncios: 0, retencionMP: 0 };
+  return api('GET', `/admin/ventas-panel/config?vertical=${encodeURIComponent(vertical)}&mes=${encodeURIComponent(mes)}`);
+}
+export async function setVentasPanelConfig(vertical, mes, parcial) {
+  if (DEMO_MODE) return { ok: true };
+  return api('PUT', `/admin/ventas-panel/config?vertical=${encodeURIComponent(vertical)}&mes=${encodeURIComponent(mes)}`, parcial);
+}
+
 export async function saveLead(lead) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/leads', lead);
