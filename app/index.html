@@ -1291,7 +1291,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=45"></script>
+<script type="module" src="../js/app.js?v=46"></script>
 <script src="../js/theme.js?v=1"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
@@ -1440,6 +1440,11 @@
       Tamaño de letra
       <button type="button" onclick="teleprompterFont(-2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">−</button>
       <button type="button" onclick="teleprompterFont(2)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;">+</button>
+    </label>
+    <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <select id="tp-preset-sel" onchange="teleprompterPresetElegir(this.value)" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;height:30px;max-width:190px;font-size:12px;"><option value="">Ajustes guardados…</option></select>
+      <button type="button" onclick="teleprompterPresetGuardar()" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;height:30px;padding:0 10px;cursor:pointer;font-size:12px;">💾 Guardar</button>
+      <button type="button" onclick="teleprompterPresetBorrar()" aria-label="Borrar ajuste elegido" style="background:#222;border:1px solid #555;color:#fff;border-radius:5px;width:30px;height:30px;cursor:pointer;font-size:13px;">🗑</button>
     </label>
     <button type="button" id="tp-fullscreen-btn" onclick="teleprompterToggleFullscreen()" style="background:#222;border:1px solid #555;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;">⛶ Pantalla completa</button>
     <button type="button" id="tp-float-btn" onclick="teleprompterFloat()" style="background:#222;border:1px solid #555;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;">🪟 Modo flotante</button>
