@@ -2959,7 +2959,7 @@ function renderDriveLinks(type) {
   container.innerHTML = arr.map((url, i) => `
     <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
       <input type="url" class="form-control" value="${url}" placeholder="https://drive.google.com/..." oninput="updateDriveLink('${type}',${i},this.value)" style="flex:1;">
-      ${url ? `<a href="${url}" target="_blank" style="font-size:12px;color:var(--accent);white-space:nowrap;text-decoration:none;" title="Abrir">↗</a>` : ''}
+      ${url ? `<a href="${url}" target="_blank" style="font-size:16px;color:var(--accent);white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;flex-shrink:0;" title="Abrir">↗</a>` : ''}
       <button type="button" onclick="removeDriveLink('${type}',${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;" title="Quitar">×</button>
     </div>
   `).join('');
