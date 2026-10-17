@@ -6,7 +6,7 @@ Sección nueva en el nav del admin, solo visible para admin de COSMART (mismo ga
 
 Detalle completo del backend (el hueco de "Productos Ganadores" sin monto registrado, encontrado al armar esto) en el HANDOFF de `cosmart-workers`, entrada "Panel de ventas del Hub" (11/10). Archivos tocados acá: `admin/index.html` (nav, sección `sec-ventas-panel`, JS `cargarVentasPanel`/`cargarAcumuladoVentasPanel` y afines), `css/style.css` (`.seg`/`.seg-btn` -- primera vez que se usa este toggle en código real, hasta ahora solo existía en el mockup de Artifact de Contenidos; `.vp-*`, panel siempre oscuro independiente del tema del Hub), `js/data.js` (`getVentasPanel`/`getVentasPanelMeses`/`getVentasPanelConfig`/`setVentasPanelConfig`).
 
-Limitación conocida, no bug: ventas en USD (PayPal) se muestran aparte, en bruto, sin descontar gasto en anuncios ni retención de MercadoPago (esos campos se cargan en ARS). Si en algún momento hay volumen real en USD, armar el mismo cálculo para esa moneda.
+USD (PayPal) tiene su propia ganancia neta (retención PayPal propia, campo `retencionPaypal`, fila `vpUsdRow`) -- el gasto en anuncios sigue siendo un solo campo en ARS, no hay uno separado en USD todavía. Si en algún momento hay gasto en anuncios real en USD, sumarlo ahí.
 
 Actualizado: 2026-10-09 (ver entrada de arriba para lo último, 11/10). Léelo entero antes de tocar código o responder preguntas sobre el estado del proyecto.
 

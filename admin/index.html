@@ -366,7 +366,16 @@
               <div class="vp-stat-val vp-amarillo" id="vpNeta">—</div>
             </div>
           </div>
-          <div class="vp-usd hidden" id="vpUsdRow"></div>
+          <div class="vp-usd hidden" id="vpUsdRow">
+            <div class="vp-usd-top">
+              <div class="vp-usd-bruto" id="vpUsdBruto"></div>
+              <div class="vp-usd-field">
+                <label>retención PayPal (%)</label>
+                <input type="number" id="vpRetencionPaypalInput" class="vp-stat-input" min="0" max="100" step="0.1" onchange="guardarRetencionPaypalVentasPanel(this.value)">
+              </div>
+            </div>
+            <div class="vp-usd-neta" id="vpUsdNeta"></div>
+          </div>
         </div>
 
         <div class="card" style="margin-top:16px;max-width:600px;">
@@ -7870,12 +7879,19 @@
       document.getElementById('vpMetaInput').value = meta;
       document.getElementById('vpGastoInput').value = cfg.gastoAnuncios || 0;
       document.getElementById('vpRetencionInput').value = cfg.retencionMP || 0;
+      document.getElementById('vpRetencionPaypalInput').value = cfg.retencionPaypal || 0;
 
       const porMoneda = {};
       ventas.forEach(v => { porMoneda[v.moneda] = (porMoneda[v.moneda] || 0) + Number(v.monto || 0); });
       const brutoARS = porMoneda['ARS'] || 0;
       const brutoUSD = porMoneda['USD'] || 0;
+      // Retención de MercadoPago neta contra el bruto en ARS; el gasto en
+      // anuncios también se carga en ARS (único gasto compartido, no hay
+      // un equivalente en USD todavía). La comisión que se descuenta del
+      // lado USD es la de PayPal, no la de MP -- Vaneh (11/10): "gastos de
+      // comisión son los de paypal".
       const neta = brutoARS - (brutoARS * (cfg.retencionMP || 0) / 100) - (cfg.gastoAnuncios || 0);
+      const netaUSD = brutoUSD - (brutoUSD * (cfg.retencionPaypal || 0) / 100);
 
       document.getElementById('vpCantidad').textContent = ventas.length;
       renderVentasPanelGrid(ventas.length, meta);
@@ -7884,7 +7900,8 @@
       const usdRow = document.getElementById('vpUsdRow');
       if (brutoUSD) {
         usdRow.classList.remove('hidden');
-        usdRow.textContent = `+ ${vpFormatoMonto(brutoUSD, 'USD')} bruto (sin descontar retención ni anuncios -- esos se cargan en ARS)`;
+        document.getElementById('vpUsdBruto').textContent = `+ ${vpFormatoMonto(brutoUSD, 'USD')} bruto`;
+        document.getElementById('vpUsdNeta').textContent = `Ganancia neta USD: ${vpFormatoMonto(netaUSD, 'USD')}`;
       } else {
         usdRow.classList.add('hidden');
       }
@@ -7933,6 +7950,12 @@
     const n = parseFloat(v);
     if (isNaN(n) || n < 0) return;
     try { await setVentasPanelConfig(_vpVertical, _vpMes, { retencionMP: n }); cargarVentasPanel(); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'reintentá.')); }
+  };
+  window.guardarRetencionPaypalVentasPanel = async function(v) {
+    const n = parseFloat(v);
+    if (isNaN(n) || n < 0) return;
+    try { await setVentasPanelConfig(_vpVertical, _vpMes, { retencionPaypal: n }); cargarVentasPanel(); }
     catch (e) { alert('No se pudo guardar: ' + (e.message || 'reintentá.')); }
   };
 
