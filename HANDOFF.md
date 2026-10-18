@@ -613,3 +613,6 @@ Fix real (en los archivos binarios, no en HTML):
 - `icons/icon-maskable-192.png`, `icons/icon-maskable-512.png` y `icons/apple-touch-icon.png` (estos sí necesitan algún relleno -- Android recorta los maskable en distintas formas y puede dejar huecos visibles si son transparentes, e iOS no maneja bien transparencia en touch icons): se recoloreó el relleno de `#060F22` (casi negro) a `#0D2B6B` (azul marca COSMART).
 - Las 5 líneas `<link rel="icon">` agregadas antes en `app/index.html`/`login.html`/`signup.html`/`admin/index.html`/`gestion-de-clientes-para-agencias.html` siguen vigentes -- apuntan al favicon correcto, no se tocaron.
 - `manifest.webmanifest` (`background_color`/`theme_color`) no se tocó -- está fuera de lo que Vaneh pidió corregir.
+
+## [18/10] Mapa de productos COSMART en el Hub
+- Sección "Mapa de productos" en `admin/index.html` (iframe con `srcdoc`) y página `mapa.html` con login propio (mismo usuario del Hub, `js/auth.js`). Ambas leen `GET /admin/mapa` del worker con el token de sesión (`js/mapa.js`); solo el admin de COSMART lo ve. El HTML NO está en este repo (es público): vive en el KV del worker. Se actualiza con el workflow `publicar-mapa.yml` de `cosmart-workers`, así Hub y `mapa.html` muestran siempre lo mismo.

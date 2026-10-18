@@ -56,6 +56,9 @@
       <button class="nav-item" onclick="showSection('contenidospropios');cargarContenidosPropiosIframe();">
         <i data-lucide="clapperboard" class="nav-icon"></i><span>Contenidos propios</span>
       </button>
+      <button class="nav-item" onclick="showSection('mapa')">
+        <i data-lucide="map" class="nav-icon"></i><span>Mapa de productos</span>
+      </button>
       <button class="nav-item" onclick="showSection('proyectos')">
         <i data-lucide="rocket" class="nav-icon"></i><span>Proyectos</span>
       </button>
@@ -462,6 +465,19 @@
       en vez de parecer una pantalla completamente distinta. Iframe con
       carga perezosa (recién pone el `src` la primera vez que se abre
       esta sección) para no pagar el costo de esa carga en cada login. -->
+      <!-- Mapa de productos COSMART: el HTML vive en el worker (GET /admin/mapa,
+      solo admin de COSMART con sesión), no en este repo público. También se ve
+      en /mapa.html con usuario y contraseña. -->
+      <div id="sec-mapa" class="hidden">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <h2 style="margin:0;flex:1 1 200px">Mapa de productos</h2>
+          <button class="btn btn-secondary" type="button" onclick="cargarMapaAdmin()">Actualizar</button>
+          <button class="btn btn-secondary" type="button" onclick="mapaPantallaCompleta()">Pantalla completa</button>
+          <a class="btn btn-secondary" href="../mapa.html" target="_blank" rel="noopener">Abrir en otra pestaña</a>
+        </div>
+        <div id="mapa-estado" style="font-size:14px;margin-bottom:8px"></div>
+        <iframe id="mapa-iframe" title="Mapa de productos COSMART" allow="fullscreen" allowfullscreen style="width:100%;height:calc(100vh - 150px);min-height:480px;border:1px solid var(--border,#d7deea);border-radius:12px;background:#F2EDE6"></iframe>
+      </div>
       <div id="sec-contenidospropios" class="hidden">
         <!-- &hv=N -- cache-bust del HTML de app/index.html servido acá adentro
         (Fastly/GitHub Pages puede quedarse sirviendo una copia vieja de esta
@@ -2427,12 +2443,22 @@
     if (e.origin === window.location.origin && e.data?.type === 'contenidos-propios-ready') ocultarCargaContenidosPropios();
   });
 
+  window.cargarMapaAdmin = async function() {
+    const { mostrarMapa } = await import('../js/mapa.js');
+    mostrarMapa(document.getElementById('mapa-iframe'), document.getElementById('mapa-estado'));
+  };
+  window.mapaPantallaCompleta = function() {
+    const f = document.getElementById('mapa-iframe');
+    (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).catch(() => { document.getElementById('mapa-estado').textContent = 'Tu navegador no permite pantalla completa acá: usá "Abrir en otra pestaña".'; });
+  };
+
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','mapa'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
+    if (sec === 'mapa') cargarMapaAdmin();
     if (sec === 'mistareas') loadMisTareas();
     if (sec === 'colaboradores') loadColaboradores();
     if (sec === 'internas') loadInternas();

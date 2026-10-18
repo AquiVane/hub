@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Mapa de productos COSMART</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#F2EDE6;color:#0D2B6B}
+.login{min-height:100%;display:grid;place-items:center;padding:16px}
+.card{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(13,43,107,.12)}
+h1{font-size:20px;margin:0 0 4px}
+p{margin:0 0 16px;color:#6B7280;font-size:14px}
+label{display:block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin:12px 0 4px}
+input{width:100%;font:inherit;padding:11px 12px;border:1px solid #cfd6e6;border-radius:10px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:11px 16px;background:#0D2B6B;color:#fff;cursor:pointer;margin-top:16px;width:100%}
+.err{color:#B3261E;font-size:14px;margin-top:10px;min-height:18px}
+#app{display:none;height:100%;flex-direction:column}
+.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;background:#0D2B6B;color:#fff;flex-wrap:wrap}
+.bar b{font-size:15px}
+.bar div{display:flex;gap:8px;flex-wrap:wrap}
+.bar button{margin:0;width:auto;padding:7px 12px;background:#fff;color:#0D2B6B;font-size:13px}
+iframe{flex:1;width:100%;border:0;background:#F2EDE6}
+#estado{padding:12px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="login" id="login"><form class="card" id="f">
+<h1>Mapa de productos COSMART</h1><p>Entrá con tu usuario y contraseña del Hub.</p>
+<label for="em">Email</label><input id="em" type="email" autocomplete="username" required>
+<label for="pw">Contraseña</label><input id="pw" type="password" autocomplete="current-password" required>
+<button type="submit">Entrar</button><div class="err" id="err" role="alert"></div>
+</form></div>
+<div id="app"><div class="bar"><b>Mapa de productos COSMART</b><div><button id="fs" type="button">Pantalla completa</button><button id="rf" type="button">Actualizar</button><button id="out" type="button">Salir</button></div></div><div id="estado"></div><iframe id="fr" title="Mapa de productos COSMART" allow="fullscreen" allowfullscreen></iframe></div>
+<script type="module">
+import { loginUser, getCurrentUser, logoutUser } from './js/auth.js';
+import { mostrarMapa } from './js/mapa.js';
+const $ = s => document.querySelector(s);
+const abrir = () => { $('#login').style.display = 'none'; $('#app').style.display = 'flex'; mostrarMapa($('#fr'), $('#estado')); };
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault(); $('#err').textContent = '';
+  try { await loginUser($('#em').value.trim(), $('#pw').value); abrir(); }
+  catch (x) { $('#err').textContent = (x && x.message) || 'Email o contraseña incorrectos.'; }
+});
+$('#rf').addEventListener('click', () => mostrarMapa($('#fr'), $('#estado')));
+$('#fs').addEventListener('click', () => { const f = $('#fr'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).catch(() => { $('#estado').textContent = 'Tu navegador no permite pantalla completa acá.'; }); });
+$('#out').addEventListener('click', async () => { try { await logoutUser(); } catch (e) {} location.reload(); });
+const u = getCurrentUser(); if (u && u.role === 'admin') abrir();
+</script>
+</body>
+</html>
