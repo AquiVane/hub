@@ -1,5 +1,15 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## [18/10] Responsive mobile del panel de cliente (Contenidos/Guiones) -- igual que la app "Calendario de contenidos"
+
+Pedido de Vaneh: llevar al Hub el CSS móvil que quedó "perfecto" en la mini app de emprendedores (repo `apps`, `calendario/`). Solo **layout/responsive**, sin tocar colores de marca (el Hub sigue navy; la app de emprendedores usa rojo COSMART).
+
+- **Bug real encontrado**: el menú inferior (`.mobile-bottom-nav`) y las tarjetas del Banco en celular (`.banco-cards-mobile`) estaban definidos con `display:none` DEBAJO del `@media`, así que lo pisaban y nunca se veían (se veía la tabla ancha con scroll lateral). Ahora hay un bloque al FINAL de `css/style.css` que los muestra. **No mover ese bloque más arriba.**
+- Campos de fecha: en iPhone/Safari el `<input type=date>` ignora el ancho y se sale del borde -> `appearance:none` + ancho fijado al contenedor; en modales 30px de alto; en el filtro Desde/Hasta del Banco quedan en UNA fila (`.banco-filtros` / `.banco-fechas`, 26px de alto).
+- Pestañas de Contenidos en grilla de 2 columnas (todas visibles, sin deslizar). Calendario: cada contenido es un punto de color en celular.
+- Barra superior en celular: botones de 32px; las acciones secundarias (Plantilla/Importar/Exportar, Traer guion...) van en un menú "⋯" (`compactarAccionesMobile` en `js/app.js`, se llama en Contenidos y Guiones).
+- NO se aplicó `overflow-x:hidden` a `.content` (a diferencia de la app de emprendedores): el Kanban y otras vistas del Hub necesitan scroll lateral interno.
+
 ## [11/10] Panel de ventas (VAMA Academy / Training) -- nuevo, sin desplegar
 
 Sección nueva en el nav del admin, solo visible para admin de COSMART (mismo gate que la card de EMK): toggle entre "VAMA Academy" y "Training", selector de mes (con flechas, no se puede ir al futuro), grilla de cuadraditos tipo meta-del-mes (mismo mecanismo visual que ya vendía como feature del producto "Método"), ingresos brutos/gasto en anuncios/% retención MercadoPago/ganancia neta, y un total acumulado histórico sumando todos los meses con ventas. Las ventas en sí son datos reales (nunca carga manual) -- vienen de `cosmart-training-core` vía proxy server-to-server del Hub (`handleVentasPanelDatos`/`handleVentasPanelMeses` en `marketing-hub`, mismo patrón que el proxy de EMK config). Lo único manual (meta/gasto en anuncios/% retención) vive en KV propio del Hub, nunca en training-core.

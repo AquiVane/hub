@@ -855,6 +855,7 @@ function renderSection(sec) {
     btn.textContent = '+ Nuevo contenido';
     btn.onclick = () => openContenidoModal(null);
     actions.appendChild(btn);
+    compactarAccionesMobile(actions);
     renderContenidos(content);
     setTimeout(refreshIcons, 50);
   }
@@ -878,6 +879,7 @@ function renderSection(sec) {
     btn.textContent = '+ Nuevo guion';
     btn.onclick = () => openGuionModal(null);
     actions.appendChild(btn);
+    compactarAccionesMobile(actions);
     renderGuionesSection(content);
     setTimeout(refreshIcons, 50);
   }
@@ -2047,15 +2049,17 @@ function renderBancoContenidos(container) {
   const hayFiltroActivo = _bancoFiltroPlataforma !== 'todas' || _bancoFiltroFechaDesde || _bancoFiltroFechaHasta;
 
   const filtrosHtml = `
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;">
+    <div class="banco-filtros" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;">
       <select id="banco-filtro-plataforma" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" onchange="cambiarBancoFiltroPlataforma(this.value)">
         <option value="todas">Todas las plataformas</option>
         ${BANCO_PLATAFORMAS.map(p => `<option value="${p}" ${_bancoFiltroPlataforma === p ? 'selected' : ''}>${p}</option>`).join('')}
       </select>
+      <div class="banco-fechas">
       <label style="font-size:12px;color:var(--text-muted);">Desde</label>
       <input type="date" id="banco-filtro-desde" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaDesde}" onchange="cambiarBancoFiltroFecha('desde', this.value)">
       <label style="font-size:12px;color:var(--text-muted);">Hasta</label>
       <input type="date" id="banco-filtro-hasta" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaHasta}" onchange="cambiarBancoFiltroFecha('hasta', this.value)">
+      </div>
       ${hayFiltroActivo ? `<button class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
       <span style="font-size:12px;color:var(--text-muted);${hayFiltroActivo ? '' : 'margin-left:auto;'}">${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
     </div>`;
@@ -7776,4 +7780,36 @@ if (user.mustChangePassword) {
   showMustChangePasswordModal();
 } else {
   init();
+}
+
+// En celular, las acciones secundarias de la barra superior (plantilla,
+// importar, exportar, traer guion, etc.) van dentro de un menú "⋯" para que
+// no se corte la pantalla; el botón principal queda siempre a la vista.
+// Pedido de Vaneh (18/10): mismo criterio que la app Calendario de contenidos.
+function compactarAccionesMobile(actions) {
+  if (window.innerWidth > 700) return;
+  const sec = [...actions.children].filter(el => !el.classList.contains('btn-primary') && el.tagName !== 'INPUT');
+  if (!sec.length) return;
+  actions.querySelectorAll('input').forEach(i => { i.style.width = '88px'; i.style.height = '32px'; i.style.minWidth = '0'; });
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;';
+  const more = document.createElement('button');
+  more.className = 'btn btn-secondary'; more.textContent = '⋯'; more.setAttribute('aria-label', 'Más acciones');
+  more.style.cssText = 'min-width:34px;height:32px;min-height:32px;padding:0 8px;font-size:16px;line-height:1;';
+  const menu = document.createElement('div');
+  menu.style.cssText = 'display:none;position:fixed;left:8px;top:48px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;min-width:200px;flex-direction:column;gap:4px;';
+  sec.forEach(el => { el.style.cssText = 'display:block;width:100%;text-align:left;min-height:36px;'; menu.appendChild(el); });
+  more.onclick = e => {
+    e.stopPropagation();
+    const abrir = menu.style.display === 'none';
+    menu.style.display = abrir ? 'flex' : 'none';
+    if (abrir) {
+      const r = more.getBoundingClientRect();
+      menu.style.top = Math.round(r.bottom + 6) + 'px';
+      menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+    }
+  };
+  document.addEventListener('click', () => { menu.style.display = 'none'; });
+  wrap.appendChild(more); wrap.appendChild(menu);
+  actions.insertBefore(wrap, actions.firstChild);
 }
