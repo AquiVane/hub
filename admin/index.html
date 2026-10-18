@@ -25,7 +25,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=9">
+  <link rel="stylesheet" href="../css/style.css?v=10">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -484,7 +484,7 @@
             <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div>
             <p style="color:#fff;">Cargando...</p>
           </div>
-          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=14" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=15" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
         </div>
       </div>
 
@@ -8383,6 +8383,20 @@
     document.getElementById('fab-dial-dot')?.classList.toggle('hidden', !b || b.classList.contains('hidden'));
   }
 
+  // El teclado del celular tapaba los paneles de chat: se sigue el alto real visible (visualViewport)
+  (function ajustarPanelesAlTeclado() {
+    const vv = window.visualViewport;
+    const set = () => {
+      const alto = vv ? vv.height : window.innerHeight;
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      document.documentElement.style.setProperty('--vvh', alto + 'px');
+      document.documentElement.style.setProperty('--kb', kb + 'px');
+    };
+    if (vv) { vv.addEventListener('resize', set); vv.addEventListener('scroll', set); }
+    window.addEventListener('resize', set);
+    set();
+  })();
+
   function crearWidgetClaude() {
     if (document.getElementById('claude-widget-btn')) return;
     const btn = document.createElement('button');
@@ -8396,17 +8410,17 @@
     const panel = document.createElement('div');
     panel.id = 'claude-widget-panel';
     panel.className = 'hidden';
-    panel.style.cssText = 'position:fixed;bottom:88px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.style.cssText = 'position:fixed;right:12px;bottom:calc(88px + var(--kb, 0px));width:min(360px, calc(100vw - 24px));height:min(420px, calc(var(--vvh, 100vh) - 110px - var(--kb, 0px)));background:var(--surface);color:var(--text);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
-      <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">🤖 Asistente Claude</div>
+      <div class="widget-panel-head" style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;"><span>Asistente Claude</span><button type="button" class="widget-cerrar" aria-label="Cerrar" onclick="document.getElementById('claude-widget-panel').classList.add('hidden')">×</button></div>
       <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;" title="Le suma al mensaje un resumen de tareas/contenidos/campañas de tus clientes activos, para que pueda responder con datos reales en vez de en general.">
         <input type="checkbox" id="claude-widget-incluir-datos" onchange="localStorage.setItem('hub_claude_incluir_datos', this.checked ? '1' : '0')">
-        📊 Incluir datos de mis clientes (para reportes/análisis)
+        Incluir datos de mis clientes (para reportes/análisis)
       </label>
       <div id="claude-widget-msgs" style="flex:1;overflow-y:auto;padding:12px;font-size:13px;"></div>
       <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);">
         <input type="text" id="claude-widget-input" class="form-control" placeholder="Escribí tu pregunta..." style="font-size:12px;padding:6px 8px;" onkeydown="if(event.key==='Enter')enviarMensajeClaudeWidget();">
-        <button class="btn btn-primary btn-sm" onclick="enviarMensajeClaudeWidget()">➤</button>
+        <button class="btn btn-primary btn-sm widget-enviar" aria-label="Enviar" onclick="enviarMensajeClaudeWidget()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
       </div>`;
     document.body.appendChild(panel);
     // Default ON: pedido explícito de Vaneh ("tengo que permitirte ver
@@ -8477,14 +8491,14 @@
     const panel = document.createElement('div');
     panel.id = 'chat-interno-widget-panel';
     panel.className = 'hidden';
-    panel.style.cssText = 'position:fixed;bottom:88px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.style.cssText = 'position:fixed;right:12px;bottom:calc(88px + var(--kb, 0px));width:min(360px, calc(100vw - 24px));height:min(420px, calc(var(--vvh, 100vh) - 110px - var(--kb, 0px)));background:var(--surface);color:var(--text);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
-      <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">👥 Chat interno</div>
+      <div class="widget-panel-head" style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;"><span>Chat interno</span><button type="button" class="widget-cerrar" aria-label="Cerrar" onclick="document.getElementById('chat-interno-widget-panel').classList.add('hidden')">×</button></div>
       <div id="chat-interno-conversaciones" style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;"></div>
       <div id="chat-interno-msgs" style="flex:1;overflow-y:auto;padding:12px;font-size:13px;"></div>
       <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);">
         <input type="text" id="chat-interno-input" class="form-control" placeholder="Escribí un mensaje..." style="font-size:12px;padding:6px 8px;" onkeydown="if(event.key==='Enter')enviarMensajeChatInternoWidget();">
-        <button class="btn btn-primary btn-sm" onclick="enviarMensajeChatInternoWidget()">➤</button>
+        <button class="btn btn-primary btn-sm widget-enviar" aria-label="Enviar" onclick="enviarMensajeChatInternoWidget()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
       </div>`;
     document.body.appendChild(panel);
 
@@ -8504,8 +8518,8 @@
     if (!cont) return;
     const miEmail = (user.email || '').toLowerCase();
     const equipo = (await getEquipoCache()).filter(c => c.email && c.email.toLowerCase() !== miEmail && c.email !== CLAUDE_IA_EMAIL);
-    const pills = [{ id: 'equipo', nombre: '👥 Equipo' }, ...equipo.map(c => ({ id: construirDmIdChat(user.email, c.email), nombre: c.nombre || c.email }))];
-    cont.innerHTML = pills.map(p => `<button type="button" data-conv="${p.id}" style="white-space:nowrap;font-size:11px;padding:4px 10px;border:none;border-radius:14px;cursor:pointer;${p.id === _chatInternoConversacionActual ? 'background:var(--primary-dark);color:#fff;' : 'background:#f1f5f9;color:var(--text);'}" onclick="seleccionarConversacionChat('${p.id}')">${escapeHtml(p.nombre)}</button>`).join('');
+    const pills = [{ id: 'equipo', nombre: 'Equipo' }, ...equipo.map(c => ({ id: construirDmIdChat(user.email, c.email), nombre: c.nombre || c.email }))];
+    cont.innerHTML = pills.map(p => `<button type="button" data-conv="${p.id}" style="white-space:nowrap;font-size:11px;padding:4px 10px;border:none;border-radius:14px;cursor:pointer;${p.id === _chatInternoConversacionActual ? 'background:var(--primary-dark);color:#fff;' : 'background:var(--bg);color:var(--text);border:1px solid var(--border);'}" onclick="seleccionarConversacionChat('${p.id}')">${escapeHtml(p.nombre)}</button>`).join('');
   }
 
   window.seleccionarConversacionChat = function(conversacionId) {
@@ -8526,7 +8540,7 @@
         const propio = m.autorEmail === miEmail;
         return `<div style="margin-bottom:8px;${propio ? 'text-align:right;' : ''}">
           ${propio ? '' : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${escapeHtml(m.autorNombre)}</div>`}
-          <span style="background:${propio ? 'var(--primary-light)' : '#f1f5f9'};color:${propio ? 'var(--primary-dark)' : 'var(--text)'};padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(m.texto)}</span>
+          <span style="background:${propio ? 'var(--primary-light)' : 'var(--bg)'};color:${propio ? 'var(--primary-dark)' : 'var(--text)'};padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;">${escapeHtml(m.texto)}</span>
         </div>`;
       }).join('') || '<div style="color:var(--text-muted);font-size:12px;">Sin mensajes todavía.</div>';
       msgs.scrollTop = msgs.scrollHeight;

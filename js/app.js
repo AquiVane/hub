@@ -206,6 +206,7 @@ async function init() {
       // contenido -- mismo estilo `.tabs`/`.tab-btn` que ya se usa para
       // las sub-secciones de Contenidos, para que se sienta parte del
       // mismo panel en vez de otro menú aparte.
+      document.body.classList.add('embed');
       document.querySelector('.sidebar').style.display = 'none';
       document.querySelector('.notif-bell-wrap')?.style.setProperty('display', 'none'); // el admin ya tiene su campanita arriba
       document.getElementById('sidebar-toggle').style.display = 'none';
@@ -1870,7 +1871,7 @@ const BANCO_PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn', 'Twitter / X', '
 // "Filtros" que se abre por la izquierda ("todos los filtros a la vista
 // es un lío"). "En proceso" pasó a ser el filtro Estado; Feed IG / Muro FB
 // / Stories IG pasaron a ser el filtro Ubicación.
-const CONT_VISTAS = [['estados', 'Kanban'], ['ideas', 'Banco de ideas'], ['metricas', 'Métricas']];
+const CONT_VISTAS = [['lista', 'Lista'], ['estados', 'Kanban']]; // formas de ver el banco; Calendario, Banco de ideas y Métricas son bloques aparte
 // Vistas ya armadas pero OCULTAS por ahora (Vaneh 18/10: "todavía no lo voy a
 // desarrollar, déjalo armado pero que no se vea"). Los renderFeedIG /
 // renderMuroFB / renderStories / renderEnProceso siguen existiendo en
@@ -1908,12 +1909,12 @@ function ubicacionesDisponibles() {
 function renderContenidos(container) {
   if (CONT_VISTAS_OCULTAS.includes(activeContTab)) activeContTab = 'banco';
   const nFil = contFiltrosActivos();
-  const enVista = CONT_VISTAS.some(v => v[0] === activeContTab);
+  const enKanban = activeContTab === 'estados';
+  const bloque = (k, l) => `<button class="tab-btn ${activeContTab===k?'active':''}" data-tab="${k}">${l}</button>`;
   container.innerHTML = `
     <div class="cont-bar">
       <div class="tabs" id="cont-tabs">
-        <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
-        <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario de contenidos</button>
+        ${bloque('banco', 'Banco de contenidos')}${bloque('calendario', 'Calendario de contenidos')}${bloque('ideas', 'Banco de ideas')}${bloque('metricas', 'Métricas')}
       </div>
       <div class="tabs" id="cont-pauta-filtros">
         <button class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
@@ -1921,9 +1922,8 @@ function renderContenidos(container) {
       </div>
       <div class="cont-bar-acciones">
         <label class="cont-vistas"><span>Vistas:</span>
-          <select id="cont-vistas-sel" class="form-control${enVista ? ' activa' : ''}">
-            <option value="">Elegir…</option>
-            ${CONT_VISTAS.map(([k, l]) => `<option value="${k}" ${activeContTab === k ? 'selected' : ''}>${l}</option>`).join('')}
+          <select id="cont-vistas-sel" class="form-control${enKanban ? ' activa' : ''}">
+            ${CONT_VISTAS.map(([k, l]) => `<option value="${k}" ${(enKanban ? 'estados' : 'lista') === k ? 'selected' : ''}>${l}</option>`).join('')}
           </select>
         </label>
         <button type="button" class="btn btn-secondary cont-filtros-btn${nFil ? ' con-filtros' : ''}" id="cont-filtros-btn">Filtros${nFil ? ` (${nFil})` : ''}</button>
@@ -1934,20 +1934,19 @@ function renderContenidos(container) {
 
   document.querySelectorAll('#cont-tabs .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
       activeContTab = btn.dataset.tab;
       const sel = document.getElementById('cont-vistas-sel');
-      if (sel) { sel.value = ''; sel.classList.remove('activa'); }
+      if (sel) { sel.value = 'lista'; sel.classList.remove('activa'); }
       renderContTab(activeContTab);
     });
   });
 
   document.getElementById('cont-vistas-sel').addEventListener('change', e => {
-    if (!e.target.value) return;
-    activeContTab = e.target.value;
-    document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('activa');
+    const kanban = e.target.value === 'estados';
+    activeContTab = kanban ? 'estados' : 'banco';
+    e.target.classList.toggle('activa', kanban);
+    document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', !kanban && b.dataset.tab === 'banco'));
     renderContTab(activeContTab);
   });
 
