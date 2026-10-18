@@ -207,6 +207,7 @@ async function init() {
       // las sub-secciones de Contenidos, para que se sienta parte del
       // mismo panel en vez de otro menú aparte.
       document.querySelector('.sidebar').style.display = 'none';
+      document.querySelector('.notif-bell-wrap')?.style.setProperty('display', 'none'); // el admin ya tiene su campanita arriba
       document.getElementById('sidebar-toggle').style.display = 'none';
       document.getElementById('fab-btn').style.display = 'none';
       document.getElementById('mobile-bottom-nav').style.display = 'none';
@@ -851,7 +852,7 @@ function renderSection(sec) {
       actions.appendChild(quickBtn);
     }
     const btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
+    btn.className = 'btn btn-primary btn-rojo';
     btn.textContent = '+ Nuevo contenido';
     btn.onclick = () => openContenidoModal(null);
     actions.appendChild(btn);
@@ -1876,8 +1877,10 @@ const CONT_VISTAS = [['estados', 'Kanban'], ['ideas', 'Banco de ideas'], ['metri
 // renderContTab -- para mostrarlas de nuevo, sacarlas de este array y
 // sumarlas a CONT_VISTAS.
 const CONT_VISTAS_OCULTAS = ['feed-ig', 'muro-fb', 'stories', 'proceso'];
+// Se muestran en el filtro Ubicación como opciones deshabilitadas "Próximamente" (Vaneh 18/10)
+const CONT_VISTAS_PROXIMAMENTE = ['Feed IG', 'Muro FB', 'Stories IG'];
 const CONT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
-const CONT_UBICACIONES_BASE = ['Feed', 'Muro', 'Stories', 'Reel'];
+const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
 
@@ -1912,6 +1915,10 @@ function renderContenidos(container) {
         <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
         <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario de contenidos</button>
       </div>
+      <div class="tabs" id="cont-pauta-filtros">
+        <button class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
+        <button class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+      </div>
       <div class="cont-bar-acciones">
         <label class="cont-vistas"><span>Vistas:</span>
           <select id="cont-vistas-sel" class="form-control${enVista ? ' activa' : ''}">
@@ -1942,6 +1949,14 @@ function renderContenidos(container) {
     document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     e.target.classList.add('activa');
     renderContTab(activeContTab);
+  });
+
+  document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pautaFiltroSel = btn.dataset.pautaFiltro;
+      document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderContTab(activeContTab);
+    });
   });
 
   document.getElementById('cont-filtros-btn').addEventListener('click', abrirFiltrosCont);
@@ -1976,17 +1991,12 @@ function abrirFiltrosCont() {
     <aside class="filtros-drawer" role="dialog" aria-label="Filtros">
       <div class="filtros-head"><strong>Filtros</strong><button type="button" class="filtros-x" id="f-cerrar" aria-label="Cerrar">×</button></div>
       <div class="filtros-body">
-        <div class="filtros-campo"><label>Tipo</label>
-          <div class="tabs" id="f-tipo">
-            <button type="button" class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
-            <button type="button" class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
-          </div></div>
         <div class="filtros-campo"><label for="f-plat">Plataforma</label>
           <select id="f-plat" class="form-control">${opt('todas', 'Todas las plataformas', _bancoFiltroPlataforma === 'todas')}${BANCO_PLATAFORMAS.map(p => opt(p, p, _bancoFiltroPlataforma === p)).join('')}</select></div>
         <div class="filtros-campo"><label for="f-estado">Estado</label>
           <select id="f-estado" class="form-control">${opt('todos', 'Todos los estados', _filtroEstado === 'todos')}${CONT_ESTADOS.map(s => opt(s, s, _filtroEstado === s)).join('')}</select></div>
         <div class="filtros-campo"><label for="f-ubic">Ubicación</label>
-          <select id="f-ubic" class="form-control">${opt('todas', 'Todas las ubicaciones', _filtroUbicacion === 'todas')}${ubicacionesDisponibles().map(u => opt(u, u, _filtroUbicacion.toLowerCase() === u.toLowerCase())).join('')}</select></div>
+          <select id="f-ubic" class="form-control">${opt('todas', 'Todas las ubicaciones', _filtroUbicacion === 'todas')}${ubicacionesDisponibles().map(u => opt(u, u, _filtroUbicacion.toLowerCase() === u.toLowerCase())).join('')}<optgroup label="Vistas en desarrollo">${CONT_VISTAS_PROXIMAMENTE.map(v => `<option value="" disabled>${v} · Próximamente</option>`).join('')}</optgroup></select></div>
         <div class="filtros-campo"><label>Fecha de publicación</label>
           <div class="filtros-fechas"><span>Desde</span><input type="date" id="f-desde" class="form-control" value="${_bancoFiltroFechaDesde}"><span>Hasta</span><input type="date" id="f-hasta" class="form-control" value="${_bancoFiltroFechaHasta}"></div></div>
       </div>
@@ -2006,11 +2016,6 @@ function abrirFiltrosCont() {
   o.addEventListener('click', e => { if (e.target === o) cerrarFiltrosCont(); });
   document.getElementById('f-cerrar').onclick = cerrarFiltrosCont;
   document.getElementById('f-ver').onclick = cerrarFiltrosCont;
-  o.querySelectorAll('#f-tipo .tab-btn').forEach(b => b.onclick = () => {
-    pautaFiltroSel = b.dataset.pautaFiltro;
-    o.querySelectorAll('#f-tipo .tab-btn').forEach(x => x.classList.toggle('active', x === b));
-    refrescar();
-  });
   document.getElementById('f-plat').onchange = e => { _bancoFiltroPlataforma = e.target.value; refrescar(); };
   document.getElementById('f-estado').onchange = e => { _filtroEstado = e.target.value; refrescar(); };
   document.getElementById('f-ubic').onchange = e => { _filtroUbicacion = e.target.value; refrescar(); };

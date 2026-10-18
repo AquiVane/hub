@@ -1337,3 +1337,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fab-dial.abierto .fab-dial-main { transform: rotate(45deg); }
 .fab-dial-dot { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #dc2626; border: 2px solid var(--bg, #fff); }
 .fab-dial-dot.hidden { display: none; }
+
+/* "+ Nuevo contenido" en rojo COSMART: se distingue del "+ Nuevo cliente" (azul) del admin */
+.btn.btn-rojo, .btn-primary.btn-rojo { background: #F80808 !important; color: #fff !important; border-color: transparent !important; }
+.btn.btn-rojo:hover { background: #D90000 !important; }
+@media (max-width: 768px) { .cont-bar > #cont-pauta-filtros { align-self: flex-start; } }
