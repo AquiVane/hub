@@ -577,3 +577,18 @@ Se agregó `cosmart-workers`... no, se agregó `cookie-banner.js` en el repo `co
 - **Velocidad teleprompter, ajuste fino (13/10)**: el salto entre niveles 3 y 4 era muy grande (0,3 px/tick por nivel). Ahora 60 niveles de 0,1 px/tick (`TP_PX_POR_NIVEL`), default nivel 24 (= velocidad anterior). Equivalencias: nivel viejo 3 ≈ 9, nivel viejo 4 ≈ 12. Cache-bust v=44 / hv=7.
 - **Velocidad teleprompter con decimales (13/10)**: Vaneh pidió "3,2" (intermedio entre 3 y 4). Se volvió a la escala original (nivel 1 = 0,3 px/tick, default 8,0) pero con pasos de 0,1 y un decimal visible (`_tpSpeed` en décimas, 0,5–20,0). Cache-bust v=45 / hv=8.
 - **Teleprompter: ajustes guardados con nombre (17/10)**: select + "💾 Guardar" + "🗑" en la barra del teleprompter. Guarda velocidad, tamaño de letra y espejado por nombre; se aplica el último usado al abrir. Vive en `localStorage` (`tp_presets_v1_<email>`), o sea **por usuario Y por dispositivo/navegador**, no viaja al servidor. **Decisión de Vaneh (17/10): así alcanza** -- no se guardan en el servidor ni se setean ajustes remotos para otros usuarios (Ger usa los suyos en su propio dispositivo). No retomar salvo que ella lo pida. Cache-bust v=46 / hv=9.
+
+## Fix ícono PWA (18/10): favicon vs ícono instalado son dos cosas distintas
+
+Vaneh reportó el favicon con fondo negro en Chrome Android. El primer intento (agregar `<link rel="icon" sizes="192x192"/"512x512">` en 5 páginas apuntando a `app/favicon-cosmart.png`, que ya era transparente) no atacaba la causa real y generó confusión.
+
+Corrección de Vaneh, aplicada tal cual:
+- Nunca pidió fondo oscuro/negro -- pidió que el fondo celeste claro original (invisible) dejara de serlo. Lo correcto es **sin fondo**.
+- El favicon del navegador (`app/favicon-cosmart.png`, linkeado con `<link rel="icon">`) y el ícono de la app instalada (`icons/icon-*.png`, referenciados desde `manifest.webmanifest`) son archivos distintos y se tratan distinto.
+- El azul de marca es `#1A4DAA`/`#0D2B6B` (`css/style.css`), nunca negro.
+
+Fix real (en los archivos binarios, no en HTML):
+- `icons/icon-192.png` y `icons/icon-512.png` (`purpose:"any"` en el manifest, no necesitan relleno): se les quitó el fondo sólido `#060F22` y quedaron transparentes, igual que el favicon.
+- `icons/icon-maskable-192.png`, `icons/icon-maskable-512.png` y `icons/apple-touch-icon.png` (estos sí necesitan algún relleno -- Android recorta los maskable en distintas formas y puede dejar huecos visibles si son transparentes, e iOS no maneja bien transparencia en touch icons): se recoloreó el relleno de `#060F22` (casi negro) a `#0D2B6B` (azul marca COSMART).
+- Las 5 líneas `<link rel="icon">` agregadas antes en `app/index.html`/`login.html`/`signup.html`/`admin/index.html`/`gestion-de-clientes-para-agencias.html` siguen vigentes -- apuntan al favicon correcto, no se tocaron.
+- `manifest.webmanifest` (`background_color`/`theme_color`) no se tocó -- está fuera de lo que Vaneh pidió corregir.
