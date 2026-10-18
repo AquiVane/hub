@@ -5,7 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>(function(){try{var t=localStorage.getItem('hub_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <title>COSMART Marketing Hub — Admin</title>
+  <!-- Declarado con tamaños explícitos (192/512) a propósito: Chrome en
+  Android, en una página con manifest.webmanifest + service worker (como
+  esta), a veces usa el ícono del manifest -- que tiene fondo sólido a
+  propósito, lo necesita para el ícono instalado en el home screen -- para
+  el favicon de la pestaña en vez de este. Declarando acá los mismos
+  tamaños con el logo transparente, Chrome ya no tiene que recurrir al del
+  manifest (Vaneh, 11/10: "el favicon... se ve con un fondo negro... no
+  tiene que ver con ningún fondo"). -->
   <link rel="icon" type="image/png" href="../app/favicon-cosmart.png?v=2">
+  <link rel="icon" type="image/png" sizes="192x192" href="../app/favicon-cosmart.png?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="../app/favicon-cosmart.png?v=2">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#060F22">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -474,7 +484,7 @@
             <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div>
             <p style="color:#fff;">Cargando...</p>
           </div>
-          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=12" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=13" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
         </div>
       </div>
 
