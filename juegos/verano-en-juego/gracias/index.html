@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gracias — Verano en Juego</title>
+<meta name="description" content="Tu compra está confirmada.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B5FA5">
+<link rel="icon" href="/juegos/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/juegos/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/juegos/assets/verano.css">
+</head>
+<body>
+<header class="dark"><div class="wrap" style="padding-top:16px;padding-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+  <a class="brand" href="/juegos/verano-en-juego/" aria-label="Verano en Juego"><svg viewBox="0 0 64 64" width="44" height="44" role="img" aria-label="Ícono de Verano en Juego"><rect width="64" height="64" fill="#F4FAFC"/><circle cx="32" cy="26" r="18" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="12" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="7" fill="#FFC93C"/><rect y="48" width="16" height="16" fill="#FFC93C"/><rect x="16" y="48" width="16" height="16" fill="#0B5FA5"/><rect x="32" y="48" width="16" height="16" fill="#D93A32"/><rect x="48" y="48" width="16" height="16" fill="#0C7F6D"/></svg><span>Verano en Juego</span></a>
+</div></header>
+<div class="franja f-a" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<main class="wrap col" style="gap:28px;padding-top:48px;padding-bottom:64px;max-width:820px">
+  <h1 style="font-size:clamp(36px,6vw,60px);line-height:1" id="titulo">¡Listo! Ya es tuya.</h1>
+  <div class="msg ok" id="ok">Te mandamos un mail con tu link de activación<span id="mail"></span>. Si no lo ves en unos minutos, revisá Spam o Promociones.</div>
+  <div class="msg info" id="pend" hidden>Tu pago se está procesando. Apenas se acredite te llega el mail con el link de activación.</div>
+  <section class="card">
+    <h2>Ahora hacé esto</h2>
+    <ol style="margin:0;padding-left:1.3em;font-size:19px;line-height:1.6">
+      <li>Abrí el mail desde el celu donde vas a jugar.</li>
+      <li>Tocá el botón “Activar Verano en Juego”.</li>
+      <li>Instalala: en iPhone, Compartir y “Agregar a pantalla de inicio”; en Android, “Instalar la app”.</li>
+      <li>Abrí el ícono que quedó en tu pantalla. Funciona sin internet.</li>
+    </ol>
+  </section>
+  <div class="row"><a class="btn btn-blue" style="width:auto;padding:0 32px" href="/juegos/verano-en-juego/ya-la-compre/">No me llegó el mail</a></div>
+</main>
+<div class="franja f-b" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<footer>
+  <div class="wrap" style="padding:0"><div class="in">
+    <span class="disp" style="font-size:20px">Verano en Juego</span>
+    <div class="l">
+      <a href="https://vamatienda.com.ar/terminos-y-condiciones">Términos y condiciones</a>
+      <a href="https://vamatienda.com.ar/politicas-de-privacidad">Políticas de privacidad</a>
+    </div>
+  </div></div>
+</footer>
+
+<script src="/juegos/assets/verano.js"></script>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search),m=q.get('email');
+  if(m&&VEJ.emailOk(m))document.getElementById('mail').textContent=' a '+m;
+  if(q.get('estado')==='pendiente'){document.getElementById('ok').hidden=true;document.getElementById('pend').hidden=false;document.getElementById('titulo').textContent='Estamos confirmando tu pago.';}
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ya la compré — Verano en Juego</title>
+<meta name="description" content="Recuperá el link de activación con el email de tu compra.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B5FA5">
+<link rel="icon" href="/juegos/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/juegos/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/juegos/assets/verano.css">
+</head>
+<body>
+<header class="dark"><div class="wrap" style="padding-top:16px;padding-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+  <a class="brand" href="/juegos/verano-en-juego/" aria-label="Verano en Juego"><svg viewBox="0 0 64 64" width="44" height="44" role="img" aria-label="Ícono de Verano en Juego"><rect width="64" height="64" fill="#F4FAFC"/><circle cx="32" cy="26" r="18" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="12" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="7" fill="#FFC93C"/><rect y="48" width="16" height="16" fill="#FFC93C"/><rect x="16" y="48" width="16" height="16" fill="#0B5FA5"/><rect x="32" y="48" width="16" height="16" fill="#D93A32"/><rect x="48" y="48" width="16" height="16" fill="#0C7F6D"/></svg><span>Verano en Juego</span></a>
+</div></header>
+<div class="franja f-a" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<main class="wrap col" style="gap:28px;padding-top:48px;padding-bottom:64px;max-width:720px">
+  <h1 style="font-size:clamp(36px,6vw,60px);line-height:1">Ya la compré</h1>
+  <p style="font-size:20px;line-height:1.45" id="intro">Poné el email con el que compraste y te mandamos un link nuevo para activar la app en tu celu.</p>
+  <div class="msg info" id="aviso-otro" hidden>Esta app se activó en otro dispositivo. Si ahora vas a jugar acá, pedí un link nuevo.</div>
+  <form id="form" class="card" novalidate>
+    <div class="fld"><label for="email">Email de la compra</label><input type="email" id="email" name="email" autocomplete="email" placeholder="tu@email.com" maxlength="120" required>
+      <span class="err" id="err" role="alert" hidden>Poné un email válido.</span></div>
+    <div id="estado" role="status" aria-live="polite"></div>
+    <button type="submit" class="btn btn-blue" id="enviar">Mandame el link</button>
+  </form>
+  <div class="card">
+    <h2 style="font-size:24px">¿Tenés un código?</h2>
+    <p class="hint">Si en el mail viene un código (VERANO-XXXX-XXXX), podés activar la app directo con él.</p>
+    <a class="btn btn-sun" style="width:100%" href="/juegos/jugar/">Ir a la app</a>
+  </div>
+</main>
+<div class="franja f-b" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<footer>
+  <div class="wrap" style="padding:0"><div class="in">
+    <span class="disp" style="font-size:20px">Verano en Juego</span>
+    <div class="l">
+      <a href="https://vamatienda.com.ar/terminos-y-condiciones">Términos y condiciones</a>
+      <a href="https://vamatienda.com.ar/politicas-de-privacidad">Políticas de privacidad</a>
+    </div>
+  </div></div>
+</footer>
+
+<script src="/juegos/assets/verano.js"></script>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  if(/[?&]motivo=otro/.test(location.search))$('aviso-otro').hidden=false;
+  $('form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var mail=$('email').value.trim().toLowerCase();
+    if(!VEJ.emailOk(mail)){$('err').hidden=false;$('email').focus();return;}
+    $('err').hidden=true;var b=$('enviar');b.disabled=true;b.textContent='Enviando…';$('estado').innerHTML='';
+    VEJ.api('/api/license/recover',{email:mail}).then(function(j){
+      b.disabled=false;b.textContent='Mandame el link';
+      var d=document.createElement('div');d.className='msg '+(j.ok?'ok':'mal');
+      d.textContent=j.mensaje||j.error||'No pudimos procesar el pedido. Intentá de nuevo en unos minutos.';
+      $('estado').innerHTML='';$('estado').appendChild(d);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finalizá tu descarga — Verano en Juego</title>
+<meta name="description" content="Completá tus datos y pagá una sola vez.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B5FA5">
+<link rel="icon" href="/juegos/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/juegos/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/juegos/assets/verano.css">
+</head>
+<body>
+<header class="dark"><div class="wrap" style="padding-top:16px;padding-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+  <a class="brand" href="/juegos/verano-en-juego/" aria-label="Verano en Juego"><svg viewBox="0 0 64 64" width="44" height="44" role="img" aria-label="Ícono de Verano en Juego"><rect width="64" height="64" fill="#F4FAFC"/><circle cx="32" cy="26" r="18" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="12" fill="none" stroke="#0B5FA5" stroke-width="3"/><circle cx="32" cy="26" r="7" fill="#FFC93C"/><rect y="48" width="16" height="16" fill="#FFC93C"/><rect x="16" y="48" width="16" height="16" fill="#0B5FA5"/><rect x="32" y="48" width="16" height="16" fill="#D93A32"/><rect x="48" y="48" width="16" height="16" fill="#0C7F6D"/></svg><span>Verano en Juego</span></a>
+</div></header>
+<div class="franja f-a" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<main class="wrap col" style="gap:32px;padding-top:48px;padding-bottom:64px">
+  <h1 style="font-size:clamp(36px,6vw,60px);line-height:1">Finalizá tu descarga</h1>
+  <div class="co">
+    <form id="form" class="col" style="min-width:0;gap:28px" novalidate>
+      <section class="card">
+        <h2>Tus datos</h2>
+        <div class="fld"><label for="nombre">Nombre</label><input type="text" id="nombre" name="nombre" autocomplete="name" placeholder="Tu nombre" maxlength="80" required></div>
+        <div class="fld"><label for="email">Email</label><input type="email" id="email" name="email" autocomplete="email" placeholder="tu@email.com" maxlength="120" required>
+          <span class="hint">Acá te mandamos el link de activación.</span>
+          <span class="err" id="err-datos" role="alert" hidden>Completá tu nombre y un email válido.</span></div>
+      </section>
+      <section class="card">
+        <h2>Pagá con</h2>
+        <div class="tabs" role="tablist" aria-label="Medio de pago">
+          <button type="button" role="tab" id="tab-mp" aria-selected="true" aria-controls="p-mp" tabindex="0">Mercado Pago</button>
+          <button type="button" role="tab" id="tab-pp" aria-selected="false" aria-controls="p-pp" tabindex="-1">PayPal</button>
+        </div>
+        <div id="p-mp" role="tabpanel" aria-labelledby="tab-mp">
+          <p class="hint" id="mp-espera">Completá tu nombre y tu email para ver el formulario de pago.</p>
+          <div id="brick"></div>
+          <div id="mp-alt" hidden class="msg info">El formulario de pago está tardando en cargar. <button type="button" class="btn btn-sun" id="reintentar" style="margin-top:10px">Reintentar</button></div>
+        </div>
+        <div id="p-pp" role="tabpanel" aria-labelledby="tab-pp" hidden>
+          <div class="col" style="gap:8px;background:var(--bg);border-radius:20px;padding:20px;margin-bottom:12px">
+            <span class="disp" style="font-size:44px;line-height:1">USD 2,28</span><span style="font-size:18px;line-height:1.4">Pago único en dólares.</span>
+          </div>
+          <div id="pp-btn" style="min-height:60px"></div>
+        </div>
+      </section>
+      <div class="chk"><input type="checkbox" id="acepto" name="acepto"><label for="acepto">Leí y acepto los <a href="https://vamatienda.com.ar/terminos-y-condiciones">Términos y condiciones</a> y las <a href="https://vamatienda.com.ar/politicas-de-privacidad">Políticas de privacidad</a>.</label></div>
+      <span class="err" id="err-acepto" role="alert" hidden>Para continuar tenés que aceptar los Términos y las Políticas de privacidad.</span>
+      <div id="estado" role="status" aria-live="polite"></div>
+      <button type="submit" class="btn btn-coral" id="pagar">Pagar $3.500</button>
+    </form>
+    <aside class="co-sum">
+      <span class="disp" style="font-size:30px;line-height:1.05">Verano en Juego</span>
+      <span style="font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:10px">Pago único</span>
+      <span class="disp" style="font-size:clamp(56px,7vw,80px);line-height:.95">$3.500</span>
+      <span style="font-size:20px;font-weight:700">Aprox. USD 2,28</span>
+      <span style="font-size:18px;line-height:1.4;margin-top:8px">Pagás una sola vez y tenés acceso de por vida. Sin suscripción ni renovaciones.</span>
+    </aside>
+  </div>
+</main>
+<div class="franja f-b" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<footer>
+  <div class="wrap" style="padding:0"><div class="in">
+    <span class="disp" style="font-size:20px">Verano en Juego</span>
+    <div class="l">
+      <a href="https://vamatienda.com.ar/terminos-y-condiciones">Términos y condiciones</a>
+      <a href="https://vamatienda.com.ar/politicas-de-privacidad">Políticas de privacidad</a>
+    </div>
+  </div></div>
+</footer>
+
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="/juegos/assets/verano.js"></script>
+<script src="/juegos/assets/checkout.js"></script>
+</body>
+</html>
