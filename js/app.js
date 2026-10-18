@@ -1863,23 +1863,63 @@ let _bancoFiltroFechaDesde = '';
 let _bancoFiltroFechaHasta = '';
 const BANCO_PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn', 'Twitter / X', 'TikTok', 'YouTube', 'Sitio Web', 'Blog'];
 
+// ── Barra de Contenidos (18/10, pedido de Vaneh) ─────────────────────
+// Solo "Banco de contenidos" y "Calendario" quedan como botones. El resto
+// va en el desplegable "Vistas:" y TODOS los filtros juntos en un panel
+// "Filtros" que se abre por la izquierda ("todos los filtros a la vista
+// es un lío"). "En proceso" pasó a ser el filtro Estado; Feed IG / Muro FB
+// / Stories IG pasaron a ser el filtro Ubicación.
+const CONT_VISTAS = [['estados', 'Kanban'], ['ideas', 'Banco de ideas'], ['metricas', 'Métricas']];
+// Vistas ya armadas pero OCULTAS por ahora (Vaneh 18/10: "todavía no lo voy a
+// desarrollar, déjalo armado pero que no se vea"). Los renderFeedIG /
+// renderMuroFB / renderStories / renderEnProceso siguen existiendo en
+// renderContTab -- para mostrarlas de nuevo, sacarlas de este array y
+// sumarlas a CONT_VISTAS.
+const CONT_VISTAS_OCULTAS = ['feed-ig', 'muro-fb', 'stories', 'proceso'];
+const CONT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const CONT_UBICACIONES_BASE = ['Feed', 'Muro', 'Stories', 'Reel'];
+let _filtroEstado = 'todos';
+let _filtroUbicacion = 'todas';
+
+const _ubicDe = c => [].concat(c.ubicacion || []).map(u => String(u).trim()).filter(Boolean);
+function matchFiltrosCont(c) {
+  if (_bancoFiltroPlataforma !== 'todas' && !(c.plataformas || []).includes(_bancoFiltroPlataforma)) return false;
+  if (_filtroEstado !== 'todos' && c.estado !== _filtroEstado) return false;
+  if (_filtroUbicacion !== 'todas' && !_ubicDe(c).some(u => u.toLowerCase() === _filtroUbicacion.toLowerCase())) return false;
+  if (_bancoFiltroFechaDesde && !(c.fechaPub && c.fechaPub >= _bancoFiltroFechaDesde)) return false;
+  if (_bancoFiltroFechaHasta && !(c.fechaPub && c.fechaPub <= _bancoFiltroFechaHasta)) return false;
+  return true;
+}
+function contFiltrosActivos() {
+  return [_bancoFiltroPlataforma !== 'todas', _filtroEstado !== 'todos', _filtroUbicacion !== 'todas', !!_bancoFiltroFechaDesde, !!_bancoFiltroFechaHasta].filter(Boolean).length;
+}
+function contResultados() {
+  return STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter).filter(matchFiltrosCont).length;
+}
+function ubicacionesDisponibles() {
+  const vistas = new Map();
+  [...CONT_UBICACIONES_BASE, ...STATE.contenidos.flatMap(_ubicDe)].forEach(u => { if (!vistas.has(u.toLowerCase())) vistas.set(u.toLowerCase(), u); });
+  return [...vistas.values()];
+}
+
 function renderContenidos(container) {
+  if (CONT_VISTAS_OCULTAS.includes(activeContTab)) activeContTab = 'banco';
+  const nFil = contFiltrosActivos();
+  const enVista = CONT_VISTAS.some(v => v[0] === activeContTab);
   container.innerHTML = `
-    <div class="mb-16" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div class="cont-bar">
       <div class="tabs" id="cont-tabs">
         <button class="tab-btn ${activeContTab==='banco'?'active':''}" data-tab="banco">Banco de contenidos</button>
         <button class="tab-btn ${activeContTab==='calendario'?'active':''}" data-tab="calendario">Calendario de contenidos</button>
-        <button class="tab-btn ${activeContTab==='estados'?'active':''}" data-tab="estados">Kanban</button>
-        <button class="tab-btn ${activeContTab==='feed-ig'?'active':''}" data-tab="feed-ig">Feed IG</button>
-        <button class="tab-btn ${activeContTab==='muro-fb'?'active':''}" data-tab="muro-fb">Muro FB</button>
-        <button class="tab-btn ${activeContTab==='stories'?'active':''}" data-tab="stories">Stories IG</button>
-        <button class="tab-btn ${activeContTab==='ideas'?'active':''}" data-tab="ideas">Banco de ideas</button>
-        <button class="tab-btn ${activeContTab==='proceso'?'active':''}" data-tab="proceso">En proceso</button>
-        <button class="tab-btn ${activeContTab==='metricas'?'active':''}" data-tab="metricas">Métricas</button>
       </div>
-      <div class="tabs" id="cont-pauta-filtros">
-        <button class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
-        <button class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+      <div class="cont-bar-acciones">
+        <label class="cont-vistas"><span>Vistas:</span>
+          <select id="cont-vistas-sel" class="form-control${enVista ? ' activa' : ''}">
+            <option value="">Elegir…</option>
+            ${CONT_VISTAS.map(([k, l]) => `<option value="${k}" ${activeContTab === k ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </label>
+        <button type="button" class="btn btn-secondary cont-filtros-btn${nFil ? ' con-filtros' : ''}" id="cont-filtros-btn">Filtros${nFil ? ` (${nFil})` : ''}</button>
       </div>
     </div>
     <div id="cont-tab-body"></div>
@@ -1890,20 +1930,98 @@ function renderContenidos(container) {
       document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeContTab = btn.dataset.tab;
+      const sel = document.getElementById('cont-vistas-sel');
+      if (sel) { sel.value = ''; sel.classList.remove('activa'); }
       renderContTab(activeContTab);
     });
   });
 
-  document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pautaFiltroSel = btn.dataset.pautaFiltro;
-      document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderContTab(activeContTab);
-    });
+  document.getElementById('cont-vistas-sel').addEventListener('change', e => {
+    if (!e.target.value) return;
+    activeContTab = e.target.value;
+    document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('activa');
+    renderContTab(activeContTab);
   });
+
+  document.getElementById('cont-filtros-btn').addEventListener('click', abrirFiltrosCont);
 
   renderContTab(activeContTab);
+}
+
+function actualizarBotonFiltrosCont() {
+  const btn = document.getElementById('cont-filtros-btn');
+  if (!btn) return;
+  const n = contFiltrosActivos();
+  btn.textContent = 'Filtros' + (n ? ` (${n})` : '');
+  btn.classList.toggle('con-filtros', !!n);
+}
+
+function cerrarFiltrosCont() {
+  const o = document.getElementById('filtros-cont-overlay');
+  if (!o) return;
+  o.classList.remove('abierto');
+  setTimeout(() => o.remove(), 220);
+  document.removeEventListener('keydown', _filtrosEsc);
+}
+function _filtrosEsc(e) { if (e.key === 'Escape') cerrarFiltrosCont(); }
+
+function abrirFiltrosCont() {
+  document.getElementById('filtros-cont-overlay')?.remove();
+  const o = document.createElement('div');
+  o.id = 'filtros-cont-overlay';
+  o.className = 'filtros-overlay';
+  const opt = (v, l, sel) => `<option value="${v}" ${sel ? 'selected' : ''}>${l}</option>`;
+  o.innerHTML = `
+    <aside class="filtros-drawer" role="dialog" aria-label="Filtros">
+      <div class="filtros-head"><strong>Filtros</strong><button type="button" class="filtros-x" id="f-cerrar" aria-label="Cerrar">×</button></div>
+      <div class="filtros-body">
+        <div class="filtros-campo"><label>Tipo</label>
+          <div class="tabs" id="f-tipo">
+            <button type="button" class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
+            <button type="button" class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+          </div></div>
+        <div class="filtros-campo"><label for="f-plat">Plataforma</label>
+          <select id="f-plat" class="form-control">${opt('todas', 'Todas las plataformas', _bancoFiltroPlataforma === 'todas')}${BANCO_PLATAFORMAS.map(p => opt(p, p, _bancoFiltroPlataforma === p)).join('')}</select></div>
+        <div class="filtros-campo"><label for="f-estado">Estado</label>
+          <select id="f-estado" class="form-control">${opt('todos', 'Todos los estados', _filtroEstado === 'todos')}${CONT_ESTADOS.map(s => opt(s, s, _filtroEstado === s)).join('')}</select></div>
+        <div class="filtros-campo"><label for="f-ubic">Ubicación</label>
+          <select id="f-ubic" class="form-control">${opt('todas', 'Todas las ubicaciones', _filtroUbicacion === 'todas')}${ubicacionesDisponibles().map(u => opt(u, u, _filtroUbicacion.toLowerCase() === u.toLowerCase())).join('')}</select></div>
+        <div class="filtros-campo"><label>Fecha de publicación</label>
+          <div class="filtros-fechas"><span>Desde</span><input type="date" id="f-desde" class="form-control" value="${_bancoFiltroFechaDesde}"><span>Hasta</span><input type="date" id="f-hasta" class="form-control" value="${_bancoFiltroFechaHasta}"></div></div>
+      </div>
+      <div class="filtros-foot">
+        <button type="button" class="btn btn-secondary" id="f-limpiar">Limpiar filtros</button>
+        <button type="button" class="btn btn-primary" id="f-ver">Ver resultados (${contResultados()})</button>
+      </div>
+    </aside>`;
+  document.body.appendChild(o);
+  requestAnimationFrame(() => o.classList.add('abierto'));
+  document.addEventListener('keydown', _filtrosEsc);
+  const refrescar = () => {
+    renderContTab(activeContTab);
+    actualizarBotonFiltrosCont();
+    document.getElementById('f-ver').textContent = `Ver resultados (${contResultados()})`;
+  };
+  o.addEventListener('click', e => { if (e.target === o) cerrarFiltrosCont(); });
+  document.getElementById('f-cerrar').onclick = cerrarFiltrosCont;
+  document.getElementById('f-ver').onclick = cerrarFiltrosCont;
+  o.querySelectorAll('#f-tipo .tab-btn').forEach(b => b.onclick = () => {
+    pautaFiltroSel = b.dataset.pautaFiltro;
+    o.querySelectorAll('#f-tipo .tab-btn').forEach(x => x.classList.toggle('active', x === b));
+    refrescar();
+  });
+  document.getElementById('f-plat').onchange = e => { _bancoFiltroPlataforma = e.target.value; refrescar(); };
+  document.getElementById('f-estado').onchange = e => { _filtroEstado = e.target.value; refrescar(); };
+  document.getElementById('f-ubic').onchange = e => { _filtroUbicacion = e.target.value; refrescar(); };
+  document.getElementById('f-desde').onchange = e => { _bancoFiltroFechaDesde = e.target.value; refrescar(); };
+  document.getElementById('f-hasta').onchange = e => { _bancoFiltroFechaHasta = e.target.value; refrescar(); };
+  document.getElementById('f-limpiar').onclick = () => {
+    _bancoFiltroPlataforma = 'todas'; _filtroEstado = 'todos'; _filtroUbicacion = 'todas'; _bancoFiltroFechaDesde = ''; _bancoFiltroFechaHasta = '';
+    document.getElementById('f-plat').value = 'todas'; document.getElementById('f-estado').value = 'todos'; document.getElementById('f-ubic').value = 'todas';
+    document.getElementById('f-desde').value = ''; document.getElementById('f-hasta').value = '';
+    refrescar();
+  };
 }
 
 function renderContTab(tab) {
@@ -2008,9 +2126,7 @@ function matchPautaFilter(c) {
 
 function renderBancoContenidos(container) {
   const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter)
-    .filter(c => _bancoFiltroPlataforma === 'todas' || (c.plataformas || []).includes(_bancoFiltroPlataforma))
-    .filter(c => !_bancoFiltroFechaDesde || (c.fechaPub && c.fechaPub >= _bancoFiltroFechaDesde))
-    .filter(c => !_bancoFiltroFechaHasta || (c.fechaPub && c.fechaPub <= _bancoFiltroFechaHasta));
+    .filter(matchFiltrosCont);
   const archivados = STATE.contenidos.filter(c => c.archivado);
   const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
 
@@ -2046,22 +2162,11 @@ function renderBancoContenidos(container) {
   }).join('');
 
   const hayAlgunContenido = STATE.contenidos.some(c => !c.archivado);
-  const hayFiltroActivo = _bancoFiltroPlataforma !== 'todas' || _bancoFiltroFechaDesde || _bancoFiltroFechaHasta;
-
+  const hayFiltroActivo = contFiltrosActivos() > 0;
   const filtrosHtml = `
-    <div class="banco-filtros" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;">
-      <select id="banco-filtro-plataforma" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" onchange="cambiarBancoFiltroPlataforma(this.value)">
-        <option value="todas">Todas las plataformas</option>
-        ${BANCO_PLATAFORMAS.map(p => `<option value="${p}" ${_bancoFiltroPlataforma === p ? 'selected' : ''}>${p}</option>`).join('')}
-      </select>
-      <div class="banco-fechas">
-      <label style="font-size:12px;color:var(--text-muted);">Desde</label>
-      <input type="date" id="banco-filtro-desde" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaDesde}" onchange="cambiarBancoFiltroFecha('desde', this.value)">
-      <label style="font-size:12px;color:var(--text-muted);">Hasta</label>
-      <input type="date" id="banco-filtro-hasta" class="form-control" style="width:auto;font-size:12px;padding:5px 8px;" value="${_bancoFiltroFechaHasta}" onchange="cambiarBancoFiltroFecha('hasta', this.value)">
-      </div>
-      ${hayFiltroActivo ? `<button class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
-      <span style="font-size:12px;color:var(--text-muted);${hayFiltroActivo ? '' : 'margin-left:auto;'}">${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
+    <div class="banco-resumen">
+      <span>${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
+      ${hayFiltroActivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
     </div>`;
 
   container.innerHTML = `
@@ -2099,10 +2204,12 @@ window.cambiarBancoFiltroFecha = function(cual, val) {
 };
 
 window.limpiarBancoFiltros = function() {
+  _filtroEstado = 'todos'; _filtroUbicacion = 'todas';
   _bancoFiltroPlataforma = 'todas';
   _bancoFiltroFechaDesde = '';
   _bancoFiltroFechaHasta = '';
-  renderContTab('banco');
+  renderContTab(activeContTab);
+  actualizarBotonFiltrosCont();
 };
 
 window.bancoUpdateFecha = async function(id, fecha) {
@@ -2149,7 +2256,7 @@ function renderCalendario(container) {
 
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
-      const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr && !c.archivado);
+      const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr && !c.archivado && matchFiltrosCont(c));
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -2198,7 +2305,7 @@ function renderKanbanContenidos(container) {
   ];
 
   container.innerHTML = `<div class="kanban-board" id="kanban-cont">${cols.map(col => {
-    const items = STATE.contenidos.filter(c => c.estado === col.key && !c.archivado);
+    const items = STATE.contenidos.filter(c => c.estado === col.key && !c.archivado && matchFiltrosCont(c));
     return `
       <div class="kanban-col" data-col="${col.key}">
         <div class="kanban-col-header">
@@ -7705,6 +7812,7 @@ function updateFab(sec) {
   const fab = document.getElementById('fab-btn');
   if (!fab) return;
   const fabSections = { home: () => openTareaModal(null), contenidos: () => openContenidoModal(null), tareas: () => openTareaModal(null) };
+  if (embedMode) { fab.style.display = 'none'; return; } // adentro del admin el "+" vive en el botón flotante único del admin
   if (fabSections[sec] && window.innerWidth <= 768) {
     fab.style.display = 'flex';
     fab.onclick = fabSections[sec];
@@ -7813,3 +7921,10 @@ function compactarAccionesMobile(actions) {
   wrap.appendChild(more); wrap.appendChild(menu);
   actions.insertBefore(wrap, actions.firstChild);
 }
+
+// Adentro del admin (embed=1): el botón flotante único del admin pide abrir
+// el formulario de "Nuevo contenido" por postMessage (ver fab-dial en admin/index.html).
+window.addEventListener('message', (e) => {
+  if (!embedMode || e.origin !== window.location.origin) return;
+  if (e.data && e.data.type === 'abrir-nuevo-contenido') openContenidoModal(null);
+});

@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## [18/10] Contenidos: barra simplificada + panel "Filtros" por la izquierda + botón flotante único en el admin
+
+Pedido de Vaneh (con captura del admin en celular):
+- **Barra de Contenidos** (`renderContenidos` en `js/app.js`): solo "Banco de contenidos" y "Calendario" como botones; el resto en el desplegable **"Vistas:"** (Kanban, Banco de ideas, Métricas); y un botón **"Filtros (n)"** que abre un panel por la IZQUIERDA (`abrirFiltrosCont`) con TODOS los filtros: Tipo (Orgánico/Pauta), Plataforma, **Estado** (reemplaza la solapa "En proceso"), **Ubicación** (reemplaza Feed IG / Muro FB / Stories IG) y fechas Desde/Hasta. Los filtros (`matchFiltrosCont`) aplican a Banco, Calendario y Kanban.
+- **Vistas ocultas pero armadas**: `feed-ig`, `muro-fb`, `stories` y `proceso` siguen en `renderContTab` (los render* existen); solo se sacaron del menú vía `CONT_VISTAS_OCULTAS`. Para retomarlas: sacarlas de ese array y sumarlas a `CONT_VISTAS`. Vaneh: "todavía no lo voy a desarrollar".
+- **Admin (`admin/index.html`, CRLF -- editar conservando CRLF)**: los 3 botones flotantes sueltos (nuevo contenido, 👥 chat del equipo, 💬 asistente Claude) pasaron a UN solo botón "+" abajo a la derecha que despliega las opciones hacia arriba (`#fab-dial`, funciones `asegurarFabDial`/`agregarAlFabDial`). "Nuevo contenido" solo aparece en Contenidos propios y le avisa al iframe por `postMessage({type:'abrir-nuevo-contenido'})` (el iframe, en `embed=1`, ya no muestra su propio "+"). El numerito de no leídos del chat se refleja como punto rojo en el "+".
+
 ## [18/10] Responsive mobile del panel de cliente (Contenidos/Guiones) -- igual que la app "Calendario de contenidos"
 
 Pedido de Vaneh: llevar al Hub el CSS móvil que quedó "perfecto" en la mini app de emprendedores (repo `apps`, `calendario/`). Solo **layout/responsive**, sin tocar colores de marca (el Hub sigue navy; la app de emprendedores usa rojo COSMART).

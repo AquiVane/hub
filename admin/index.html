@@ -8310,20 +8310,93 @@
   // solo en Configuración. Historial solo en memoria (se pierde al
   // recargar la página), a propósito simple para esta primera versión.
   let _claudeChatHistorial = [];
+  // ── Botón flotante único con las acciones desplegables (18/10, pedido de
+  // Vaneh): antes había 3 botones sueltos (nuevo contenido, chat del equipo y
+  // asistente Claude) tapándose entre sí. Ahora hay UN botón "+" abajo a la
+  // derecha; al tocarlo se despliegan hacia arriba las opciones, y se cierra
+  // solo al elegir una o al tocar afuera. No estorba la pantalla.
+  const FAB_SVG = {
+    chat: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+    users: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+    nuevo: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  };
+  function cerrarFabDial() {
+    const d = document.getElementById('fab-dial');
+    if (!d) return;
+    d.classList.remove('abierto');
+    document.getElementById('fab-dial-main')?.setAttribute('aria-expanded', 'false');
+  }
+  function contenidosPropiosVisible() {
+    const f = document.getElementById('contenidos-propios-iframe');
+    return !!(f && f.offsetParent !== null && f.contentWindow);
+  }
+  function asegurarFabDial() {
+    let d = document.getElementById('fab-dial');
+    if (d) return d;
+    d = document.createElement('div');
+    d.id = 'fab-dial';
+    d.className = 'fab-dial';
+    d.innerHTML = '<div class="fab-dial-items" id="fab-dial-items"></div><button type="button" class="fab-dial-main" id="fab-dial-main" aria-label="Más acciones" aria-expanded="false">' + FAB_SVG.plus + '<span id="fab-dial-dot" class="fab-dial-dot hidden"></span></button>';
+    document.body.appendChild(d);
+    document.getElementById('fab-dial-main').onclick = (e) => {
+      e.stopPropagation();
+      const abrir = !d.classList.contains('abierto');
+      d.classList.toggle('abierto', abrir);
+      document.getElementById('fab-dial-main').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      if (abrir) actualizarOpcionNuevoContenido();
+    };
+    document.addEventListener('click', (e) => { if (!d.contains(e.target)) cerrarFabDial(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFabDial(); });
+    return d;
+  }
+  function agregarAlFabDial(btn, etiqueta) {
+    asegurarFabDial();
+    const item = document.createElement('div');
+    item.className = 'fab-dial-item';
+    item.innerHTML = '<span class="fab-dial-etiqueta">' + etiqueta + '</span>';
+    item.appendChild(btn);
+    document.getElementById('fab-dial-items').appendChild(item);
+    return item;
+  }
+  // "Nuevo contenido" solo aparece cuando se está en Contenidos propios; le
+  // avisa al iframe (app/index.html?embed=1) que abra el formulario.
+  function actualizarOpcionNuevoContenido() {
+    let item = document.getElementById('fab-dial-nuevo-contenido');
+    if (!item) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fab-dial-opcion';
+      btn.setAttribute('aria-label', 'Nuevo contenido');
+      btn.innerHTML = FAB_SVG.nuevo;
+      btn.onclick = () => {
+        cerrarFabDial();
+        document.getElementById('contenidos-propios-iframe')?.contentWindow?.postMessage({ type: 'abrir-nuevo-contenido' }, window.location.origin);
+      };
+      item = agregarAlFabDial(btn, 'Nuevo contenido');
+      item.id = 'fab-dial-nuevo-contenido';
+    }
+    item.style.display = contenidosPropiosVisible() ? '' : 'none';
+  }
+  function actualizarPuntoFabDial() {
+    const b = document.getElementById('chat-interno-badge');
+    document.getElementById('fab-dial-dot')?.classList.toggle('hidden', !b || b.classList.contains('hidden'));
+  }
+
   function crearWidgetClaude() {
     if (document.getElementById('claude-widget-btn')) return;
     const btn = document.createElement('button');
     btn.id = 'claude-widget-btn';
     btn.title = 'Preguntale a Claude';
-    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
-    btn.textContent = '💬';
-    btn.onclick = () => alternarWidgetFlotante('claude-widget-panel', 'chat-interno-widget-panel');
-    document.body.appendChild(btn);
+    btn.className = 'fab-dial-opcion';
+    btn.innerHTML = FAB_SVG.chat;
+    btn.onclick = () => { cerrarFabDial(); alternarWidgetFlotante('claude-widget-panel', 'chat-interno-widget-panel'); };
+    agregarAlFabDial(btn, 'Asistente Claude');
 
     const panel = document.createElement('div');
     panel.id = 'claude-widget-panel';
     panel.className = 'hidden';
-    panel.style.cssText = 'position:fixed;bottom:82px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.style.cssText = 'position:fixed;bottom:88px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
       <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">🤖 Asistente Claude</div>
       <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;" title="Le suma al mensaje un resumen de tareas/contenidos/campañas de tus clientes activos, para que pueda responder con datos reales en vez de en general.">
@@ -8390,20 +8463,21 @@
     const btn = document.createElement('button');
     btn.id = 'chat-interno-widget-btn';
     btn.title = 'Chat interno del equipo';
-    btn.style.cssText = 'position:fixed;bottom:20px;right:84px;width:52px;height:52px;border-radius:50%;background:var(--primary-dark);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9998;';
-    btn.innerHTML = `👥<span id="chat-interno-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;"></span>`;
+    btn.className = 'fab-dial-opcion';
+    btn.innerHTML = `${FAB_SVG.users}<span id="chat-interno-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;"></span>`;
     btn.onclick = () => {
+      cerrarFabDial();
       alternarWidgetFlotante('chat-interno-widget-panel', 'claude-widget-panel');
       if (!document.getElementById('chat-interno-widget-panel').classList.contains('hidden')) {
         seleccionarConversacionChat(_chatInternoConversacionActual);
       }
     };
-    document.body.appendChild(btn);
+    agregarAlFabDial(btn, 'Chat del equipo');
 
     const panel = document.createElement('div');
     panel.id = 'chat-interno-widget-panel';
     panel.className = 'hidden';
-    panel.style.cssText = 'position:fixed;bottom:82px;right:84px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
+    panel.style.cssText = 'position:fixed;bottom:88px;right:20px;width:320px;max-width:calc(100vw - 32px);height:420px;max-height:calc(100vh - 120px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
     panel.innerHTML = `
       <div style="background:var(--primary-dark);color:#fff;padding:12px 14px;font-weight:700;font-size:13px;">👥 Chat interno</div>
       <div id="chat-interno-conversaciones" style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;"></div>
@@ -8485,6 +8559,7 @@
       const { total } = await getChatNoLeidos();
       if (total > 0) { badge.textContent = total > 99 ? '99+' : String(total); badge.classList.remove('hidden'); }
       else badge.classList.add('hidden');
+      actualizarPuntoFabDial();
     } catch (e) { /* no rompe el resto de la UI si falla */ }
   }
 
