@@ -460,7 +460,22 @@
         navegador -- mismo problema real que ya tuvimos con js/app.js?v=NN.
         Bumpear este número cada vez que cambie algo relevante DENTRO de
         app/index.html, no solo en js/app.js). -->
-        <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=11" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+        <!-- Pantalla de carga con la brújula (mismo ícono que CRM Leads)
+        mientras adentro del iframe se pide la data -- Vaneh (11/10): no
+        quería que se vea "pensando" en blanco unos segundos ni que
+        aparezca de golpe un panel adentro de otro panel. Se oculta recién
+        cuando app/index.html (adentro del iframe) avisa por postMessage
+        que ya terminó de pintar -- ver `contenidos-propios-ready` en
+        js/app.js. El timeout de respaldo es por si ese mensaje nunca
+        llega (error adentro del iframe, etc.) -- que no se quede la
+        carga pegada para siempre. -->
+        <div style="position:relative;">
+          <div id="contenidos-propios-loading" class="empty-state" style="position:absolute;inset:0;z-index:1;background:#0D2B6B;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div>
+            <p style="color:#fff;">Cargando...</p>
+          </div>
+          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=12" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+        </div>
       </div>
 
       <!-- Instrucciones -- pensadas para cualquier agencia/empresa que use
@@ -2388,8 +2403,19 @@
 
   window.cargarContenidosPropiosIframe = function() {
     const f = document.getElementById('contenidos-propios-iframe');
-    if (f && !f.src) f.src = f.dataset.src;
+    if (!f || f.src) return;
+    f.src = f.dataset.src;
+    // Respaldo: si por lo que sea nunca llega el postMessage de "ready"
+    // (ver js/app.js) -- un error adentro del iframe, etc. -- que la
+    // pantalla de carga no se quede pegada para siempre.
+    setTimeout(ocultarCargaContenidosPropios, 8000);
   };
+  function ocultarCargaContenidosPropios() {
+    document.getElementById('contenidos-propios-loading')?.classList.add('hidden');
+  }
+  window.addEventListener('message', (e) => {
+    if (e.origin === window.location.origin && e.data?.type === 'contenidos-propios-ready') ocultarCargaContenidosPropios();
+  });
 
   window.showSection = function(sec) {
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel'].forEach(s => {

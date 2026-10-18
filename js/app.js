@@ -190,6 +190,42 @@ async function init() {
   try {
     document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
+    if (embedMode) {
+      // Ocultar el chrome de panel-de-cliente ANTES de pedir los datos
+      // (no después, como estaba) -- Vaneh (11/10): adentro del iframe de
+      // "Contenidos propios" del admin, durante los segundos que tarda
+      // loadAllData() se veía el panel de cliente COMPLETO sin embeber
+      // (sidebar, "Puertos COSMART", cerrar sesión) y recién después se
+      // ocultaba todo eso -- literal "un panel adentro de otro panel"
+      // por varios segundos. Moviendo esto antes del fetch, el chrome
+      // nunca llega a pintarse.
+      // Adentro del iframe de "Contenidos propios" (admin/index.html):
+      // un segundo menú lateral al lado del del admin se veía como "dos
+      // menús" (Vaneh: "no me gusta cómo quedó"). Se saca el sidebar
+      // entero y se reemplaza por solapas horizontales arriba del
+      // contenido -- mismo estilo `.tabs`/`.tab-btn` que ya se usa para
+      // las sub-secciones de Contenidos, para que se sienta parte del
+      // mismo panel en vez de otro menú aparte.
+      document.querySelector('.sidebar').style.display = 'none';
+      document.getElementById('sidebar-toggle').style.display = 'none';
+      document.getElementById('fab-btn').style.display = 'none';
+      document.getElementById('mobile-bottom-nav').style.display = 'none';
+      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard']];
+      const tabBar = document.createElement('div');
+      tabBar.id = 'embed-tabs';
+      tabBar.className = 'tabs';
+      tabBar.style.cssText = 'margin:16px 24px 0;flex-shrink:0;';
+      tabBar.innerHTML = EMBED_TABS.map(([sec, label], i) => `<button type="button" class="tab-btn${i === 0 ? ' active' : ''}" data-embed-sec="${sec}">${label}</button>`).join('');
+      tabBar.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderSection(btn.dataset.embedSec);
+        });
+      });
+      document.querySelector('.main').insertBefore(tabBar, document.getElementById('main-content'));
+    }
+
     // Logo upload
     document.getElementById('client-logo-input').addEventListener('change', async e => {
       const file = e.target.files[0];
@@ -219,33 +255,6 @@ async function init() {
         document.querySelector(`.nav-item[data-section="${sec}"]`)?.classList.add('hidden');
       });
     }
-    if (embedMode) {
-      // Adentro del iframe de "Contenidos propios" (admin/index.html):
-      // un segundo menú lateral al lado del del admin se veía como "dos
-      // menús" (Vaneh: "no me gusta cómo quedó"). Se saca el sidebar
-      // entero y se reemplaza por solapas horizontales arriba del
-      // contenido -- mismo estilo `.tabs`/`.tab-btn` que ya se usa para
-      // las sub-secciones de Contenidos, para que se sienta parte del
-      // mismo panel en vez de otro menú aparte.
-      document.querySelector('.sidebar').style.display = 'none';
-      document.getElementById('sidebar-toggle').style.display = 'none';
-      document.getElementById('fab-btn').style.display = 'none';
-      document.getElementById('mobile-bottom-nav').style.display = 'none';
-      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard']];
-      const tabBar = document.createElement('div');
-      tabBar.id = 'embed-tabs';
-      tabBar.className = 'tabs';
-      tabBar.style.cssText = 'margin:16px 24px 0;flex-shrink:0;';
-      tabBar.innerHTML = EMBED_TABS.map(([sec, label], i) => `<button type="button" class="tab-btn${i === 0 ? ' active' : ''}" data-embed-sec="${sec}">${label}</button>`).join('');
-      tabBar.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          renderSection(btn.dataset.embedSec);
-        });
-      });
-      document.querySelector('.main').insertBefore(tabBar, document.getElementById('main-content'));
-    }
     if (!esPropioAgencia && !embedMode) {
       if (user.role !== 'client') setupClientSwitcher();
       else document.getElementById('sb-client-switcher-trigger').style.cursor = 'default';
@@ -271,6 +280,13 @@ async function init() {
       renderSection('home');
     }
     setTimeout(() => refreshIcons(), 100);
+    // Avisa a admin/index.html (el padre del iframe) que ya terminó de
+    // pintar -- así la pantalla de carga con la brújula desaparece recién
+    // cuando hay contenido real, no antes (Vaneh, 11/10: no quería ni el
+    // retraso sin feedback ni el "panel adentro de otro panel"; esto
+    // resuelve lo primero, el chrome oculto desde el principio -- ver
+    // comentario de embedMode más arriba -- resuelve lo segundo).
+    if (embedMode) window.parent.postMessage({ type: 'contenidos-propios-ready' }, window.location.origin);
     // Solo para el cliente en su propia cuenta -- si un admin/colaborador
     // abrió este panel "como" el cliente (ver "Abrir en panel del
     // cliente" en Mis Tareas), no tiene sentido mostrarle el tour.
