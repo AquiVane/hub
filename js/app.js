@@ -3789,6 +3789,16 @@ const IMPORT_HEADER_MAP = {
 
 const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
 
+// Hoja con los datos de una plantilla: la que se llama como el módulo (Contenidos / Tareas / Campañas) o, si no
+// está, la primera que NO sea "Instrucciones". Antes se leía siempre la primera hoja y, si era "Instrucciones",
+// la importación daba error (Vaneh, 20/10). Las plantillas ahora traen los datos primero y las instrucciones segunda.
+function nombreHojaDatos(wb, nombre) {
+  const n = normalizeHeader(nombre);
+  return wb.SheetNames.find(s => normalizeHeader(s) === n)
+    || wb.SheetNames.find(s => !/^instrucciones?$/i.test(String(s).trim()))
+    || wb.SheetNames[0];
+}
+
 function normalizeHeader(h) {
   return String(h || '')
     .toLowerCase()
@@ -4128,7 +4138,7 @@ document.getElementById('quick-update-file-input').addEventListener('change', as
     await loadXLSXLib();
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const sheet = wb.Sheets[nombreHojaDatos(wb, 'contenidos')];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
 
@@ -4251,7 +4261,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
     await loadXLSXLib();
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const sheetName = wb.SheetNames.find(n => normalizeHeader(n) === 'contenidos') || wb.SheetNames[0];
+    const sheetName = nombreHojaDatos(wb, 'contenidos');
     const sheet = wb.Sheets[sheetName];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
@@ -6983,7 +6993,7 @@ document.getElementById('import-campana-file-input').addEventListener('change', 
     await loadXLSXLib();
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const sheetName = wb.SheetNames.find(n => normalizeHeader(n) === 'campanas') || wb.SheetNames[0];
+    const sheetName = nombreHojaDatos(wb, 'campanas');
     const sheet = wb.Sheets[sheetName];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }

@@ -5839,6 +5839,15 @@
   };
 
   let _xlsxLoadPromiseAdmin = null;
+  // Hoja con los datos de la plantilla: la que se llama "Tareas" o, si no, la primera que NO sea "Instrucciones".
+  // Antes se leía siempre la primera hoja y, si era "Instrucciones", la importación daba error (Vaneh, 20/10).
+  function hojaDatosPlantilla(wb) {
+    const nom = wb.SheetNames.find(n => String(n).trim().toLowerCase() === 'tareas')
+      || wb.SheetNames.find(n => !/^instrucciones?$/i.test(String(n).trim()))
+      || wb.SheetNames[0];
+    return nom;
+  }
+
   function loadXLSXLibAdmin() {
     if (window.XLSX) return Promise.resolve();
     if (_xlsxLoadPromiseAdmin) return _xlsxLoadPromiseAdmin;
@@ -5987,7 +5996,7 @@
       await loadXLSXLibAdmin();
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const sheet = wb.Sheets[hojaDatosPlantilla(wb)];
       const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
 
@@ -6210,7 +6219,7 @@
       await loadXLSXLibAdmin();
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const sheet = wb.Sheets[hojaDatosPlantilla(wb)];
       const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
 
