@@ -1371,3 +1371,24 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 .widget-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .widget-enviar { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; }
 #cont-tabs .tab-btn, #cont-pauta-filtros .tab-btn { font-size: 13px; }
+
+/* ── Mobile: pantalla real, encabezado fijo y Guardar siempre a la vista ──
+   - 100vh en celular incluye la barra del navegador (tapa lo de abajo): se usa 100dvh.
+   - El botón flotante "+" (z-index 9999) tapaba el Guardar de los modales: se oculta con un modal abierto.
+   - iOS hace zoom al tocar un campo con letra < 16px y obliga a scrollear de costado: se fuerza 16px.
+   - El encabezado (Nuevo guion, etc.) queda fijo arriba aunque se scrollee. ── */
+.layout { height: 100vh; height: 100dvh; }
+@media (max-width: 768px) {
+  .main { height: 100vh; height: 100dvh; }
+  .topbar { position: sticky; top: 0; z-index: 30; }
+  .modal-overlay { bottom: auto; height: 100vh; height: 100dvh; }
+  .modal { max-height: 92vh; max-height: calc(100dvh - 16px); }
+  .modal-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--surface); position: sticky; bottom: 0; }
+  body:has(.modal-overlay:not(.hidden)) .fab-dial,
+  body:has(.modal-overlay:not(.hidden)) .fab-btn { display: none !important; }
+  .modal, .modal-overlay .modal-body, .modal-overlay form, .modal-overlay { overflow-x: hidden; max-width: 100vw; }
+  .modal *, .modal-overlay .form-group { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .modal-overlay input:not([type="date"]):not([type="month"]):not([type="time"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+  .modal-overlay select, .modal-overlay textarea { font-size: 16px !important; }
+  .modal label { flex-wrap: wrap; }
+}
