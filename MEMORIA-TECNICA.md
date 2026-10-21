@@ -10,10 +10,10 @@ Documento pensado para adjuntar al trámite de **Inscripción de obra publicada/
 
 - **Nombre de la obra**: HUB de COSMART (también referido como "Marketing Hub").
 - **Tipo de obra**: software de gestión — plataforma web multi-tenant de administración para agencias de marketing.
-- **Titular**: COSMART (Conglomerado Contacto Smart) — Vanesa Anahí Fernández.
-- **Autor/desarrollo**: Vanesa Anahí Fernández, con desarrollo asistido por IA (Claude, de Anthropic) bajo su dirección y especificación en todas las decisiones de producto.
+- **Titular**: Vanesa Anahí Fernández. "COSMART" es una marca registrada de la titular, no una persona jurídica.
+- **Autora y desarrollo**: Vanesa Anahí Fernández, con desarrollo asistido por IA (Claude, de Anthropic) bajo su dirección y especificación en todas las decisiones de producto.
 - **Estado**: en producción, en uso activo por COSMART y sus clientes/colaboradores desde agosto de 2026. Desde el 29/08/2026 es multi-tenant: otras agencias pueden darse de alta y usarlo con sus propios clientes.
-- **Última actualización de este documento**: 21/09/2026.
+- **Última actualización de este documento**: 22/10/2026.
 
 ## 2. Descripción general (memoria descriptiva)
 
@@ -86,6 +86,7 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 - **Despliegue**: integración continua — el frontend se publica automáticamente al actualizarse el código; el backend se despliega de forma controlada mediante un flujo de integración continua con verificación previa.
 
 ## 5. Historial de cambios relevantes (para actualizar)
+- **18/10/2026**: rediseño responsive del panel (menús inferiores, tarjetas, filtros y acciones compactas en celular); Contenidos reorganizado en cuatro bloques (Banco, Calendario, Ideas, Métricas) con selector Orgánico/Pauta; chat del equipo y asistente con modo oscuro; sección interna de mapa de productos con acceso por login; íconos de instalación como aplicación (PWA).
 
 - **21/09/2026**: nuevo campo de guion por contenido con modo teleprompter a pantalla completa para grabar (fondo negro, texto blanco, desplazamiento automático); repositorio de Guiones como sección propia, para cargar guiones sueltos vinculados o no a un contenido, con vínculo automático por título y traspaso en ambas direcciones con Contenidos; Contenidos, Guiones y Pauta digital disponibles también para el uso interno de la agencia misma (no solo para sus clientes); asignación de contenidos a una persona del equipo o del cliente desde la importación masiva de Excel; filtro del banco de contenidos por plataforma y por rango de fechas; corrección en los archivos adjuntos de tareas y contenidos (subida real a almacenamiento en la nube en vez de embeberse en el registro, evitando que el guardado fallara silenciosamente) con vista previa ampliable; corrección del link de los emails de notificación por mención para que lleven directo al comentario puntual (tarea o contenido) en vez de a la pantalla principal del cliente.
 - **19-20/09/2026**: herramienta de actualización rápida en lote (estado, notas, comentario) para varios contenidos ya cargados, sin necesidad de reemplazar el calendario completo.
