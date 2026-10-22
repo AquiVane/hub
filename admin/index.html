@@ -25,7 +25,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=16">
+  <link rel="stylesheet" href="../css/style.css?v=17">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -712,8 +712,7 @@
       <div id="sec-ideas" class="hidden">
         <div class="mb-20 flex items-center gap-8">
           <h2 style="font-size:18px;font-weight:700;">Ideas</h2>
-          <span class="text-muted text-sm">Todo lo que se te ocurra, sin plan todavía -- cuando esté madura, transformala en proyecto</span>
-          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openIdeaAdminModal(null)">+ Nueva idea</button>
+          <button class="btn btn-crema" style="margin-left:auto;" onclick="openIdeaAdminModal(null)">+ Nueva idea</button>
         </div>
         <div id="ideasAdminList">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
