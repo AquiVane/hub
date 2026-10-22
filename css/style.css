@@ -1433,3 +1433,12 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .client-row-list { gap: 5px; }
   .client-row > div[style*="flex-direction:column"] button { padding: 0 2px; line-height: 1; }
 }
+
+/* Contenidos propios (admin): sin subtítulo, y en celular título + acciones en la misma fila */
+.cp-sub { display: none; }
+@media (max-width: 768px) {
+  .cp-head { flex-wrap: nowrap; margin-bottom: 10px; }
+  .cp-head-txt { flex: 1 1 auto; }
+  .cp-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cp-actions { flex-wrap: nowrap; flex: 0 0 auto; margin-left: auto; }
+}
