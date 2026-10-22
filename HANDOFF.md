@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 22/10 — Idea → proyecto: la idea deja de existir como idea
+- `transformarIdeaEnProyecto` (admin) ahora BORRA la idea de la lista y queda solo el proyecto (antes quedaba marcada "Idea en proyecto"). Las ya convertidas de antes (`proyectoTareaId`) se limpian solas al abrir Ideas. El proyecto nace con `desdeIdea:true` y en Proyectos muestra la etiqueta azul "✨ Nuevo proyecto" (hasta que pasa a Listo). La idea semilla de arranque se siembra una sola vez por navegador (`hub_ideas_semilla_v1`), así no reaparece si la lista queda vacía.
+
 ## 22/10 — Banco de ideas de Contenidos propios ≠ Ideas de la agencia (listas separadas)
 - Las dos usaban `/data/_cosmart/ideas` y se veían mezcladas. Ahora: **Ideas de la agencia** (sección Ideas del admin) = `_cosmart/ideas`; **Banco de ideas de Contenidos propios** = `_cosmart/ideasContenido` (`IDEAS_TIPO` en `js/app.js`; `getIdeas/saveIdea/deleteIdea` de `js/data.js` reciben `tipo`). Sin cambios de backend (el endpoint `/data/:clientId/:type` es genérico). Clientes reales siguen con `ideas`.
 - Migración automática e idempotente (`migrarIdeasContenidoPropias`, la corren el admin al abrir Ideas y el panel al cargar): mueve de `ideas` a `ideasContenido` las que traen `plataformas` (array) -- las del banco de contenidos siempre lo traen, las de la agencia nunca --; copia primero y borra después, nada se pierde.

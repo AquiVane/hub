@@ -4234,10 +4234,25 @@
     try {
       await migrarIdeasContenidoPropias(INTERNAS_CLIENT_ID).catch(() => {}); // saca de acá las ideas del Banco de Contenidos (22/10: son listas distintas)
       _ideasAdminCache = await getIdeas(INTERNAS_CLIENT_ID) || [];
+      // Ideas que ya se transformaron en proyecto (antes quedaban acá marcadas "Idea en proyecto"): ya son
+      // proyecto, se sacan de Ideas.
+      if (_ideasAdminCache.some(x => x.proyectoTareaId)) {
+        let resto = _ideasAdminCache;
+        for (const c of _ideasAdminCache.filter(x => x.proyectoTareaId)) {
+          await deleteIdea(INTERNAS_CLIENT_ID, c.id, resto).catch(() => {});
+          resto = resto.filter(x => x.id !== c.id);
+        }
+        _ideasAdminCache = resto;
+      }
       // Primera vez que se entra (nunca hubo ninguna idea todavía): se
       // siembra la primera idea de Vaneh (pedido explícito, 03/09) para
       // que la sección no arranque vacía.
-      if (!_ideasAdminCache.length) {
+      // La idea de arranque se siembra una sola vez: si después se transforma en proyecto y la lista queda vacía,
+      // no tiene que volver a aparecer.
+      let _semillaYaVista = false;
+      try { _semillaYaVista = localStorage.getItem('hub_ideas_semilla_v1') === '1'; if (_ideasAdminCache.length) localStorage.setItem('hub_ideas_semilla_v1', '1'); } catch (e) {}
+      if (!_ideasAdminCache.length && !_semillaYaVista) {
+        try { localStorage.setItem('hub_ideas_semilla_v1', '1'); } catch (e) {}
         const semilla = {
           id: 'i' + Date.now(),
           titulo: 'Venderle a empresas "Creá tu propio sistema de gestión con IA"',
@@ -4284,9 +4299,7 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">💡 Anotada por ${escapeHtml(i.autor?.nombre || 'Alguien del equipo')} · ${fmtDateAct(i.fecha) || ''}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;">
-          ${i.proyectoTareaId
-            ? `<span style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;background:#dcfce7;color:#15803d;">✅ Idea en proyecto</span>`
-            : `<button class="btn btn-primary btn-sm" onclick="transformarIdeaEnProyecto('${i.id}')">🚀 Transformar en proyecto</button>`}
+          <button class="btn btn-primary btn-sm" onclick="transformarIdeaEnProyecto('${i.id}')">🚀 Transformar en proyecto</button>
           <button class="btn btn-secondary btn-sm" onclick="openIdeaAdminModal('${i.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="eliminarIdeaAdmin('${i.id}')" title="Eliminar">🗑</button>
         </div>
@@ -4359,18 +4372,16 @@
       estado: 'Sin empezar',
       prioridad: 'Media',
       esProyecto: true,
+      desdeIdea: true, // se ve con la etiqueta azul "Nuevo proyecto" en Proyectos
       asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
       subtareas: [],
     };
     const saved = await saveTarea(INTERNAS_CLIENT_ID, obj, _internasCache);
     _internasCache.push(saved);
-    // La idea NO se borra: queda marcada como convertida (con el id de la
-    // tarea/proyecto que generó) para no poder transformarla de nuevo y
-    // duplicar el proyecto.
-    const ideaConvertida = { ...idea, proyectoTareaId: saved.id };
-    const savedIdea = await saveIdea(INTERNAS_CLIENT_ID, ideaConvertida, _ideasAdminCache);
-    const i = _ideasAdminCache.findIndex(x => x.id === id);
-    if (i >= 0) _ideasAdminCache[i] = savedIdea;
+    // La idea deja de existir como idea (Vaneh, 22/10: "tiene que dejar de aparecer ahí, solamente en
+    // proyectos"): se borra de la lista de Ideas y queda únicamente el proyecto.
+    await deleteIdea(INTERNAS_CLIENT_ID, id, _ideasAdminCache);
+    _ideasAdminCache = _ideasAdminCache.filter(x => x.id !== id);
     // Navega a Gestión COSMART y abre de una el modal de la tarea recién
     // creada para que termine de completarla con las subtareas/procesos.
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','ideas','proyectos'].forEach(s => {
@@ -4452,6 +4463,7 @@
         <div class="card" style="padding:14px;background:var(--primary-dark);color:#fff;border-color:var(--primary-dark);cursor:pointer;" onclick="openMisTareaModal(${idx})">
           <div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔷 ${escapeHtml(item.clientNombre)}</div>
           <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${escapeHtml(t.titulo)}</div>
+          ${t.desdeIdea && t.estado !== 'Listo' ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#3A8FC7;color:#fff;font-weight:700;">✨ Nuevo proyecto</span> ` : ''}
           ${t.estado === 'Listo' ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#10b981;color:#fff;font-weight:700;">✅ Finalizado con éxito</span>` : ''}
           ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}
           ${t.asignado ? `<div style="font-size:11px;margin-top:8px;color:#93c5fd;">👤 ${escapeHtml(t.asignado.nombre)}</div>` : ''}
