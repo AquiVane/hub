@@ -14,6 +14,13 @@ import {
   getNotificaciones, actualizarNotificacion,
 } from './data.js';
 
+// HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
+// misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
+// no toca nada del "marco" del admin (menú, campanita, cerrar sesión, tema, equipo, contraseña):
+// solo pinta Contenidos/Guiones/Pauta adentro de #cp-host. Ver cargarContenidosPropios() en el admin.
+const HOSTED = !!window.__HUB_HOSTED__;
+const NAV_SCOPE = HOSTED ? document.createDocumentFragment() : document; // en modo HOSTED no hay menú propio
+
 // ── Helpers de texto ────────────────────────────────────
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -50,7 +57,7 @@ function autoGrowTextarea(el) {
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
 }
-window.autoGrowTextarea = autoGrowTextarea;
+if (!HOSTED) window.autoGrowTextarea = autoGrowTextarea;
 
 // ── Recorrido guiado (primer login del cliente) ──────────────────
 // Mismo motor que el del panel admin (duplicado a propósito -- son
@@ -114,7 +121,7 @@ window.reiniciarTourCliente = function() {
 const user = requireAuth();
 if (!user) throw new Error('No auth');
 
-const params = new URLSearchParams(window.location.search);
+const params = new URLSearchParams(HOSTED ? '?client=_cosmart' : window.location.search);
 const clientId = params.get('client') || user.clientId;
 if (!clientId) { window.location.href = '../admin/index.html'; }
 
@@ -137,7 +144,7 @@ const esPropioAgencia = clientId === '_cosmart';
 // de admin". Oculta todo el chrome de panel-de-cliente (logo, cambiar
 // de cliente, Puertos COSMART, cerrar sesión) y deja solo la navegación
 // entre secciones (ver init()).
-const embedMode = params.get('embed') === '1';
+const embedMode = HOSTED || params.get('embed') === '1';
 
 let STATE = { contenidos: [], tareas: [], campanas: [], metricas: {}, ideas: [], client: {}, links: [] };
 let currentSection = 'home';
@@ -188,7 +195,7 @@ window.cerrarSesionYVolver = function() {
 // ── Init ───────────────────────────────────────────────
 async function init() {
   try {
-    document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+    if (!HOSTED) document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
     if (embedMode) {
       // Ocultar el chrome de panel-de-cliente ANTES de pedir los datos
@@ -206,12 +213,14 @@ async function init() {
       // contenido -- mismo estilo `.tabs`/`.tab-btn` que ya se usa para
       // las sub-secciones de Contenidos, para que se sienta parte del
       // mismo panel en vez de otro menú aparte.
-      document.body.classList.add('embed');
-      document.querySelector('.sidebar').style.display = 'none';
-      document.querySelector('.notif-bell-wrap')?.style.setProperty('display', 'none'); // el admin ya tiene su campanita arriba
-      document.getElementById('sidebar-toggle').style.display = 'none';
-      document.getElementById('fab-btn').style.display = 'none';
-      document.getElementById('mobile-bottom-nav').style.display = 'none';
+      if (!HOSTED) {
+        document.body.classList.add('embed');
+        document.querySelector('.sidebar').style.display = 'none';
+        document.querySelector('.notif-bell-wrap')?.style.setProperty('display', 'none'); // el admin ya tiene su campanita arriba
+        document.getElementById('sidebar-toggle').style.display = 'none';
+        document.getElementById('fab-btn').style.display = 'none';
+        document.getElementById('mobile-bottom-nav').style.display = 'none';
+      }
       const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard']];
       const tabBar = document.createElement('div');
       tabBar.id = 'embed-tabs';
@@ -225,11 +234,12 @@ async function init() {
           renderSection(btn.dataset.embedSec);
         });
       });
-      document.querySelector('.main').insertBefore(tabBar, document.getElementById('main-content'));
+      const _mc = document.getElementById('main-content');
+      _mc.parentNode.insertBefore(tabBar, _mc);
     }
 
     // Logo upload
-    document.getElementById('client-logo-input').addEventListener('change', async e => {
+    document.getElementById('client-logo-input')?.addEventListener('change', async e => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -246,9 +256,10 @@ async function init() {
 
     await loadAllData(); // trae client, equipo y todo lo demás en una sola tanda -- ver el comentario ahí
     window.STATE = STATE; // necesario para inline handlers en módulos ES
-    document.getElementById('sb-client-name').textContent = esPropioAgencia ? 'Contenidos propios' : (STATE.client.nombre || STATE.client.name || clientId);
-    document.getElementById('sb-client-ig').textContent = esPropioAgencia ? '' : (STATE.client.instagram || '');
-    if (esPropioAgencia) {
+    const _sbName = document.getElementById('sb-client-name'), _sbIg = document.getElementById('sb-client-ig');
+    if (_sbName) _sbName.textContent = esPropioAgencia ? 'Contenidos propios' : (STATE.client.nombre || STATE.client.name || clientId);
+    if (_sbIg) _sbIg.textContent = esPropioAgencia ? '' : (STATE.client.instagram || '');
+    if (esPropioAgencia && !HOSTED) {
       // Solo Contenidos, Guiones y Pauta tienen sentido acá -- lo demás
       // (Home con recordatorios de facturación, Tareas que ya se ve
       // aparte como "Gestión COSMART", Web, Plan, Reportes, Links,
@@ -288,7 +299,8 @@ async function init() {
     // retraso sin feedback ni el "panel adentro de otro panel"; esto
     // resuelve lo primero, el chrome oculto desde el principio -- ver
     // comentario de embedMode más arriba -- resuelve lo segundo).
-    if (embedMode) window.parent.postMessage({ type: 'contenidos-propios-ready' }, window.location.origin);
+    if (HOSTED) window.dispatchEvent(new CustomEvent('hub-cp-ready'));
+    else if (embedMode) window.parent.postMessage({ type: 'contenidos-propios-ready' }, window.location.origin);
     // Solo para el cliente en su propia cuenta -- si un admin/colaborador
     // abrió este panel "como" el cliente (ver "Abrir en panel del
     // cliente" en Mis Tareas), no tiene sentido mostrarle el tour.
@@ -371,14 +383,14 @@ function renderNotifList() {
   setTimeout(refreshIcons, 30);
 }
 
-window.toggleNotifDropdown = function() {
+if (!HOSTED) window.toggleNotifDropdown = function() {
   const dd = document.getElementById('notifDropdown');
   const abrir = dd.classList.contains('hidden');
   dd.classList.toggle('hidden', !abrir);
   if (abrir) { renderNotifList(); cargarNotificaciones(); }
 };
 
-window.toggleLeidaNotif = async function(id, leida) {
+if (!HOSTED) window.toggleLeidaNotif = async function(id, leida) {
   const n = _notifsCache.find(x => x.id === id);
   if (n) n.leida = leida;
   renderNotifList();
@@ -386,14 +398,14 @@ window.toggleLeidaNotif = async function(id, leida) {
   cargarNotificaciones();
 };
 
-window.recordarNotifDespues = async function(id) {
+if (!HOSTED) window.recordarNotifDespues = async function(id) {
   _notifsCache = _notifsCache.filter(x => x.id !== id);
   renderNotifList();
   try { await actualizarNotificacion(id, { oculta: true }); } catch (e) {}
   cargarNotificaciones();
 };
 
-window.cambiarEstadoNotif = async function(id, estado) {
+if (!HOSTED) window.cambiarEstadoNotif = async function(id, estado) {
   if (!estado) return;
   const n = _notifsCache.find(x => x.id === id);
   if (n) { n.estadoActual = estado; n.leida = true; }
@@ -406,7 +418,7 @@ window.cambiarEstadoNotif = async function(id, estado) {
   cargarNotificaciones();
 };
 
-window.marcarTodasNotifsLeidas = async function() {
+if (!HOSTED) window.marcarTodasNotifsLeidas = async function() {
   const noLeidas = _notifsCache.filter(n => !n.leida);
   noLeidas.forEach(n => n.leida = true);
   renderNotifList();
@@ -414,7 +426,7 @@ window.marcarTodasNotifsLeidas = async function() {
   cargarNotificaciones();
 };
 
-window.abrirDesdeNotif = async function(id) {
+if (!HOSTED) window.abrirDesdeNotif = async function(id) {
   const n = _notifsCache.find(x => x.id === id);
   if (!n) return;
   if (!n.leida) { n.leida = true; actualizarNotificacion(id, { leida: true }).catch(() => {}); }
@@ -765,15 +777,16 @@ function leerTfRestrUI() {
 
 function updateBadges() {
   const pending = tareasVisibles(STATE.tareas).filter(t => t.estado !== 'Listo').length;
-  document.getElementById('badge-tareas').textContent = pending;
+  const _bt = document.getElementById('badge-tareas');
+  if (_bt) _bt.textContent = pending;
   if (typeof updateBnavBadge === 'function') updateBnavBadge();
 }
 
 // ── Nav ────────────────────────────────────────────────
 function setupNav() {
-  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+  NAV_SCOPE.querySelectorAll('.nav-item[data-section]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      NAV_SCOPE.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderSection(btn.dataset.section);
     });
@@ -782,7 +795,7 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
-  document.querySelectorAll('.nav-item[data-section]').forEach(b => {
+  NAV_SCOPE.querySelectorAll('.nav-item[data-section]').forEach(b => {
     b.classList.toggle('active', b.dataset.section === sec);
   });
   // Sincronizar bottom nav y FAB en mobile
@@ -7786,15 +7799,15 @@ window.eliminarUsuarioEquipo = async function(idx) {
 };
 
 // Close modals on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
+document.querySelectorAll(HOSTED ? '.modal-overlay[data-cp]' : '.modal-overlay').forEach(overlay => {
   if (overlay.id === 'mustChangePasswordModal') return; // obligatorio, no se cierra clickeando afuera
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
 
 // ── Mobile sidebar toggle ──────────────────────────────
-const _sidebar = document.querySelector('.sidebar');
-const _sidebarOverlay = document.getElementById('sidebar-overlay');
-const _sidebarToggle = document.getElementById('sidebar-toggle');
+const _sidebar = HOSTED ? null : document.querySelector('.sidebar');
+const _sidebarOverlay = HOSTED ? null : document.getElementById('sidebar-overlay');
+const _sidebarToggle = HOSTED ? null : document.getElementById('sidebar-toggle');
 
 function openMobileSidebar() {
   _sidebar.classList.add('open');
@@ -7811,12 +7824,12 @@ _sidebarToggle?.addEventListener('click', () => {
 _sidebarOverlay?.addEventListener('click', closeMobileSidebar);
 
 // Cerrar al navegar en mobile
-document.querySelectorAll('.nav-item').forEach(item => {
+NAV_SCOPE.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
 });
 
 // ── Bottom nav mobile ──────────────────────────────────
-const _bottomNav = document.getElementById('mobile-bottom-nav');
+const _bottomNav = HOSTED ? null : document.getElementById('mobile-bottom-nav');
 
 function updateBottomNav(sec) {
   if (!_bottomNav) return;
@@ -7844,7 +7857,7 @@ _bottomNav?.querySelectorAll('.bnav-btn[data-section]').forEach(btn => {
 });
 
 // Botón "Más" → abre sidebar
-document.getElementById('bnav-more')?.addEventListener('click', openMobileSidebar);
+if (!HOSTED) document.getElementById('bnav-more')?.addEventListener('click', openMobileSidebar);
 
 // Badge tareas en bottom nav
 function updateBnavBadge() {
@@ -7901,7 +7914,7 @@ function showMustChangePasswordModal() {
   };
 }
 
-if (user.mustChangePassword) {
+if (!HOSTED && user.mustChangePassword) {
   showMustChangePasswordModal();
 } else {
   init();
@@ -7912,9 +7925,7 @@ if (user.mustChangePassword) {
 // no se corte la pantalla; el botón principal queda siempre a la vista.
 // Pedido de Vaneh (18/10): mismo criterio que la app Calendario de contenidos.
 function compactarAccionesMobile(actions) {
-  // Ancho 0 = el iframe se precargó oculto (admin, "Contenidos propios"): no se compacta todavía;
-  // al mostrarse se re-pinta solo (listener de resize más abajo).
-  if (window.innerWidth > 700 || window.innerWidth === 0) return;
+  if (window.innerWidth > 700) return;
   const sec = [...actions.children].filter(el => !el.classList.contains('btn-primary') && el.tagName !== 'INPUT');
   if (!sec.length) return;
   actions.querySelectorAll('input').forEach(i => { i.style.width = '88px'; i.style.height = '32px'; i.style.minWidth = '0'; });
@@ -7943,14 +7954,6 @@ function compactarAccionesMobile(actions) {
 
 // Adentro del admin (embed=1): el botón flotante único del admin pide abrir
 // el formulario de "Nuevo contenido" por postMessage (ver fab-dial en admin/index.html).
-// Si el panel se precargó oculto (ancho 0) y recién ahora se muestra, se re-pinta la sección con el ancho real.
-let _anchoPrevio = window.innerWidth;
-window.addEventListener('resize', () => {
-  const w = window.innerWidth;
-  if (_anchoPrevio === 0 && w > 0 && typeof currentSection !== 'undefined' && currentSection) renderSection(currentSection);
-  _anchoPrevio = w;
-});
-
 window.addEventListener('message', (e) => {
   if (!embedMode || e.origin !== window.location.origin) return;
   if (e.data && e.data.type === 'abrir-nuevo-contenido') openContenidoModal(null);

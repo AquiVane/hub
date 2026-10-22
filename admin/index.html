@@ -25,15 +25,16 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=13">
+  <link rel="stylesheet" href="../css/style.css?v=14">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
-  .cp-skeleton { position:absolute; inset:0; z-index:1; background:var(--bg); border-radius:8px; padding:4px 0; display:flex; flex-direction:column; gap:12px; pointer-events:none; }
+  .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
   .cp-skeleton.hidden { display:none; }
   .cp-sk-bar { border-radius:8px; background:var(--border); animation:cpSk 1.2s ease-in-out infinite; }
   @keyframes cpSk { 0%,100% { opacity:.55; } 50% { opacity:1; } }
   @media (prefers-reduced-motion: reduce) { .cp-sk-bar { animation:none; } }
 </style>
+
 </head>
 <body>
 <div class="layout admin-shell">
@@ -60,7 +61,7 @@
       <button class="nav-item" id="navInternasBtn" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span id="navGestionInternaLabel">Gestión COSMART</span>
       </button>
-      <button class="nav-item" onclick="showSection('contenidospropios');cargarContenidosPropiosIframe();">
+      <button class="nav-item" onclick="showSection('contenidospropios');cargarContenidosPropios();">
         <i data-lucide="clapperboard" class="nav-icon"></i><span>Contenidos propios</span>
       </button>
       <button class="nav-item" onclick="showSection('mapa')">
@@ -486,23 +487,11 @@
         <iframe id="mapa-iframe" title="Mapa de productos COSMART" allow="fullscreen" allowfullscreen style="width:100%;height:calc(100vh - 150px);min-height:480px;border:1px solid var(--border,#d7deea);border-radius:12px;background:#F2EDE6"></iframe>
       </div>
       <div id="sec-contenidospropios" class="hidden">
-        <!-- &hv=N -- cache-bust del HTML de app/index.html servido acá adentro
-        (Fastly/GitHub Pages puede quedarse sirviendo una copia vieja de esta
-        URL exacta indefinidamente, un Ctrl+Shift+R del navegador NO alcanza
-        para forzarlo porque el cache viejo vive en el CDN, no en el
-        navegador -- mismo problema real que ya tuvimos con js/app.js?v=NN.
-        Bumpear este número cada vez que cambie algo relevante DENTRO de
-        app/index.html, no solo en js/app.js). -->
-        <!-- Pantalla de carga con la brújula (mismo ícono que CRM Leads)
-        mientras adentro del iframe se pide la data -- Vaneh (11/10): no
-        quería que se vea "pensando" en blanco unos segundos ni que
-        aparezca de golpe un panel adentro de otro panel. Se oculta recién
-        cuando app/index.html (adentro del iframe) avisa por postMessage
-        que ya terminó de pintar -- ver `contenidos-propios-ready` en
-        js/app.js. El timeout de respaldo es por si ese mensaje nunca
-        llega (error adentro del iframe, etc.) -- que no se quede la
-        carga pegada para siempre. -->
-        <div style="position:relative;">
+        <!-- Contenidos, Guiones, Pauta y Dashboard de la agencia: el MISMO módulo del panel de cliente
+        (js/app.js), pero corriendo acá adentro, en esta misma página -- sin iframe (Vaneh, 22/10).
+        cargarContenidosPropios() trae el HTML de app/index.html (modales incluidos), lo inyecta y
+        carga js/app.js en modo integrado (window.__HUB_HOSTED__). Mientras tanto se ve un esqueleto. -->
+        <div id="cp-host" class="cp-host">
           <div id="contenidos-propios-loading" class="cp-skeleton" aria-hidden="true">
             <div class="cp-sk-bar" style="width:38%;height:22px;"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;"><div class="cp-sk-bar" style="width:110px;height:32px;"></div><div class="cp-sk-bar" style="width:110px;height:32px;"></div><div class="cp-sk-bar" style="width:110px;height:32px;"></div></div>
@@ -510,7 +499,7 @@
             <div class="cp-sk-bar" style="width:100%;height:64px;"></div>
             <div class="cp-sk-bar" style="width:100%;height:64px;"></div>
           </div>
-          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=16" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:transparent;"></iframe>
+          <div id="cp-app" class="hidden"></div>
         </div>
       </div>
 
@@ -2437,26 +2426,49 @@
     item.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileSidebar(); });
   });
 
-  window.cargarContenidosPropiosIframe = function() {
-    const f = document.getElementById('contenidos-propios-iframe');
-    if (!f || f.src) return;
-    f.src = f.dataset.src;
-    // Respaldo: si por lo que sea nunca llega el postMessage de "ready"
-    // (ver js/app.js) -- un error adentro del iframe, etc. -- que la
-    // pantalla de carga no se quede pegada para siempre.
-    setTimeout(ocultarCargaContenidosPropios, 8000);
-  };
-  // Precarga en segundo plano (Vaneh, 22/10: "Contenidos tiene que aparecer de una"): apenas el admin
-  // termina de abrir, el panel de Contenidos propios se pide solo, así al tocarlo ya está listo.
-  const _precargarContenidosPropios = () => { try { window.cargarContenidosPropiosIframe(); } catch (e) {} };
-  if ('requestIdleCallback' in window) window.addEventListener('load', () => requestIdleCallback(_precargarContenidosPropios, { timeout: 4000 }));
-  else window.addEventListener('load', () => setTimeout(_precargarContenidosPropios, 2500));
-  function ocultarCargaContenidosPropios() {
+  // Contenidos propios, integrado en esta página (sin iframe). Se pide una sola vez; las siguientes
+  // veces que se abre la sección ya está listo. Se precarga en segundo plano apenas termina de abrir el admin.
+  let _cpPromise = null;
+  function mostrarContenidosPropiosListo() {
     document.getElementById('contenidos-propios-loading')?.classList.add('hidden');
+    document.getElementById('cp-app')?.classList.remove('hidden');
   }
-  window.addEventListener('message', (e) => {
-    if (e.origin === window.location.origin && e.data?.type === 'contenidos-propios-ready') ocultarCargaContenidosPropios();
-  });
+  window.cargarContenidosPropios = function() {
+    if (_cpPromise) return _cpPromise;
+    _cpPromise = (async () => {
+      const host = document.getElementById('cp-app');
+      const res = await fetch('../app/index.html?hv=17');
+      if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
+      // Modales y capas flotantes del panel de cliente (todo lo que cuelga del <body> de app/index.html
+      // salvo el marco): se saltea cualquiera cuyos ids ya existan acá (contraseña, equipo, etc.).
+      [...doc.body.children].forEach(el => {
+        if (!(el.classList.contains('modal-overlay') || el.id === 'teleprompterModal')) return;
+        const ids = [el.id, ...[...el.querySelectorAll('[id]')].map(n => n.id)].filter(Boolean);
+        if (ids.some(id => document.getElementById(id))) return;
+        const nodo = document.importNode(el, true);
+        nodo.setAttribute('data-cp', '1');
+        document.body.appendChild(nodo);
+      });
+      window.__HUB_HOSTED__ = true;
+      const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
+      await import('../js/app.js?v=55');
+      await listo;
+      mostrarContenidosPropiosListo();
+    })().catch(err => {
+      console.error('[contenidos propios]', err);
+      _cpPromise = null;
+      const host = document.getElementById('cp-app');
+      if (host) { host.innerHTML = '<div class="empty-state"><p>No se pudo cargar Contenidos propios.</p><button class="btn btn-primary" onclick="cargarContenidosPropios()">Reintentar</button></div>'; }
+      mostrarContenidosPropiosListo();
+    });
+    return _cpPromise;
+  };
+  const _precargarContenidosPropios = () => { try { window.cargarContenidosPropios(); } catch (e) {} };
+  // (sin esperar al evento 'load': ese evento espera hasta la última imagen/fuente y podía demorar mucho)
+  if ('requestIdleCallback' in window) requestIdleCallback(_precargarContenidosPropios, { timeout: 3000 });
+  else setTimeout(_precargarContenidosPropios, 2000);
 
   window.cargarMapaAdmin = async function() {
     const { mostrarMapa } = await import('../js/mapa.js');
@@ -8378,8 +8390,8 @@
     document.getElementById('fab-dial-main')?.setAttribute('aria-expanded', 'false');
   }
   function contenidosPropiosVisible() {
-    const f = document.getElementById('contenidos-propios-iframe');
-    return !!(f && f.offsetParent !== null && f.contentWindow);
+    const f = document.getElementById('sec-contenidospropios');
+    return !!(f && f.offsetParent !== null && typeof window.openContenidoModal === 'function');
   }
   function asegurarFabDial() {
     let d = document.getElementById('fab-dial');
@@ -8421,7 +8433,7 @@
       btn.innerHTML = FAB_SVG.nuevo;
       btn.onclick = () => {
         cerrarFabDial();
-        document.getElementById('contenidos-propios-iframe')?.contentWindow?.postMessage({ type: 'abrir-nuevo-contenido' }, window.location.origin);
+        if (typeof window.openContenidoModal === 'function') window.openContenidoModal(null);
       };
       item = agregarAlFabDial(btn, 'Nuevo contenido');
       item.id = 'fab-dial-nuevo-contenido';

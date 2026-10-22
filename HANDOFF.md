@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 22/10 — "Contenidos propios" del admin YA NO es un iframe: corre integrado en la misma página
+- **Pedido de Vaneh:** "no tiene que ser un iframe, tiene que estar ahí como todo lo demás". Antes `admin/index.html` abría `app/index.html?client=_cosmart&embed=1` en un `<iframe>` (segunda app completa: auth + pedidos + render, con pantalla azul de carga).
+- **Ahora:** `cargarContenidosPropios()` (admin) hace `fetch('../app/index.html')`, inyecta el encabezado (`#topbar-title/-sub/-actions`) + `#main-content` dentro de `#cp-app`, copia al `<body>` los modales/capas de `app/index.html` (`.modal-overlay` y `#teleprompterModal`, marcados `data-cp`; **se saltea cualquiera cuyo id ya exista en el admin**: contraseña, equipo), pone `window.__HUB_HOSTED__ = true` e importa `js/app.js`. Un solo código para el panel de cliente y para el admin (nada duplicado).
+- **`HOSTED` en `js/app.js`:** no toca el "marco" del admin (menú, campanita, logout, tema, equipo, contraseña obligatoria); `NAV_SCOPE` evita que se enganche a los `.nav-item` del admin; las 6 `window.*Notif*` y `autoGrowTextarea` no se pisan; avisa `hub-cp-ready` (CustomEvent) en vez de `postMessage`. El panel de cliente normal (`app/index.html`) y `embed=1` siguen funcionando igual (probado).
+- **Precarga:** apenas abre el admin (`requestIdleCallback`), así al tocar "Contenidos propios" ya está listo. Esqueleto liviano (`.cp-skeleton`) en vez de pantalla azul. El botón flotante único del admin llama directo a `window.openContenidoModal(null)`.
+- **Si se agrega un id nuevo al admin que ya exista en `app/index.html`**, el modal correspondiente del panel NO se importa (silencioso): grepear ids repetidos antes. Probado con Playwright (desktop + mobile): sin errores, sin ids duplicados.
+
 ## 22/10 — Hosting migrado de GitHub Pages a Cloudflare Pages (ahora SÍ es Cloudflare) — EN PRODUCCIÓN
 - **Motivo:** los términos de GitHub Pages no permiten usarlo como hosting de un negocio/SaaS. Pedido de Vaneh: sacar de GitHub Pages todo sitio comercial.
 - **Ahora:** proyecto **Cloudflare Pages `hub`** conectado a `AquiVane/hub` (rama `main`, sin build, salida = raíz; preview `hub-3ah.pages.dev`), con `hub.cosmart.com.ar` como dominio personalizado. Cada push a `main` se publica solo (el deploy sigue siendo automático). GitHub Pages **despublicado**; se borró `CNAME`. Vaneh probó login y panel en Chrome de escritorio/tablet y Safari iPhone: todo bien y notablemente más rápido.

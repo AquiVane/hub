@@ -1411,3 +1411,12 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 @media print { .av-mini-btn { display: none; } }
 
 /* ── Login: el cuadro es siempre blanco, así que los campos también (modo oscuro, autofill, mobile) ── */
+
+/* ── Contenidos propios integrado en el admin (sin iframe): encabezado de la sección y solapas ── */
+.cp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.cp-head-txt { min-width: 0; }
+.cp-title { font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+.cp-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.cp-actions { flex-wrap: wrap; }
+.cp-host #embed-tabs { display: flex !important; margin: 0 0 12px !important; width: auto !important; box-sizing: border-box; }
+.cp-host #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center; padding: 8px 4px; }
