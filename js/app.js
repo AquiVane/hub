@@ -12,7 +12,7 @@ import {
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   getNotificaciones, actualizarNotificacion,
-} from './data.js';
+} from './data.js?v=3';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -468,7 +468,8 @@ async function loadAllData() {
   // queda "Lista" tal cual estaba (ver regenerarSiRecurrente); solo hace
   // falta guardar si de verdad se generó un próximo ciclo.
   const _recurrentesAResetear = STATE.tareas.filter(t => t.recurrencia && t.estado === 'Listo');
-  _recurrentesAResetear.forEach(t => { if (regenerarSiRecurrente(t, STATE.tareas)) saveTarea(clientId, t, STATE.tareas).catch(() => {}); });
+  // (integrado en el admin no: ya lo hace el admin con Gestión COSMART; evita escrituras dobles)
+  if (!HOSTED) _recurrentesAResetear.forEach(t => { if (regenerarSiRecurrente(t, STATE.tareas)) saveTarea(clientId, t, STATE.tareas).catch(() => {}); });
   STATE.home = home || { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
   // Valores por defecto para lo que todavía no llegó (wave 2), así ninguna
   // sección explota si el usuario navega ahí antes de que termine de cargar.

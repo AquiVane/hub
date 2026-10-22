@@ -2177,7 +2177,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=3';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2453,7 +2453,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=56');
+      await import('../js/app.js?v=57');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
