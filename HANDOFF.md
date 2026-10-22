@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 22/10 — Hosting migrado de GitHub Pages a Cloudflare Pages (ahora SÍ es Cloudflare) — EN PRODUCCIÓN
+- **Motivo:** los términos de GitHub Pages no permiten usarlo como hosting de un negocio/SaaS. Pedido de Vaneh: sacar de GitHub Pages todo sitio comercial.
+- **Ahora:** proyecto **Cloudflare Pages `hub`** conectado a `AquiVane/hub` (rama `main`, sin build, salida = raíz; preview `hub-3ah.pages.dev`), con `hub.cosmart.com.ar` como dominio personalizado. Cada push a `main` se publica solo (el deploy sigue siendo automático). GitHub Pages **despublicado**; se borró `CNAME`. Vaneh probó login y panel en Chrome de escritorio/tablet y Safari iPhone: todo bien y notablemente más rápido.
+- **Efectos reales:** `_headers` (Cache-Control no-cache para `/js/*`, `sw.js`, etc.) **ahora sí se aplica** (GitHub lo ignoraba); `/.well-known/assetlinks.json` (app Android `ar.com.cosmart.hub`) **ahora se sirve** (antes daba 404 en GitHub Pages); `/login.html` y `/admin/index.html` redirigen (308) a `/login` y `/admin/`; una URL inexistente devuelve el `index.html` (login) con 200 en vez de 404 — no se tocó, se puede agregar un `404.html` si Vaneh lo pide. El service worker no intercepta pedidos, así que no hay problema con las redirecciones. El `notificationclick` abre `/admin/index.html` (pasa por una redirección, funciona).
+- **La corrección de "es GitHub Pages, no Cloudflare" de más abajo quedó obsoleta:** desde hoy la afirmación original del CLAUDE.md es cierta.
+
 ## [18/10] Contenidos: barra simplificada + panel "Filtros" por la izquierda + botón flotante único en el admin
 
 Pedido de Vaneh (con captura del admin en celular):
