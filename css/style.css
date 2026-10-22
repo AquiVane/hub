@@ -1392,3 +1392,12 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .modal-overlay select, .modal-overlay textarea { font-size: 16px !important; }
   .modal label { flex-wrap: wrap; }
 }
+
+/* ── Mobile: el contenido siempre se puede deslizar ──
+   El layout se clava a la pantalla visible (position:fixed; inset:0) en vez de depender de 100vh,
+   y el área de contenido es la única que scrollea (táctil, vertical). ── */
+@media (max-width: 768px) {
+  .layout { position: fixed; inset: 0; height: auto; }
+  .main { height: 100%; min-height: 0; }
+  .content { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+}
