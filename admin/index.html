@@ -25,7 +25,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=17">
+  <link rel="stylesheet" href="../css/style.css?v=18">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -4447,6 +4447,8 @@
       (!_proyectosFiltroEstado || i.tarea.estado === _proyectosFiltroEstado) &&
       (!_proyectosBusqueda || (i.tarea.titulo || '').toLowerCase().includes(_proyectosBusqueda))
     );
+    // Los finalizados ("Listo", en verde) van al final de todo; el resto conserva su orden.
+    proyectos.sort((a, b) => (a.tarea.estado === 'Listo') - (b.tarea.estado === 'Listo'));
     if (!proyectos.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔷</div><h3>Sin proyectos todavía</h3><p>Marcá una tarea como "Es un proyecto" para que aparezca acá, o transformá una idea.</p></div>`;
       return;

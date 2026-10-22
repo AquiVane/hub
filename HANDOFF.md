@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 22/10 — Proyectos: scroll con el dedo + finalizados al final
+- **Causa del "no se puede deslizar":** el contenedor del botón flotante `.fab-dial` (admin) ocupaba un rectángulo invisible grande (las opciones ocultas mantienen su espacio) con `z-index:9999` y se comía los toques: no se podía scrollear empezando el dedo en la mitad de abajo/derecha. Ahora `.fab-dial{pointer-events:none}` y solo responden `.fab-dial-main` y las opciones abiertas. **Test real de swipe:** `Input.dispatchTouchEvent` por CDP (touchStart/Move/End); `synthesizeScrollGesture` NO sirve en headless.
+- En Proyectos (admin) los "Listo" (Finalizado, verde) se ordenan al final.
+
 ## 22/10 — ⚠️ Incidente: "Clientes pensando para siempre" (caché de js/data.js) -- REGLA NUEVA
 - **Causa:** Cloudflare Pages sirve `/js/*` con `Cache-Control: max-age=14400` (el `_headers` con `no-cache` NO se está aplicando a esos archivos). Al agregar un export nuevo a `js/data.js` (`migrarIdeasContenidoPropias`), el navegador de Vaneh tenía `data.js` viejo en caché (hasta 4 h) con `admin/index.html` nuevo → el `import {…}` fallaba por export inexistente y TODO el módulo del admin moría en silencio.
 - **Regla:** cada vez que se cambia un módulo importado (`js/data.js`, `js/play.js`, `js/auth.js`…), **subir el `?v=` en TODOS los imports de ese módulo** (admin: `../js/data.js?v=N`; `js/app.js`: `./data.js?v=N`) y en `app.js?v=`. Hoy: `data.js?v=3`, `app.js?v=57`. Nunca agregar un export nuevo sin versionar el import.
