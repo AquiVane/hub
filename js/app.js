@@ -7912,7 +7912,9 @@ if (user.mustChangePassword) {
 // no se corte la pantalla; el botón principal queda siempre a la vista.
 // Pedido de Vaneh (18/10): mismo criterio que la app Calendario de contenidos.
 function compactarAccionesMobile(actions) {
-  if (window.innerWidth > 700) return;
+  // Ancho 0 = el iframe se precargó oculto (admin, "Contenidos propios"): no se compacta todavía;
+  // al mostrarse se re-pinta solo (listener de resize más abajo).
+  if (window.innerWidth > 700 || window.innerWidth === 0) return;
   const sec = [...actions.children].filter(el => !el.classList.contains('btn-primary') && el.tagName !== 'INPUT');
   if (!sec.length) return;
   actions.querySelectorAll('input').forEach(i => { i.style.width = '88px'; i.style.height = '32px'; i.style.minWidth = '0'; });
@@ -7941,6 +7943,14 @@ function compactarAccionesMobile(actions) {
 
 // Adentro del admin (embed=1): el botón flotante único del admin pide abrir
 // el formulario de "Nuevo contenido" por postMessage (ver fab-dial en admin/index.html).
+// Si el panel se precargó oculto (ancho 0) y recién ahora se muestra, se re-pinta la sección con el ancho real.
+let _anchoPrevio = window.innerWidth;
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  if (_anchoPrevio === 0 && w > 0 && typeof currentSection !== 'undefined' && currentSection) renderSection(currentSection);
+  _anchoPrevio = w;
+});
+
 window.addEventListener('message', (e) => {
   if (!embedMode || e.origin !== window.location.origin) return;
   if (e.data && e.data.type === 'abrir-nuevo-contenido') openContenidoModal(null);

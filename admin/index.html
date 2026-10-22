@@ -27,6 +27,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css?v=13">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  .cp-skeleton { position:absolute; inset:0; z-index:1; background:var(--bg); border-radius:8px; padding:4px 0; display:flex; flex-direction:column; gap:12px; pointer-events:none; }
+  .cp-skeleton.hidden { display:none; }
+  .cp-sk-bar { border-radius:8px; background:var(--border); animation:cpSk 1.2s ease-in-out infinite; }
+  @keyframes cpSk { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .cp-sk-bar { animation:none; } }
+</style>
 </head>
 <body>
 <div class="layout admin-shell">
@@ -496,11 +503,14 @@
         llega (error adentro del iframe, etc.) -- que no se quede la
         carga pegada para siempre. -->
         <div style="position:relative;">
-          <div id="contenidos-propios-loading" class="empty-state" style="position:absolute;inset:0;z-index:1;background:#0D2B6B;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div>
-            <p style="color:#fff;">Cargando...</p>
+          <div id="contenidos-propios-loading" class="cp-skeleton" aria-hidden="true">
+            <div class="cp-sk-bar" style="width:38%;height:22px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;"><div class="cp-sk-bar" style="width:110px;height:32px;"></div><div class="cp-sk-bar" style="width:110px;height:32px;"></div><div class="cp-sk-bar" style="width:110px;height:32px;"></div></div>
+            <div class="cp-sk-bar" style="width:100%;height:64px;"></div>
+            <div class="cp-sk-bar" style="width:100%;height:64px;"></div>
+            <div class="cp-sk-bar" style="width:100%;height:64px;"></div>
           </div>
-          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=15" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:#0D2B6B;"></iframe>
+          <iframe id="contenidos-propios-iframe" data-src="../app/index.html?client=_cosmart&embed=1&hv=16" allow="fullscreen" allowfullscreen style="width:100%;height:85vh;border:none;border-radius:8px;background:transparent;"></iframe>
         </div>
       </div>
 
@@ -2436,6 +2446,11 @@
     // pantalla de carga no se quede pegada para siempre.
     setTimeout(ocultarCargaContenidosPropios, 8000);
   };
+  // Precarga en segundo plano (Vaneh, 22/10: "Contenidos tiene que aparecer de una"): apenas el admin
+  // termina de abrir, el panel de Contenidos propios se pide solo, así al tocarlo ya está listo.
+  const _precargarContenidosPropios = () => { try { window.cargarContenidosPropiosIframe(); } catch (e) {} };
+  if ('requestIdleCallback' in window) window.addEventListener('load', () => requestIdleCallback(_precargarContenidosPropios, { timeout: 4000 }));
+  else window.addEventListener('load', () => setTimeout(_precargarContenidosPropios, 2500));
   function ocultarCargaContenidosPropios() {
     document.getElementById('contenidos-propios-loading')?.classList.add('hidden');
   }
