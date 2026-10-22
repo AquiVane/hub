@@ -1,5 +1,5 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
-import { montarPlay, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js';
+import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js?v=2';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getGuiones, saveGuion, deleteGuion,
@@ -1415,10 +1415,13 @@ function renderDashboard(container) {
         <div class="dash-title">Dashboard Calendario Editorial</div>
         <div class="dash-meta">Cliente: <strong>${STATE.client.nombre || STATE.client.name || clientId}</strong></div>
       </div>
+      <div class="dash-header-right">
+      <span id="dash-play-slot"></span>
       <div class="dash-month-nav">
         <button onclick="dashNavMonth(-1)">‹</button>
         <div class="dash-month-label">${MESES[dashMonth]} ${dashYear}</div>
         <button onclick="dashNavMonth(1)">›</button>
+      </div>
       </div>
     </div>
 
@@ -1486,12 +1489,12 @@ function renderDashboard(container) {
   `;
 
   // Botón ▶ con la explicación del dashboard (js/play.js, sin IA ni costo).
-  montarPlay(container, armarNarracionDashboard({
+  montarPlayBoton(container.querySelector('#dash-play-slot'), armarNarracionDashboard({
     cliente: STATE.client.nombre || STATE.client.name || clientId,
     mes: `${MESES[dashMonth]} ${dashYear}`,
     total, publicados, programados, enProceso, formatos, ejes,
     tareasPend: tareasPendientes, tareasEnProceso: tareasEnProceso, tareasListas: tareasListas
-  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'), { etiqueta: `Dashboard de ${MESES[dashMonth]} ${dashYear}` });
+  }, (user.agencyId || 'cosmart') === 'cosmart' ? 'viaje' : 'neutro'));
 }
 
 function getTrabajoRealizadoMes(year, month) {

@@ -208,3 +208,43 @@ export function montarPlay(host, frases, opciones = {}) {
   pintar();
   host.insertBefore(card, host.firstChild);
 }
+
+// Botón chico "Escuchá tu reporte" (▶ / ■) para ubicar en una fila del Hub, con los colores normales del
+// panel (clase .av-mini-btn en css/style.css). Misma voz y narración que el reproductor grande.
+export function montarPlayBoton(host, frases) {
+  if (!host) return;
+  detenerPlay();
+  const miSesion = sesionActual;
+  let idx = 0, reproduciendo = false;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'av-mini-btn';
+  const pintar = () => {
+    btn.innerHTML = reproduciendo
+      ? '<i data-lucide="square" aria-hidden="true"></i><span>Detener</span>'
+      : '<i data-lucide="play" aria-hidden="true"></i><span>Escuchá tu reporte</span>';
+    btn.setAttribute('aria-label', reproduciendo ? 'Detener el reporte' : 'Escuchá tu reporte');
+    if (window.lucide && window.lucide.createIcons) { try { window.lucide.createIcons({ nodes: [btn] }); } catch (e) {} }
+  };
+  const vigente = () => miSesion === sesionActual;
+  const fin = () => { reproduciendo = false; idx = 0; if (vigente()) pintar(); };
+  function hablar() {
+    if (!vigente() || !reproduciendo) return;
+    if (idx >= frases.length) { fin(); return; }
+    const u = new SpeechSynthesisUtterance(frases[idx]);
+    const voz = elegirVoz();
+    if (voz) { u.voice = voz; u.lang = voz.lang; } else { u.lang = 'es-AR'; }
+    u.rate = 1.15;
+    u.onend = () => { if (vigente() && reproduciendo) { idx++; hablar(); } };
+    u.onerror = e => { if (e.error !== 'canceled' && e.error !== 'interrupted') fin(); };
+    synth.speak(u);
+  }
+  btn.addEventListener('click', () => {
+    if (!soportado) { btn.querySelector('span').textContent = 'Sin voz en este navegador'; return; }
+    if (reproduciendo) { reproduciendo = false; synth.cancel(); idx = 0; pintar(); return; }
+    reproduciendo = true; idx = 0; synth.cancel(); pintar(); hablar();
+  });
+  if (soportado) synth.getVoices();
+  pintar();
+  host.appendChild(btn);
+}

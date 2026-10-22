@@ -1401,3 +1401,13 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .main { height: 100%; min-height: 0; }
   .content { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ── Botón chico "Escuchá tu reporte" (Dashboard) y header responsive ── */
+.dash-header { flex-wrap: wrap; gap: 10px; }
+.dash-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.av-mini-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border-strong, var(--border)); border-radius: 8px; background: var(--surface); color: var(--primary); font: 600 12.5px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+.av-mini-btn:hover { background: var(--bg); }
+.av-mini-btn i, .av-mini-btn svg { width: 14px; height: 14px; }
+@media print { .av-mini-btn { display: none; } }
+
+/* ── Login: el cuadro es siempre blanco, así que los campos también (modo oscuro, autofill, mobile) ── */
