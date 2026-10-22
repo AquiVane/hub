@@ -1420,3 +1420,16 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 .cp-actions { flex-wrap: wrap; }
 .cp-host #embed-tabs { display: flex !important; margin: 0 0 12px !important; width: auto !important; box-sizing: border-box; }
 .cp-host #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center; padding: 8px 4px; }
+
+/* ── Clientes en celular: UNA sola línea, fina y delicada (nombre · Ver panel · ⋮ · ▲▼) ──
+   Reemplaza el apilado en 2-3 líneas de más arriba (pedido de Vaneh, 22/10, "la vez número 80"). ── */
+@media (max-width: 768px) {
+  .client-row { flex-wrap: nowrap; gap: 8px; padding: 6px 10px; overflow-x: visible; }
+  .client-row-main { flex: 1 1 0; flex-basis: 0; min-width: 0; gap: 8px; }
+  .client-row-name { font-size: 13px; min-width: 0; }
+  .client-row-responsable { display: none; }
+  .client-row > .btn { height: 28px; min-height: 28px; padding: 0 10px; font-size: 12px; display: inline-flex; align-items: center; }
+  .client-row-menu-btn { width: 28px; height: 28px; }
+  .client-row-list { gap: 5px; }
+  .client-row > div[style*="flex-direction:column"] button { padding: 0 2px; line-height: 1; }
+}
