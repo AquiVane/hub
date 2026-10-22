@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 22/10 — Banco de ideas de Contenidos propios ≠ Ideas de la agencia (listas separadas)
+- Las dos usaban `/data/_cosmart/ideas` y se veían mezcladas. Ahora: **Ideas de la agencia** (sección Ideas del admin) = `_cosmart/ideas`; **Banco de ideas de Contenidos propios** = `_cosmart/ideasContenido` (`IDEAS_TIPO` en `js/app.js`; `getIdeas/saveIdea/deleteIdea` de `js/data.js` reciben `tipo`). Sin cambios de backend (el endpoint `/data/:clientId/:type` es genérico). Clientes reales siguen con `ideas`.
+- Migración automática e idempotente (`migrarIdeasContenidoPropias`, la corren el admin al abrir Ideas y el panel al cargar): mueve de `ideas` a `ideasContenido` las que traen `plataformas` (array) -- las del banco de contenidos siempre lo traen, las de la agencia nunca --; copia primero y borra después, nada se pierde.
+
 ## 22/10 — "Contenidos propios" del admin YA NO es un iframe: corre integrado en la misma página
 - **Pedido de Vaneh:** "no tiene que ser un iframe, tiene que estar ahí como todo lo demás". Antes `admin/index.html` abría `app/index.html?client=_cosmart&embed=1` en un `<iframe>` (segunda app completa: auth + pedidos + render, con pantalla azul de carga).
 - **Ahora:** `cargarContenidosPropios()` (admin) hace `fetch('../app/index.html')`, inyecta el encabezado (`#topbar-title/-sub/-actions`) + `#main-content` dentro de `#cp-app`, copia al `<body>` los modales/capas de `app/index.html` (`.modal-overlay` y `#teleprompterModal`, marcados `data-cp`; **se saltea cualquiera cuyo id ya exista en el admin**: contraseña, equipo), pone `window.__HUB_HOSTED__ = true` e importa `js/app.js`. Un solo código para el panel de cliente y para el admin (nada duplicado).

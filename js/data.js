@@ -490,12 +490,15 @@ export async function getArchivoBlobUrl(clientId, key) {
 
 // ── Ideas ─────────────────────────────────────────────────────
 
-export async function getIdeas(clientId) {
+// `tipo`: 'ideas' = ideas del cliente / de la agencia (sección Ideas del admin);
+// 'ideasContenido' = Banco de ideas de CONTENIDOS PROPIOS de la agencia. Son cosas distintas y se guardan
+// por separado (Vaneh, 22/10) -- ver migrarIdeasContenidoPropias().
+export async function getIdeas(clientId, tipo = 'ideas') {
   if (DEMO_MODE) return getDemoData(clientId).ideas;
-  return api('GET', `/data/${clientId}/ideas`);
+  return api('GET', `/data/${clientId}/${tipo}`);
 }
 
-export async function saveIdea(clientId, idea, knownList) {
+export async function saveIdea(clientId, idea, knownList, tipo = 'ideas') {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     const idx = data.ideas.findIndex(i => i.id === idea.id);
@@ -504,23 +507,40 @@ export async function saveIdea(clientId, idea, knownList) {
     saveDemoData(clientId, data);
     return idea;
   }
-  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/ideas`);
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/${tipo}`);
   const idx = list.findIndex(i => i.id === idea.id);
   if (idx >= 0) list[idx] = idea;
   else { idea.id = 'i' + Date.now(); list.push(idea); }
-  await api('POST', `/data/${clientId}/ideas`, list);
+  await api('POST', `/data/${clientId}/${tipo}`, list);
   return idea;
 }
 
-export async function deleteIdea(clientId, id, knownList) {
+export async function deleteIdea(clientId, id, knownList, tipo = 'ideas') {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
     data.ideas = data.ideas.filter(i => i.id !== id);
     saveDemoData(clientId, data);
     return;
   }
-  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/ideas`);
-  await api('POST', `/data/${clientId}/ideas`, list.filter(i => i.id !== id));
+  const list = knownList ? [...knownList] : await api('GET', `/data/${clientId}/${tipo}`);
+  await api('POST', `/data/${clientId}/${tipo}`, list.filter(i => i.id !== id));
+}
+
+// Hasta el 22/10 el Banco de ideas de Contenidos propios y las Ideas de la agencia compartían la misma lista
+// (`_cosmart/ideas`) y se veían mezcladas. Las del banco de contenidos siempre traen `plataformas` (array);
+// las de la agencia nunca. Esta función pasa las primeras a `ideasContenido` -- primero copia, después borra
+// de la lista vieja, así nunca se pierde nada -- y es idempotente (si no hay nada para mover, no escribe).
+export async function migrarIdeasContenidoPropias(clientId) {
+  if (DEMO_MODE) return;
+  const legacy = await api('GET', `/data/${clientId}/ideas`);
+  const arr = Array.isArray(legacy) ? legacy : [];
+  const mover = arr.filter(i => Array.isArray(i.plataformas));
+  if (!mover.length) return;
+  const actuales = await api('GET', `/data/${clientId}/ideasContenido`);
+  const base = Array.isArray(actuales) ? actuales : [];
+  const ids = new Set(base.map(i => i.id));
+  await api('POST', `/data/${clientId}/ideasContenido`, [...base, ...mover.filter(i => !ids.has(i.id))]);
+  await api('POST', `/data/${clientId}/ideas`, arr.filter(i => !Array.isArray(i.plataformas)));
 }
 
 export async function deleteCampana(clientId, id) {

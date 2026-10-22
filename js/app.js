@@ -6,7 +6,7 @@ import {
   getTareas, saveTarea, deleteTarea,
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
-  getIdeas, saveIdea, deleteIdea,
+  getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias,
   getPlan, savePlan,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
@@ -136,6 +136,8 @@ if (!clientId) { window.location.href = '../admin/index.html'; }
 // Pauta) en vez de duplicar código en admin/index.html -- son módulos
 // demasiado grandes para mantener dos copias sincronizadas a mano.
 const esPropioAgencia = clientId === '_cosmart';
+// El Banco de ideas de Contenidos propios es una lista APARTE de las Ideas de la agencia (sección Ideas del admin).
+const IDEAS_TIPO = esPropioAgencia ? 'ideasContenido' : 'ideas';
 
 // `embed=1`: este mismo panel se está mostrando adentro de un <iframe>
 // dentro de admin/index.html (sección "Contenidos propios"), en vez de
@@ -499,7 +501,7 @@ async function loadAllData() {
 async function cargarDatosSecundarios() {
   const calls = {
     equipo: getEquipo(), campanas: getCampanas(clientId), metricas: getMetricas(clientId),
-    ideas: getIdeas(clientId), plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
+    ideas: (esPropioAgencia ? migrarIdeasContenidoPropias(clientId).catch(() => {}) : Promise.resolve()).then(() => getIdeas(clientId, IDEAS_TIPO)), plan: getPlan(clientId), reportesIndice: getReportesIndice(clientId),
     guiones: getGuiones(clientId),
   };
   const keys = Object.keys(calls);
@@ -2816,7 +2818,7 @@ window.openIdeaModal = function(id) {
 
 window.eliminarIdea = async function(id) {
   if (!confirm('¿Eliminar esta idea?')) return;
-  await deleteIdea(clientId, id);
+  await deleteIdea(clientId, id, null, IDEAS_TIPO);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
   renderContTab('ideas');
 };
@@ -2828,7 +2830,7 @@ window.promoverIdea = async function(id) {
   const saved = await saveContenido(clientId, nuevo);
   STATE.contenidos.push(saved);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
-  await deleteIdea(clientId, id).catch(() => {});
+  await deleteIdea(clientId, id, null, IDEAS_TIPO).catch(() => {});
   renderContTab('banco');
   activeContTab = 'banco';
   document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab==='banco'));
@@ -7309,7 +7311,7 @@ document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
     formato: document.getElementById('if-formato').value,
     plataformas: plats,
   };
-  const saved = await saveIdea(clientId, obj);
+  const saved = await saveIdea(clientId, obj, null, IDEAS_TIPO);
   if (_editingIdea) { const i = STATE.ideas.findIndex(x => x.id === saved.id); STATE.ideas[i] = saved; }
   else STATE.ideas.push(saved);
   closeIdeaModal();
