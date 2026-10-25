@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instalá el Hub de COSMART en tu compu, celu o tablet</title>
+  <meta name="description" content="Instalá el Marketing Hub de COSMART como app en Windows, Mac, Android, iPhone y iPad. Se actualiza sola y sincroniza con todo tu equipo. Guía paso a paso.">
+  <link rel="canonical" href="https://hub.cosmart.com.ar/instalar.html">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Instalá el Hub de COSMART como app">
+  <meta property="og:description" content="Windows, Mac, Android, iPhone y iPad. Paso a paso, en menos de un minuto.">
+  <meta property="og:url" content="https://hub.cosmart.com.ar/instalar.html">
+  <meta property="og:image" content="https://hub.cosmart.com.ar/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/png" sizes="192x192" href="app/favicon-cosmart.png?v=2">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#060F22">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hub COSMART">
+  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+   {"@type":"HowTo","name":"Cómo instalar el Marketing Hub de COSMART como app","description":"Instalación del Hub como aplicación en Windows, Mac, Android, iPhone y iPad.","totalTime":"PT1M","tool":[{"@type":"HowToTool","name":"Navegador web (Chrome, Edge o Safari)"}],
+    "step":[
+     {"@type":"HowToStep","name":"Abrí el link del Hub","text":"Entrá a hub.cosmart.com.ar/instalar.html desde el dispositivo donde querés la app."},
+     {"@type":"HowToStep","name":"Elegí tu dispositivo","text":"Seguí los pasos de Windows, Mac, Android o iPhone/iPad."},
+     {"@type":"HowToStep","name":"Instalá","text":"Tocá Instalar (Chrome/Edge/Android) o Agregar a inicio (Safari en iPhone y iPad)."}]},
+   {"@type":"FAQPage","mainEntity":[
+    {"@type":"Question","name":"¿El Hub funciona sin internet?","acceptedAnswer":{"@type":"Answer","text":"Necesita conexión para sincronizar: así todo el equipo ve siempre los mismos datos de los clientes."}},
+    {"@type":"Question","name":"¿Se actualiza solo?","acceptedAnswer":{"@type":"Answer","text":"Sí. La app abre siempre la versión más nueva del Hub, sin descargar nada."}},
+    {"@type":"Question","name":"¿Cómo instalo el Hub en iPhone o iPad?","acceptedAnswer":{"@type":"Answer","text":"Abrí el link en Safari, tocá Compartir y elegí Agregar a inicio."}}]}
+  ]}
+  </script>
+  <style>
+    :root{--navy:#060F22;--navy2:#0D2B6B;--blue:#1A4DAA;--sky:#3A8FC7;--cream:#F2EDE6;--ink:#0D1B33;--muted:#5b6678;--card:#fff;--line:#e3dfd8}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%}
+    body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5}
+    .hero{background:linear-gradient(150deg,var(--navy) 0%,var(--navy2) 60%,var(--blue) 100%);color:#fff;padding:36px 16px 84px;text-align:center}
+    .hero img{width:72px;height:72px;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .hero h1{font-size:clamp(26px,6vw,40px);line-height:1.15;margin:16px auto 10px;max-width:640px;color:#fff}
+    .hero p{max-width:560px;margin:0 auto;color:#fff;opacity:.9;font-size:clamp(15px,3.8vw,18px)}
+    .wrap{max-width:760px;margin:-56px auto 0;padding:0 16px 48px}
+    .card{background:var(--card);border-radius:18px;box-shadow:0 10px 30px rgba(6,15,34,.12);padding:20px 16px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+    .tab{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px;font:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:64px}
+    .tab .ic{font-size:22px;line-height:1}
+    .tab[aria-selected="true"]{background:var(--navy2);border-color:var(--navy2);color:#fff}
+    .tab:focus-visible,.btn:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+    .panel[hidden]{display:none}
+    .panel h2{font-size:20px;margin-bottom:4px}
+    .sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+    ol.steps{list-style:none;counter-reset:s}
+    ol.steps li{counter-increment:s;position:relative;padding:10px 0 10px 40px;border-top:1px solid var(--line);min-height:48px}
+    ol.steps li:first-child{border-top:0}
+    ol.steps li::before{content:counter(s);position:absolute;left:0;top:10px;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+    .note{background:#fff7e0;border:1px solid #f0dc9a;color:#5a4500;border-radius:10px;padding:10px 12px;font-size:14px;margin-top:12px}
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border:0;border-radius:12px;background:var(--blue);color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;text-decoration:none;padding:12px 16px;margin-top:14px}
+    .btn.alt{background:var(--navy2)}
+    .btn.ghost{background:#fff;color:var(--navy2);border:2px solid var(--navy2)}
+    .btn[hidden]{display:none}
+    .share{margin-top:18px;display:grid;gap:16px}
+    .qrbox{text-align:center}
+    .qrbox svg{width:176px;height:176px;border:8px solid #fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);background:#fff}
+    .qrbox p{font-size:14px;color:var(--muted);margin-top:8px}
+    h3{font-size:18px;margin:26px 0 8px}
+    details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+    summary{cursor:pointer;font-weight:600}
+    details p{margin-top:8px;color:var(--muted);font-size:15px}
+    footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 32px}
+    footer a{color:var(--blue)}
+    @media(min-width:640px){.card{padding:28px}.tab{font-size:14px;flex-direction:row;justify-content:center;gap:8px}.share{grid-template-columns:1fr auto;align-items:center}.btn{width:auto;display:inline-flex;padding:12px 22px}.btns{display:flex;gap:10px;flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <img src="icons/icon-192.png" alt="Logo del Hub de COSMART" width="72" height="72">
+    <h1>Instalá el Hub de COSMART como app</h1>
+    <p>En tu compu, tu celu o tu tablet. Se actualiza sola y sincroniza con todo el equipo.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="card" aria-label="Instalación por dispositivo">
+      <div class="tabs" role="tablist" aria-label="Elegí tu dispositivo">
+        <button class="tab" role="tab" id="t-win" aria-controls="p-win" aria-selected="false" data-d="win"><span class="ic" aria-hidden="true">🖥️</span>Windows</button>
+        <button class="tab" role="tab" id="t-mac" aria-controls="p-mac" aria-selected="false" data-d="mac"><span class="ic" aria-hidden="true">💻</span>Mac</button>
+        <button class="tab" role="tab" id="t-and" aria-controls="p-and" aria-selected="false" data-d="and"><span class="ic" aria-hidden="true">📱</span>Android</button>
+        <button class="tab" role="tab" id="t-ios" aria-controls="p-ios" aria-selected="false" data-d="ios"><span class="ic" aria-hidden="true">📲</span>iPhone / iPad</button>
+      </div>
+
+      <div class="panel" id="p-win" role="tabpanel" aria-labelledby="t-win" hidden>
+        <h2>Windows</h2><p class="sub">Con Chrome o Edge.</p>
+        <button class="btn nativeInstall" type="button" hidden>⬇️ Instalar ahora</button>
+        <ol class="steps">
+          <li>Abrí esta página en <b>Chrome</b> o <b>Edge</b>.</li>
+          <li>En la barra de direcciones (a la derecha) tocá el ícono de <b>instalar</b>. Si no lo ves, abrí el menú <b>⋮</b> (Edge: <b>…</b>) → <b>"Instalar Hub COSMART"</b> / <b>"Aplicaciones → Instalar este sitio como aplicación"</b>.</li>
+          <li>Confirmá con <b>Instalar</b>. Se abre como una app y queda en el menú Inicio.</li>
+        </ol>
+      </div>
+
+      <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="t-mac" hidden>
+        <h2>Mac</h2><p class="sub">Con Chrome, Edge o Safari.</p>
+        <button class="btn nativeInstall" type="button" hidden>⬇️ Instalar ahora</button>
+        <ol class="steps">
+          <li><b>Chrome o Edge:</b> tocá el ícono de instalar de la barra de direcciones, o el menú <b>⋮</b> → <b>"Instalar Hub COSMART"</b>.</li>
+          <li><b>Safari (versión 17 o más nueva):</b> menú <b>Archivo</b> → <b>"Agregar al Dock"</b>.</li>
+          <li>Confirmá. El Hub queda en el Dock y en Launchpad como una app más.</li>
+        </ol>
+      </div>
+
+      <div class="panel" id="p-and" role="tabpanel" aria-labelledby="t-and" hidden>
+        <h2>Android</h2><p class="sub">Celulares y tablets, con Chrome.</p>
+        <button class="btn nativeInstall" type="button" hidden>⬇️ Instalar ahora</button>
+        <ol class="steps">
+          <li>Abrí esta página en <b>Chrome</b>.</li>
+          <li>Tocá el menú <b>⋮</b> (arriba a la derecha) → <b>"Instalar app"</b> o <b>"Agregar a la pantalla principal"</b>.</li>
+          <li>Confirmá. El ícono del Hub aparece en tu pantalla de inicio.</li>
+        </ol>
+      </div>
+
+      <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="t-ios" hidden>
+        <h2>iPhone y iPad</h2><p class="sub">Tiene que ser desde Safari.</p>
+        <ol class="steps">
+          <li>Abrí esta página en <b>Safari</b>. Si estás en Chrome u otro navegador, copiá el link y pegalo en Safari.</li>
+          <li>Tocá <b>Compartir</b> (el cuadradito con la flecha hacia arriba).</li>
+          <li>Deslizá y elegí <b>"Agregar a inicio"</b>, después tocá <b>Agregar</b>.</li>
+        </ol>
+        <div class="note">Si no ves "Agregar a inicio", tocá <b>"Ver más"</b> al final de las opciones de Compartir.</div>
+      </div>
+
+      <div class="share">
+        <div class="btns">
+          <a class="btn alt" href="/login.html">Abrir el Hub →</a>
+          <button class="btn ghost" id="copyBtn" type="button">📋 Copiar link</button>
+        </div>
+        <div class="qrbox">
+          <svg viewBox="0 0 33 33" role="img" aria-label="Código QR para abrir instalar.html" shape-rendering="crispEdges" class="segno"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#060f22" d="M2 2.5h7m2 0h2m1 0h2m2 0h5m1 0h7m-29 1h1m5 0h1m2 0h2m4 0h1m4 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h1m4 0h1m2 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h4m2 0h1m2 0h4m1 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h2m4 0h2m1 0h1m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m1 0h1m1 0h1m5 0h2m-20 1h1m1 0h5m3 0h2m1 0h5m4 0h5m-27 1h3m2 0h1m2 0h2m1 0h3m2 0h1m1 0h7m3 0h1m-29 1h2m2 0h1m1 0h3m1 0h1m3 0h3m1 0h1m2 0h1m-22 1h1m4 0h1m1 0h1m1 0h1m1 0h1m2 0h2m3 0h2m1 0h2m1 0h1m1 0h1m-27 1h2m2 0h5m1 0h1m1 0h3m1 0h1m1 0h1m5 0h2m-27 1h1m1 0h1m1 0h1m3 0h1m1 0h4m2 0h1m2 0h1m1 0h2m1 0h1m3 0h1m-28 1h1m1 0h1m2 0h2m4 0h1m1 0h2m1 0h2m3 0h1m2 0h2m-26 1h5m1 0h2m1 0h2m3 0h2m1 0h1m1 0h1m1 0h1m1 0h1m2 0h1m-27 1h2m2 0h2m10 0h2m1 0h1m4 0h2m-27 1h6m2 0h2m1 0h2m3 0h5m1 0h3m1 0h1m1 0h1m-29 1h1m1 0h1m1 0h3m3 0h3m2 0h3m3 0h1m1 0h2m1 0h1m-27 1h1m1 0h1m2 0h1m2 0h5m2 0h1m3 0h1m2 0h3m2 0h1m-28 1h1m1 0h9m1 0h1m2 0h1m1 0h1m2 0h5m1 0h3m-21 1h1m4 0h1m2 0h5m3 0h5m-29 1h7m2 0h2m1 0h4m2 0h3m1 0h1m1 0h3m-27 1h1m5 0h1m1 0h1m4 0h1m1 0h2m2 0h2m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h4m2 0h5m1 0h3m-29 1h1m1 0h3m1 0h1m1 0h4m1 0h1m2 0h4m3 0h1m1 0h4m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h1m3 0h3m3 0h7m-28 1h1m5 0h1m2 0h5m4 0h1m1 0h1m1 0h1m1 0h2m1 0h1m-28 1h7m1 0h1m3 0h1m1 0h4m1 0h1m6 0h1"/></svg>
+          <p>Escaneá con la cámara del celu para instalarlo ahí</p>
+        </div>
+      </div>
+    </section>
+
+    <h3>Preguntas frecuentes</h3>
+    <details><summary>¿Funciona sin internet?</summary><p>Necesita conexión para sincronizar. Así todo el equipo ve siempre los mismos datos de los clientes, sin versiones viejas.</p></details>
+    <details><summary>¿Se actualiza solo?</summary><p>Sí. La app abre siempre la versión más nueva del Hub, sin descargar nada ni reinstalar.</p></details>
+    <details><summary>¿Cuesta algo o ocupa espacio?</summary><p>No cuesta nada y ocupa casi nada: es el mismo Hub, con su propio ícono y ventana.</p></details>
+    <details><summary>¿Cómo la desinstalo?</summary><p>Como cualquier app: mantené apretado el ícono (celu/tablet) o desinstalala desde el menú de la app en la compu.</p></details>
+  </main>
+
+  <footer>© COSMART · <a href="/login.html">Ingresar al Hub</a></footer>
+
+  <script>
+  (function(){
+    var UA=navigator.userAgent||'';
+    var isIPad=/iPad/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    var dev=/iPhone|iPod/.test(UA)||isIPad?'ios':/Android/.test(UA)?'and':/Mac/.test(UA)?'mac':'win';
+    var tabs=[].slice.call(document.querySelectorAll('.tab'));
+    function show(d){
+      tabs.forEach(function(t){var on=t.dataset.d===d;t.setAttribute('aria-selected',on);t.tabIndex=on?0:-1;});
+      ['win','mac','and','ios'].forEach(function(k){document.getElementById('p-'+k).hidden=(k!==d);});
+    }
+    tabs.forEach(function(t,i){
+      t.addEventListener('click',function(){show(t.dataset.d);});
+      t.addEventListener('keydown',function(e){
+        var n=e.key==='ArrowRight'?i+1:e.key==='ArrowLeft'?i-1:null;
+        if(n===null)return;n=(n+tabs.length)%tabs.length;tabs[n].focus();show(tabs[n].dataset.d);
+      });
+    });
+    show(dev);
+
+    var dp=null;
+    window.addEventListener('beforeinstallprompt',function(e){
+      e.preventDefault();dp=e;
+      [].forEach.call(document.querySelectorAll('.nativeInstall'),function(b){b.hidden=false;});
+    });
+    [].forEach.call(document.querySelectorAll('.nativeInstall'),function(b){
+      b.addEventListener('click',function(){
+        if(!dp)return;dp.prompt();dp.userChoice.then(function(){dp=null;[].forEach.call(document.querySelectorAll('.nativeInstall'),function(x){x.hidden=true;});});
+      });
+    });
+    window.addEventListener('appinstalled',function(){[].forEach.call(document.querySelectorAll('.nativeInstall'),function(x){x.hidden=true;});});
+
+    var cb=document.getElementById('copyBtn'),URL_='https://hub.cosmart.com.ar/instalar.html';
+    cb.addEventListener('click',function(){
+      function ok(){cb.textContent='✅ ¡Link copiado!';setTimeout(function(){cb.textContent='📋 Copiar link';},2500);}
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(URL_).then(ok,function(){window.prompt('Copiá este link:',URL_);});
+      else window.prompt('Copiá este link:',URL_);
+    });
+  })();
+  </script>
+</body>
+</html>

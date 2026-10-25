@@ -94,7 +94,7 @@
     m.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;padding:0;');
     m.innerHTML = '<div role="dialog" aria-modal="true" style="background:#0B1B3A;color:#fff;width:100%;max-width:440px;border-radius:18px 18px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-sizing:border-box;max-height:90vh;overflow:auto;font-size:15px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:17px;">Descargar la app del Hub</b><button id="installCloseBtn" aria-label="Cerrar" style="background:none;border:0;color:#fff;font-size:26px;line-height:1;cursor:pointer;padding:4px 8px;">×</button></div>' +
-      body + '</div>';
+      body + '<a href="/instalar.html" style="display:block;text-align:center;margin-top:14px;color:#9CC4F5;font-size:14px;">Ver guía completa (Windows, Mac, Android, iPhone y iPad)</a></div>';
     document.body.appendChild(m);
     m.addEventListener('click', function (e) { if (e.target === m) closeInstallModal(); });
     document.getElementById('installCloseBtn').onclick = closeInstallModal;

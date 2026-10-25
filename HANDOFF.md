@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## [25/10] Página pública `instalar.html` (guía de instalación para equipo y clientes)
+
+`hub.cosmart.com.ar/instalar.html`: guía por dispositivo (Windows, Mac, Android, iPhone/iPad), autodetecta el dispositivo, botón "Instalar ahora" cuando el navegador lo permite (`beforeinstallprompt`), "Copiar link", QR (SVG inline generado con `segno`, apunta a esa misma URL) y FAQ. Es indexable (title/description/canonical/JSON-LD HowTo+FAQ); se sumaron `robots.txt` y `sitemap.xml` (solo `instalar.html` y la landing de agencias; admin/app/login quedan fuera). El modal del botón "Descargar app" (`js/theme.js?v=3`) linkea a esta guía. Vaneh se la manda por mail al equipo (texto aprobado el 25/10) y también puede ofrecerse a clientes. No hay `.exe`/`.dmg`/`.apk`: se instala como PWA (decisión: se actualiza sola, sin firmar ni mantener builds).
+
 ## [25/10] Botón "Descargar app" en la barra lateral (admin y panel de cliente)
 
 Vaneh no encontraba cómo instalar el Hub desde el celu. `js/theme.js` (cargado en `admin/index.html` y `app/index.html`, ahora `?v=2`) inyecta arriba del botón de tema un botón **"Descargar app"**, oculto si ya está instalada (standalone). Android/desktop Chrome: dispara el prompt nativo (`beforeinstallprompt`); si no hay prompt, muestra instrucciones. iPhone Safari: modal con los 3 pasos (Compartir → Agregar a inicio → Agregar). Chrome/otro navegador en iPhone: modal que explica que se instala desde Safari + botón "Copiar link para Safari". No se tocó login ni signup.

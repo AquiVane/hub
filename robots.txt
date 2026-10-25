@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /instalar.html
+Allow: /gestion-de-clientes-para-agencias.html
+Disallow: /admin/
+Disallow: /app/
+
+Sitemap: https://hub.cosmart.com.ar/sitemap.xml
