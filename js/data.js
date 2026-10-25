@@ -1,5 +1,6 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
+import * as offline from './offline.js?v=1';
 
 // ── Worker API helper ─────────────────────────────────────────
 // Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del
@@ -7,7 +8,7 @@ import { getSessionToken } from './auth.js';
 // Hub pide varias cosas juntas con Promise.all, ESE Promise.all entero
 // nunca resuelve y toda la pantalla queda trabada en "Cargando..." sin
 // ningún error ni forma de reintentar.
-async function api(method, path, body = null) {
+async function rawApi(method, path, body = null) {
   const opts = {
     method,
     headers: {
@@ -23,14 +24,24 @@ async function api(method, path, body = null) {
   try {
     res = await fetch(WORKER_URL + path, opts);
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error(`Se colgó el pedido a ${path} (más de 20s sin respuesta).`);
-    throw e;
+    // isNet: falló la red (no una respuesta de error del servidor) -- lo usa
+    // offline.js para decidir si muestra lo guardado / deja el cambio en cola.
+    const err = e.name === 'AbortError' ? new Error(`Se colgó el pedido a ${path} (más de 20s sin respuesta).`) : e;
+    err.isNet = true;
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Error del servidor');
   return data;
+}
+
+// Modo sin conexión (ver js/offline.js): lecturas desde lo último guardado y
+// cambios en cola cuando no hay internet; con internet se comporta igual que antes.
+offline.configure(rawApi);
+async function api(method, path, body = null) {
+  return offline.wrap(method, path, body, () => rawApi(method, path, body));
 }
 
 // ── Demo data ─────────────────────────────────────────────────

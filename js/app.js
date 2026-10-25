@@ -12,7 +12,7 @@ import {
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=3';
+} from './data.js?v=4';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo

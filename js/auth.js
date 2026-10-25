@@ -1,4 +1,5 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
+import { beforeLogout } from './offline.js?v=1';
 
 // ── Demo users (modo sin worker configurado) ──────────────────
 const DEMO_USERS = {
@@ -68,6 +69,8 @@ export async function changePassword(currentPassword, newPassword) {
 }
 
 export async function logoutUser() {
+  // Si quedaron cambios hechos sin conexión, intenta sincronizarlos o avisa antes de perderlos.
+  if (!DEMO_MODE && !(await beforeLogout())) return;
   if (!DEMO_MODE) {
     const token = getSessionToken();
     if (token && token !== 'demo-token') {
