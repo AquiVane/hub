@@ -1,6 +1,6 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
-import * as offline from './offline.js?v=1';
+import * as offline from './offline.js?v=2';
 
 // ── Worker API helper ─────────────────────────────────────────
 // Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del

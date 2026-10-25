@@ -11,6 +11,13 @@ Pedido de Vaneh: poder seguir trabajando sin internet y que se sincronice al vol
 - Versiones: `data.js?v=4`, `app.js?v=58` (en `app/index.html` y en el `import()` dinámico de `admin/index.html`, que además importa `data.js?v=4`): **tienen que coincidir** para que `admin` y `app.js` compartan la misma instancia del módulo.
 - Límites conocidos: el servidor sigue guardando listas enteras, así que la ventana entre "bajar lista fresca" y "subir" sigue existiendo (milisegundos). El orden de ítems reordenados offline no se fusiona. No se probó en dispositivos reales (solo Playwright con servidor simulado).
 
+**[25/10, ajuste] Conflictos al estilo Google Docs: desempata la administración.** Pedido de Vaneh: ver quién puso qué y que el admin elija.
+- Cada ítem guardado por el Hub lleva `_ed: { por, mail, en }` (quién y cuándo; `stampAutor` en `offline.js`, solo en lo que cambió). Ítems viejos no lo tienen -> se muestra "otra persona".
+- **Colaborador** que choca al sincronizar: NO decide. Se deja la versión del servidor, se guardan las dos en `/data/_cosmart/conflictos` (genérico por agencia, sin cambios en el worker) y se le avisa. **Admin** (y clientes, sobre sus propios datos) ven el modal con "Tuya: X (fecha) · Del equipo: Y (fecha)" y deciden directo.
+- Admin: cartel "N conflictos por resolver · Resolver" (consulta al abrir, al reconectar y cada 60 s) -> modal con las versiones, quién/cuándo, "(más reciente)" y "Dejar la más reciente en todos". Al confirmar aplica la elegida a la lista y cierra el conflicto. Nadie pierde trabajo: la versión descartada queda solo hasta que el admin confirma.
+- Versiones: `offline.js?v=2`, `data.js?v=5`, `app.js?v=59` (coinciden en `admin/index.html`, `app/index.html` y `app.js`).
+
+
 ## [25/10] Página pública `instalar.html` (guía de instalación para equipo y clientes)
 
 `hub.cosmart.com.ar/instalar.html`: guía por dispositivo (Windows, Mac, Android, iPhone/iPad), autodetecta el dispositivo, botón "Instalar ahora" cuando el navegador lo permite (`beforeinstallprompt`), "Copiar link", QR (SVG inline generado con `segno`, apunta a esa misma URL) y FAQ. Es indexable (title/description/canonical/JSON-LD HowTo+FAQ); se sumaron `robots.txt` y `sitemap.xml` (solo `instalar.html` y la landing de agencias; admin/app/login quedan fuera). El modal del botón "Descargar app" (`js/theme.js?v=3`) linkea a esta guía. Vaneh se la manda por mail al equipo (texto aprobado el 25/10) y también puede ofrecerse a clientes. No hay `.exe`/`.dmg`/`.apk`: se instala como PWA (decisión: se actualiza sola, sin firmar ni mantener builds).

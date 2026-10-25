@@ -78,6 +78,14 @@ function stable(v) {
   }
   return JSON.stringify(v === undefined ? null : v);
 }
+function me() {
+  try { const u = JSON.parse(localStorage.getItem('mh_user') || '{}'); return { por: u.name || u.email || 'alguien', mail: u.email || '', role: u.role || '' }; }
+  catch (e) { return { por: 'alguien', mail: '', role: '' }; }
+}
+const CONFLICTOS = '/data/_cosmart/conflictos';
+const clientOf = path => (path.split('/')[2] || '');
+const tipoOf = path => (path.split('/')[3] || '');
+const fmtFecha = iso => { try { return new Date(iso).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
 const eq = (a, b) => (a === undefined || b === undefined) ? a === b : stable(a) === stable(b);
 const clone = v => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
@@ -130,6 +138,8 @@ export async function wrap(method, path, body, raw) {
   }
 
   if (method === 'POST' && isData) {
+    body = await stampAutor(path, body);
+    raw = () => rawFn('POST', path, body); // manda el cuerpo ya sellado con autor
     if (navigator.onLine !== false && !(await kGet('pending', path))) {
       try {
         const r = await raw();
@@ -155,6 +165,21 @@ export async function wrap(method, path, body, raw) {
     }
     throw e;
   }
+}
+
+// Cada ítem que se guarda lleva `_ed` = quién lo tocó y cuándo (como el
+// "última edición de ..." de Google Docs), así un conflicto puede mostrar
+// "Ger puso X a las 14:03". Solo se sella lo que cambió respecto a lo último visto.
+async function stampAutor(path, body) {
+  if (path === CONFLICTOS || !isItemsList(body)) return body;
+  const c = await kGet('cache', path);
+  if (!c || !isItemsList(c.local)) return body;
+  const L = toMap(c.local), who = me(), en = new Date().toISOString();
+  return body.map(it => {
+    const prev = L.get(it.id);
+    if (prev && eq(prev, it)) return it;
+    return { ...it, _ed: { por: who.por, mail: who.mail, en } };
+  });
 }
 
 // ── Cola de cambios ───────────────────────────────────────────
@@ -220,15 +245,29 @@ async function syncPath(path) {
     };
     todo.forEach(t => apply(t.id, t.op.next));
     if (conflicts.length) {
-      const choice = await askConflicts(path, conflicts);
-      conflicts.forEach((cf, i) => { if (choice[i] === 'mine') apply(cf.id, cf.op.next); });
+      if (me().role === 'colaborador') {
+        // Como en Google Docs: el desempate es de la administración. Mientras tanto
+        // queda la versión que ya estaba en el servidor y se guardan las dos.
+        await estacionarConflictos(path, conflicts);
+        lastSynced = { remoteChanged: true, parked: ((lastSynced && lastSynced.parked) || 0) + conflicts.length };
+      } else {
+        const choice = await askConflicts(path, conflicts);
+        conflicts.forEach((cf, i) => { if (choice[i] === 'mine') apply(cf.id, cf.op.next); });
+      }
     }
   } else {
     if (eq(fresh, p.next)) merged = fresh;
     else if (eq(fresh, p.base)) merged = p.next;
     else {
-      const choice = await askConflicts(path, [{ id: null, op: { base: p.base, next: p.next }, theirs: fresh }]);
-      merged = choice[0] === 'mine' ? p.next : fresh;
+      const cf = [{ id: null, op: { base: p.base, next: p.next }, theirs: fresh }];
+      if (me().role === 'colaborador') {
+        await estacionarConflictos(path, cf);
+        lastSynced = { remoteChanged: true, parked: ((lastSynced && lastSynced.parked) || 0) + 1 };
+        merged = fresh;
+      } else {
+        const choice = await askConflicts(path, cf);
+        merged = choice[0] === 'mine' ? p.next : fresh;
+      }
     }
   }
 
@@ -236,7 +275,72 @@ async function syncPath(path) {
   const remoteChanged = !eq(merged, c.local);
   await kSet('cache', path, { server: merged, local: merged, at: Date.now() });
   await kDel('pending', path);
-  lastSynced = { remoteChanged: (lastSynced && lastSynced.remoteChanged) || remoteChanged };
+  lastSynced = { ...(lastSynced || {}), remoteChanged: (lastSynced && lastSynced.remoteChanged) || remoteChanged };
+}
+
+const verDe = (item, rolFallback) => ({
+  por: (item && item._ed && item._ed.por) || rolFallback,
+  en: (item && item._ed && item._ed.en) || null,
+  borrado: item === undefined || item === null,
+  valor: item === undefined ? null : item,
+});
+
+async function estacionarConflictos(path, conflicts) {
+  const lista = clone(await rawFn('GET', CONFLICTOS)) || [];
+  const arr = Array.isArray(lista) ? lista : [];
+  const who = me();
+  for (const cf of conflicts) {
+    const mia = { ...verDe(cf.op.next, who.por), por: who.por, mail: who.mail, en: (cf.op.next && cf.op.next._ed && cf.op.next._ed.en) || new Date().toISOString() };
+    const suya = verDe(cf.theirs, 'otra persona');
+    const abierto = arr.find(r => r.estado === 'abierto' && r.path === path && String(r.itemId) === String(cf.id));
+    if (abierto) { if (!abierto.versiones.some(v => eq(v.valor, mia.valor))) abierto.versiones.push(mia); continue; }
+    arr.push({
+      id: 'cf' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      estado: 'abierto', path, clientId: clientOf(path), tipo: tipoOf(path), itemId: cf.id,
+      etiqueta: itemLabel(cf.op.next || cf.theirs || cf.op.base, path), creado: new Date().toISOString(),
+      versiones: [suya, mia],
+    });
+  }
+  await rawFn('POST', CONFLICTOS, arr);
+}
+
+// ── Administración: ver y desempatar conflictos ──
+let conflictosAbiertos = 0;
+export async function refreshConflictos() {
+  if (me().role !== 'admin' || !rawFn || navigator.onLine === false) return;
+  try {
+    const l = await wrap('GET', CONFLICTOS, null, () => rawFn('GET', CONFLICTOS));
+    conflictosAbiertos = (Array.isArray(l) ? l : []).filter(r => r.estado === 'abierto').length;
+  } catch (e) { /* sin permisos o sin red: no molesta */ }
+  render();
+}
+
+export async function reviewConflictos() {
+  const l = await wrap('GET', CONFLICTOS, null, () => rawFn('GET', CONFLICTOS));
+  const abiertos = (Array.isArray(l) ? l : []).filter(r => r.estado === 'abierto');
+  if (!abiertos.length) { conflictosAbiertos = 0; render(); return; }
+  const eleccion = await askVersiones(abiertos);
+  for (let i = 0; i < abiertos.length; i++) {
+    const r = abiertos[i], v = r.versiones[eleccion[i]];
+    if (!v) continue;
+    const lista = await wrap('GET', r.path, null, () => rawFn('GET', r.path));
+    let nueva;
+    if (r.itemId === null || r.itemId === undefined) nueva = v.valor;
+    else {
+      nueva = Array.isArray(lista) ? clone(lista) : [];
+      const idx = nueva.findIndex(x => x && String(x.id) === String(r.itemId));
+      if (v.borrado) { if (idx >= 0) nueva.splice(idx, 1); }
+      else if (idx >= 0) nueva[idx] = clone(v.valor); else nueva.push(clone(v.valor));
+    }
+    await wrap('POST', r.path, nueva, () => rawFn('POST', r.path, nueva));
+    r.estado = 'resuelto';
+  }
+  const resto = l.filter(r => r.estado === 'abierto');
+  await wrap('POST', CONFLICTOS, resto, () => rawFn('POST', CONFLICTOS, resto));
+  conflictosAbiertos = resto.length;
+  window.dispatchEvent(new CustomEvent('hub-synced', { detail: { remoteChanged: true } }));
+  lastSynced = { remoteChanged: true };
+  render();
 }
 
 export async function syncAll() {
@@ -327,11 +431,14 @@ async function render() {
   if (off) { cls = 'off'; html = n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado'; }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar`; }
+  else if (lastSynced && lastSynced.parked) { cls = 'off'; html = 'Algunos cambios tuyos chocaron con los de otra persona. La administración va a elegir la versión.'; }
   else if (lastSynced) { cls = 'ok'; html = lastSynced.remoteChanged ? '✓ Sincronizado · hay novedades del equipo' : '✓ Todo sincronizado'; }
+  else if (conflictosAbiertos) { cls = 'off'; html = `${conflictosAbiertos} conflicto${conflictosAbiertos === 1 ? '' : 's'} por resolver`; }
   if (!cls) { b.style.display = 'none'; return; }
   b.className = cls;
   b.textContent = html;
   if (!off && !syncing && n) { const r = document.createElement('button'); r.textContent = 'Reintentar'; r.onclick = () => syncAll(); b.appendChild(r); }
+  if (cls === 'off' && !lastSynced && conflictosAbiertos) { const r = document.createElement('button'); r.textContent = 'Resolver'; r.onclick = () => reviewConflictos(); b.appendChild(r); }
   if (cls === 'ok' && lastSynced.remoteChanged) { const r = document.createElement('button'); r.textContent = 'Actualizar'; r.onclick = () => location.reload(); b.appendChild(r); }
   b.style.display = 'flex';
 }
@@ -348,7 +455,7 @@ function diffLines(a, b) {
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return out;
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const k of keys) {
-    if (eq(a[k], b[k])) continue;
+    if (k.startsWith('_') || eq(a[k], b[k])) continue;
     const f = v => v === undefined ? '(vacío)' : (typeof v === 'string' ? v : JSON.stringify(v)).slice(0, 70);
     out.push({ k, mine: f(a[k]), theirs: f(b[k]) });
     if (out.length >= 5) break;
@@ -397,6 +504,10 @@ function askConflicts(path, conflicts) {
         d.textContent = mineGone ? 'Vos la borraste, pero el equipo la modificó.' : 'El equipo la borró, pero vos la modificaste.';
         card.appendChild(d);
       } else {
+        const quien = (it, def) => `${(it && it._ed && it._ed.por) || def}${it && it._ed && it._ed.en ? ' (' + fmtFecha(it._ed.en) + ')' : ''}`;
+        const who = document.createElement('div'); who.className = 'diff';
+        who.textContent = `Tuya: ${quien(cf.op.next, 'vos')} · Del equipo: ${quien(cf.theirs, 'otra persona')}`;
+        card.appendChild(who);
         diffLines(cf.op.next, cf.theirs).forEach(l => {
           const d = document.createElement('div'); d.className = 'diff';
           d.textContent = `${l.k}: tuya "${l.mine}" · del equipo "${l.theirs}"`;
@@ -420,17 +531,62 @@ function askConflicts(path, conflicts) {
   });
 }
 
+function askVersiones(registros) {
+  conflictOpen = true;
+  return new Promise(resolve => {
+    const choice = new Array(registros.length).fill(null);
+    const m = document.createElement('div'); m.id = 'hubConflictModal';
+    const box = document.createElement('div'); box.className = 'box';
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    const h = document.createElement('h3'); h.textContent = registros.length === 1 ? 'Hay dos versiones: elegí cuál se queda' : `${registros.length} conflictos: elegí qué versión se queda`;
+    const intro = document.createElement('p'); intro.textContent = 'Dos personas cambiaron lo mismo. Ves quién puso qué y cuándo. La que elijas queda para todo el equipo.';
+    box.append(h, intro);
+    const go = document.createElement('button'); go.className = 'go'; go.textContent = 'Confirmar'; go.disabled = true;
+    const refresh = () => { go.disabled = choice.some(c => c === null); };
+    const masReciente = r => r.versiones.reduce((best, v, i) => (!best || (v.en || '') > (r.versiones[best.i].en || '') ? { i } : best), null).i;
+    const marcar = (card, i) => card.querySelectorAll('.opt').forEach((o, k) => o.classList.toggle('sel', k === i));
+    const cards = [];
+    if (registros.length > 1) {
+      const bulk = document.createElement('div'); bulk.className = 'bulk';
+      const bt = document.createElement('button'); bt.textContent = 'Dejar la más reciente en todos';
+      bt.onclick = () => { registros.forEach((r, i) => { choice[i] = masReciente(r); marcar(cards[i], choice[i]); }); refresh(); };
+      bulk.appendChild(bt); box.appendChild(bulk);
+    }
+    registros.forEach((r, i) => {
+      const card = document.createElement('div'); card.className = 'cf'; cards.push(card);
+      const t = document.createElement('b'); t.textContent = `${r.etiqueta}${r.clientId && r.clientId !== '_cosmart' ? ' · ' + r.clientId : ''}`; card.appendChild(t);
+      const opts = document.createElement('div'); opts.className = 'opts';
+      r.versiones.forEach((v, k) => {
+        const d = document.createElement('div'); d.className = 'diff';
+        const otras = r.versiones.filter((_, j) => j !== k);
+        const lineas = v.borrado ? ['la borró'] : diffLines(v.valor, (otras[0] && otras[0].valor) || {}).map(l => `${l.k}: "${l.mine}"`);
+        d.textContent = `${v.por}${v.en ? ' (' + fmtFecha(v.en) + ')' : ''}: ${lineas.join(' · ') || 'sin cambios visibles'}`;
+        card.appendChild(d);
+        const o = document.createElement('button'); o.className = 'opt';
+        o.textContent = `Dejar la de ${v.por}${k === masReciente(r) ? ' (más reciente)' : ''}`;
+        o.onclick = () => { choice[i] = k; marcar(card, k); refresh(); };
+        opts.appendChild(o);
+      });
+      card.appendChild(opts); box.appendChild(card);
+    });
+    go.onclick = () => { m.remove(); conflictOpen = false; resolve(choice); };
+    box.appendChild(go); m.appendChild(box); document.body.appendChild(m);
+  });
+}
+
 // ── Arranque ──────────────────────────────────────────────────
 function boot() {
-  window.addEventListener('online', () => { flagOffline = false; render(); syncAll(); });
+  window.addEventListener('online', () => { flagOffline = false; render(); syncAll().then(refreshConflictos); });
   window.addEventListener('offline', () => render());
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); syncAll(); } });
   setInterval(() => { pendingCount().then(n => { if (n && !syncing && !conflictOpen) syncAll(); }); }, 20000);
   render();
   syncAll();
+  setTimeout(refreshConflictos, 2500);
+  setInterval(refreshConflictos, 60000);
 }
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.hubOffline = { syncAll, pendingCount };
+  window.hubOffline = { syncAll, pendingCount, refreshConflictos, reviewConflictos };
 }

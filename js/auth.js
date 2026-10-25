@@ -1,5 +1,5 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
-import { beforeLogout } from './offline.js?v=1';
+import { beforeLogout } from './offline.js?v=2';
 
 // ── Demo users (modo sin worker configurado) ──────────────────
 const DEMO_USERS = {
