@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## [25/10] Botón "Descargar app" en la barra lateral (admin y panel de cliente)
+
+Vaneh no encontraba cómo instalar el Hub desde el celu. `js/theme.js` (cargado en `admin/index.html` y `app/index.html`, ahora `?v=2`) inyecta arriba del botón de tema un botón **"Descargar app"**, oculto si ya está instalada (standalone). Android/desktop Chrome: dispara el prompt nativo (`beforeinstallprompt`); si no hay prompt, muestra instrucciones. iPhone Safari: modal con los 3 pasos (Compartir → Agregar a inicio → Agregar). Chrome/otro navegador en iPhone: modal que explica que se instala desde Safari + botón "Copiar link para Safari". No se tocó login ni signup.
+
 ## 22/10 — Proyectos: scroll con el dedo + finalizados al final
 - **Causa del "no se puede deslizar":** el contenedor del botón flotante `.fab-dial` (admin) ocupaba un rectángulo invisible grande (las opciones ocultas mantienen su espacio) con `z-index:9999` y se comía los toques: no se podía scrollear empezando el dedo en la mitad de abajo/derecha. Ahora `.fab-dial{pointer-events:none}` y solo responden `.fab-dial-main` y las opciones abiertas. **Test real de swipe:** `Input.dispatchTouchEvent` por CDP (touchStart/Move/End); `synthesizeScrollGesture` NO sirve en headless.
 - En Proyectos (admin) los "Listo" (Finalizado, verde) se ordenan al final.
