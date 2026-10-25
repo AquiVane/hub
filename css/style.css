@@ -1512,3 +1512,7 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 @media (max-width: 400px) {
   .campaign-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+@media (max-width: 768px) {
+  .layout:not(.admin-shell) .topbar-right .btn { flex: 0 0 auto; width: auto; max-width: 100%; overflow: visible; }
+}
