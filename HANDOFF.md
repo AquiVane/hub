@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 26/10 — Alarma de clon (pedido de Vaneh)
+- Todas las páginas HTML llevan, justo después del `<meta charset>` del `<head>`, un `<script data-anticlon>`: si la página se muestra desde un dominio que no es el oficial (ni uno de los `*.pages.dev` propios), corta la carga, reemplaza todo por un cartel "ATENCIÓN: esta NO es la página oficial de …" con botón a la oficial, y avisa pidiendo `<oficial>/_clon/<dominio-del-clon>` (aparece como 404 en Analíticas de Cloudflare → rutas más pedidas). **No sacarlo ni tocarlo; toda página HTML nueva tiene que llevarlo** (si hace falta, correr de nuevo el script que lo inserta o copiar el bloque de otra página del mismo repo).
+
 ## [25/10] Modo sin conexión (leer y editar offline + sincronización con aviso de conflictos)
 
 Pedido de Vaneh: poder seguir trabajando sin internet y que se sincronice al volver la conexión. Decisiones suyas: **leer y editar offline**, y ante conflicto **avisar y que la persona elija** qué versión se queda.
