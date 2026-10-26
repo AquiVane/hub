@@ -29,6 +29,10 @@ Pedido de Vaneh: poder seguir trabajando sin internet y que se sincronice al vol
 
 Vaneh no encontraba cómo instalar el Hub desde el celu. `js/theme.js` (cargado en `admin/index.html` y `app/index.html`, ahora `?v=2`) inyecta arriba del botón de tema un botón **"Descargar app"**, oculto si ya está instalada (standalone). Android/desktop Chrome: dispara el prompt nativo (`beforeinstallprompt`); si no hay prompt, muestra instrucciones. iPhone Safari: modal con los 3 pasos (Compartir → Agregar a inicio → Agregar). Chrome/otro navegador en iPhone: modal que explica que se instala desde Safari + botón "Copiar link para Safari". No se tocó login ni signup.
 
+## 26/10 — Formulario de contenido: la cuenta ya no se pierde ni hay que re-elegirla
+- **Bugs:** (1) una cuenta "Otra / personalizar" se guardaba bien pero al reabrir el contenido el select quedaba en blanco (el valor no estaba entre las opciones) y exigía elegir cuenta de nuevo; (2) cada contenido nuevo arrancaba sin cuenta; (3) en Contenidos propios (`_cosmart`) la única opción era el id crudo `_cosmart`.
+- **Ahora (`populateCuentaSelect(selected, esNuevo)` en `js/app.js`, hub y calendario):** el select incluye las cuentas del cliente + las ya usadas en otros contenidos (más usadas primero); al editar queda elegida la cuenta del contenido; un contenido nuevo arranca con la última usada (o la única real). Sin redes cargadas no se autoselecciona el id. `app.js` del Calendario ahora se carga con `?v=2` (antes sin versión → quedaba cacheado 4 h).
+
 ## 26/10 — Kanban en celular: barra de estados + botones + arrastre con el dedo (`js/kanban-movil.js`)
 - **Pedido de Vaneh:** en el teléfono las columnas se deslizaban de costado sin fin, y pasar una tarea a "En proceso/Finalizada" era difícil (hacía falta scrollear mucho) y no se podía arrastrar como en la compu.
 - **Qué hace (solo ≤768 px; la compu no cambia):** una columna por vez, elegida con una barra pegada arriba (Sin empezar / En progreso / Listo + cantidad); en cada tarjeta botones "→ En progreso" / "✓ Listo"; y mantener apretada una tarjeta ~0,4 s y soltarla sobre una pestaña de la barra. Un aviso chico confirma "Pasó a …".

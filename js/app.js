@@ -3237,7 +3237,11 @@ async function addImgFromFile(file) {
 }
 
 // Populate cuenta select from client data
-function populateCuentaSelect(selected) {
+// Cuentas del cliente + las que ya se usaron en otros contenidos (las más usadas primero). Así: (1) una cuenta
+// "personalizada" que se guardó vuelve a aparecer elegida al reabrir el contenido (antes quedaba en blanco y
+// pedía elegir cuenta otra vez) y (2) un contenido nuevo arranca con la última cuenta usada, sin tener que
+// volver a escribirla cada vez (Vaneh, 26/10).
+function populateCuentaSelect(selected, esNuevo) {
   const sel = document.getElementById('cf-cuenta');
   sel.innerHTML = '<option value="">Seleccionar cuenta...</option>';
   const accounts = [];
@@ -3245,21 +3249,39 @@ function populateCuentaSelect(selected) {
   if (STATE.client.facebook) accounts.push({ label: `Facebook: ${STATE.client.facebook}`, val: STATE.client.facebook });
   if (STATE.client.youtube) accounts.push({ label: `YouTube: ${STATE.client.youtube}`, val: STATE.client.youtube });
   if (STATE.client.tiktok) accounts.push({ label: `TikTok: @${STATE.client.tiktok}`, val: STATE.client.tiktok });
-  if (!accounts.length) accounts.push({ label: STATE.client.nombre || STATE.client.name || clientId, val: STATE.client.nombre || clientId });
+  const usos = new Map();
+  let ultima = '';
+  (STATE.contenidos || []).forEach(c => {
+    if (!c.cuenta || c.cuenta === 'multicuenta' || c.cuenta === '__custom__') return;
+    usos.set(c.cuenta, (usos.get(c.cuenta) || 0) + 1);
+    ultima = c.cuenta;
+  });
+  [...usos.entries()].sort((a, b) => b[1] - a[1]).forEach(([val]) => {
+    if (!accounts.find(a => a.val === val)) accounts.push({ label: val, val });
+  });
+  if (!accounts.length && !esPropioAgencia) accounts.push({ label: STATE.client.nombre || STATE.client.name || clientId, val: STATE.client.nombre || clientId });
+  const cuentasReales = accounts.length;
+  const esFallback = cuentasReales === 1 && !Object.keys(STATE.client || {}).some(k => ['instagram','facebook','youtube','tiktok','linkedin','twitter'].includes(k) && STATE.client[k]) && !usos.size;
   accounts.push({ label: 'Multicuenta', val: 'multicuenta' });
   accounts.push({ label: 'Otra / personalizar...', val: '__custom__' });
+  // Si se está editando una cuenta que no está en la lista (ej. una vieja), se agrega para que se vea elegida
+  if (selected && selected !== '__custom__' && !accounts.find(a => a.val === selected)) accounts.splice(cuentasReales, 0, { label: selected, val: selected });
   accounts.forEach(a => {
     const opt = document.createElement('option');
     opt.value = a.val; opt.textContent = a.label;
     sel.appendChild(opt);
   });
-  if (selected) sel.value = selected;
+  // Elegida: la del contenido; si es nuevo, la última usada (o la única que haya)
+  let elegida = selected || '';
+  if (!elegida && esNuevo) elegida = ultima || (cuentasReales === 1 && !esFallback ? accounts[0].val : '');
+  if (elegida && accounts.find(a => a.val === elegida)) sel.value = elegida;
   const customInput = document.getElementById('cf-cuenta-custom');
+  customInput.value = '';
   sel.onchange = () => {
     customInput.style.display = sel.value === '__custom__' ? '' : 'none';
     if (sel.value === '__custom__') customInput.focus();
   };
-  customInput.style.display = (selected && !accounts.find(a => a.val === selected)) ? '' : 'none';
+  customInput.style.display = sel.value === '__custom__' ? '' : 'none';
 }
 
 window.openContenidoModal = function(defaults = {}) {
@@ -3287,7 +3309,7 @@ window.openContenidoModal = function(defaults = {}) {
   }, 80);
 
   // Cuenta
-  populateCuentaSelect(c.cuenta || STATE.client.instagram || '');
+  populateCuentaSelect(c.cuenta || (editingContenido ? '' : (STATE.client.instagram || '')), !editingContenido);
 
   // Plataformas
   document.querySelectorAll('.plat-check').forEach(cb => {
