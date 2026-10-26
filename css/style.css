@@ -1516,3 +1516,41 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 @media (max-width: 768px) {
   .layout:not(.admin-shell) .topbar-right .btn { flex: 0 0 auto; width: auto; max-width: 100%; overflow: visible; }
 }
+
+/* ══ Kanban en celular (js/kanban-movil.js): una columna por vez + barra de estados + botones y arrastre ══ */
+.kb-tabs, .kb-mover { display: none; }
+@media (max-width: 768px) {
+  .kb-tabs { display: flex; gap: 6px; position: sticky; top: 0; z-index: 6; padding: 8px 0; margin: 0 0 8px; background: var(--bg); }
+  .kb-tab { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 5px; height: 38px; padding: 0 6px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text); font: 600 12px 'DM Sans', sans-serif; white-space: nowrap; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .kb-tab-txt { overflow: hidden; text-overflow: ellipsis; }
+  .kb-tab b { background: var(--border-strong); color: var(--text-muted); border-radius: 10px; padding: 0 6px; font-size: 11px; line-height: 16px; }
+  .kb-tab.activa { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .kb-tab.activa b { background: rgba(255,255,255,.25); color: #fff; }
+  .kb-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .kb-tab.kb-hover { transform: scale(1.06); box-shadow: 0 0 0 3px var(--accent); }
+  body.kb-arrastrando .kb-tab { border-style: dashed; }
+  .kanban-board.kb-movil { display: block; overflow: visible; padding-bottom: 0; }
+  .kanban-board.kb-movil > .kanban-col { display: none; width: 100% !important; max-width: none !important; min-width: 0 !important; flex: none !important; }
+  .kanban-board.kb-movil > .kanban-col.kb-activa { display: flex; }
+  .kanban-board.kb-movil .kanban-col-header { display: none; }
+  .kanban-board.kb-movil .kanban-card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y; }
+  .kanban-card.kb-levantada { opacity: .35; }
+  .kb-mover { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .kb-mover-btn { flex: 1 1 auto; height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface-sunken); color: var(--text); font: 700 12.5px 'DM Sans', sans-serif; white-space: nowrap; cursor: pointer; }
+  .kb-mover-btn.kb-listo { background: #10b981; border-color: #10b981; color: #fff; }
+  .kb-ghost { position: fixed; z-index: 10000; pointer-events: none; opacity: .94; transform: rotate(-2deg) scale(.97); box-shadow: 0 14px 34px rgba(0,0,0,.45); margin: 0 !important; }
+  .kb-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(12px); background: #0D2B6B; color: #fff; padding: 9px 16px; border-radius: 20px; font: 600 13px 'DM Sans', sans-serif; z-index: 10001; opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; max-width: 90vw; }
+  .kb-toast.visible { opacity: 1; transform: translateX(-50%); }
+}
+
+@media (max-width: 768px) {
+  /* Encabezados de sección del admin: el título y los botones se acomodan en renglones (nada se corta) y se
+     sacan las descripciones largas, que en celular solo ocupan lugar. */
+  .admin-shell .content .mb-20.flex { flex-wrap: wrap; row-gap: 8px; }
+  .admin-shell .content .mb-20.flex > .text-muted.text-sm { display: none; }
+  .admin-shell .content .mb-20.flex > .btn { margin-left: 0; }
+  .admin-shell .content .mb-20.flex > h2 + .btn { margin-left: auto; }
+  /* Barra de estados del kanban: que entren los nombres completos */
+  .kb-tab { font-size: 11.5px; gap: 4px; padding: 0 4px; }
+  .kb-dot { display: none; }
+}

@@ -1,4 +1,5 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
+import './kanban-movil.js?v=1'; // Kanban en celular: barra de estados, botones y arrastre con el dedo
 import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js?v=2';
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
