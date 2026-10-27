@@ -3168,7 +3168,7 @@
   document.addEventListener('click', (e) => {
     const dd = document.getElementById('clientesMenuDropdown');
     const btn = document.getElementById('btnClientesMenu');
-    if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && e.target !== btn) dd.classList.add('hidden');
+    if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !(btn && btn.contains(e.target))) dd.classList.add('hidden');
   });
 
   const INTERNAS_CLIENT_ID = '_cosmart';
@@ -6491,7 +6491,7 @@
     grid.innerHTML = clients.map((c, i) => {
       const nombre = c.nombre || c.name || c.id;
       return `
-      <div class="client-row">
+      <div class="client-row" style="cursor:pointer;" onclick="if(!event.target.closest('button,a,.client-row-menu'))window.open('../app/index.html?client=${c.id}','_blank')">
         <div class="client-row-main">
           <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
           <span class="client-row-name" title="${nombre}">${nombre}</span>
@@ -6501,6 +6501,7 @@
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
+            ${c.responsable?.nombre ? `<div style="padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);">👤 Responsable: ${c.responsable.nombre}</div>` : ''}
             <button onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
             <button onclick="copyLogin('${c.email || ''}')">🔑 Copiar acceso</button>
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
