@@ -3333,6 +3333,7 @@
           <div style="font-size:13px;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.titulo}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${[t.vertical, t.vencimiento ? '📅 ' + t.vencimiento : '', t.asignado ? '👤 ' + t.asignado.nombre : ''].filter(Boolean).join(' · ')}</div>
         </div>
+        ${etiquetaEstado(t.estado)}
         ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
         <select class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoInterna('${t.id}', this.value)">
           ${['Sin empezar','En progreso','Listo'].map(e => `<option ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
@@ -4911,6 +4912,11 @@
   // Archivado automático (pedido de Vaneh, varias veces): una tarea "Listo" cuyo
   // mes de cierre ya pasó sale sola del tablero y se ve en "Ver archivadas".
   // Es virtual (no se guarda nada): al restaurarla se marca noAutoArchivar.
+  const ESTADO_COLOR = { 'Sin empezar': '#64748b', 'En progreso': '#3b82f6', 'Listo': '#10b981' };
+  function etiquetaEstado(estado) {
+    const c = ESTADO_COLOR[estado] || '#8b5cf6';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap;background:${c}22;color:${c};"><span style="width:7px;height:7px;border-radius:50%;background:${c};"></span>${estado || 'Sin empezar'}</span>`;
+  }
   function estaArchivada(t) {
     if (t.archivado) return true;
     if (t.estado !== 'Listo' || !t.completadoEn || t.noAutoArchivar) return false;
@@ -5297,6 +5303,7 @@
         <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : tituloColor}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
         <div style="font-size:11px;color:${muted};margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
+      ${etiquetaEstado(t.estado)}
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
       ${cuadranteBadge(t.cuadrante)}
       <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
