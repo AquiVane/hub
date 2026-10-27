@@ -1,5 +1,16 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 27/10 — Panel de administración: barras prolijas (solo admin, NO el panel de clientes)
+Pedido de Vaneh, aprobado sobre una maqueta en Artifact antes de tocar código.
+- **Botón rojo de arriba a la derecha** (`#btnNuevoCliente`, `.btn-topbar-principal`): cambia según la sección (`TOPBAR_ACCIONES` en `admin/index.html`): Clientes "+ Nuevo cliente", Colaboradores "+ Nuevo colaborador", Mis tareas y Gestión COSMART "+ Nueva tarea"; en el resto se oculta. Los botones ⋮ y campanita miden 42 px y van separados 12 px en celular.
+- **Menú "+" flotante**: ahora tiene todas las altas (tarea, tarea interna, proyecto, idea, lead, recurso, cliente, colaborador). Cada opción es solo el nombre como botón (azul con letras blancas en claro, oscuro en oscuro, borde rojo); el "+" grande es rojo. Se sacaron los "+ Nuevo..." sueltos de Mis tareas y Gestión COSMART (los demás —Ideas, CRM, Recursos— siguen en su sección, falta sacarlos).
+- **Mis tareas y Gestión COSMART**: título + buscador + ⋮ (Plantilla/Importar Excel); fila única Equipo · Cliente (o Vertical) · Vista · filtros; Gestión COSMART ahora tiene Lista y Calendario (`setInternasView`) y su panel lateral de filtros. Las listas y los Kanban muestran una etiqueta de color con el estado (`etiquetaEstado`).
+- **Archivado automático** (`estaArchivada`): una tarea "Listo" cuyo mes de cierre ya pasó sale del tablero y va a "Ver archivadas" (virtual, no guarda nada; al restaurar se marca `noAutoArchivar`).
+- **Calendario del admin** en celular: días altos con título de tarea; tocar un día lista sus tareas.
+- **Clientes**: tocar la fila abre el panel; el ⋮ de arriba ya abre (el clic en el ícono lo cerraba por comparar `e.target !== btn`).
+- **Pendiente / no hecho todavía**: bloque 3 del pedido (Contenidos propios, Guiones, Proyectos, Ideas, CRM —leads de Euforia deben ir a Email Marketing—, Actividad, Métricas, Recursos, Agencias, modal idea→proyecto). "Filtrar por proyecto" no se hizo: las tareas no tienen campo proyecto (vertical ≠ proyecto).
+- **Regla**: Vaneh quiere ver una maqueta/preview ANTES de que se suba cualquier cambio visual.
+
 ## 26/10 — Alarma de clon (pedido de Vaneh)
 - Todas las páginas HTML llevan, justo después del `<meta charset>` del `<head>`, un `<script data-anticlon>`: si la página se muestra desde un dominio que no es el oficial (ni uno de los `*.pages.dev` propios), corta la carga, reemplaza todo por un cartel "ATENCIÓN: esta NO es la página oficial de …" con botón a la oficial, y avisa pidiendo `<oficial>/_clon/<dominio-del-clon>` (aparece como 404 en Analíticas de Cloudflare → rutas más pedidas). **No sacarlo ni tocarlo; toda página HTML nueva tiene que llevarlo** (si hace falta, correr de nuevo el script que lo inserta o copiar el bloque de otra página del mismo repo).
 

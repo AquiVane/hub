@@ -25,7 +25,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=31">
+  <link rel="stylesheet" href="../css/style.css?v=32">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -122,7 +122,7 @@
         <div class="topbar-sub" id="adminName"></div>
       </div>
       <div class="topbar-right">
-        <button class="btn btn-primary btn-sm" id="btnNuevoCliente" style="flex-shrink:0;" onclick="showSection('clientes');openNewClientModal();">+ Nuevo cliente</button>
+        <button class="btn btn-sm btn-topbar-principal" id="btnNuevoCliente" style="flex-shrink:0;" onclick="accionPrincipalTopbar()">+ Nuevo cliente</button>
         <div style="position:relative;flex-shrink:0;">
           <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()" title="Más opciones"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
           <div id="clientesMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:220px;max-height:60vh;overflow-y:auto;"></div>
@@ -2514,6 +2514,28 @@
     if (sec === 'ventas-panel') loadVentasPanel();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
+    actualizarBotonTopbar(sec);
+  };
+
+  // Botón rojo de arriba a la derecha: cambia según la sección (pedido de Vaneh).
+  const TOPBAR_ACCIONES = {
+    clientes: ['+ Nuevo cliente', () => window.openNewClientModal()],
+    colaboradores: ['+ Nuevo colaborador', () => window.openNewColaboradorModal()],
+    mistareas: ['+ Nueva tarea', () => window.openNuevaMiTareaModal()],
+    internas: ['+ Nueva tarea', () => window.openInternaModal(null)],
+  };
+  let _topbarSec = 'clientes';
+  function actualizarBotonTopbar(sec) {
+    _topbarSec = sec;
+    const btn = document.getElementById('btnNuevoCliente');
+    if (!btn) return;
+    const a = TOPBAR_ACCIONES[sec];
+    btn.classList.toggle('hidden', !a || (sec === 'colaboradores' && user.role !== 'admin'));
+    if (a) btn.textContent = a[0];
+  }
+  window.accionPrincipalTopbar = function() {
+    const a = TOPBAR_ACCIONES[_topbarSec];
+    if (a) a[1]();
   };
 
   function fmtDateAct(iso) {
@@ -3410,6 +3432,7 @@
                   ${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
                   ${cuadranteBadge(t.cuadrante)}
                 </div>
+                <div style="margin-top:5px;">${etiquetaEstado(t.estado)}</div>
                 ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${muted};">📅 ${t.vencimiento}</div>` : ''}
                 ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:${esProy ? '#93c5fd' : 'var(--primary)'};">👤 ${t.asignado.nombre}</div>` : ''}
                 ${t.colaboracionCon?.length ? `<div style="font-size:11px;margin-top:2px;color:${esProy ? '#93c5fd' : 'var(--text-muted)'};">🤝 ${t.colaboracionCon.map(c => c.nombre).join(', ')}</div>` : ''}
@@ -5394,6 +5417,7 @@
                 <div class="kanban-card-title" style="flex:1;${tituloColor}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
                 ${puedeVisibilidad ? `<button onclick="event.stopPropagation();toggleMiTareaVisibleCliente(${idx})" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}" style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:0;font-size:13px;">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
               </div>
+              <div style="margin-top:5px;">${etiquetaEstado(t.estado)}</div>
               <div style="font-size:11px;color:${muted};margin-top:4px;">${item.clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}</div>
               ${atraso > 0 ? `<div style="font-size:10px;color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
             </div>`;
@@ -5484,6 +5508,31 @@
         ${celdas}
       </div>`;
   }
+
+  // Tocar un día del calendario (fuera de una tarea) lista sus tareas abajo, para abrirlas con un toque.
+  document.addEventListener('click', (e) => {
+    const dia = e.target.closest('#misTareasList .cal-day, #internasBoard .cal-day');
+    if (!dia || e.target.closest('.cal-event') || dia.classList.contains('cal-day-empty')) return;
+    const grid = dia.closest('.cal-grid');
+    if (!grid) return;
+    grid.parentElement.querySelectorAll('.cal-dia-detalle').forEach(n => n.remove());
+    grid.querySelectorAll('.cal-day.sel').forEach(n => n.classList.remove('sel'));
+    dia.classList.add('sel');
+    const num = dia.querySelector('.cal-day-num')?.textContent || '';
+    const eventos = [...dia.querySelectorAll('.cal-event')];
+    const det = document.createElement('div');
+    det.className = 'cal-dia-detalle';
+    det.innerHTML = `<h4>Día ${num}</h4>`;
+    if (!eventos.length) det.insertAdjacentHTML('beforeend', '<p class="text-muted text-sm">Sin tareas este día.</p>');
+    eventos.forEach(ev => {
+      const c = document.createElement('div');
+      c.className = 'cal-dia-item';
+      c.setAttribute('onclick', ev.getAttribute('onclick') || '');
+      c.textContent = ev.getAttribute('title') || ev.textContent;
+      det.appendChild(c);
+    });
+    grid.insertAdjacentElement('afterend', det);
+  });
 
   window.toggleMiTareaListo = async function(clientId, tareaId) {
     const item = _misTareasCache.find(i => i.clientId === clientId && i.tarea.id === tareaId && i.tipo === 'tarea');
@@ -8573,6 +8622,7 @@
       };
       item = agregarAlFabDial(btn, 'Nuevo contenido');
       item.classList.add('fab-crear');
+      item.addEventListener('click', () => btn.click());
       item.id = 'fab-dial-nuevo-contenido';
     }
     item.style.display = contenidosPropiosVisible() ? '' : 'none';
@@ -8599,7 +8649,9 @@
       btn.setAttribute('aria-label', etiqueta);
       btn.innerHTML = FAB_SVG.nuevo;
       btn.onclick = () => { cerrarFabDial(); fn(); };
-      agregarAlFabDial(btn, etiqueta).classList.add('fab-crear');
+      const it = agregarAlFabDial(btn, etiqueta);
+      it.classList.add('fab-crear');
+      it.addEventListener('click', () => btn.click());
     });
     document.getElementById('fab-dial-items').lastElementChild.id = 'fab-dial-crear';
   }
