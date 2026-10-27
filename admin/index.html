@@ -25,7 +25,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=27">
+  <link rel="stylesheet" href="../css/style.css?v=28">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -161,10 +161,16 @@
         <div class="flex items-center gap-8" style="flex-wrap:nowrap;">
           <h2 style="font-size:18px;font-weight:700;flex-shrink:0;">Mis tareas</h2>
           <input type="text" id="misTareasBuscar" class="form-control form-control-sm" placeholder="🔎 Buscar..." style="min-width:0;flex:1;" oninput="cambiarMisTareasFiltro('busqueda', this.value)">
-          <button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="openNuevaMiTareaModal()">+ Nueva tarea</button>
+          <div class="client-row-menu-wrap">
+            <button class="btn btn-secondary btn-sm" onclick="toggleMenuAcciones(this, event)" title="Más opciones" style="padding:0 8px;height:30px;"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
+            <div class="client-row-menu hidden" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:190px;">
+              <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx">⬇️ Plantilla Excel</a>
+              <button onclick="openImportarTareasModal()">📥 Importar Excel</button>
+            </div>
+          </div>
         </div>
-        <div id="misTareasCount" class="text-muted text-sm" style="margin:4px 0 14px;"></div>
-        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
+        <div id="misTareasCount" class="text-muted text-sm hidden"></div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin:14px 0;">
           <div class="flex items-center" style="gap:6px;flex-shrink:0;">
             <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
             <select id="misTareasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarMisTareasVerDe(this.value)"></select>
@@ -178,10 +184,8 @@
           <select id="misTareasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="setMisTareasView(this.value)">
             <option value="kanban">📊 Kanban</option>
             <option value="lista">📋 Lista</option>
+            <option value="calendario">📅 Calendario</option>
           </select>
-          <button class="btn btn-secondary btn-sm" id="btnMisTareasCal" onclick="setMisTareasView('calendario')">📅 Calendario</button>
-          <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx" class="btn btn-secondary btn-sm" style="text-decoration:none;">⬇️ Plantilla Excel</a>
-          <button class="btn btn-secondary btn-sm" onclick="openImportarTareasModal()">📥 Importar Excel</button>
           <button class="btn btn-secondary btn-sm" id="btnMisTareasFiltros" onclick="abrirFiltrosMisTareas()" title="Más filtros" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
         </div>
         <div id="misTareasList">
@@ -208,7 +212,7 @@
             <button id="misTareasTabLaboral" class="tab-btn active" onclick="setMisTareasTab('laboral')">💼 Laborales</button>
             <button id="misTareasTabPersonal" class="tab-btn" onclick="setMisTareasTab('personal')">🏠 Personales</button>
           </div>
-          <label>Vertical</label>
+          <label>Vertical / proyecto</label>
           <select id="misTareasFiltroVertical" class="form-control" onchange="cambiarMisTareasFiltro('vertical', this.value)">
             <option value="">Todas</option>
             <option>Brújula</option><option>Rumbo Voraz</option><option>Design</option><option>ComuniCOS</option>
@@ -256,18 +260,25 @@
 
       <!-- Tareas internas COSMART (no atadas a ningún cliente) -->
       <div id="sec-internas" class="hidden">
-        <div class="mb-20 flex items-center gap-8">
-          <h2 style="font-size:18px;font-weight:700;" id="secGestionInternaLabel">Gestión COSMART</h2>
-          <span class="text-muted text-sm">No atadas a ningún cliente</span>
-          <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openImportarInternasModal()">📥 Importar Excel</button>
-          <button class="btn btn-primary btn-sm" onclick="openInternaModal(null)">+ Nueva tarea interna</button>
+        <div class="flex items-center gap-8" style="flex-wrap:nowrap;margin-bottom:14px;">
+          <h2 style="font-size:18px;font-weight:700;flex-shrink:0;" id="secGestionInternaLabel">Gestión COSMART</h2>
+          <input type="text" id="internasBuscar" class="form-control form-control-sm" placeholder="🔎 Buscar tarea..." style="min-width:0;flex:1;" oninput="filtrarInternasPorBusqueda(this.value)">
+          <div class="client-row-menu-wrap">
+            <button class="btn btn-secondary btn-sm" onclick="toggleMenuAcciones(this, event)" title="Más opciones" style="padding:0 8px;height:30px;"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
+            <div class="client-row-menu hidden" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:190px;">
+              <a href="../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx" download="Plantilla_Tareas_Hub_COSMART.xlsx">⬇️ Plantilla Excel</a>
+              <button onclick="openImportarInternasModal()">📥 Importar Excel</button>
+            </div>
+          </div>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;">
-          <input type="text" id="internasBuscar" class="form-control" placeholder="🔎 Buscar tarea..." style="width:180px;font-size:12px;padding:4px 8px;" oninput="filtrarInternasPorBusqueda(this.value)">
-          <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
-          <select id="internasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarInternasVerDe(this.value)"></select>
-          <label style="font-size:12px;color:var(--text-muted);">Vertical:</label>
-          <select id="internasVerticalFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorVertical(this.value)">
+          <div class="flex items-center" style="gap:6px;flex-shrink:0;">
+            <label style="font-size:12px;color:var(--text-muted);">Ver de:</label>
+            <select id="internasVerDe" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarInternasVerDe(this.value)"></select>
+          </div>
+          <div class="flex items-center" style="gap:6px;flex-shrink:0;">
+            <label style="font-size:12px;color:var(--text-muted);">Vertical:</label>
+            <select id="internasVerticalFiltro" class="form-control" style="width:auto;max-width:130px;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorVertical(this.value)">
             <option value="">Todas</option>
             <option value="_general">General (sin vertical)</option>
             <option>Brújula</option>
@@ -282,19 +293,35 @@
             <option>Home COSMART</option>
             <option>Hub</option>
           </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Prioridad:</label>
-          <select id="internasPrioridadFiltro" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filtrarInternasPorPrioridad(this.value)">
-            <option value="">Todas</option>
-            <option>Alta</option>
-            <option>Media</option>
-            <option>Baja</option>
+          </div>
+          <select id="internasVistaSelect" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="setInternasView(this.value)">
+            <option value="kanban">📊 Kanban</option>
+            <option value="lista">📋 Lista</option>
+            <option value="calendario">📅 Calendario</option>
           </select>
-          <label style="font-size:12px;color:var(--text-muted);margin-left:6px;">Ordenar por:</label>
-          <select id="internasOrden" class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarInternasOrden(this.value)">
-            <option value="fecha">Fecha</option>
-            <option value="prioridad">Prioridad</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" onclick="limpiarInternasFiltros()" title="Limpiar todos los filtros">✕ Limpiar filtros</button>
+          <button class="btn btn-secondary btn-sm" onclick="abrirFiltrosInternas()" title="Más filtros" style="margin-left:auto;"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
+        </div>
+        <div id="filtrosInternasOverlay" class="drawer-overlay" onclick="cerrarFiltrosInternas()"></div>
+        <div id="filtrosInternasDrawer" class="filter-drawer">
+          <div class="filter-drawer-head">
+            <strong>Más filtros</strong>
+            <button onclick="cerrarFiltrosInternas()" aria-label="Cerrar">✕</button>
+          </div>
+          <div class="filter-drawer-body">
+            <label>Prioridad</label>
+            <select id="internasPrioridadFiltro" class="form-control" onchange="filtrarInternasPorPrioridad(this.value)">
+              <option value="">Todas</option>
+              <option>Alta</option>
+              <option>Media</option>
+              <option>Baja</option>
+            </select>
+            <label>Ordenar por</label>
+            <select id="internasOrden" class="form-control" onchange="cambiarInternasOrden(this.value)">
+              <option value="fecha">Fecha</option>
+              <option value="prioridad">Prioridad</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;" onclick="limpiarInternasFiltros()">✕ Limpiar filtros</button>
+          </div>
         </div>
         <div id="internasBoard" class="kanban-board">
           <div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1A4DAA" stroke-width="1.5"/><polygon points="12,5 13.3,11.2 12,12 10.7,11.2" fill="#E02020"/><polygon points="12,19 13.3,12.8 12,12 10.7,12.8" fill="#1A4DAA"/><circle cx="12" cy="12" r="1" fill="#1A4DAA"/></svg></div><p>Cargando...</p></div>
@@ -3277,6 +3304,82 @@
     }
   }
 
+  let _internasView = 'kanban';
+  let _internasCalYear = null, _internasCalMonth = null;
+  window.setInternasView = function(v) {
+    _internasView = v;
+    const sel = document.getElementById('internasVistaSelect');
+    if (sel) sel.value = v;
+    renderInternasBoard();
+  };
+  window.abrirFiltrosInternas = function() {
+    document.getElementById('filtrosInternasOverlay').classList.add('open');
+    document.getElementById('filtrosInternasDrawer').classList.add('open');
+  };
+  window.cerrarFiltrosInternas = function() {
+    document.getElementById('filtrosInternasOverlay').classList.remove('open');
+    document.getElementById('filtrosInternasDrawer').classList.remove('open');
+  };
+  window.cambiarEstadoInterna = async function(id, estado) {
+    const t = _internasCache.find(x => x.id === id);
+    if (!t || t.estado === estado) return;
+    t.estado = estado;
+    t.completadoEn = estado === 'Listo' ? new Date().toISOString().split('T')[0] : null;
+    if (estado === 'Listo') regenerarSiRecurrente(t, _internasCache, INTERNAS_CLIENT_ID);
+    renderInternasBoard();
+    try { const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache); const i = _internasCache.findIndex(x => x.id === saved.id); if (i > -1) _internasCache[i] = saved; } catch (e) { console.error(e); }
+  };
+  window.navInternasCal = function(d) {
+    _internasCalMonth += d;
+    if (_internasCalMonth < 0) { _internasCalMonth = 11; _internasCalYear--; }
+    if (_internasCalMonth > 11) { _internasCalMonth = 0; _internasCalYear++; }
+    renderInternasBoard();
+  };
+  function internasListaHtml(lista) {
+    const items = ordenarInternas(lista.filter(t => !estaArchivada(t)));
+    if (!items.length) return '<div class="empty-state"><div class="empty-state-icon">✅</div><h3>Sin tareas</h3></div>';
+    const prioColor = { Alta: '#dc2626', Media: '#b45309', Baja: '#64748b' };
+    return items.map(t => `
+      <div class="card" style="padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;${t.estado === 'Listo' ? 'opacity:.55;' : ''}">
+        <div style="flex:1;min-width:150px;cursor:pointer;" onclick="openInternaModal('${t.id}')">
+          <div style="font-size:13px;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${[t.vertical, t.vencimiento ? '📅 ' + t.vencimiento : '', t.asignado ? '👤 ' + t.asignado.nombre : ''].filter(Boolean).join(' · ')}</div>
+        </div>
+        ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;">${t.prioridad}</span>` : ''}
+        <select class="form-control" style="width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoInterna('${t.id}', this.value)">
+          ${['Sin empezar','En progreso','Listo'].map(e => `<option ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
+        </select>
+      </div>`).join('');
+  }
+  function internasCalendarioHtml(lista) {
+    const hoy = new Date();
+    if (_internasCalYear === null) { _internasCalYear = hoy.getFullYear(); _internasCalMonth = hoy.getMonth(); }
+    const year = _internasCalYear, month = _internasCalMonth;
+    const offset = new Date(year, month, 1).getDay();
+    const dias = new Date(year, month + 1, 0).getDate();
+    const porFecha = {};
+    lista.filter(t => !estaArchivada(t) && t.vencimiento).forEach(t => { (porFecha[t.vencimiento] = porFecha[t.vencimiento] || []).push(t); });
+    let celdas = '';
+    for (let i = 0; i < offset; i++) celdas += '<div class="cal-day cal-day-empty"></div>';
+    for (let d = 1; d <= dias; d++) {
+      const f = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      celdas += `<div class="cal-day"><div class="cal-day-num">${d}</div>${(porFecha[f] || []).map(t => {
+        const corto = t.titulo.length > 16 ? t.titulo.slice(0, 15) + '…' : t.titulo;
+        return `<div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openInternaModal('${t.id}')" title="${t.titulo.replace(/"/g, '&quot;')}">${corto}</div>`;
+      }).join('')}</div>`;
+    }
+    return `
+      <div class="cal-nav">
+        <button class="cal-btn" onclick="navInternasCal(-1)">‹</button>
+        <div class="cal-month">${MESES_NOMBRE_JS[month]} de ${year}</div>
+        <button class="cal-btn" onclick="navInternasCal(1)">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-head">Dom</div><div class="cal-head">Lun</div><div class="cal-head">Mar</div><div class="cal-head">Mié</div><div class="cal-head">Jue</div><div class="cal-head">Vie</div><div class="cal-head">Sáb</div>
+        ${celdas}
+      </div>`;
+  }
+
   function renderInternasBoard() {
     const board = document.getElementById('internasBoard');
     const cols = [
@@ -3292,8 +3395,10 @@
       puedeVerTarea(t, user) &&
       (!_internasBusqueda || (t.titulo || '').toLowerCase().includes(_internasBusqueda))
     );
-    board.innerHTML = cols.map(col => {
-      const items = ordenarInternas(cacheFiltrado.filter(t => t.estado === col.key && !t.archivado));
+    board.className = _internasView === 'kanban' ? 'kanban-board' : '';
+    const alt = _internasView === 'lista' ? internasListaHtml(cacheFiltrado) : (_internasView === 'calendario' ? internasCalendarioHtml(cacheFiltrado) : '');
+    board.innerHTML = alt || cols.map(col => {
+      const items = ordenarInternas(cacheFiltrado.filter(t => t.estado === col.key && !estaArchivada(t)));
       return `
         <div class="kanban-col" data-col="${col.key}" style="flex:1;max-width:none;">
           <div class="kanban-col-header">
@@ -3334,9 +3439,9 @@
           <button class="kanban-add-btn" onclick="openInternaModal(null,'${col.key}')">+ Agregar</button>
         </div>`;
     }).join('');
-    initInternasDrag();
+    if (!alt) initInternasDrag();
 
-    const archivadas = cacheFiltrado.filter(t => t.archivado);
+    const archivadas = cacheFiltrado.filter(t => estaArchivada(t));
     const archWrap = document.getElementById('internasArchivadasWrap');
     if (archWrap) {
       archWrap.innerHTML = archivadas.length ? `
@@ -4110,6 +4215,7 @@
     const t = _internasCache.find(x => x.id === id);
     if (!t) return;
     t.archivado = false;
+    t.noAutoArchivar = true;
     const saved = await saveTarea(INTERNAS_CLIENT_ID, t, _internasCache);
     const i = _internasCache.findIndex(x => x.id === saved.id);
     if (i > -1) _internasCache[i] = saved;
@@ -4814,6 +4920,15 @@
   let _misTareasBusqueda = '';
   let _misTareasOrden = 'fecha';
 
+  // Archivado automático (pedido de Vaneh, varias veces): una tarea "Listo" cuyo
+  // mes de cierre ya pasó sale sola del tablero y se ve en "Ver archivadas".
+  // Es virtual (no se guarda nada): al restaurarla se marca noAutoArchivar.
+  function estaArchivada(t) {
+    if (t.archivado) return true;
+    if (t.estado !== 'Listo' || !t.completadoEn || t.noAutoArchivar) return false;
+    return String(t.completadoEn).slice(0, 7) < new Date().toISOString().slice(0, 7);
+  }
+
   function diasDeAtraso(fecha) {
     if (!fecha) return 0;
     const hoyStr = new Date().toISOString().split('T')[0];
@@ -4877,7 +4992,7 @@
         const _aResetear = (tareas || []).filter(t => t.recurrencia && t.estado === 'Listo');
         _aResetear.forEach(t => { if (regenerarSiRecurrente(t, tareas, c.id)) saveTarea(c.id, t, tareas).catch(() => {}); });
         (tareas || []).forEach(t => {
-          if (t.archivado) return;
+          if (estaArchivada(t)) return;
           const asignadoEmail = t.asignado?.email ? t.asignado.email.toLowerCase() : '';
           const uEmail = (user.email || '').toLowerCase();
           const esGerViendoVaneh = uEmail === 'ger@cosmart.com.ar' && asignadoEmail === 'vaneh@cosmart.com.ar';
@@ -4997,7 +5112,7 @@
   window.setMisTareasView = function(v) {
     _misTareasView = v;
     const sel = document.getElementById('misTareasVistaSelect');
-    if (sel && v !== 'calendario') sel.value = v;
+    if (sel) sel.value = v;
     const btnCal = document.getElementById('btnMisTareasCal');
     if (btnCal) btnCal.className = 'btn btn-sm ' + (v === 'calendario' ? 'btn-primary' : 'btn-secondary');
     renderMisTareas();
@@ -5537,7 +5652,7 @@
           const tareas = await getTareas(c.id);
           // Permisos por tarea (27/09): "Ver archivadas" es parte del
           // mismo tablero -- respeta restringidaA igual que Kanban/Lista.
-          (tareas || []).filter(t => t.archivado && puedeVerTarea(t, user)).forEach(t => all.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t }));
+          (tareas || []).filter(t => estaArchivada(t) && puedeVerTarea(t, user)).forEach(t => all.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tarea: t }));
         } catch (e) {}
       }));
       _misTareasArchivadasCache = all;
@@ -5564,6 +5679,7 @@
     const w = _misTareasArchivadasCache[idx];
     if (!w) return;
     w.tarea.archivado = false;
+    w.tarea.noAutoArchivar = true;
     await saveTarea(w.clientId, w.tarea);
     _misTareasArchivadasCache = null; // se recarga la próxima vez que se abra
     document.getElementById('misTareasArchivadasWrap').classList.add('hidden');
@@ -6536,6 +6652,16 @@
       alert('No se pudo guardar el nuevo orden: ' + (e.message || 'intentá de nuevo.'));
       loadClients();
     }
+  };
+
+  // Menú "⋮" genérico de acciones secundarias (Excel, exportar, etc.) de cada sección.
+  window.toggleMenuAcciones = function(btn, ev) {
+    if (ev) ev.stopPropagation();
+    const menu = btn.nextElementSibling;
+    if (!menu) return;
+    const abrir = menu.classList.contains('hidden');
+    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+    if (abrir) menu.classList.remove('hidden');
   };
 
   window.toggleClientRowMenu = function(id, ev) {
@@ -8421,7 +8547,7 @@
       const abrir = !d.classList.contains('abierto');
       d.classList.toggle('abierto', abrir);
       document.getElementById('fab-dial-main').setAttribute('aria-expanded', abrir ? 'true' : 'false');
-      if (abrir) actualizarOpcionNuevoContenido();
+      if (abrir) { actualizarOpcionNuevoContenido(); asegurarOpcionesCrear(); }
     };
     document.addEventListener('click', (e) => { if (!d.contains(e.target)) cerrarFabDial(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFabDial(); });
@@ -8454,6 +8580,32 @@
       item.id = 'fab-dial-nuevo-contenido';
     }
     item.style.display = contenidosPropiosVisible() ? '' : 'none';
+  }
+  // Opciones "Nuevo..." del menú "+" (pedido de Vaneh): todas las altas en un solo lugar,
+  // en vez de un botón "+ Nuevo" suelto en cada sección.
+  function asegurarOpcionesCrear() {
+    if (document.getElementById('fab-dial-crear')) return;
+    const esAdmin = user && user.role === 'admin';
+    const acciones = [
+      ['Nueva tarea', () => window.openNuevaMiTareaModal()],
+      ['Nueva tarea interna', () => window.openInternaModal(null)],
+      ['Nuevo proyecto', () => { window.openInternaModal(null); const c = document.getElementById('in-es-proyecto'); if (c) { c.checked = true; window.toggleInEsProyecto(); } }],
+      ['Nueva idea', () => window.openIdeaAdminModal(null)],
+      ['Nuevo lead', () => window.openLeadModal()],
+      ['Nuevo recurso', () => window.openRecursoModal(null)],
+      ['Nuevo cliente', () => { showSection('clientes'); window.openNewClientModal(); }],
+    ];
+    if (esAdmin) acciones.push(['Nuevo colaborador', () => { showSection('colaboradores'); window.openNewColaboradorModal(); }]);
+    acciones.forEach(([etiqueta, fn]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fab-dial-opcion';
+      btn.setAttribute('aria-label', etiqueta);
+      btn.innerHTML = FAB_SVG.nuevo;
+      btn.onclick = () => { cerrarFabDial(); fn(); };
+      agregarAlFabDial(btn, etiqueta);
+    });
+    document.getElementById('fab-dial-items').lastElementChild.id = 'fab-dial-crear';
   }
   function actualizarPuntoFabDial() {
     const b = document.getElementById('chat-interno-badge');

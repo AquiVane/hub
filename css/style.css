@@ -1327,7 +1327,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 /* ── Admin: botón flotante único con opciones que se despliegan hacia arriba ── */
 .fab-dial { position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
-.fab-dial-items { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px; }
+.fab-dial-items { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px; max-height: calc(var(--vvh, 100vh) - 110px); overflow-y: auto; padding: 2px 2px 2px 40px; }
 .fab-dial:not(.abierto) .fab-dial-items { visibility: hidden; pointer-events: none; }
 .fab-dial-item { display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(14px) scale(.92); transition: opacity .16s, transform .16s; }
 .fab-dial.abierto .fab-dial-item { opacity: 1; transform: none; }
