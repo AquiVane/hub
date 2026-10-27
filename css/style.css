@@ -1332,7 +1332,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fab-dial-item { display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(14px) scale(.92); transition: opacity .16s, transform .16s; }
 .fab-dial.abierto .fab-dial-item { opacity: 1; transform: none; }
 .fab-dial-etiqueta { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,.18); white-space: nowrap; }
-.fab-dial-opcion { position: relative; width: 48px; height: 48px; flex: none; border-radius: 50%; background: var(--primary-dark); color: #fff; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 0; }
+.fab-dial-opcion { position: relative; width: 48px; height: 48px; flex: none; border-radius: 50%; background: var(--surface); color: var(--primary); border: 2px solid var(--primary); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 0; }
 .fab-dial-main { position: relative; width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #fff; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 16px rgba(26,77,170,.45); padding: 0; transition: transform .2s; }
 .fab-dial.abierto .fab-dial-main { transform: rotate(45deg); }
 .fab-dial-dot { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #dc2626; border: 2px solid var(--bg, #fff); }
