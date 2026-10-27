@@ -1484,8 +1484,6 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .layout:not(.admin-shell) .topbar-right:empty { display: none; }
   .layout:not(.admin-shell) .topbar-right .form-control { width: auto; flex: 1 1 120px; min-width: 0; max-width: 100%; }
   .layout:not(.admin-shell) .topbar-right .btn { flex: 0 0 auto; }
-  /* El botón principal de la sección (ej. "+ Nuevo contenido", rojo) va a la derecha de la fila */
-  .layout:not(.admin-shell) .topbar-right .btn-primary, .layout:not(.admin-shell) .topbar-right .btn-red { margin-left: auto; }
   /* "Editar", "Agregar": una sola palabra, sin cortarse en dos renglones */
   .btn { white-space: nowrap; }
 }
