@@ -140,6 +140,16 @@ export async function wrap(method, path, body, raw) {
   if (method === 'POST' && isData) {
     body = await stampAutor(path, body);
     raw = () => rawFn('POST', path, body); // manda el cuerpo ya sellado con autor
+    if (/^\/data\/(?!_personal\/)[^/]+\/contenidos$/.test(path)) {
+      // Preserva la base original, combina contra lectura fresca y envía CAS.
+      // Si ocurre 409/503 no borra la cola ni vuelve a escribir a ciegas.
+      const queued = await enqueue(path, body);
+      if(navigator.onLine !== false) {
+        try { await syncPath(path); markOnline(); return {ok:true}; }
+        catch(e) { if(e?.isNet)markOffline(); throw e; }
+      }
+      return queued;
+    }
     if (navigator.onLine !== false && !(await kGet('pending', path))) {
       try {
         const r = await raw();
@@ -271,7 +281,7 @@ async function syncPath(path) {
     }
   }
 
-  if (!eq(merged, fresh)) await rawFn('POST', path, merged);
+  if (!eq(merged, fresh)) await rawFn('POST', path, merged, fresh);
   const remoteChanged = !eq(merged, c.local);
   await kSet('cache', path, { server: merged, local: merged, at: Date.now() });
   await kDel('pending', path);

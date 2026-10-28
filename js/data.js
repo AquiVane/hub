@@ -1,6 +1,6 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
-import * as offline from './offline.js?v=2';
+import * as offline from './offline.js?v=3';
 
 // ── Worker API helper ─────────────────────────────────────────
 // Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del
@@ -8,7 +8,7 @@ import * as offline from './offline.js?v=2';
 // Hub pide varias cosas juntas con Promise.all, ESE Promise.all entero
 // nunca resuelve y toda la pantalla queda trabada en "Cargando..." sin
 // ningún error ni forma de reintentar.
-async function rawApi(method, path, body = null) {
+async function rawApi(method, path, body = null, base = undefined) {
   const opts = {
     method,
     headers: {
@@ -16,6 +16,11 @@ async function rawApi(method, path, body = null) {
       'Authorization': `Bearer ${getSessionToken()}`,
     },
   };
+  if (method === 'POST' && /^\/data\/(?!_personal\/)[^/]+\/contenidos$/.test(path)) {
+    if (!Array.isArray(base)) throw new Error('Volvé a leer los contenidos antes de guardar.');
+    const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(base)));
+    opts.headers['If-Match'] = [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
   if (body !== null) opts.body = JSON.stringify(body);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 20000);
@@ -33,7 +38,7 @@ async function rawApi(method, path, body = null) {
     clearTimeout(timeoutId);
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Error del servidor');
+  if (!res.ok) { const error = new Error(res.status === 409 ? 'Los contenidos cambiaron. Tus cambios quedan pendientes; revisá el conflicto antes de guardar.' : data.error || 'Error del servidor'); error.status=res.status; error.code=data.code; throw error; }
   return data;
 }
 
@@ -762,9 +767,9 @@ export async function getIntegracionesChatGPT() {
   return api('GET', '/admin/integraciones/chatgpt');
 }
 
-export async function crearIntegracionChatGPT(nombre) {
+export async function crearIntegracionChatGPT(nombre, alcance = 'lectura') {
   if (DEMO_MODE) { alert('En modo demo no se puede crear una clave real.'); return null; }
-  return api('POST', '/admin/integraciones/chatgpt', { nombre });
+  return api('POST', '/admin/integraciones/chatgpt', { nombre, alcance });
 }
 
 export async function revocarIntegracionChatGPT(id) {

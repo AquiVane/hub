@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 28/10 — Candidato local: permisos ChatGPT y CAS de contenidos, NO desplegado
+- Configuración → Integración ChatGPT: Solo lectura por defecto; nueva clave opt-in contenidos:editar, confirmación y etiqueta de alcance. Ninguna clave anterior se eleva. Preview local `.review/permisos-chatgpt.html`, pendiente aprobación visual de Vaneh antes de publicar.
+- Contenidos (no _personal) se encolan con la base original incluso online, fusionan por ítem con lectura fresca y envían If-Match. 409/503 conservan cambios pendientes. Reutiliza modal de conflictos; no fuerza la última versión. Requiere backend candidato PR #6 coordinador y no debe activarse MCP escritura hasta desplegar ambos.
+- Pruebas `test/offline-contenidos.test.mjs`: 2 aprobadas con fake-indexeddb 6.2.4 (solo dependencia de test, indicar ruta con COSMART_TEST_INDEXEDDB); sintaxis data/offline/script inline admin aprobada. No hubo guardados reales, generación de claves ni deploy. No pushear main sin consultar: Pages publica automáticamente.
+
+
 ## 27/10 — Panel de administración: barras prolijas (solo admin, NO el panel de clientes)
 Pedido de Vaneh, aprobado sobre una maqueta en Artifact antes de tocar código.
 - **Botón rojo de arriba a la derecha** (`#btnNuevoCliente`, `.btn-topbar-principal`): cambia según la sección (`TOPBAR_ACCIONES` en `admin/index.html`): Clientes "+ Nuevo cliente", Colaboradores "+ Nuevo colaborador", Mis tareas y Gestión COSMART "+ Nueva tarea"; en el resto se oculta. Los botones ⋮ y campanita miden 42 px y van separados 12 px en celular.
