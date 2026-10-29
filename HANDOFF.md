@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 29/10 (2) — Asistente Claude con herramientas (cuota de la dueña) en el widget
+Detalle y seguridad en el HANDOFF de `cosmart-workers` (29/10 (2)). En el Hub: el widget "Asistente Claude" de `admin/index.html` pasa a modo agente si `GET /ai/agente/estado` responde 200 (admin, o colaborador con la cuota prestada): lee/modifica el Hub con los permisos de la persona y muestra una tarjeta "Claude quiere hacer esto" con Confirmar/Cancelar antes de cada escritura; botón "Nueva conversación". La dueña presta la cuota con un checkbox por colaborador en Configuración → Integración Claude. `data.js?v=8`. Probado en Chromium a 390 px (flujo completo con confirmación, sin scroll horizontal).
+
 ## 29/10 — Claude en el Hub (conector por usuario) — en main (095736d) con el backend desplegado
 Pedido explícito de Vaneh: Claude puede hacer todo en el Hub, cada persona con su usuario y su cuota de Claude, con permiso por persona (detalle y seguridad en `HANDOFF.md` de `cosmart-workers`, entrada 29/10 "Conector MCP de Claude").
 - `js/claude-conector.js` (nuevo): monta la UI en un contenedor. En Configuración → card "🔌 Integración Claude" (`claudeConectorCard`, solo admin de COSMART): dirección del conector con Copiar, comando de Claude Code, conexiones con Desconectar y lista de personas con checkbox de permiso (la dueña siempre habilitada). En el panel de clientes/colaboradores: card "Conectar Claude" arriba de Instrucciones (`claude-conector-card`), visible solo si el backend responde; sin permiso muestra el aviso.

@@ -2,7 +2,7 @@
 // los dos paneles: cada persona conecta SU Claude con SU usuario (usa su propia
 // cuota de Claude y ve/hace en el Hub solo lo que su rol permite). Si es la dueña
 // (admin de COSMART), además decide qué personas tienen Claude habilitado.
-import { getClaudeEstado, revocarConexionClaude, getClaudeAcceso, setClaudeAcceso } from './data.js?v=7';
+import { getClaudeEstado, revocarConexionClaude, getClaudeAcceso, setClaudeAcceso } from './data.js?v=8';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ROLES = { admin: 'Administradora', colaborador: 'Colaborador/a', client: 'Cliente' };
@@ -77,10 +77,21 @@ async function montarPermisos(cont, msg) {
     <h3 style="font-size:14px;margin:0 0 4px;">Quién puede usar Claude en el Hub</h3>
     <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">Cada persona usa su propia cuenta de Claude. Si apagás a alguien, se desconecta al instante.</p>
     <div style="display:flex;flex-direction:column;gap:6px;">${personas.map(p => `
-      <label style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;padding:8px 10px;${p.implicito ? 'opacity:.75;' : 'cursor:pointer;'}">
-        <input type="checkbox" class="cc-perm" data-email="${esc(p.email)}" ${p.habilitado ? 'checked' : ''} ${p.implicito ? 'disabled' : ''} style="width:18px;height:18px;flex:none;">
-        <span style="flex:1 1 180px;min-width:0;font-size:13px;word-break:break-word;"><strong>${esc(p.nombre)}</strong> <small style="color:var(--text-muted);">${esc(ROLES[p.role] || p.role)}${p.implicito ? ' · siempre habilitada' : ''}</small><br><small style="color:var(--text-muted);">${esc(p.email)}</small></span>
-      </label>`).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay personas para habilitar.</p>'}</div>`;
+      <div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+        <label style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;${p.implicito ? 'opacity:.75;' : 'cursor:pointer;'}">
+          <input type="checkbox" class="cc-perm" data-email="${esc(p.email)}" ${p.habilitado ? 'checked' : ''} ${p.implicito ? 'disabled' : ''} style="width:18px;height:18px;flex:none;">
+          <span style="flex:1 1 180px;min-width:0;font-size:13px;word-break:break-word;"><strong>${esc(p.nombre)}</strong> <small style="color:var(--text-muted);">${esc(ROLES[p.role] || p.role)}${p.implicito ? ' · siempre habilitada' : ''}</small><br><small style="color:var(--text-muted);">${esc(p.email)}</small></span>
+        </label>
+        ${p.role === 'colaborador' ? `<label style="display:flex;gap:10px;align-items:center;margin:8px 0 0 28px;font-size:12px;cursor:pointer;" title="Usa la cuenta de Claude que conectaste en Configuración. Tiene un tope de 80 mensajes por día."><input type="checkbox" class="cc-cuota" data-email="${esc(p.email)}" ${p.cuotaCompartida ? 'checked' : ''} style="width:16px;height:16px;flex:none;"> Le presto mi cuota de Claude (asistente dentro del Hub)</label>` : ''}
+      </div>`).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay personas para habilitar.</p>'}</div>`;
+  cont.querySelectorAll('.cc-cuota').forEach(chk => chk.addEventListener('change', async () => {
+    chk.disabled = true;
+    try {
+      await setClaudeAcceso(chk.dataset.email, { cuotaCompartida: chk.checked });
+      msg(chk.checked ? 'Listo: ahora usa tu cuota de Claude en el asistente del Hub.' : 'Listo: ya no usa tu cuota.');
+    } catch (e) { chk.checked = !chk.checked; msg('No se pudo guardar: ' + (e.message || 'intentá de nuevo.')); }
+    chk.disabled = false;
+  }));
   cont.querySelectorAll('.cc-perm').forEach(chk => chk.addEventListener('change', async () => {
     chk.disabled = true;
     try {

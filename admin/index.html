@@ -2232,7 +2232,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=7';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=8';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -8670,6 +8670,50 @@
   // solo en Configuración. Historial solo en memoria (se pierde al
   // recargar la página), a propósito simple para esta primera versión.
   let _claudeChatHistorial = [];
+  // Modo asistente con herramientas (29/10): lo habilita la dueña por persona y usa SU cuota de
+  // Claude. Lee y modifica el Hub con los permisos de quien pregunta; cada escritura pide confirmar.
+  let _claudeAgente = false;
+  let _agenteMensajes = null;
+  const agenteAgregar = html => { const m = document.getElementById('claude-widget-msgs'); if (!m) return; m.insertAdjacentHTML('beforeend', html); m.scrollTop = m.scrollHeight; };
+  window.nuevaConversacionAgente = function() { _agenteMensajes = null; const m = document.getElementById('claude-widget-msgs'); if (m) m.innerHTML = ''; };
+  function agenteRender(r) {
+    document.getElementById('claude-widget-loading')?.remove();
+    (r.acciones || []).forEach(a => agenteAgregar(`<div style="margin-bottom:4px;font-size:11px;color:var(--text-muted);">🔎 Leí <code style="word-break:break-all;">${escapeHtml(a.path || '')}</code></div>`));
+    if (r.respuesta) agenteAgregar(`<div style="margin-bottom:10px;"><span style="background:#f1f5f9;color:#1a1a2e;padding:6px 10px;border-radius:10px;display:inline-block;max-width:90%;white-space:pre-wrap;word-break:break-word;">${escapeHtml(r.respuesta)}</span></div>`);
+    if (r.pendiente && r.pendiente.length) {
+      agenteAgregar(`<div id="claude-pend-card" style="border:1px solid #f0c36d;border-radius:10px;padding:10px;margin-bottom:10px;font-size:12px;background:#fff7e6;color:#1a1a2e;">
+        <strong>Claude quiere hacer esto:</strong>
+        ${r.pendiente.map(p => `<div style="margin-top:6px;"><code style="word-break:break-all;">${escapeHtml((p.metodo || '') + ' ' + (p.path || ''))}</code>${p.permitido === false ? ' <em>(no permitida)</em>' : ''}${p.body ? `<details><summary style="cursor:pointer;">Ver datos</summary><pre style="white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;margin:4px 0 0;">${escapeHtml(p.body)}</pre></details>` : ''}</div>`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="resolverAgente('aprobar')">Confirmar</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="resolverAgente('rechazar')">Cancelar</button>
+        </div></div>`);
+    }
+  }
+  window.resolverAgente = async function(decision) {
+    document.getElementById('claude-pend-card')?.remove();
+    agenteAgregar(`<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">${decision === 'aprobar' ? 'Haciéndolo...' : 'Cancelando...'}</div>`);
+    try {
+      const r = await agenteClaude({ mensajes: _agenteMensajes, decision });
+      _agenteMensajes = r.mensajes;
+      agenteRender(r);
+    } catch (e) {
+      document.getElementById('claude-widget-loading')?.remove();
+      agenteAgregar(`<div style="margin-bottom:10px;font-size:12px;color:#dc2626;">${escapeHtml(e.message || 'Error al consultar.')}</div>`);
+    }
+  };
+  async function enviarMensajeAgente(mensaje) {
+    agenteAgregar(`<div style="margin-bottom:10px;text-align:right;"><span style="background:var(--primary-light);color:var(--primary-dark);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;white-space:pre-wrap;word-break:break-word;">${escapeHtml(mensaje)}</span></div>`);
+    agenteAgregar('<div id="claude-widget-loading" style="color:var(--text-muted);font-size:12px;">Pensando...</div>');
+    try {
+      const r = await agenteClaude({ mensaje, mensajes: _agenteMensajes || undefined });
+      _agenteMensajes = r.mensajes;
+      agenteRender(r);
+    } catch (e) {
+      document.getElementById('claude-widget-loading')?.remove();
+      agenteAgregar(`<div style="margin-bottom:10px;font-size:12px;color:#dc2626;">${escapeHtml(e.message || 'Error al consultar.')}</div>`);
+    }
+  }
   // ── Botón flotante único con las acciones desplegables (18/10, pedido de
   // Vaneh): antes había 3 botones sueltos (nuevo contenido, chat del equipo y
   // asistente Claude) tapándose entre sí. Ahora hay UN botón "+" abajo a la
@@ -8819,12 +8863,19 @@
     // apague si quiere charlas más genéricas/livianas, se quede apagada.
     const chkDatos = document.getElementById('claude-widget-incluir-datos');
     chkDatos.checked = localStorage.getItem('hub_claude_incluir_datos') !== '0';
+    // Si la dueña habilitó el asistente con herramientas para esta persona, cambia de modo.
+    getAgenteEstado().then(() => {
+      _claudeAgente = true;
+      const fila = chkDatos.closest('label');
+      if (fila) fila.outerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);"><span style="flex:1 1 160px;">Lee y modifica el Hub con tus permisos. Cada cambio te pide confirmar.</span><button type="button" class="btn btn-secondary btn-sm" onclick="nuevaConversacionAgente()">Nueva conversación</button></div>';
+    }).catch(() => {});
   }
   window.enviarMensajeClaudeWidget = async function() {
     const input = document.getElementById('claude-widget-input');
     const mensaje = input.value.trim();
     if (!mensaje) return;
     input.value = '';
+    if (_claudeAgente) return enviarMensajeAgente(mensaje);
     const incluirDatos = document.getElementById('claude-widget-incluir-datos')?.checked !== false;
     const msgs = document.getElementById('claude-widget-msgs');
     msgs.innerHTML += `<div style="margin-bottom:10px;text-align:right;"><span style="background:var(--primary-light);color:var(--primary-dark);padding:6px 10px;border-radius:10px;display:inline-block;max-width:85%;">${escapeHtml(mensaje)}</span></div>`;

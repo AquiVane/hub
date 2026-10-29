@@ -765,7 +765,10 @@ export async function probarPush() {
 export async function getClaudeEstado() { return api('GET', '/claude/estado'); }
 export async function revocarConexionClaude(id) { return api('DELETE', `/claude/conexiones/${encodeURIComponent(id)}`); }
 export async function getClaudeAcceso() { return api('GET', '/admin/claude-acceso'); }
-export async function setClaudeAcceso(email, habilitado) { return api('PUT', '/admin/claude-acceso', { email, habilitado }); }
+export async function setClaudeAcceso(email, cambios) { return api('PUT', '/admin/claude-acceso', { email, ...(typeof cambios === 'boolean' ? { habilitado: cambios } : cambios) }); }
+// Asistente Claude con herramientas (usa la API key de la dueña; ver worker agente-claude.js).
+export async function getAgenteEstado() { return api('GET', '/ai/agente/estado'); }
+export async function agenteClaude(cuerpo) { return api('POST', '/ai/agente', cuerpo); }
 
 // ── Integración ChatGPT (solo lectura, clave propia -- ver worker) ──
 export async function getIntegracionesChatGPT() {
