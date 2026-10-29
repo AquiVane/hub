@@ -1910,8 +1910,18 @@ const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
 
+let _contBusqueda = '';
+const _normBusq = t => String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function matchBusquedaCont(c) {
+  const q = _normBusq(_contBusqueda).trim();
+  if (!q) return true;
+  const txt = _normBusq([c.titulo, c.copy, c.notas, c.estado, c.formato, c.eje, c.tipo, c.objetivo, c.fechaPub, (c.plataformas || []).join(' '), _ubicDe(c).join(' ')].join(' '));
+  return q.split(/\s+/).every(w => txt.includes(w));
+}
+
 const _ubicDe = c => [].concat(c.ubicacion || []).map(u => String(u).trim()).filter(Boolean);
 function matchFiltrosCont(c) {
+  if (!matchBusquedaCont(c)) return false;
   if (_bancoFiltroPlataforma !== 'todas' && !(c.plataformas || []).includes(_bancoFiltroPlataforma)) return false;
   if (_filtroEstado !== 'todos' && c.estado !== _filtroEstado) return false;
   if (_filtroUbicacion !== 'todas' && !_ubicDe(c).some(u => u.toLowerCase() === _filtroUbicacion.toLowerCase())) return false;
@@ -1946,6 +1956,7 @@ function renderContenidos(container) {
         <button class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
       </div>
       <div class="cont-bar-acciones">
+        <input type="search" id="cont-buscar" class="form-control cont-buscar" placeholder="🔎 Buscar contenido..." aria-label="Buscar contenido" autocomplete="off" value="${_contBusqueda.replace(/"/g, '&quot;')}">
         <label class="cont-vistas"><span>Vistas:</span>
           <select id="cont-vistas-sel" class="form-control${enKanban ? ' activa' : ''}">
             ${CONT_VISTAS.map(([k, l]) => `<option value="${k}" ${(enKanban ? 'estados' : 'lista') === k ? 'selected' : ''}>${l}</option>`).join('')}
@@ -1984,6 +1995,11 @@ function renderContenidos(container) {
   });
 
   document.getElementById('cont-filtros-btn').addEventListener('click', abrirFiltrosCont);
+
+  document.getElementById('cont-buscar').addEventListener('input', e => {
+    _contBusqueda = e.target.value;
+    renderContTab(activeContTab);
+  });
 
   renderContTab(activeContTab);
 }
@@ -2784,6 +2800,12 @@ function renderStories(container) {
 
 // ─ Banco de ideas ─
 function renderIdeas(container) {
+  const ideasVisibles = STATE.ideas.filter(i => {
+    const q = _normBusq(_contBusqueda).trim();
+    if (!q) return true;
+    const txt = _normBusq([i.titulo, i.notas, i.formato, (i.plataformas || []).join(' ')].join(' '));
+    return q.split(/\s+/).every(w => txt.includes(w));
+  });
   container.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <h3 style="font-size:15px;font-weight:600;">Ideas de contenido</h3>
@@ -2791,7 +2813,7 @@ function renderIdeas(container) {
     </div>
     ${STATE.ideas.length ? `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
-        ${STATE.ideas.map(i => `
+        ${ideasVisibles.map(i => `
           <div class="card" style="padding:14px;">
             <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${i.titulo}</div>
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
@@ -2805,6 +2827,7 @@ function renderIdeas(container) {
           </div>
         `).join('')}
       </div>
+      ${ideasVisibles.length ? '' : '<div class="empty-state"><p>No hay ideas que coincidan con la búsqueda.</p></div>'}
     ` : `<div class="empty-state"><div class="empty-state-icon">💡</div><h3>Sin ideas</h3><p>Guardá ideas de contenido para trabajarlas después.</p></div>`}
   `;
 }
