@@ -351,6 +351,34 @@
         </div>
       </div>
 
+      <!-- Newsletter de COSMART: suscriptores y reporte mensual (29/10) -->
+      <div id="sec-newsletter" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Newsletter</h2>
+          <span class="text-muted text-sm">Suscriptores del newsletter mensual de COSMART y reporte del mes</span>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:16px;">
+          <div class="flex items-center gap-8" style="margin-left:auto;">
+            <button class="btn btn-secondary btn-sm" onclick="cambiarMesNewsletter(-1)">←</button>
+            <span id="nlMesLabel" style="font-size:13px;font-weight:700;min-width:120px;text-align:center;"></span>
+            <button class="btn btn-secondary btn-sm" id="nlMesSiguienteBtn" onclick="cambiarMesNewsletter(1)">→</button>
+          </div>
+        </div>
+        <div id="nlError" class="text-muted text-sm" style="display:none;margin-bottom:12px;"></div>
+        <div id="nlCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;"></div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-body">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">Altas y bajas por mes (últimos 12 meses)</div>
+            <div id="nlSerie" style="display:flex;align-items:flex-end;gap:6px;height:150px;overflow-x:auto;padding-bottom:4px;"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+          <div class="card"><div class="card-body"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">De dónde vinieron las altas del mes</div><div id="nlFuenteMes"></div></div></div>
+          <div class="card"><div class="card-body"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">De dónde vienen los suscriptores activos</div><div id="nlFuenteActivos"></div></div></div>
+        </div>
+        <p class="text-muted text-sm" id="nlNota" style="margin-top:14px;"></p>
+      </div>
+
       <!-- Panel de ventas (VAMA Academy / Training, 11/10) -->
       <div id="sec-ventas-panel" class="hidden">
         <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
@@ -2199,7 +2227,7 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=6';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=6';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2417,6 +2445,11 @@
     btnVentasPanel.innerHTML = '<i data-lucide="trending-up" class="nav-icon"></i><span>Panel de ventas</span>';
     btnVentasPanel.onclick = () => showSection('ventas-panel');
     document.querySelector('.nav-section').appendChild(btnVentasPanel);
+    const btnNewsletter = document.createElement('button');
+    btnNewsletter.className = 'nav-item';
+    btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
+    btnNewsletter.onclick = () => showSection('newsletter');
+    document.querySelector('.nav-section').appendChild(btnNewsletter);
   }
 
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
@@ -2502,7 +2535,7 @@
   };
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','mapa'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -2520,6 +2553,7 @@
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
     if (sec === 'ventas-panel') loadVentasPanel();
+    if (sec === 'newsletter') cargarNewsletter();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
     actualizarBotonTopbar(sec);
@@ -8105,6 +8139,59 @@
       await loadLeadsAdmin();
     } catch (e) { alert('Error al eliminar: ' + (e.message || 'intentá de nuevo.')); }
   };
+
+  // ── Newsletter de COSMART: suscriptores y reporte mensual (29/10) ──────
+  // Los números salen del KV NEWS (el mismo que usa el cron del newsletter) vía marketing-hub (GET /admin/newsletter).
+  let _nlMes = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 7);
+  const NL_HOY = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 7);
+  window.cambiarMesNewsletter = function(delta) {
+    const [y, m] = _nlMes.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
+    if (d > NL_HOY()) return;
+    _nlMes = d;
+    cargarNewsletter();
+  };
+  function nlTarjeta(valor, etiqueta, color) {
+    return `<div class="card"><div class="card-body" style="padding:14px;"><div style="font-size:26px;font-weight:800;${color ? 'color:' + color + ';' : ''}">${valor}</div><div class="text-muted" style="font-size:12px;margin-top:2px;">${etiqueta}</div></div></div>`;
+  }
+  function nlFilas(obj) {
+    const e = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+    if (!e.length) return '<div class="text-muted text-sm">Sin datos todavía.</div>';
+    const max = Math.max(...e.map(x => x[1]));
+    return e.map(([k, v]) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;"><div style="flex:1;min-width:0;"><div style="display:flex;justify-content:space-between;gap:8px;"><span style="overflow-wrap:anywhere;">${k}</span><strong>${v}</strong></div><div style="height:6px;border-radius:3px;background:var(--surface-sunken);margin-top:3px;"><div style="height:6px;border-radius:3px;background:var(--primary);width:${Math.max(4, Math.round(v / max * 100))}%;"></div></div></div></div>`).join('');
+  }
+  async function cargarNewsletter() {
+    document.getElementById('nlMesLabel').textContent = vpMesLabel(_nlMes);
+    document.getElementById('nlMesSiguienteBtn').disabled = (_nlMes >= NL_HOY());
+    const err = document.getElementById('nlError');
+    err.style.display = 'none';
+    try {
+      const d = await getNewsletterMetricas(_nlMes);
+      const neto = d.netoMes;
+      document.getElementById('nlCards').innerHTML =
+        nlTarjeta(d.activos, 'suscriptores activos', 'var(--primary)') +
+        nlTarjeta(d.altasMes, 'altas en el mes') +
+        nlTarjeta(d.bajasMes, 'bajas en el mes') +
+        nlTarjeta((neto > 0 ? '+' : '') + neto, 'crecimiento neto del mes', neto > 0 ? '#16a34a' : (neto < 0 ? 'var(--danger)' : '')) +
+        nlTarjeta(d.bajasTotal, 'bajas en total');
+      const serie = d.serie || [];
+      const max = Math.max(1, ...serie.map(x => Math.max(x.altas, x.bajas)));
+      document.getElementById('nlSerie').innerHTML = serie.map(x => {
+        const hA = Math.round(x.altas / max * 110), hB = Math.round(x.bajas / max * 110);
+        const sel = x.mes === _nlMes;
+        return `<div style="flex:1;min-width:38px;text-align:center;${sel ? 'font-weight:700;' : 'opacity:.85;'}"><div style="display:flex;align-items:flex-end;justify-content:center;gap:3px;height:112px;"><div title="Altas ${x.altas}" style="width:14px;height:${hA}px;min-height:${x.altas ? 3 : 0}px;background:var(--primary);border-radius:3px 3px 0 0;"></div><div title="Bajas ${x.bajas}" style="width:14px;height:${hB}px;min-height:${x.bajas ? 3 : 0}px;background:var(--danger);border-radius:3px 3px 0 0;"></div></div><div style="font-size:10.5px;margin-top:4px;">${x.mes.slice(5)}/${x.mes.slice(2, 4)}</div><div style="font-size:10.5px;" class="text-muted">${x.altas}/${x.bajas}</div></div>`;
+      }).join('');
+      document.getElementById('nlFuenteMes').innerHTML = nlFilas(d.porFuenteMes);
+      document.getElementById('nlFuenteActivos').innerHTML = nlFilas(d.porFuenteActivos);
+      const notas = ['Azul = altas, rojo = bajas (debajo de cada mes: altas/bajas).'];
+      if (d.bajasSinFecha) notas.push(`${d.bajasSinFecha} baja(s) anteriores al 29/10 no tienen fecha y no entran en el reporte mensual (sí en el total).`);
+      if (d.sinFechaAlta) notas.push(`${d.sinFechaAlta} suscriptor(es) sin fecha de alta no entran en el reporte mensual.`);
+      document.getElementById('nlNota').textContent = notas.join(' ');
+    } catch (e) {
+      err.textContent = 'No se pudieron cargar los números del newsletter: ' + (e.message || 'intentá de nuevo.');
+      err.style.display = 'block';
+    }
+  }
 
   // ── Panel de ventas (VAMA Academy / Training, 11/10) ──────────────────
   // Pedido de Vaneh: mismo mecanismo visual que ya vendía como feature del

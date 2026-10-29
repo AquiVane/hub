@@ -810,6 +810,12 @@ export async function getLeads() {
   return api('GET', '/admin/leads');
 }
 
+// ── Newsletter de COSMART: suscriptores y reporte mensual (29/10) ──
+export async function getNewsletterMetricas(mes) {
+  if (DEMO_MODE) return { ok: true, mes, activos: 0, total: 0, bajasTotal: 0, altasMes: 0, bajasMes: 0, netoMes: 0, serie: [], porFuenteMes: {}, porFuenteActivos: {} };
+  return api('GET', `/admin/newsletter?mes=${encodeURIComponent(mes)}`);
+}
+
 // ── Panel de ventas (VAMA Academy / Training, 11/10) ──────────────
 export async function getVentasPanel(mes) {
   if (DEMO_MODE) return { ok: true, mes, ventas: [] };
