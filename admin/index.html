@@ -386,10 +386,7 @@
           <span class="text-muted text-sm">Ventas reales de VAMA Academy y Training, en un solo lugar</span>
         </div>
         <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:16px;">
-          <div class="seg" id="vpVerticalSeg">
-            <button class="seg-btn active" data-v="VAMA Academy" onclick="cambiarVerticalVentasPanel('VAMA Academy')">VAMA Academy</button>
-            <button class="seg-btn" data-v="Training" onclick="cambiarVerticalVentasPanel('Training')">Training</button>
-          </div>
+          <div class="seg" id="vpVerticalSeg" style="flex-wrap:wrap;"></div>
           <div class="flex items-center gap-8" style="margin-left:auto;">
             <button class="btn btn-secondary btn-sm" onclick="cambiarMesVentasPanel(-1)">←</button>
             <span id="vpMesLabel" style="font-size:13px;font-weight:700;min-width:120px;text-align:center;"></span>
@@ -439,6 +436,13 @@
               </div>
             </div>
             <div class="vp-usd-neta" id="vpUsdNeta"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="card-body">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;" id="vpDesgloseTitulo">Ventas por producto</div>
+            <div id="vpDesglose" style="overflow-x:auto;"></div>
           </div>
         </div>
 
@@ -8200,7 +8204,46 @@
   // cosmart-training-core vía el proxy del Hub (handleVentasPanelDatos).
   // Lo único manual es meta/gasto en anuncios/retención de MercadoPago,
   // que vive en el KV del propio Hub (handleVentasPanelConfig).
-  let _vpVertical = 'VAMA Academy';
+  const VP_TODO = 'Todo COSMART';
+  // Todas las verticales de COSMART (mismo listado que VERTICALES_VENTAS de cosmart-training-core). Cada venta trae su vertical Y su producto.
+  const VP_VERTICALES = [VP_TODO, 'Training', 'Brújula', 'Design', 'Euforia', 'Marketing Hub', 'COSMART Apps', 'VAMA Academy', 'VAMA Apps', 'BienSmart', 'MPG', 'ComuniCOS', 'Rumbo Voraz', 'Talent', 'Shows'];
+  let _vpVertical = VP_TODO;
+  const vpDeVertical = v => _vpVertical === VP_TODO || v.vertical === _vpVertical;
+  function renderVpTabs() {
+    document.getElementById('vpVerticalSeg').innerHTML = VP_VERTICALES.map(v => `<button class="seg-btn ${v === _vpVertical ? 'active' : ''}" data-v="${v}" onclick="cambiarVerticalVentasPanel('${v}')">${v}</button>`).join('');
+  }
+  function vpTablaDesglose(filas, cols) {
+    if (!filas.length) return '<div class="text-muted text-sm">Sin ventas este mes.</div>';
+    const th = cols.map(c => `<th style="text-align:${c.der ? 'right' : 'left'};padding:6px 8px;font-size:12px;color:var(--text-muted);white-space:nowrap;">${c.t}</th>`).join('');
+    const tr = filas.map(f => `<tr>${cols.map(c => `<td style="text-align:${c.der ? 'right' : 'left'};padding:6px 8px;font-size:13px;border-top:1px solid var(--border);${c.der ? 'white-space:nowrap;' : ''}">${c.v(f)}</td>`).join('')}</tr>`).join('');
+    return `<table style="width:100%;border-collapse:collapse;min-width:420px;"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+  }
+  function renderDesgloseVentas(ventas) {
+    const agrupar = (clave, extra) => {
+      const m = new Map();
+      ventas.forEach(v => {
+        const k = clave(v); const f = m.get(k) || { k, ...extra(v), n: 0, ars: 0, usd: 0 };
+        f.n++; if (v.moneda === 'USD') f.usd += Number(v.monto || 0); else f.ars += Number(v.monto || 0);
+        m.set(k, f);
+      });
+      return [...m.values()].sort((a, b) => b.n - a.n || b.ars - a.ars);
+    };
+    const num = f => f.ars ? vpFormatoMonto(f.ars, 'ARS') : '—';
+    const usd = f => f.usd ? vpFormatoMonto(f.usd, 'USD') : '—';
+    let html = '';
+    if (_vpVertical === VP_TODO) {
+      const porVert = agrupar(v => v.vertical, v => ({ nombre: v.vertical }));
+      html += '<div style="font-size:12px;font-weight:700;margin:2px 0 6px;">Por vertical</div>' + vpTablaDesglose(porVert, [{ t: 'Vertical', v: f => f.nombre }, { t: 'Ventas', v: f => f.n, der: true }, { t: 'Pesos', v: num, der: true }, { t: 'Dólares', v: usd, der: true }]);
+      html += '<div style="font-size:12px;font-weight:700;margin:14px 0 6px;">Por producto</div>';
+    }
+    const porProd = agrupar(v => v.slug || v.titulo, v => ({ nombre: v.titulo || v.slug, vertical: v.vertical }));
+    const cols = [{ t: 'Producto', v: f => f.nombre }];
+    if (_vpVertical === VP_TODO) cols.push({ t: 'Vertical', v: f => f.vertical });
+    cols.push({ t: 'Ventas', v: f => f.n, der: true }, { t: 'Pesos', v: num, der: true }, { t: 'Dólares', v: usd, der: true });
+    html += vpTablaDesglose(porProd, cols);
+    document.getElementById('vpDesglose').innerHTML = html;
+    document.getElementById('vpDesgloseTitulo').textContent = (_vpVertical === VP_TODO ? 'Todo COSMART' : _vpVertical) + ' — ' + vpMesLabel(_vpMes);
+  }
   let _vpMes = new Date().toISOString().slice(0, 7);
   let _vpCargando = false;
 
@@ -8215,7 +8258,7 @@
 
   window.cambiarVerticalVentasPanel = function(v) {
     _vpVertical = v;
-    document.querySelectorAll('#vpVerticalSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+    renderVpTabs();
     cargarVentasPanel();
   };
 
@@ -8230,7 +8273,7 @@
 
   async function loadVentasPanel() {
     _vpMes = new Date().toISOString().slice(0, 7);
-    document.querySelectorAll('#vpVerticalSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === _vpVertical));
+    renderVpTabs();
     await cargarVentasPanel();
   }
 
@@ -8254,7 +8297,8 @@
         getVentasPanel(_vpMes),
         getVentasPanelConfig(_vpVertical, _vpMes),
       ]);
-      const ventas = (datosMes.ventas || []).filter(v => v.vertical === _vpVertical);
+      const ventas = (datosMes.ventas || []).filter(vpDeVertical);
+      renderDesgloseVentas(ventas);
       const meta = cfg.meta || 30;
       document.getElementById('vpMetaInput').value = meta;
       document.getElementById('vpGastoInput').value = cfg.gastoAnuncios || 0;
@@ -8302,7 +8346,7 @@
       const resultados = await Promise.all(meses.map(m => getVentasPanel(m).catch(() => ({ ventas: [] }))));
       let cantidad = 0, brutoARS = 0, brutoUSD = 0;
       resultados.forEach(r => {
-        (r.ventas || []).filter(v => v.vertical === _vpVertical).forEach(v => {
+        (r.ventas || []).filter(vpDeVertical).forEach(v => {
           cantidad++;
           if (v.moneda === 'USD') brutoUSD += Number(v.monto || 0); else brutoARS += Number(v.monto || 0);
         });
