@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 29/10 (2) — Sección "Métricas web" (Linktree + tienda de Training) y "Mapas de calor" — rama `claude/metricas-hub`, SIN mergear
+- **Dónde:** menú lateral, justo debajo de "Métricas" (solo admin de COSMART). **Métricas web** (`admin/metricas-web.js`, `#sec-metricas-web`) tiene dos pestañas: *Linktree · cosmart.com.ar/links* (personas distintas, recorrido paso a paso, cuánto bajan, botón por botón con clics/personas/clics por persona/llegaron/se quedaron +N s) y *Tienda de Training* (la analítica que antes vivía en la pestaña "Métricas" del admin de Training: sesiones, conversión, funnel, visitas por día, top productos y páginas). Filtros: período, **"Contar desde"** (para ignorar lo previo al lanzamiento real) y segundos de permanencia.
+- **Mapas de calor** (`admin/mapas-calor.js` + inventario, de la rama vieja `claude/mapas-calor`, reaplicado sobre `main`; imports de `data.js` con `?v=6` para compartir instancia).
+- `data.js`: `getMapasCalor`, `getMetricasTienda`. Backend y orden de publicación: `cosmart-workers/HANDOFF.md` (29/10 (2)).
+
 ## 29/10 — CRM: etiquetas nuevas de la guía y del crédito (backend, sin cambios en este repo)
 - El core (`cosmart-training-core`) manda a `POST /leads/captura` las etiquetas **`Compró guía IA`** (al comprar «Hacé que la IA escriba como tu marca») y **`Usó crédito guía IA`** (al comprar IA para Emprendedores con el descuento de la guía), vertical Training. Quien se suscribe al newsletter (casilla del checkout o landing `/newsletter`) entra como `Suscriptor`. No hizo falta tocar el Hub: las etiquetas son libres y se acumulan por lead. Detalle en `cosmart-workers/HANDOFF.md` (29/10).
 
