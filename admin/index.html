@@ -921,6 +921,10 @@
             <p id="claude-config-status" style="font-size:12px;margin-top:10px;"></p>
           </div>
         </div>
+        <div class="card hidden" id="claudeConectorCard" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>🔌 Integración Claude</h2></div>
+          <div class="card-body" id="claudeConectorBody"></div>
+        </div>
         <div class="card" id="integChatgptCard" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>🔌 Integración ChatGPT</h2></div>
           <div class="card-body">
@@ -2227,7 +2231,8 @@
 
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=6';
+  import { montarConectorClaude } from '../js/claude-conector.js?v=1';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=7';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2554,7 +2559,7 @@
     if (sec === 'crm') loadLeadsAdmin();
     if (sec === 'ventas-panel') loadVentasPanel();
     if (sec === 'newsletter') cargarNewsletter();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarConectorClaude(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
     actualizarBotonTopbar(sec);
   };
@@ -7748,6 +7753,17 @@
       alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
     }
   };
+
+  // ── Integración Claude (por usuario, 29/10) ──────────────────────
+  // Solo la dueña (admin de COSMART) gestiona permisos; si el backend todavía
+  // no está desplegado la card queda oculta en vez de mostrarse rota.
+  async function cargarConectorClaude() {
+    const card = document.getElementById('claudeConectorCard');
+    if (!card) return;
+    if (user.role !== 'admin' || !esCosmart) { card.classList.add('hidden'); return; }
+    const hayConector = await montarConectorClaude(document.getElementById('claudeConectorBody'), { admin: true });
+    card.classList.toggle('hidden', !hayConector);
+  }
 
   // ── Integración ChatGPT (solo lectura) ───────────────────────────
   // La clave completa solo existe en esta respuesta de creación: el backend

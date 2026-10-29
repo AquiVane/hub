@@ -99,3 +99,6 @@ El sistema nació como herramienta interna de COSMART para reemplazar el uso dis
 ---
 
 *Documento de uso interno para trámites de registro de propiedad intelectual. No contiene código fuente ni información sensible de clientes.*
+
+## Conector de inteligencia artificial (Claude) por usuario (29/10/2026)
+El sistema permite que cada persona usuaria (la dueña, colaboradores y clientes), si la dueña se lo habilita, conecte su propia cuenta de Claude al Marketing Hub iniciando sesión con su usuario. El asistente opera en el Hub únicamente con los permisos de esa persona, usa la cuota de su propia cuenta de Claude y puede ser desconectado en cualquier momento por la persona o por la dueña. No se comparten credenciales ni se entregan claves fijas.

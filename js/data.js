@@ -761,6 +761,12 @@ export async function probarPush() {
   return api('POST', '/push/test', {});
 }
 
+// ── Conector de Claude (OAuth por usuario, ver js/claude-conector.js y worker) ──
+export async function getClaudeEstado() { return api('GET', '/claude/estado'); }
+export async function revocarConexionClaude(id) { return api('DELETE', `/claude/conexiones/${encodeURIComponent(id)}`); }
+export async function getClaudeAcceso() { return api('GET', '/admin/claude-acceso'); }
+export async function setClaudeAcceso(email, habilitado) { return api('PUT', '/admin/claude-acceso', { email, habilitado }); }
+
 // ── Integración ChatGPT (solo lectura, clave propia -- ver worker) ──
 export async function getIntegracionesChatGPT() {
   if (DEMO_MODE) return { integraciones: [] };

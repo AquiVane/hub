@@ -1,4 +1,5 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
+import { montarConectorClaude } from './claude-conector.js?v=1';
 import './kanban-movil.js?v=1'; // Kanban en celular: barra de estados, botones y arrastre con el dedo
 import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js?v=2';
 import {
@@ -13,7 +14,7 @@ import {
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=6';
+} from './data.js?v=7';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -1050,6 +1051,10 @@ function renderSection(sec) {
   }
   else if (sec === 'instrucciones') {
     renderInstrucciones(content);
+    // Conector de Claude: cada persona conecta su propio Claude; si el backend no responde, la card queda oculta.
+    montarConectorClaude(document.getElementById('claude-conector-body')).then(hay => {
+      document.getElementById('claude-conector-card')?.classList.toggle('hidden', !hay);
+    });
     setTimeout(refreshIcons, 50);
   }
 }
@@ -6603,6 +6608,10 @@ document.getElementById('wt-img-input')?.addEventListener('change', (e) => {
 function renderInstrucciones(container) {
   container.innerHTML = `
     <div style="max-width:780px;">
+      <div class="card hidden" id="claude-conector-card" style="margin-bottom:16px;">
+        <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🔌 Conectar Claude</h2></div>
+        <div class="card-body" id="claude-conector-body"></div>
+      </div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header"><h2 style="font-family:'Playfair Display',serif;">🧭 Bienvenido al Marketing Hub de COSMART</h2></div>
         <div class="card-body" style="line-height:1.8;font-size:14px;color:var(--text-muted);">
