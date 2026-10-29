@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 29/10 — CRM: etiquetas nuevas de la guía y del crédito (backend, sin cambios en este repo)
+- El core (`cosmart-training-core`) manda a `POST /leads/captura` las etiquetas **`Compró guía IA`** (al comprar «Hacé que la IA escriba como tu marca») y **`Usó crédito guía IA`** (al comprar IA para Emprendedores con el descuento de la guía), vertical Training. Quien se suscribe al newsletter (casilla del checkout o landing `/newsletter`) entra como `Suscriptor`. No hizo falta tocar el Hub: las etiquetas son libres y se acumulan por lead. Detalle en `cosmart-workers/HANDOFF.md` (29/10).
+
 ## 28/10 — Candidato local: permisos ChatGPT y CAS de contenidos, NO desplegado
 - Configuración → Integración ChatGPT: Solo lectura por defecto; nueva clave opt-in contenidos:editar, confirmación y etiqueta de alcance. Ninguna clave anterior se eleva. Preview local `.review/permisos-chatgpt.html`, pendiente aprobación visual de Vaneh antes de publicar.
 - Contenidos (no _personal) se encolan con la base original incluso online, fusionan por ítem con lectura fresca y envían If-Match. 409/503 conservan cambios pendientes. Reutiliza modal de conflictos; no fuerza la última versión. Requiere backend candidato PR #6 coordinador y no debe activarse MCP escritura hasta desplegar ambos.
