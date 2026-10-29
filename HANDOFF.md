@@ -1,11 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
-## 29/10 — Claude en el Hub (conector por usuario) — rama, NO en main
+## 29/10 — Claude en el Hub (conector por usuario) — en main (095736d) con el backend desplegado
 Pedido explícito de Vaneh: Claude puede hacer todo en el Hub, cada persona con su usuario y su cuota de Claude, con permiso por persona (detalle y seguridad en `HANDOFF.md` de `cosmart-workers`, entrada 29/10 "Conector MCP de Claude").
 - `js/claude-conector.js` (nuevo): monta la UI en un contenedor. En Configuración → card "🔌 Integración Claude" (`claudeConectorCard`, solo admin de COSMART): dirección del conector con Copiar, comando de Claude Code, conexiones con Desconectar y lista de personas con checkbox de permiso (la dueña siempre habilitada). En el panel de clientes/colaboradores: card "Conectar Claude" arriba de Instrucciones (`claude-conector-card`), visible solo si el backend responde; sin permiso muestra el aviso.
 - `js/data.js`: `getClaudeEstado`, `revocarConexionClaude`, `getClaudeAcceso`, `setClaudeAcceso`; `data.js?v=7` (antes v=6) en `app.js`, `admin/index.html` y el módulo nuevo.
 - Probado en Chromium a 1200 y 375 px: sin scroll horizontal, copiar, permisos, desconectar y card oculta si el backend da 404. `node --check` OK (data, app, módulo, script inline del admin).
-- **Orden de salida:** primero deploy de `marketing-hub` (con aviso a Vaneh), después mergear esto a `main` (Pages publica solo).
+- **Estado:** backend desplegado y Hub publicado. Falta la primera conexión real desde claude.ai con Vaneh y habilitar personas desde Configuración.
 
 ## 29/10 — CRM: etiquetas nuevas de la guía y del crédito (backend, sin cambios en este repo)
 - El core (`cosmart-training-core`) manda a `POST /leads/captura` las etiquetas **`Compró guía IA`** (al comprar «Hacé que la IA escriba como tu marca») y **`Usó crédito guía IA`** (al comprar IA para Emprendedores con el descuento de la guía), vertical Training. Quien se suscribe al newsletter (casilla del checkout o landing `/newsletter`) entra como `Suscriptor`. No hizo falta tocar el Hub: las etiquetas son libres y se acumulan por lead. Detalle en `cosmart-workers/HANDOFF.md` (29/10).
