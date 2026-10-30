@@ -13,8 +13,9 @@ import {
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
+  borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=8';
+} from './data.js?v=9';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -225,7 +226,7 @@ async function init() {
         document.getElementById('fab-btn').style.display = 'none';
         document.getElementById('mobile-bottom-nav').style.display = 'none';
       }
-      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard']];
+      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard'], ['links', 'Links y Archivos']];
       const tabBar = document.createElement('div');
       tabBar.id = 'embed-tabs';
       tabBar.className = 'tabs';
@@ -1003,12 +1004,13 @@ function renderSection(sec) {
           <div id="archivos-col-body"></div>
         </div>
       </div>
-      <button class="btn btn-primary contactos-fab" onclick="openEquipoModal()">
+      ${esPropioAgencia ? '' : `<button class="btn btn-primary contactos-fab" onclick="openEquipoModal()">
         <i data-lucide="contact" style="width:16px;height:16px;"></i> Contactos
-      </button>
+      </button>`}
     `;
     renderLinks(document.getElementById('links-col-body'));
     renderArchivos(document.getElementById('archivos-col-body'));
+    cargarAlmacenamiento();
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'web') {
@@ -6069,8 +6071,44 @@ function carpetasDisponibles() {
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 
+// Medidor de espacio de la agencia (cuota gratis + packs). COSMART no tiene tope y no muestra nada.
+let _almacenamiento = null;
+function fmtGB(b) { const g = b / (1024 * 1024 * 1024); return (g >= 10 ? g.toFixed(0) : g.toFixed(2).replace(/\.?0+$/, '')) + ' GB'; }
+function almacenamientoHtml() {
+  const a = _almacenamiento;
+  if (!a || a.ilimitado) return '';
+  const pct = Math.min(100, Math.round(a.usadoBytes * 100 / a.limiteBytes));
+  const color = pct >= 90 ? '#dc2626' : pct >= 70 ? '#f59e0b' : 'var(--primary)';
+  const esAdmin = user.role === 'admin';
+  return `
+    <div id="af-almacenamiento" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:var(--surface,transparent);">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:6px;">
+        <span><strong>Espacio:</strong> ${fmtGB(a.usadoBytes)} de ${fmtGB(a.limiteBytes)}</span>
+        <span style="color:var(--text-muted);">${pct}%</span>
+      </div>
+      <div style="height:6px;border-radius:99px;background:var(--border);overflow:hidden;"><div style="height:100%;width:${pct}%;background:${color};"></div></div>
+      ${esAdmin ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="ampliarEspacio()">+ Ampliar espacio (${a.packGB} GB por USD ${a.packUsd}/mes)</button>` : ''}
+    </div>`;
+}
+async function cargarAlmacenamiento() {
+  try { _almacenamiento = await getAlmacenamiento(); } catch (e) { _almacenamiento = null; }
+  const el = document.getElementById('af-almacenamiento-wrap');
+  if (el) el.innerHTML = almacenamientoHtml();
+}
+window.ampliarEspacio = async function() {
+  const a = _almacenamiento;
+  if (!a) return;
+  if (!a.suscripcionActiva) { alert('Para ampliar el espacio necesitás una suscripción activa.'); return; }
+  if (!confirm(`Se suma 1 pack de ${a.packGB} GB y tu suscripción pasa a cobrar USD ${a.packUsd} más por mes. ¿Confirmás?`)) return;
+  try {
+    _almacenamiento = await setPacksAlmacenamiento((a.packs || 0) + 1);
+    document.getElementById('af-almacenamiento-wrap').innerHTML = almacenamientoHtml();
+  } catch (e) { alert('No se pudo ampliar el espacio: ' + e.message); }
+};
+
 function archivosToolbarHtml() {
   return `
+    <div id="af-almacenamiento-wrap">${almacenamientoHtml()}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <input type="text" value="${_archivoBusqueda}" oninput="buscarArchivos(this.value)" placeholder="🔎 Buscar archivo..." class="form-control" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;">
       ${!_archivoBusqueda ? `
@@ -6230,6 +6268,7 @@ window.eliminarArchivoDirecto = async function(id) {
   if (!a || !confirm(`¿Eliminar "${a.titulo}"?`)) return;
   STATE.home.archivos = (STATE.home.archivos || []).filter(x => String(x.id) !== String(id));
   try { await saveHomeData(clientId, STATE.home); } catch (e) { alert('No se pudo eliminar: ' + e.message); return; }
+  if (a.subido && a.key) borrarArchivoR2(clientId, a.key).then(cargarAlmacenamiento);
   renderArchivos(document.getElementById('archivos-col-body'));
 };
 
@@ -6417,8 +6456,10 @@ document.getElementById('saveArchivoBtn').addEventListener('click', async () => 
 });
 document.getElementById('deleteArchivoBtn').addEventListener('click', async () => {
   if (!_editingArchivo || !confirm('¿Eliminar este archivo?')) return;
+  const _borrado = _editingArchivo;
   STATE.home.archivos = (STATE.home.archivos||[]).filter(a => a.id !== _editingArchivo.id);
   await saveHomeData(clientId, STATE.home);
+  if (_borrado.subido && _borrado.key) borrarArchivoR2(clientId, _borrado.key).then(cargarAlmacenamiento);
   closeArchivoModal();
   renderArchivos(document.getElementById('archivos-col-body'));
   setTimeout(refreshIcons, 50);

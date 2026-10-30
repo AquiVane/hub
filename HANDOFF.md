@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 30/10 — "Links y Archivos" en el panel de administradores + cuota de almacenamiento (pedido de Vaneh) — SIN PUSHEAR, esperando OK de textos
+- **Admin:** botón nuevo "Links y Archivos" en el menú (`#navLinksArchivosBtn`). Reusa el módulo de Contenidos propios (cliente interno `_cosmart`): abre esa sección y activa la solapa nueva "Links y Archivos" (`EMBED_TABS` en `js/app.js`). En `_cosmart` se oculta el botón flotante "Contactos".
+- **Cuota:** en la columna Archivos aparece el medidor "Espacio: X de Y" (solo agencias que no son COSMART; se oculta si el backend no responde) y, solo para el admin, "+ Ampliar espacio (5 GB por USD 2/mes)" (confirm → `POST /almacenamiento/packs`). Eliminar un archivo subido ahora también lo borra de R2 (`borrarArchivoR2`) y refresca el medidor. Backend y reglas: HANDOFF de `cosmart-workers` (30/10).
+- Versiones: `data.js?v=9` (admin, `app.js`, `claude-conector.js`), `app.js?v=64` (admin + `app/index.html`), `hv=18`.
+- Probado en Chromium a 1200 y 390 px con servidor simulado: sin scroll horizontal, medidor y ampliar OK.
+
 ## 29/10 (2) — Asistente Claude con herramientas (cuota de la dueña) en el widget
 Detalle y seguridad en el HANDOFF de `cosmart-workers` (29/10 (2)). En el Hub: el widget "Asistente Claude" de `admin/index.html` pasa a modo agente si `GET /ai/agente/estado` responde 200 (admin, o colaborador con la cuota prestada): lee/modifica el Hub con los permisos de la persona y muestra una tarjeta "Claude quiere hacer esto" con Confirmar/Cancelar antes de cada escritura; botón "Nueva conversación". La dueña presta la cuota con un checkbox por colaborador en Configuración → Integración Claude. `data.js?v=8`. Probado en Chromium a 390 px (flujo completo con confirmación, sin scroll horizontal).
 

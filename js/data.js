@@ -464,6 +464,28 @@ export async function uploadArchivo(clientId, file) {
   return data;
 }
 
+// Borra el archivo de R2 y libera su espacio en la cuota de la agencia.
+// Falla en silencio: si no se pudo, el archivo queda huérfano pero la lista ya no lo muestra.
+export async function borrarArchivoR2(clientId, key) {
+  if (DEMO_MODE || !key) return;
+  try {
+    await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+    });
+  } catch (e) {}
+}
+
+// Uso de almacenamiento de la agencia (cuota gratis + packs pagos).
+export async function getAlmacenamiento() {
+  if (DEMO_MODE) return null;
+  return api('GET', '/almacenamiento');
+}
+
+export async function setPacksAlmacenamiento(packs) {
+  return api('POST', '/almacenamiento/packs', { packs });
+}
+
 export async function abrirArchivo(clientId, key, filename) {
   // La pestaña se abre ACÁ, antes del await -- todavía dentro del mismo
   // gesto de click del usuario. Si se abre recién después de esperar el
