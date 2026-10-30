@@ -14,8 +14,9 @@ import {
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
+  getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=9';
+} from './data.js?v=10';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -984,12 +985,12 @@ function renderSection(sec) {
   }
   else if (sec === 'links') {
     const linkBtn = document.createElement('button');
-    linkBtn.className = 'btn btn-secondary';
+    linkBtn.className = 'btn btn-secondary alm-w';
     linkBtn.textContent = '+ Nuevo link';
     linkBtn.onclick = () => openLinkModal(null);
     actions.appendChild(linkBtn);
     const archivoBtn = document.createElement('button');
-    archivoBtn.className = 'btn btn-primary';
+    archivoBtn.className = 'btn btn-primary alm-w';
     archivoBtn.textContent = '+ Nuevo archivo';
     archivoBtn.onclick = () => openArchivoModal(null);
     actions.appendChild(archivoBtn);
@@ -5992,7 +5993,7 @@ function renderLinks(container) {
             </button>
           </div>
         `).join('')}
-        <div class="link-card" onclick="openLinkModal(null)"
+        <div class="link-card alm-w" onclick="openLinkModal(null)"
           style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
           <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
           <span style="font-size:13px;color:var(--text-muted);">Agregar link</span>
@@ -6003,7 +6004,7 @@ function renderLinks(container) {
         <i data-lucide="link" style="width:40px;height:40px;color:#cbd5e1;stroke-width:1;margin-bottom:12px;"></i>
         <h3>Sin links${filter!=='Todas'?' en esta categoría':' guardados'}</h3>
         <p>Guardá atajos rápidos a tus recursos: Drive, Canva, planillas, reportes...</p>
-        <button class="btn btn-primary" style="margin-top:12px;" onclick="openLinkModal(null)">+ Agregar primer link</button>
+        <button class="btn btn-primary alm-w" style="margin-top:12px;" onclick="openLinkModal(null)">+ Agregar primer link</button>
       </div>
     `}
   `;
@@ -6077,23 +6078,37 @@ function fmtGB(b) { const g = b / (1024 * 1024 * 1024); return (g >= 10 ? g.toFi
 function almacenamientoHtml() {
   const a = _almacenamiento;
   if (!a || a.ilimitado) return '';
+  const esCliente = user.role === 'client';
   const pct = Math.min(100, Math.round(a.usadoBytes * 100 / a.limiteBytes));
   const color = pct >= 90 ? '#dc2626' : pct >= 70 ? '#f59e0b' : 'var(--primary)';
-  const esAdmin = user.role === 'admin';
+  let aviso = '';
+  if (esCliente && a.restriccion === 'lectura') aviso = `<div class="alm-aviso">Llegaste al límite de tu espacio. Ampliá tu espacio o borrá archivos que ya no uses.${a.diasParaBloqueo != null ? ` Si no lo regularizás, en ${a.diasParaBloqueo} día${a.diasParaBloqueo === 1 ? '' : 's'} se bloquea el acceso a tus archivos y links.` : ''}</div>`;
+  if (esCliente && a.restriccion === 'bloqueado') aviso = `<div class="alm-aviso rojo">El acceso a tus archivos y links está bloqueado porque tu espacio lleva más de 2 meses excedido. Ampliá tu espacio para recuperarlo.</div>`;
+  const boton = esCliente
+    ? (a.packActivo
+        ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="cancelarEspacioExtra()">Cancelar espacio extra</button>`
+        : `<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="ampliarEspacioCliente()">+ Ampliar espacio (${a.packGB} GB por USD ${a.packUsd}/mes)</button>`)
+    : (user.role === 'admin' ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="ampliarEspacio()">+ Ampliar espacio (${a.packGB} GB por USD ${a.packUsd}/mes)</button>` : '');
   return `
+    ${aviso}
     <div id="af-almacenamiento" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:var(--surface,transparent);">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:6px;">
         <span><strong>Espacio:</strong> ${fmtGB(a.usadoBytes)} de ${fmtGB(a.limiteBytes)}</span>
         <span style="color:var(--text-muted);">${pct}%</span>
       </div>
       <div style="height:6px;border-radius:99px;background:var(--border);overflow:hidden;"><div style="height:100%;width:${pct}%;background:${color};"></div></div>
-      ${esAdmin ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="ampliarEspacio()">+ Ampliar espacio (${a.packGB} GB por USD ${a.packUsd}/mes)</button>` : ''}
+      ${boton}
     </div>`;
 }
+function aplicarBloqueoSoloLectura() {
+  const bloquear = user.role === 'client' && _almacenamiento && !_almacenamiento.ilimitado && _almacenamiento.restriccion && _almacenamiento.restriccion !== 'ninguna';
+  document.body.classList.toggle('alm-lock', !!bloquear); // body (no main-content): los botones de arriba a la derecha están fuera de main-content
+}
 async function cargarAlmacenamiento() {
-  try { _almacenamiento = await getAlmacenamiento(); } catch (e) { _almacenamiento = null; }
+  try { _almacenamiento = user.role === 'client' ? await getAlmacenamientoCliente() : await getAlmacenamiento(); } catch (e) { _almacenamiento = null; }
   const el = document.getElementById('af-almacenamiento-wrap');
   if (el) el.innerHTML = almacenamientoHtml();
+  aplicarBloqueoSoloLectura();
 }
 window.ampliarEspacio = async function() {
   const a = _almacenamiento;
@@ -6106,14 +6121,113 @@ window.ampliarEspacio = async function() {
   } catch (e) { alert('No se pudo ampliar el espacio: ' + e.message); }
 };
 
+
+// ── Espacio extra del cliente: modal de pago (MP en pesos / PayPal en USD) ──
+const MP_PUBLIC_KEY = 'APP_USR-057d290b-5af9-4b00-8a08-6753dc47aec4';
+const PAYPAL_SDK = 'https://www.paypal.com/sdk/js?client-id=AYuQX3JJShvSkgNn0C195h3GEHGiKNtx44X3wd_5PEoBI1iinpysmDzNRqdZ7blNuZvFWIwcwhc9qiOP&vault=true&intent=subscription';
+function cargarScriptUnaVez(src, test) {
+  return new Promise((res, rej) => {
+    if (test()) return res();
+    const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(el);
+  });
+}
+function cerrarModalEspacio() { document.getElementById('almc-modal')?.remove(); }
+window.cerrarModalEspacio = cerrarModalEspacio;
+
+window.ampliarEspacioCliente = async function() {
+  const a = _almacenamiento;
+  if (!a) return;
+  cerrarModalEspacio();
+  const ov = document.createElement('div');
+  ov.id = 'almc-modal'; ov.className = 'modal-overlay';
+  ov.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header"><h3>Ampliar tu espacio</h3><button class="modal-close" onclick="cerrarModalEspacio()">×</button></div>
+      <div class="modal-body">
+        <p style="font-size:14px;margin:0 0 14px;">${a.packGB} GB extra por USD ${a.packUsd} al mes. Podés cancelar cuando quieras.</p>
+        <div class="form-group"><label>Número de tarjeta</label><input class="form-control" id="almc-numero" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:110px;"><label>Vencimiento</label><input class="form-control" id="almc-venc" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA"></div>
+          <div class="form-group" style="flex:1;min-width:110px;"><label>Código</label><input class="form-control" id="almc-cvv" inputmode="numeric" autocomplete="cc-csc" placeholder="CVV"></div>
+        </div>
+        <div class="form-group"><label>Nombre en la tarjeta</label><input class="form-control" id="almc-nombre" autocomplete="cc-name"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="form-group" style="width:90px;"><label>Doc.</label><select class="form-control" id="almc-doctype"><option>DNI</option><option>CUIT</option><option>CUIL</option></select></div>
+          <div class="form-group" style="flex:1;min-width:140px;"><label>Número</label><input class="form-control" id="almc-docnum" inputmode="numeric"></div>
+        </div>
+        <button class="btn btn-primary" id="almc-mp-btn" style="width:100%;" onclick="pagarEspacioConMP()">Pagar con tarjeta (pesos)${a.packArs ? ` · aprox. $${a.packArs.toLocaleString('es-AR')}/mes` : ''}</button>
+        <div style="text-align:center;font-size:12px;color:var(--text-muted);margin:12px 0;">o</div>
+        <div id="almc-paypal"></div>
+        <div id="almc-msg" style="font-size:13px;margin-top:10px;min-height:18px;"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const msg = t => { const m = document.getElementById('almc-msg'); if (m) { m.style.color = '#dc2626'; m.textContent = t; } };
+  try {
+    await cargarScriptUnaVez(PAYPAL_SDK, () => typeof paypal !== 'undefined');
+    document.getElementById('almc-paypal').innerHTML = '';
+    paypal.Buttons({
+      style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'subscribe', height: 45 },
+      createSubscription: async (_d, actions) => { const r = await planPaypalEspacio(); return actions.subscription.create({ plan_id: r.planId }); },
+      onApprove: async (data) => {
+        try { _almacenamiento = await confirmarPaypalEspacio(data.subscriptionID); await espacioConfirmado(); }
+        catch (e) { msg(e.message || 'No se pudo confirmar el pago.'); }
+      },
+      onError: () => msg('Error al procesar con PayPal. Intentá de nuevo.'),
+    }).render('#almc-paypal');
+  } catch (e) { msg('No se pudo cargar PayPal. Revisá tu conexión.'); }
+  cargarScriptUnaVez('https://sdk.mercadopago.com/js/v2', () => typeof MercadoPago !== 'undefined').catch(() => {});
+};
+
+async function espacioConfirmado() {
+  const m = document.getElementById('almc-msg');
+  if (m) { m.style.color = '#16a34a'; m.textContent = '¡Listo! Ya tenés 5 GB más para tus archivos.'; }
+  await cargarAlmacenamiento();
+  if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+  setTimeout(cerrarModalEspacio, 2200);
+}
+
+window.pagarEspacioConMP = async function() {
+  const m = document.getElementById('almc-msg'), btn = document.getElementById('almc-mp-btn');
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const [mm, yy] = v('almc-venc').split('/').map(x => x.trim());
+  const error = t => { m.style.color = '#dc2626'; m.textContent = t; };
+  if (!v('almc-numero') || !mm || !yy || !v('almc-cvv') || !v('almc-docnum')) return error('Completá todos los campos de la tarjeta.');
+  if (typeof MercadoPago === 'undefined') return error('No se pudo cargar Mercado Pago. Revisá tu conexión.');
+  btn.disabled = true; m.style.color = 'var(--text-muted)'; m.textContent = 'Procesando…';
+  try {
+    const mp = new MercadoPago(MP_PUBLIC_KEY, { locale: 'es-AR' });
+    const tok = await mp.createCardToken({
+      cardNumber: v('almc-numero').replace(/\s/g, ''), cardholderName: v('almc-nombre'),
+      cardExpirationMonth: mm, cardExpirationYear: yy.length === 2 ? `20${yy}` : yy, securityCode: v('almc-cvv'),
+      identificationType: v('almc-doctype'), identificationNumber: v('almc-docnum'),
+    });
+    _almacenamiento = await pagarEspacioMP(tok.id, v('almc-doctype'), v('almc-docnum'));
+    await espacioConfirmado();
+  } catch (e) {
+    error(e.message || 'No se pudo procesar el pago. Revisá los datos.');
+    btn.disabled = false;
+  }
+};
+
+window.cancelarEspacioExtra = async function() {
+  if (!confirm('Si cancelás, volvés a tu espacio gratis de 500 MB. Si tenés más archivos que eso, no vas a poder editarlos ni subir nuevos hasta que liberes espacio o vuelvas a ampliar. Pasados 2 meses sin pagar, se bloquea el acceso a tus archivos y links.')) return;
+  try {
+    _almacenamiento = await cancelarEspacioCliente();
+    await cargarAlmacenamiento();
+    if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+  } catch (e) { alert('No se pudo cancelar: ' + e.message); }
+};
+
 function archivosToolbarHtml() {
   return `
     <div id="af-almacenamiento-wrap">${almacenamientoHtml()}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <input type="text" value="${_archivoBusqueda}" oninput="buscarArchivos(this.value)" placeholder="🔎 Buscar archivo..." class="form-control" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;">
       ${!_archivoBusqueda ? `
-        <button class="btn btn-secondary btn-sm" onclick="crearCarpetaArchivo()" title="Nueva carpeta">📁+</button>
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('af-folder-input').click()" title="Subir una carpeta entera de la compu, con todos los archivos que tenga adentro">📁⬆ Subir carpeta</button>
+        <button class="btn btn-secondary btn-sm alm-w" onclick="crearCarpetaArchivo()" title="Nueva carpeta">📁+</button>
+        <button class="btn btn-secondary btn-sm alm-w" onclick="document.getElementById('af-folder-input').click()" title="Subir una carpeta entera de la compu, con todos los archivos que tenga adentro">📁⬆ Subir carpeta</button>
       ` : ''}
     </div>
     ${!_archivoBusqueda && _archivoCarpetaActual ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📁 ${_archivoCarpetaActual}</div>` : ''}
@@ -6140,8 +6254,8 @@ function archivoCardHtml(a) {
         <button class="client-row-menu-btn" onclick="toggleArchivoMenu('${a.id}', event)" title="Más opciones">⋮</button>
         <div class="client-row-menu hidden" id="armenu-${a.id}">
           <button onclick="toggleArchivoMenu('${a.id}');${abrir}">Abrir</button>
-          <button onclick="toggleArchivoMenu('${a.id}');openArchivoModal('${a.id}')">✏️ Editar</button>
-          <button onclick="moverArchivoModal('${a.id}')">📁 Mover a carpeta</button>
+          <button class="alm-w" onclick="toggleArchivoMenu('${a.id}');openArchivoModal('${a.id}')">✏️ Editar</button>
+          <button class="alm-w" onclick="moverArchivoModal('${a.id}')">📁 Mover a carpeta</button>
           <button class="danger" onclick="eliminarArchivoDirecto('${a.id}')">🗑 Eliminar</button>
         </div>
       </div>
@@ -6198,7 +6312,7 @@ function renderArchivos(container) {
         </div>`;
       }).join('')}
       ${enCarpetaActual.map(archivoCardHtml).join('')}
-      <div class="link-card" onclick="openArchivoModal(null)"
+      <div class="link-card alm-w" onclick="openArchivoModal(null)"
         style="cursor:pointer;border-style:dashed;background:transparent;justify-content:center;opacity:.6;gap:6px;">
         <i data-lucide="plus" style="width:14px;height:14px;stroke-width:2;color:var(--text-muted);"></i>
         <span style="font-size:13px;color:var(--text-muted);">Agregar archivo</span>

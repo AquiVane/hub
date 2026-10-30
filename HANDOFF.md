@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 30/10 (2) — Espacio extra para clientes: modal de pago y modo solo lectura / bloqueado
+- Panel del cliente (rol `client`) → Links y Archivos: medidor "Espacio: X de Y" (500 MB gratis), botón "+ Ampliar espacio" que abre el modal "Ampliar tu espacio" (tarjeta por Mercado Pago en pesos o PayPal en USD; carga los SDK recién al abrir) y, con el pack activo, "Cancelar espacio extra". Funciones nuevas en `js/data.js` (`getAlmacenamientoCliente`, `pagarEspacioMP`, `planPaypalEspacio`, `confirmarPaypalEspacio`, `cancelarEspacioCliente`). Backend y reglas: HANDOFF de `cosmart-workers` (30/10 (2)).
+- Solo lectura/bloqueado: aviso arriba + clase `alm-lock` en `<body>` que oculta con CSS todo lo marcado `.alm-w` (nuevo link/archivo, subir carpeta, nueva carpeta, editar, mover) y `.link-card-edit`; borrar archivos sigue disponible. **Toda acción de escritura nueva en Links y Archivos tiene que llevar la clase `alm-w`.** El servidor es el que impone la regla; el front solo la muestra.
+- Versiones: `data.js?v=10`, `app.js?v=65`, `hv=19`. Probado en Chromium a 1200 y 390 px (flujo de pago con SDK simulados, solo lectura, bloqueado): sin scroll horizontal ni errores.
+
 ## 30/10 — "Links y Archivos" en el panel de administradores + cuota de almacenamiento (pedido de Vaneh) — SIN PUSHEAR, esperando OK de textos
 - **Admin:** botón nuevo "Links y Archivos" en el menú (`#navLinksArchivosBtn`). Reusa el módulo de Contenidos propios (cliente interno `_cosmart`): abre esa sección y activa la solapa nueva "Links y Archivos" (`EMBED_TABS` en `js/app.js`). En `_cosmart` se oculta el botón flotante "Contactos".
 - **Cuota:** en la columna Archivos aparece el medidor "Espacio: X de Y" (solo agencias que no son COSMART; se oculta si el backend no responde) y, solo para el admin, "+ Ampliar espacio (5 GB por USD 2/mes)" (confirm → `POST /almacenamiento/packs`). Eliminar un archivo subido ahora también lo borra de R2 (`borrarArchivoR2`) y refresca el medidor. Backend y reglas: HANDOFF de `cosmart-workers` (30/10).

@@ -482,6 +482,13 @@ export async function getAlmacenamiento() {
   return api('GET', '/almacenamiento');
 }
 
+// Espacio extra del CLIENTE (paga directo: MP en pesos o PayPal en USD).
+export async function getAlmacenamientoCliente() { return DEMO_MODE ? null : api('GET', '/almacenamiento/cliente'); }
+export async function pagarEspacioMP(cardToken, docType, docNumber) { return api('POST', '/almacenamiento/cliente/mp', { cardToken, docType, docNumber }); }
+export async function planPaypalEspacio() { return api('POST', '/almacenamiento/cliente/paypal/plan', {}); }
+export async function confirmarPaypalEspacio(subscriptionID) { return api('POST', '/almacenamiento/cliente/paypal/confirmar', { subscriptionID }); }
+export async function cancelarEspacioCliente() { return api('POST', '/almacenamiento/cliente/cancelar', {}); }
+
 export async function setPacksAlmacenamiento(packs) {
   return api('POST', '/almacenamiento/packs', { packs });
 }

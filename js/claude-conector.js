@@ -2,7 +2,7 @@
 // los dos paneles: cada persona conecta SU Claude con SU usuario (usa su propia
 // cuota de Claude y ve/hace en el Hub solo lo que su rol permite). Si es la dueña
 // (admin de COSMART), además decide qué personas tienen Claude habilitado.
-import { getClaudeEstado, revocarConexionClaude, getClaudeAcceso, setClaudeAcceso } from './data.js?v=9';
+import { getClaudeEstado, revocarConexionClaude, getClaudeAcceso, setClaudeAcceso } from './data.js?v=10';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ROLES = { admin: 'Administradora', colaborador: 'Colaborador/a', client: 'Cliente' };
