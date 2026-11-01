@@ -584,8 +584,48 @@ function askVersiones(registros) {
   });
 }
 
+// ── Sincronización en vivo entre dispositivos (01/11, pedido de Vaneh: que
+// lo que se cambia en la compu aparezca solo en el teléfono, como Google
+// Docs, sin recargar). Cada pocos segundos, con la pestaña visible y con
+// conexión, se vuelven a pedir las listas vistas hace poco; si el servidor
+// tiene algo distinto a lo último que vio este dispositivo (y no hay cambios
+// propios pendientes), se avisa con el evento `hub-datos-remotos` para que
+// cada pantalla se redibuje con lo nuevo.
+const LIVE_MS = 6000, LIVE_VENTANA = 15 * 60 * 1000, LIVE_MAX = 10;
+let liveBusy = false;
+async function liveTick() {
+  if (liveBusy || document.hidden || navigator.onLine === false || syncing || conflictOpen || !rawFn) return;
+  liveBusy = true;
+  try {
+    const paths = (await kPaths('cache')).filter(p => RE_DATA.test(p) && p !== CONFLICTOS);
+    const recientes = [];
+    for (const p of paths) {
+      const c = await kGet('cache', p);
+      if (c && Date.now() - (c.at || 0) < LIVE_VENTANA) recientes.push({ p, at: c.at });
+    }
+    recientes.sort((a, b) => b.at - a.at);
+    const cambiados = [];
+    for (const { p } of recientes.slice(0, LIVE_MAX)) {
+      if (await kGet('pending', p)) continue;
+      let fresh;
+      try { fresh = await rawGet(p); } catch (e) { if (e && e.isNet) break; continue; }
+      const c = await kGet('cache', p);
+      if (c && !eq(c.server, fresh)) {
+        await kSet('cache', p, { server: fresh, local: fresh, at: Date.now() });
+        cambiados.push(p);
+      } else if (c) {
+        await kSet('cache', p, { ...c, at: Date.now() });
+      }
+    }
+    if (cambiados.length) window.dispatchEvent(new CustomEvent('hub-datos-remotos', { detail: { paths: cambiados } }));
+  } catch (e) { /* el próximo ciclo reintenta */ }
+  liveBusy = false;
+}
+
 // ── Arranque ──────────────────────────────────────────────────
 function boot() {
+  setInterval(liveTick, LIVE_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   window.addEventListener('online', () => { flagOffline = false; render(); syncAll().then(refreshConflictos); });
   window.addEventListener('offline', () => render());
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); syncAll(); } });

@@ -16,7 +16,7 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=10';
+} from './data.js?v=11';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -533,6 +533,40 @@ async function cargarDatosSecundarios() {
   // no usan nada de acá.
   if (['pauta', 'ideas', 'plan', 'reportes', 'dashboard', 'guiones'].includes(currentSection)) renderSection(currentSection);
 }
+
+// Sincronización en vivo (01/11, pedido de Vaneh: "que funcione como Google
+// Docs"): offline.js avisa cuando el servidor tiene algo distinto a lo que ve
+// este dispositivo. Acá se recargan esas listas y se redibuja la pantalla --
+// salvo que haya un modal abierto o alguien escribiendo (ahí se espera al
+// próximo aviso para no pisar lo que se está tipeando).
+function _edicionEnCurso() {
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName))) return true;
+  return !!document.querySelector('.modal-overlay:not(.hidden), #filtros-cont-overlay');
+}
+let _liveReintento = null;
+window.addEventListener('hub-datos-remotos', async e => {
+  const paths = (e.detail?.paths || []).filter(p => p.split('/')[2] === clientId);
+  if (!paths.length || !STATE.client) return;
+  if (_edicionEnCurso()) {
+    clearTimeout(_liveReintento);
+    _liveReintento = setTimeout(() => window.dispatchEvent(new CustomEvent('hub-datos-remotos', { detail: { paths } })), 4000);
+    return;
+  }
+  const tipos = new Set(paths.map(p => p.split('/')[3]));
+  try {
+    if (tipos.has('contenidos')) STATE.contenidos = await getContenidos(clientId);
+    if (tipos.has('tareas')) STATE.tareas = await getTareas(clientId);
+    if (tipos.has('home')) STATE.home = await getHomeData(clientId);
+    if (tipos.has('campanas')) STATE.campanas = await getCampanas(clientId);
+    if (tipos.has('guiones')) STATE.guiones = await getGuiones(clientId);
+    if (tipos.has(IDEAS_TIPO)) STATE.ideas = await getIdeas(clientId, IDEAS_TIPO);
+  } catch (err) { return; }
+  if (_edicionEnCurso()) return;
+  if (currentSection === 'tareas') refreshTareasView();
+  else if (currentSection === 'contenidos' && document.getElementById('cont-tab-body')) renderContTab(activeContTab);
+  else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links'].includes(currentSection)) renderSection(currentSection);
+});
 
 function applyClientLogo(src) {
   const img = document.getElementById('sb-client-logo');
@@ -2116,9 +2150,35 @@ function bancoCardHtml(c) {
         ${c.formato ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${Array.isArray(c.formato)?c.formato[0]:c.formato}</span>` : ''}
         ${c.eje ? `<span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:var(--text-muted);">${c.eje}</span>` : ''}
       </div>
+      ${(c.copy || firstLink(c.linkDriveRef)) ? `
+      <div class="content-card-acciones" onclick="event.stopPropagation()">
+        ${c.copy ? `<button type="button" class="btn btn-secondary btn-sm" onclick="copiarCopyContenido('${c.id}', this)">📋 Copiar copy</button>` : ''}
+        ${firstLink(c.linkDriveRef) ? `<a class="btn btn-secondary btn-sm" href="${firstLink(c.linkDriveRef)}" target="_blank" rel="noopener">🔗 Abrir material de referencia</a>` : ''}
+      </div>` : ''}
     </div>
   `;
 }
+
+// Copia el copy de un contenido sin abrirlo (botón de la lista en mobile).
+window.copiarCopyContenido = async function(id, btn) {
+  const c = STATE.contenidos.find(x => x.id === id);
+  const texto = c?.copy || '';
+  if (!texto) return;
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    ta.remove();
+  }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copy copiado';
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  }
+};
 
 function bancoRowHtml(c) {
   return `
