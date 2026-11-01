@@ -26,7 +26,8 @@ let conflictOpen = false;
 let lastSynced = null;     // { remoteChanged, at } para el cartel de "Sincronizado"
 let syncedTimer = null;
 
-export function configure(raw) { rawFn = raw; }
+export const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+export function configure(raw) { rawFn = raw; startRealtime(); }
 
 // ── IndexedDB mínimo (si falla, todo sigue andando sin modo offline) ──
 let dbp = null;
@@ -595,7 +596,9 @@ const LIVE_MS = 4000, LIVE_VENTANA = 15 * 60 * 1000, LIVE_MAX = 12;
 // No se vigilan pedidos pesados, de archivos, de pagos ni del asistente de IA.
 const LIVE_EXCLUIR = /archivo|almacenamiento|\/ventas|email-stats|\/ai\/|integracion|conector|claude|blob|descarg/i;
 let liveBusy = false;
+let lastLive = 0;
 async function liveTick() {
+  lastLive = Date.now();
   if (liveBusy || document.hidden || navigator.onLine === false || syncing || conflictOpen || !rawFn) return;
   liveBusy = true;
   try {
@@ -624,9 +627,61 @@ async function liveTick() {
   liveBusy = false;
 }
 
+// ── Tiempo real de verdad (WebSocket) ─────────────────────────
+// El backend (worker marketing-hub, realtime.js) avisa en el momento en que
+// otro dispositivo guarda algo. Acá se vuelve a pedir SOLO lo que cambió.
+// El chequeo periódico de arriba queda de respaldo (cada 30 s con el socket
+// abierto, cada 4 s si no hay conexión en vivo).
+let ws = null, wsAbierto = false, wsTry = 0, wsPing = null, wsTimer = null;
+let avisos = new Set(), avisosTimer = null;
+function procesarAvisos() {
+  const paths = [...avisos]; avisos = new Set(); avisosTimer = null;
+  (async () => {
+    const cambiados = [];
+    await Promise.all(paths.filter(p => RE_DATA.test(p)).map(async p => {
+      if (await kGet('pending', p)) return;
+      try {
+        const fresh = await rawGet(p);
+        const c = await kGet('cache', p);
+        if (!c || !eq(c.server, fresh)) { await kSet('cache', p, { server: fresh, local: fresh, at: Date.now() }); cambiados.push(p); }
+      } catch (e) {}
+    }));
+    window.dispatchEvent(new CustomEvent('hub-datos-remotos', { detail: { paths: cambiados } }));
+  })();
+}
+function startRealtime() {
+  if (ws || typeof WebSocket === 'undefined' || !rawFn) return;
+  const token = localStorage.getItem('mh_session_token') || '';
+  if (!token || token === 'demo-token') return;
+  try {
+    ws = new WebSocket(WORKER_URL.replace(/^http/, 'ws') + '/realtime?tab=' + TAB_ID, ['hub', token]);
+  } catch (e) { ws = null; return; }
+  ws.onopen = () => {
+    wsAbierto = true; wsTry = 0;
+    clearInterval(wsPing); wsPing = setInterval(() => { try { ws.send('ping'); } catch (e) {} }, 25000);
+    liveTick(); // se pone al día con lo que pasó mientras no había conexión
+  };
+  ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.type !== 'cambio') return;
+    avisos.add(m.path || '');
+    if (!avisosTimer) avisosTimer = setTimeout(procesarAvisos, 120);
+  };
+  const cerrado = () => {
+    wsAbierto = false; clearInterval(wsPing); ws = null;
+    if (!localStorage.getItem('mh_session_token')) return;
+    clearTimeout(wsTimer);
+    wsTimer = setTimeout(startRealtime, Math.min(30000, 1000 * 2 ** Math.min(wsTry++, 5)));
+  };
+  ws.onclose = cerrado;
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+
 // ── Arranque ──────────────────────────────────────────────────
 function boot() {
-  setInterval(liveTick, LIVE_MS);
+  setInterval(() => { if (!wsAbierto || Date.now() - lastLive > 30000) liveTick(); }, LIVE_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !wsAbierto) { wsTry = 0; startRealtime(); } });
+  window.addEventListener('online', () => { wsTry = 0; startRealtime(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   window.addEventListener('online', () => { flagOffline = false; render(); syncAll().then(refreshConflictos); });
   window.addEventListener('offline', () => render());

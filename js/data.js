@@ -1,6 +1,6 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
-import * as offline from './offline.js?v=5';
+import * as offline from './offline.js?v=6';
 
 // ── Worker API helper ─────────────────────────────────────────
 // Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del
@@ -14,6 +14,7 @@ async function rawApi(method, path, body = null, base = undefined) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${getSessionToken()}`,
+      'X-Hub-Tab': offline.TAB_ID,
     },
   };
   if (method === 'POST' && /^\/data\/(?!_personal\/)[^/]+\/contenidos$/.test(path)) {
