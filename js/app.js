@@ -16,7 +16,7 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=11';
+} from './data.js?v=12';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -2882,6 +2882,7 @@ function renderIdeas(container) {
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
             ${i.formato ? `<div style="font-size:12px;color:var(--text-muted);">Formato: ${i.formato}</div>` : ''}
             ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${i.notas}</div>` : ''}
+            ${firstLink(i.linkDriveRef) ? `<a class="btn btn-secondary btn-sm" href="${firstLink(i.linkDriveRef)}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;">🔗 Abrir material bruto</a>` : ''}
             <div style="display:flex;gap:6px;margin-top:10px;">
               <button class="btn btn-primary btn-sm" onclick="promoverIdea('${i.id}')">→ Contenido</button>
               <button class="btn btn-secondary btn-sm" onclick="openIdeaModal('${i.id}')">Editar</button>
@@ -2902,6 +2903,7 @@ window.openIdeaModal = function(id) {
   document.getElementById('idea-modal-title').textContent = _editingIdea ? 'Editar idea' : 'Nueva idea';
   document.getElementById('if-titulo').value = i.titulo || '';
   document.getElementById('if-notas').value = i.notas || '';
+  document.getElementById('if-link').value = firstLink(i.linkDriveRef) || '';
   document.getElementById('if-formato').value = i.formato || 'Imagen';
   document.querySelectorAll('.idea-plat-check').forEach(cb => {
     cb.checked = (i.plataformas || ['Instagram','Facebook']).includes(cb.value);
@@ -2919,7 +2921,7 @@ window.eliminarIdea = async function(id) {
 window.promoverIdea = async function(id) {
   const idea = STATE.ideas.find(i => i.id === id);
   if (!idea) return;
-  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: idea.formato||'', estado: 'En proceso', notas: idea.notas||'', eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion:'Feed', cuenta: STATE.client.instagram||'' };
+  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: idea.formato||'', estado: 'En proceso', notas: idea.notas||'', linkDriveRef: Array.isArray(idea.linkDriveRef) ? idea.linkDriveRef.slice() : [], eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion:'Feed', cuenta: STATE.client.instagram||'' };
   const saved = await saveContenido(clientId, nuevo);
   STATE.contenidos.push(saved);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
@@ -7582,6 +7584,9 @@ document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
     formato: document.getElementById('if-formato').value,
     plataformas: plats,
   };
+  const linkRef = document.getElementById('if-link').value.trim();
+  const restoLinks = Array.isArray(obj.linkDriveRef) ? obj.linkDriveRef.slice(1) : [];
+  obj.linkDriveRef = linkRef ? [linkRef, ...restoLinks] : [];
   const saved = await saveIdea(clientId, obj, null, IDEAS_TIPO);
   if (_editingIdea) { const i = STATE.ideas.findIndex(x => x.id === saved.id); STATE.ideas[i] = saved; }
   else STATE.ideas.push(saved);

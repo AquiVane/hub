@@ -591,13 +591,15 @@ function askVersiones(registros) {
 // tiene algo distinto a lo último que vio este dispositivo (y no hay cambios
 // propios pendientes), se avisa con el evento `hub-datos-remotos` para que
 // cada pantalla se redibuje con lo nuevo.
-const LIVE_MS = 6000, LIVE_VENTANA = 15 * 60 * 1000, LIVE_MAX = 10;
+const LIVE_MS = 4000, LIVE_VENTANA = 15 * 60 * 1000, LIVE_MAX = 12;
+// No se vigilan pedidos pesados, de archivos, de pagos ni del asistente de IA.
+const LIVE_EXCLUIR = /archivo|almacenamiento|\/ventas|email-stats|\/ai\/|integracion|conector|claude|blob|descarg/i;
 let liveBusy = false;
 async function liveTick() {
   if (liveBusy || document.hidden || navigator.onLine === false || syncing || conflictOpen || !rawFn) return;
   liveBusy = true;
   try {
-    const paths = (await kPaths('cache')).filter(p => RE_DATA.test(p) && p !== CONFLICTOS);
+    const paths = (await kPaths('cache')).filter(p => p !== CONFLICTOS && !LIVE_EXCLUIR.test(p));
     const recientes = [];
     for (const p of paths) {
       const c = await kGet('cache', p);
@@ -605,10 +607,10 @@ async function liveTick() {
     }
     recientes.sort((a, b) => b.at - a.at);
     const cambiados = [];
-    for (const { p } of recientes.slice(0, LIVE_MAX)) {
-      if (await kGet('pending', p)) continue;
+    await Promise.all(recientes.slice(0, LIVE_MAX).map(async ({ p }) => {
+      if (await kGet('pending', p)) return;
       let fresh;
-      try { fresh = await rawGet(p); } catch (e) { if (e && e.isNet) break; continue; }
+      try { fresh = await rawGet(p); } catch (e) { return; }
       const c = await kGet('cache', p);
       if (c && !eq(c.server, fresh)) {
         await kSet('cache', p, { server: fresh, local: fresh, at: Date.now() });
@@ -616,7 +618,7 @@ async function liveTick() {
       } else if (c) {
         await kSet('cache', p, { ...c, at: Date.now() });
       }
-    }
+    }));
     if (cambiados.length) window.dispatchEvent(new CustomEvent('hub-datos-remotos', { detail: { paths: cambiados } }));
   } catch (e) { /* el próximo ciclo reintenta */ }
   liveBusy = false;
