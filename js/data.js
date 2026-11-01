@@ -1,6 +1,6 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
 import { getSessionToken } from './auth.js';
-import * as offline from './offline.js?v=6';
+import * as offline from './offline.js?v=7';
 
 // ── Worker API helper ─────────────────────────────────────────
 // Timeout duro de 20s: sin esto, un solo endpoint que se cuelgue del
@@ -14,9 +14,10 @@ async function rawApi(method, path, body = null, base = undefined) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${getSessionToken()}`,
-      'X-Hub-Tab': offline.TAB_ID,
     },
   };
+  // Solo con el socket de tiempo real abierto (= el servidor nuevo, que ya acepta este header en CORS).
+  if (offline.realtimeListo()) opts.headers['X-Hub-Tab'] = offline.TAB_ID;
   if (method === 'POST' && /^\/data\/(?!_personal\/)[^/]+\/contenidos$/.test(path)) {
     if (!Array.isArray(base)) throw new Error('Volvé a leer los contenidos antes de guardar.');
     const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(base)));

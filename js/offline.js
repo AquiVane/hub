@@ -27,6 +27,7 @@ let lastSynced = null;     // { remoteChanged, at } para el cartel de "Sincroniz
 let syncedTimer = null;
 
 export const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+export function realtimeListo() { return wsAbierto; }
 export function configure(raw) { rawFn = raw; startRealtime(); }
 
 // ── IndexedDB mínimo (si falla, todo sigue andando sin modo offline) ──
