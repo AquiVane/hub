@@ -1102,34 +1102,77 @@ function renderPlan(container) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>${user.role !== 'client' ? 'Usá "+ Cargar plan" arriba para subir el HTML del plan de ejecución.' : 'Todavía no hay un plan de ejecución para este cliente.'}</p></div>`;
     return;
   }
-  container.innerHTML = `<iframe id="plan-frame" style="width:100%;height:calc(100dvh - 160px);min-height:420px;border:none;border-radius:12px;background:#0b0b0f;display:block;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;display:block;" scrolling="no" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('plan-frame');
   frame.srcdoc = html;
-  ajustarAltoMarcoHtml(frame);
+  montarMarcoAutoalto(frame);
 }
 
-// Plan y reportes se muestran en un marco con la altura de la pantalla y el
-// documento se desplaza ADENTRO (02/11, "desde la app de Windows no me anda el
-// scroll"). Antes el marco medía el alto exacto del contenido y dependía de que
-// la rueda/touchpad "pasara" al contenedor de afuera, cosa que en algunos
-// navegadores de escritorio (Windows) no hace. Con scroll propio la rueda
-// siempre funciona, los anchors (#seccion) saltan nativamente y los
-// position:sticky / 100vh del documento se comportan como fueron diseñados.
-function ajustarAltoMarcoHtml(frame, margenAbajo = 16) {
-  const fit = () => {
-    if (!frame.isConnected) { window.removeEventListener('resize', fit); return; }
-    const top = frame.getBoundingClientRect().top;
-    const alto = Math.max(420, window.innerHeight - top - margenAbajo);
-    frame.style.height = alto + 'px';
+// Plan y reportes: documentos HTML completos (con sus pestañas y estilos) que se
+// muestran SIN barra de scroll propia: el marco mide exactamente lo que mide el
+// documento y se scrollea la página, como el resto del Hub.
+// (02/11) "desde la app de Windows no baja": en algunos navegadores de escritorio
+// la rueda sobre un iframe no se la pasa a la página de afuera, y además el alto
+// se medía una sola vez / solo con el <body>, así que al cambiar de pestaña del
+// plan o terminar de cargar tipografías el marco quedaba más corto que el
+// contenido. Acá (1) el alto se vuelve a medir ante cualquier cambio del
+// documento y (2) la rueda y las teclas de scroll sobre el marco se reenvían
+// explícitamente a la página.
+function scrollerDe(el) {
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    const o = getComputedStyle(n).overflowY;
+    if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+  }
+  return document.scrollingElement;
+}
+function montarMarcoAutoalto(frame) {
+  let doc, win;
+  const medir = () => {
+    if (!frame.isConnected || !doc) return;
+    const body = doc.body, root = doc.documentElement;
+    const h = Math.max(root.scrollHeight, body ? body.scrollHeight : 0, body ? Math.ceil(body.getBoundingClientRect().bottom + win.scrollY) : 0);
+    if (h && Math.abs(h - frame.offsetHeight) > 1) frame.style.height = h + 'px';
   };
-  fit();
-  requestAnimationFrame(fit);
-  window.addEventListener('resize', fit);
-  window.addEventListener('orientationchange', fit);
   frame.addEventListener('load', () => {
-    fit();
-    // Rueda sobre el marco: aseguramos el foco para que las teclas (flechas, RePág) también scrolleen.
-    try { frame.contentWindow.focus(); } catch (e) {}
+    try { doc = frame.contentDocument; win = frame.contentWindow; } catch (e) { return; }
+    if (!doc) return;
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(doc.documentElement); if (doc.body) ro.observe(doc.body);
+    new MutationObserver(medir).observe(doc.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+    doc.addEventListener('click', () => { [60, 250, 700].forEach(t => setTimeout(medir, t)); }, true); // cambio de pestaña/acordeón
+    doc.addEventListener('load', medir, true);                 // imágenes
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(medir);
+    window.addEventListener('resize', medir);
+    [300, 1000, 2500].forEach(t => setTimeout(medir, t));
+    // Rueda: como el marco mide todo el contenido, nunca scrollea por dentro -> se la pasamos a la página.
+    win.addEventListener('wheel', e => {
+      if (e.ctrlKey) return; // zoom
+      const sc = scrollerDe(frame);
+      const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? sc.clientHeight : 1;
+      sc.scrollBy({ top: e.deltaY * k, left: e.deltaX * k });
+      e.preventDefault();
+    }, { passive: false });
+    // Teclado con el foco dentro del marco.
+    win.addEventListener('keydown', e => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable || e.altKey || e.ctrlKey || e.metaKey) return;
+      const sc = scrollerDe(frame), pagina = sc.clientHeight * 0.9;
+      const pasos = { PageDown: pagina, PageUp: -pagina, ArrowDown: 60, ArrowUp: -60, ' ': e.shiftKey ? -pagina : pagina };
+      if (e.key === 'Home') sc.scrollTo({ top: 0 });
+      else if (e.key === 'End') sc.scrollTo({ top: sc.scrollHeight });
+      else if (e.key in pasos) sc.scrollBy({ top: pasos[e.key] });
+      else return;
+      e.preventDefault();
+    });
+    // Los anchors (#seccion) del documento: scrollear la página (no el marco) hasta la sección.
+    win.addEventListener('hashchange', () => {
+      const hash = win.location.hash; if (!hash) return;
+      let t; try { t = doc.querySelector(hash); } catch (err) { return; }
+      if (!t) return;
+      const sc = scrollerDe(frame);
+      const dest = sc.scrollTop + frame.getBoundingClientRect().top + t.getBoundingClientRect().top - sc.getBoundingClientRect().top - 80;
+      sc.scrollTo({ top: dest, behavior: 'smooth' });
+    });
   });
 }
 
@@ -1193,10 +1236,10 @@ async function renderReportes(container) {
     }
     actual.html = html;
   }
-  wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;height:calc(100dvh - 220px);min-height:420px;border:none;border-radius:12px;background:#0b0b0f;display:block;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;display:block;" scrolling="no" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('reporte-frame');
   frame.srcdoc = actual.html;
-  ajustarAltoMarcoHtml(frame);
+  montarMarcoAutoalto(frame);
 }
 // "archivo descargable" (pedido de Vaneh, 28/09) -- el reporte ya se ve
 // en pantalla dentro del iframe, esto lo baja como un .html standalone
