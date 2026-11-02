@@ -942,6 +942,7 @@
                 <select id="integAlcanceInput" class="form-control" style="width:100%;" onchange="document.getElementById('integAlcanceDetalle').textContent=this.value==='lectura'?'Consultar información. No puede modificar el Hub.':'Consultar información y editar textos o enlaces de contenidos existentes. No permite crear, borrar, publicar ni cambiar estados, responsables, comentarios o visibilidad.'">
                   <option value="lectura" selected>Solo lectura</option>
                   <option value="contenidos:editar">Lectura + editar textos y enlaces de contenidos</option>
+                  <option value="contenidos:importar">Lectura + importar calendarios como ideas</option>
                 </select>
                 <p id="integAlcanceDetalle" style="font-size:12px;margin:8px 0 0;">Consultar información. No puede modificar el Hub.</p>
               </div>
@@ -7964,7 +7965,7 @@
       lista.innerHTML = (integraciones || []).length ? (integraciones || []).slice().reverse().map(i => `
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:8px;padding:8px 10px;${i.revocada ? 'opacity:.55;' : ''}">
           <div style="min-width:0;flex:1 1 200px;">
-            <div style="font-size:13px;font-weight:600;word-break:break-word;">${escapeHtml(i.nombre)} <small>${i.alcance === 'contenidos:editar' ? 'Lectura + edición de contenidos' : 'Solo lectura'}</small> <span style="font-family:monospace;font-weight:400;color:var(--text-muted);">${escapeHtml(i.prefijo)}…</span></div>
+            <div style="font-size:13px;font-weight:600;word-break:break-word;">${escapeHtml(i.nombre)} <small>${i.alcance === 'contenidos:importar' ? 'Lectura + importar calendarios' : i.alcance === 'contenidos:editar' ? 'Lectura + edición de contenidos' : 'Solo lectura'}</small> <span style="font-family:monospace;font-weight:400;color:var(--text-muted);">${escapeHtml(i.prefijo)}…</span></div>
             <div style="font-size:11px;color:var(--text-muted);">Creada ${new Date(i.creada).toLocaleDateString('es-AR')}${i.revocada ? ' · Revocada ' + new Date(i.revocada).toLocaleDateString('es-AR') : (i.ultimoUso ? ' · Último uso ' + new Date(i.ultimoUso).toLocaleString('es-AR') : ' · Sin uso todavía')}</div>
           </div>
           ${i.revocada ? '<span style="font-size:11px;color:var(--text-muted);">Revocada</span>' : `<button class="btn btn-secondary btn-sm" onclick="revocarIntegracionChatGPTUI('${escapeHtml(i.id)}')">Revocar</button>`}
@@ -7984,6 +7985,7 @@
     try {
       const alcance = document.getElementById('integAlcanceInput').value;
       if (alcance === 'contenidos:editar' && !confirm('¿Autorizar a esta nueva clave a editar textos y enlaces de contenidos existentes? Las claves anteriores no cambian.')) { btn.disabled=false; return; }
+      if (alcance === 'contenidos:importar' && !confirm('¿Autorizar a esta nueva clave a importar calendarios como ideas, sin publicar ni reemplazar contenidos existentes? Las claves anteriores no cambian.')) { btn.disabled=false; return; }
       const r = await crearIntegracionChatGPT(nombre, alcance);
       if (r && r.clave) {
         input.value = '';
