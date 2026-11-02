@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 02/11 — Equipo: puesto de colaboradores, equipo en alta y edición de cliente (admin)
+- **Puesto/rol** del colaborador: campo con sugerencias (`datalist#puestosList`) en alta y edición (`col-puesto`, `ec-puesto`), visible como chip en la lista.
+- **Alta de cliente:** bloque "Equipo de la agencia" (`#nc-eqag-list`, solo admin) con casillas de colaboradores activos; al crear se asignan (junto con el responsable, una sola asignación/aviso por persona).
+- **Editar cliente:** sección "Equipo": (1) "De la agencia": casillas para asignar/sacar colaboradores + "+ Nuevo colaborador" (modal por encima, `z-index:10001`, con este cliente tildado); (2) "Del cliente": lista + alta de personas (`usuarios`, con mail de bienvenida del backend). `saveEditClient` aplica primero las asignaciones y solo manda `usuarios` si cambió, conservando los colaboradores que el servidor sumó. Colaboradores (no admin) no ven el bloque de agencia (`/admin/colaboradores` es admin-only).
+- Al sumar un cliente a un colaborador el backend avisa por mail (ver HANDOFF de `cosmart-workers`). Probado con Playwright (alta, edición, 390 px sin scroll horizontal).
+
 ## 01/11 — Sincronización en vivo entre dispositivos + botones en la lista de contenidos (mobile) — EN PRODUCCIÓN (01/11)
 - **Pedido:** "que funcione como Google Docs": lo que cambia en la compu se ve solo en el teléfono, sin recargar (misma usuaria en varios dispositivos).
 - **Cómo:** `js/offline.js` → `liveTick()` cada 6 s (pestaña visible, con conexión, sin sincronización/conflicto en curso): vuelve a pedir las listas `/data/...` vistas en los últimos 15 min (máx. 10, sin las que tienen cambios propios pendientes) y si el servidor difiere de lo último visto, actualiza el cache y dispara `hub-datos-remotos`. Es polling, no push (el backend no tiene websockets); la demora es de ~6 s.

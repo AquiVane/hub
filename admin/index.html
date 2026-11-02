@@ -1067,6 +1067,7 @@
   </div>
 </div>
 
+<datalist id="puestosList"><option value="Community manager"><option value="Diseño"><option value="Edición de video"><option value="Paid media"><option value="Redacción / copy"><option value="Estrategia"><option value="Atención al cliente"><option value="Administración"></datalist>
 <div id="newColaboradorModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
@@ -1080,6 +1081,10 @@
       <div class="form-group">
         <label>Nombre *</label>
         <input type="text" id="col-nombre" class="form-control" placeholder="Ej: Germán" oninput="if(!document.getElementById('col-codigo').dataset.tocado)document.getElementById('col-codigo').value=codigoDesdeNombre(this.value);">
+      </div>
+      <div class="form-group">
+        <label>Puesto / rol</label>
+        <input type="text" id="col-puesto" class="form-control" list="puestosList" placeholder="Ej: Community manager (elegí o escribí otro)" maxlength="60">
       </div>
       <div class="form-group">
         <label>Código para tareas</label>
@@ -1117,6 +1122,10 @@
       <div class="form-group">
         <label>Nombre</label>
         <input type="text" id="ec-nombre" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Puesto / rol</label>
+        <input type="text" id="ec-puesto" class="form-control" list="puestosList" placeholder="Ej: Community manager (elegí o escribí otro)" maxlength="60">
       </div>
       <div class="form-group">
         <label>Código para tareas</label>
@@ -1771,6 +1780,12 @@
         </div>
       </div>
 
+      <div id="nc-eqag-wrap" class="hidden">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo de la agencia</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tildá a quienes van a trabajar en este cliente: quedan asignados y les llega un aviso por mail.</p>
+        <div id="nc-eqag-list" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;"></div>
+      </div>
+
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;">Equipo inicial</p>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Usuarios que pueden recibir @ menciones en comentarios. Podés agregar más después desde el hub.</p>
       <div id="nc-usuarios-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
@@ -2135,6 +2150,24 @@
       </div>
       <p style="font-size:11px;color:var(--text-muted);margin:6px 0 8px;">Cuenta publicitaria de este cliente en cada plataforma (carga manual — se ve reflejado en el panel del cliente, sección Pauta Digital).</p>
       <div id="ec-cuentas-pub" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:20px 0 8px;">Equipo</p>
+      <div id="ecl-eqag-wrap" class="hidden">
+        <p style="font-size:12px;font-weight:600;margin:0 0 4px;">De la agencia</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tildá o destildá para asignar o sacar a alguien de este cliente. A quien se suma le llega un aviso por mail.</p>
+        <div id="ecl-eqag-list" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;"></div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="nuevoColaboradorDesdeCliente()">+ Nuevo colaborador</button>
+      </div>
+      <p style="font-size:12px;font-weight:600;margin:16px 0 4px;">Del cliente</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Personas del lado del cliente. Al agregarlas reciben su mail de bienvenida con el acceso.</p>
+      <div id="ecl-eq-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+        <div class="form-group" style="margin:0;flex:1 1 120px;min-width:0;"><label style="font-size:11px;">Nombre</label><input type="text" id="ecl-eq-nombre" class="form-control" placeholder="Ej: Laura"></div>
+        <div class="form-group" style="margin:0;flex:1 1 160px;min-width:0;"><label style="font-size:11px;">Email</label><input type="email" id="ecl-eq-email" class="form-control" placeholder="usuario@email.com"></div>
+        <div class="form-group" style="margin:0;flex:1 1 120px;min-width:0;"><label style="font-size:11px;">Rol</label>
+          <select id="ecl-eq-rol" class="form-control"><option>Usuario</option><option>Admin cliente</option><option>Responsable cliente</option></select></div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="agregarUsuarioEditCliente()" style="height:38px;">+ Agregar</button>
+      </div>
 
       <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">Para cambiar el email de acceso o la contraseña, pedile a COSMART (dev) que lo actualice desde el backend — por ahora esto edita solo los datos del negocio.</p>
     </div>
@@ -4907,6 +4940,7 @@
           <div style="flex:1;min-width:200px;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
               <span style="font-weight:700;font-size:14px;">${col.nombre}</span>
+              ${col.puesto ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#e2e8f0;color:#334155;font-weight:600;">${col.puesto.replace(/</g,'&lt;')}</span>` : ''}
               ${col.activo === false ? '<span style="font-size:10px;color:#dc2626;font-weight:700;">(INACTIVO)</span>' : ''}
             </div>
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${col.email}</div>
@@ -4965,6 +4999,7 @@
     if (!col) return;
     document.getElementById('ec-email-label').textContent = col.email;
     document.getElementById('ec-nombre').value = col.nombre || '';
+    document.getElementById('ec-puesto').value = col.puesto || '';
     document.getElementById('ec-codigo').value = col.codigo || codigoDesdeNombre(col.nombre);
     document.getElementById('ec-activo').checked = col.activo !== false;
     const list = document.getElementById('ec-clientes-list');
@@ -4984,9 +5019,10 @@
     const nombre = document.getElementById('ec-nombre').value.trim();
     const codigo = (document.getElementById('ec-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase();
     const activo = document.getElementById('ec-activo').checked;
+    const puesto = document.getElementById('ec-puesto').value.trim();
     const clientIds = Array.from(document.querySelectorAll('.ec-client-check:checked')).map(cb => cb.value);
     try {
-      await updateColaborador(email, { nombre, codigo, activo, clientIds });
+      await updateColaborador(email, { nombre, codigo, puesto, activo, clientIds });
       closeEditColaboradorModal();
       await loadColaboradores();
     } catch (e) {
@@ -6805,6 +6841,84 @@
     document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
   });
 
+  // ── Equipo de la agencia: casillas de colaboradores (alta y edición de cliente) ──
+  const _escEq = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const casillaColab = (c, clase, marcado) => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;flex-wrap:wrap;">
+      <input type="checkbox" class="${clase}" value="${_escEq(c.email)}" ${marcado ? 'checked' : ''}>
+      <span>${_escEq(c.nombre || c.email)}</span>
+      ${c.puesto ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#e2e8f0;color:#334155;">${_escEq(c.puesto)}</span>` : ''}
+      ${c.activo === false ? '<span style="font-size:10px;color:#dc2626;font-weight:700;">(inactivo)</span>' : ''}
+    </label>`;
+  async function colaboradoresFrescos() {
+    if (user.role !== 'admin') return null;
+    try { _colaboradoresCache = (await getColaboradores()) || []; } catch (e) { return null; }
+    return _colaboradoresCache;
+  }
+  async function cargarEquipoAgenciaNuevo() {
+    const wrap = document.getElementById('nc-eqag-wrap'), list = document.getElementById('nc-eqag-list');
+    const colabs = await colaboradoresFrescos();
+    if (!colabs || !colabs.length) { wrap.classList.add('hidden'); return; }
+    list.innerHTML = colabs.filter(c => c.activo !== false).map(c => casillaColab(c, 'nc-eqag-check', false)).join('');
+    wrap.classList.remove('hidden');
+  }
+  // Asigna el cliente a los colaboradores tildados (el backend les manda el aviso por mail).
+  async function asignarClienteAColaboradores(clientId, emails) {
+    const fallos = [];
+    for (const email of emails) {
+      try {
+        const c = _colaboradoresCache.find(x => x.email === email);
+        const clientIds = [...new Set([...(c?.clientIds || []), clientId])];
+        await updateColaborador(email, { clientIds });
+        if (c) c.clientIds = clientIds;
+      } catch (e) { fallos.push(email); }
+    }
+    return fallos;
+  }
+
+  let _eclColabs = [], _eclUsuarios = [], _eclUsuariosOrig = '[]';
+  function renderEclUsuarios() {
+    const list = document.getElementById('ecl-eq-list');
+    list.innerHTML = _eclUsuarios.length ? _eclUsuarios.map((u, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;font-size:12px;flex-wrap:wrap;">
+        <span style="font-weight:600;">${_escEq(u.nombre)}</span>
+        <span style="color:var(--text-muted);flex:1;min-width:0;overflow-wrap:anywhere;">${_escEq(u.email)}</span>
+        <span style="font-size:10px;background:#e2e8f0;padding:2px 7px;border-radius:99px;color:var(--text-muted);">${_escEq(u.rol || 'Usuario')}</span>
+        <button type="button" onclick="_eclUsuarios.splice(${i},1);renderEclUsuarios();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:0 4px;line-height:1;" title="Quitar">×</button>
+      </div>`).join('') : '<p style="font-size:12px;color:var(--text-muted);font-style:italic;">Sin personas del cliente cargadas.</p>';
+  }
+  window._eclUsuarios = null;
+  window.renderEclUsuarios = renderEclUsuarios;
+  window.agregarUsuarioEditCliente = function() {
+    const nombre = document.getElementById('ecl-eq-nombre').value.trim();
+    const email = document.getElementById('ecl-eq-email').value.trim();
+    const rol = document.getElementById('ecl-eq-rol').value;
+    if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
+    if (_eclUsuarios.some(u => (u.email || '').toLowerCase() === email.toLowerCase())) { alert('Esa persona ya está en el equipo.'); return; }
+    _eclUsuarios.push({ nombre, email, rol });
+    document.getElementById('ecl-eq-nombre').value = '';
+    document.getElementById('ecl-eq-email').value = '';
+    renderEclUsuarios();
+  };
+  async function renderEclAgencia() {
+    const wrap = document.getElementById('ecl-eqag-wrap'), list = document.getElementById('ecl-eqag-list');
+    const colabs = await colaboradoresFrescos();
+    _eclColabs = colabs || [];
+    if (!colabs) { wrap.classList.add('hidden'); return; }
+    list.innerHTML = colabs.length
+      ? colabs.filter(c => c.activo !== false || (c.clientIds || []).includes(_editClientId)).map(c => casillaColab(c, 'ecl-eqag-check', (c.clientIds || []).includes(_editClientId))).join('')
+      : '<p style="font-size:12px;color:var(--text-muted);">Todavía no hay colaboradores. Creá el primero con el botón de abajo.</p>';
+    wrap.classList.remove('hidden');
+  }
+  window.refrescarEquipoAgenciaEdit = function() {
+    if (!document.getElementById('editClientModal').classList.contains('hidden')) renderEclAgencia();
+  };
+  window.nuevoColaboradorDesdeCliente = async function() {
+    await window.openNewColaboradorModal();
+    document.getElementById('newColaboradorModal').style.zIndex = '10001'; // por encima del modal del cliente
+    document.querySelectorAll('.col-client-check').forEach(cb => { if (cb.value === _editClientId) cb.checked = true; });
+  };
+
   window.openNewClientModal = async () => {
     // Limpiar todos los campos del formulario
     ['nc-nombre','nc-id','nc-codigo','nc-email','nc-pass','nc-ig1','nc-ig2','nc-ig3',
@@ -6818,6 +6932,7 @@
     if (rolEl) rolEl.value = 'Usuario';
     _ncUsuarios = [];
     renderNcUsuarios();
+    cargarEquipoAgenciaNuevo();
     const respSel = document.getElementById('nc-responsable');
     respSel.innerHTML = `<option value="">Sin asignar todavía</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
     try {
@@ -6833,7 +6948,7 @@
   window.closeNewClientModal = () => document.getElementById('newClientModal').classList.add('hidden');
 
   window.openNewColaboradorModal = async function() {
-    ['col-nombre','col-email','col-pass','col-codigo'].forEach(id => { document.getElementById(id).value = ''; });
+    ['col-nombre','col-email','col-pass','col-codigo','col-puesto'].forEach(id => { document.getElementById(id).value = ''; });
     delete document.getElementById('col-codigo').dataset.tocado;
     const list = document.getElementById('col-clientes-list');
     list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Cargando clientes...</p>';
@@ -6853,12 +6968,13 @@
     const email = document.getElementById('col-email').value.trim();
     const pass = document.getElementById('col-pass').value.trim();
     const codigo = document.getElementById('col-codigo').value.trim().toUpperCase();
+    const puesto = document.getElementById('col-puesto').value.trim();
     const clientIds = Array.from(document.querySelectorAll('.col-client-check:checked')).map(cb => cb.value);
     if (!nombre || !email || !pass) { alert('Completá los campos obligatorios.'); return; }
     if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
     if (!clientIds.length) { alert('Asigná al menos un cliente.'); return; }
     try {
-      await createColaborador({ nombre, email, password: pass, clientIds, codigo });
+      await createColaborador({ nombre, email, password: pass, clientIds, codigo, puesto });
       await Promise.all(clientIds.map(async id => {
         try {
           const client = await getClientData(id);
@@ -6870,6 +6986,7 @@
         } catch (e) { console.error('No se pudo agregar el colaborador al equipo del cliente', id, e); }
       }));
       closeNewColaboradorModal();
+      if (typeof window.refrescarEquipoAgenciaEdit === 'function') window.refrescarEquipoAgenciaEdit();
       alert('Colaborador creado. Le llegó un mail con sus datos de acceso, y ya puede ser mencionado (@) en los clientes asignados.');
     } catch (e) {
       alert('Error al crear el colaborador: ' + (e.message || 'intentá de nuevo.'));
@@ -6972,6 +7089,13 @@
       </div>
     `).join('');
 
+    const colabEmails = new Set(((await colaboradoresFrescos()) || []).map(c => (c.email || '').toLowerCase()));
+    _eclUsuarios = (client.usuarios || []).filter(u => !colabEmails.has((u.email || '').toLowerCase()) && (u.email || '').toLowerCase() !== (user.email || '').toLowerCase()).map(u => ({ ...u }));
+    _eclUsuariosOrig = JSON.stringify(_eclUsuarios);
+    window._eclUsuarios = _eclUsuarios;
+    renderEclUsuarios();
+    await renderEclAgencia();
+
     document.getElementById('editClientModal').classList.remove('hidden');
   };
 
@@ -7025,7 +7149,30 @@
     const responsableEmail = responsableSel.value;
     const responsableNombre = responsableEmail === user.email ? (user.name || user.email) : (responsableSel.selectedOptions[0]?.textContent || '');
     try {
+      // 1) Equipo de la agencia: asignar / sacar colaboradores según las casillas (a quien se suma le llega el aviso por mail).
+      const marcados = new Set(Array.from(document.querySelectorAll('.ecl-eqag-check:checked')).map(cb => cb.value));
+      const hayCasillas = document.querySelectorAll('.ecl-eqag-check').length > 0;
+      const fallosEq = [];
+      if (hayCasillas) {
+        for (const c of _eclColabs) {
+          if (!document.querySelector(`.ecl-eqag-check[value="${CSS.escape(c.email)}"]`)) continue; // inactivo y sin el cliente: no se toca
+          const tenia = (c.clientIds || []).includes(_editClientId), quiere = marcados.has(c.email);
+          if (tenia === quiere) continue;
+          const clientIds = quiere ? [...new Set([...(c.clientIds || []), _editClientId])] : (c.clientIds || []).filter(x => x !== _editClientId);
+          try { await updateColaborador(c.email, { clientIds }); c.clientIds = clientIds; }
+          catch (e) { fallosEq.push(c.nombre || c.email); }
+        }
+      }
+      // 2) Equipo del cliente: solo se toca `usuarios` si cambió; se conservan los colaboradores que el servidor ya sumó.
+      let usuariosPayload = null;
+      if (JSON.stringify(_eclUsuarios) !== _eclUsuariosOrig) {
+        const fresco = await getClientData(_editClientId);
+        const emailsColab = new Set(_eclColabs.map(c => (c.email || '').toLowerCase()));
+        const guardar = (fresco?.usuarios || []).filter(u => emailsColab.has((u.email || '').toLowerCase()) || (u.email || '').toLowerCase() === (user.email || '').toLowerCase());
+        usuariosPayload = [...guardar, ..._eclUsuarios];
+      }
       await saveClientData(_editClientId, {
+        ...(usuariosPayload ? { usuarios: usuariosPayload } : {}),
         nombre,
         codigo: (document.getElementById('ecl-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase(),
         activo: document.getElementById('ecl-activo').value === 'true',
@@ -7050,11 +7197,15 @@
         try {
           const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
           const colab = colaboradores.find(c => c.email === responsableEmail);
-          const clientIds = [...new Set([...(colab?.clientIds || []), _editClientId])];
-          await updateColaborador(responsableEmail, { clientIds });
+          if (!(colab?.clientIds || []).includes(_editClientId)) { // si ya lo tiene, no se vuelve a avisar
+            const clientIds = [...new Set([...(colab?.clientIds || []), _editClientId])];
+            await updateColaborador(responsableEmail, { clientIds });
+            if (colab) colab.clientIds = clientIds;
+          }
         } catch (e) { console.error('No se pudo asignar el responsable de proyecto', e); }
       }
       closeEditClientModal();
+      if (fallosEq.length) alert('El cliente se guardó, pero no se pudo actualizar la asignación de: ' + fallosEq.join(', ') + '. Reintentá desde Editar cliente.');
       loadClients();
     } catch (e) {
       alert('Error al guardar: ' + (e.message || 'intentá de nuevo.'));
@@ -7094,15 +7245,18 @@
         usuarios: _ncUsuarios,
         responsable: responsableEmail ? { email: responsableEmail, nombre: responsableNombre } : null,
       });
-      if (responsableEmail && responsableEmail !== user.email) {
+      // Colaboradores tildados + responsable: una sola asignación por persona (y un solo aviso por mail).
+      const aAsignar = new Set(Array.from(document.querySelectorAll('.nc-eqag-check:checked')).map(cb => cb.value));
+      if (responsableEmail && responsableEmail !== user.email) aAsignar.add(responsableEmail);
+      let fallosAsig = [];
+      if (aAsignar.size) {
         try {
-          const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-          const colab = colaboradores.find(c => c.email === responsableEmail);
-          const clientIds = [...new Set([...(colab?.clientIds || []), id])];
-          await updateColaborador(responsableEmail, { clientIds });
-        } catch (e) { console.error('No se pudo asignar el responsable de proyecto', e); }
+          if (!_colaboradoresCache.length) _colaboradoresCache = (await getColaboradores()) || [];
+          fallosAsig = await asignarClienteAColaboradores(id, [...aAsignar]);
+        } catch (e) { console.error('No se pudo asignar el equipo de la agencia', e); }
       }
       closeNewClientModal();
+      if (fallosAsig.length) alert('El cliente se creó, pero no se pudo asignar a: ' + fallosAsig.join(', ') + '. Asignalo desde Editar cliente.');
       loadClients();
     } catch (e) {
       alert('Error al crear el cliente: ' + (e.message || 'intentá de nuevo.'));
