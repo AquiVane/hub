@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 02/11 — Ideas de contenido: link de referencia a la vista, título opcional y captura rápida
+Pedido de Vaneh ("a veces es solo una idea"; pegarle el link a Claude y que lo guarde). `app/index.html` + `js/app.js` (Banco de ideas, sirve a Contenidos propios `_cosmart` → tipo `ideasContenido`, y a cada cliente → `ideas`):
+- Modal "Nueva idea": el campo **🔗 Link de referencia** pasó arriba del todo (mismo `if-link` / `linkDriveRef`, sin migración); el **título es opcional** si hay link (se arma "Idea desde Instagram/TikTok/…"); al pegar el link en una idea NUEVA se autocompletan formato y plataforma (`detectarRedLink`).
+- Barra de **captura rápida** arriba del banco: pegás un link (o escribís una idea) y Guardar/Enter; si es link, crea la idea completa sola. El botón de la tarjeta pasó de "Abrir material bruto" a "🔗 Ver referencia". La búsqueda también mira el link.
+- Probado en Chromium a 390 px (captura rápida, autocompletado, validación, botón de referencia; sin scroll horizontal). `node --check` OK.
+- Claude guarda ideas con `hub_item` (`clientId "_cosmart"`, `tipo "ideasContenido"`); ver HANDOFF de `cosmart-workers` (02/11). Pendiente opcional: la idea "Ganar con Chat gpt" tiene el link en Notas (no en `linkDriveRef`).
+
 ## 02/11 (2) — Plan de ejecución: causa real del "no baja" (script `mkResize` del propio plan) + 2 puestos nuevos
 - **Causa real (reproducida con el plan de Martín Cañeque, cliente `mc`):** el plan trae `window.mkResize`, que en cada evento `resize` pone `frameElement.style.height='0px'` y lo vuelve a `scrollHeight`. Cambiar el alto del marco dispara otro `resize` dentro del documento -> bucle infinito: el contenedor de afuera se queda sin alto, el scroll salta al tope y nunca baja. (Los planes de Lambo y Aquí Vaneh no tienen `mkResize`, por eso en esos sí andaba.)
 - **Fix:** `PREAMBULO_MARCO` (`js/app.js`) se antepone al `srcdoc` de plan y reportes y deja `window.mkResize` como función vacía (ignora la reasignación del plan); el alto lo maneja `montarMarcoAutoalto()` desde afuera. **No tocar los planes de los clientes.** Si otro plan trae su propio auto-resize con otro nombre, el síntoma es el mismo: revisar `frameElement` en su script.

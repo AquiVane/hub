@@ -2910,13 +2910,17 @@ function renderIdeas(container) {
   const ideasVisibles = STATE.ideas.filter(i => {
     const q = _normBusq(_contBusqueda).trim();
     if (!q) return true;
-    const txt = _normBusq([i.titulo, i.notas, i.formato, (i.plataformas || []).join(' ')].join(' '));
+    const txt = _normBusq([i.titulo, i.notas, i.formato, (i.plataformas || []).join(' '), (i.linkDriveRef || []).join(' ')].join(' '));
     return q.split(/\s+/).every(w => txt.includes(w));
   });
   container.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <h3 style="font-size:15px;font-weight:600;">Ideas de contenido</h3>
       <button class="btn btn-primary btn-sm" onclick="openIdeaModal(null)">+ Nueva idea</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <input type="text" id="idea-rapida-input" class="form-control" style="flex:1 1 240px;min-width:0;" placeholder="Pegá un link o escribí una idea y tocá Guardar" autocomplete="off" onkeydown="if(event.key==='Enter')guardarIdeaRapida()">
+      <button class="btn btn-secondary btn-sm" id="idea-rapida-btn" onclick="guardarIdeaRapida()">Guardar</button>
     </div>
     ${STATE.ideas.length ? `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
@@ -2926,7 +2930,7 @@ function renderIdeas(container) {
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
             ${i.formato ? `<div style="font-size:12px;color:var(--text-muted);">Formato: ${i.formato}</div>` : ''}
             ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${i.notas}</div>` : ''}
-            ${firstLink(i.linkDriveRef) ? `<a class="btn btn-secondary btn-sm" href="${firstLink(i.linkDriveRef)}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;">🔗 Abrir material bruto</a>` : ''}
+            ${firstLink(i.linkDriveRef) ? `<a class="btn btn-secondary btn-sm" href="${firstLink(i.linkDriveRef)}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;">🔗 Ver referencia</a>` : ''}
             <div style="display:flex;gap:6px;margin-top:10px;">
               <button class="btn btn-primary btn-sm" onclick="promoverIdea('${i.id}')">→ Contenido</button>
               <button class="btn btn-secondary btn-sm" onclick="openIdeaModal('${i.id}')">Editar</button>
@@ -2939,6 +2943,37 @@ function renderIdeas(container) {
     ` : `<div class="empty-state"><div class="empty-state-icon">💡</div><h3>Sin ideas</h3><p>Guardá ideas de contenido para trabajarlas después.</p></div>`}
   `;
 }
+
+// Reconoce la red y el formato de un link para completar la idea sola (29/10).
+function detectarRedLink(url) {
+  let u; try { u = new URL(url); } catch (e) { return null; }
+  const h = u.hostname.replace(/^www\./, '').toLowerCase(), p = u.pathname.toLowerCase();
+  if (h.endsWith('instagram.com')) return { red: 'Instagram', formato: /\/reel/.test(p) ? 'Reel' : /\/stories/.test(p) ? 'Story' : 'Imagen', plataformas: ['Instagram'] };
+  if (h.endsWith('tiktok.com')) return { red: 'TikTok', formato: 'Video', plataformas: ['TikTok'] };
+  if (h.endsWith('youtube.com') || h === 'youtu.be') return { red: 'YouTube', formato: 'Video', plataformas: [] };
+  if (h.endsWith('facebook.com') || h === 'fb.watch') return { red: 'Facebook', formato: /\/reel|\/watch|fb\.watch/.test(p + h) ? 'Reel' : 'Imagen', plataformas: ['Facebook'] };
+  if (h.endsWith('linkedin.com')) return { red: 'LinkedIn', formato: 'Imagen', plataformas: ['LinkedIn'] };
+  return { red: h, formato: 'Imagen', plataformas: [] };
+}
+const _esLinkIdea = t => /^https?:\/\/\S+$/i.test((t || '').trim());
+window.guardarIdeaRapida = async function() {
+  const input = document.getElementById('idea-rapida-input');
+  const btn = document.getElementById('idea-rapida-btn');
+  const texto = (input?.value || '').trim();
+  if (!texto) { input?.focus(); return; }
+  const obj = _esLinkIdea(texto)
+    ? (() => { const d = detectarRedLink(texto); return { titulo: 'Idea desde ' + d.red, notas: '', formato: d.formato, plataformas: d.plataformas, linkDriveRef: [texto] }; })()
+    : { titulo: texto.slice(0, 120), notas: texto.length > 120 ? texto : '', formato: 'Imagen', plataformas: [], linkDriveRef: [] };
+  if (btn) btn.disabled = true;
+  try {
+    const saved = await saveIdea(clientId, obj, null, IDEAS_TIPO);
+    STATE.ideas.push(saved);
+    renderContTab('ideas');
+  } catch (e) {
+    alert('No se pudo guardar la idea: ' + (e.message || 'intentá de nuevo.'));
+    if (btn) btn.disabled = false;
+  }
+};
 
 let _editingIdea = null;
 window.openIdeaModal = function(id) {
@@ -2953,6 +2988,7 @@ window.openIdeaModal = function(id) {
     cb.checked = (i.plataformas || ['Instagram','Facebook']).includes(cb.value);
   });
   document.getElementById('ideaModal').classList.remove('hidden');
+  if (!_editingIdea) setTimeout(() => document.getElementById('if-link')?.focus(), 50);
 };
 
 window.eliminarIdea = async function(id) {
@@ -7616,10 +7652,19 @@ document.getElementById('deleteLinkBtn').addEventListener('click', async () => {
 // ── Idea modal wiring ──────────────────────────────────
 function closeIdeaModal() { document.getElementById('ideaModal').classList.add('hidden'); }
 document.getElementById('closeIdeaModal').addEventListener('click', closeIdeaModal);
+document.getElementById('if-link').addEventListener('input', (e) => {
+  if (_editingIdea) return;
+  const d = _esLinkIdea(e.target.value) ? detectarRedLink(e.target.value.trim()) : null;
+  if (!d) return;
+  document.getElementById('if-formato').value = d.formato;
+  document.querySelectorAll('.idea-plat-check').forEach(cb => { cb.checked = d.plataformas.includes(cb.value); });
+});
 document.getElementById('closeIdeaModal2').addEventListener('click', closeIdeaModal);
 document.getElementById('saveIdeaBtn').addEventListener('click', async () => {
-  const titulo = document.getElementById('if-titulo').value.trim();
-  if (!titulo) { alert('El título es obligatorio.'); return; }
+  const linkRef0 = document.getElementById('if-link').value.trim();
+  let titulo = document.getElementById('if-titulo').value.trim();
+  if (!titulo && linkRef0) titulo = 'Idea desde ' + ((detectarRedLink(linkRef0) || {}).red || 'un link');
+  if (!titulo) { alert('Pegá un link o escribí un título.'); return; }
   const plats = Array.from(document.querySelectorAll('.idea-plat-check:checked')).map(cb => cb.value);
   const obj = {
     ...(_editingIdea || {}),

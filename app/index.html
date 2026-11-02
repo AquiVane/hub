@@ -930,7 +930,12 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group span-2">
-          <label>Título *</label>
+          <label for="if-link">🔗 Link de referencia (Instagram, TikTok, YouTube, web…)</label>
+          <input type="url" id="if-link" class="form-control" placeholder="Pegá acá el link del reel o post" inputmode="url" autocomplete="off">
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Si solo pegás el link, la idea se guarda igual y se completa sola. Al pasarla a contenido, queda como material de referencia.</span>
+        </div>
+        <div class="form-group span-2">
+          <label for="if-titulo">Título <span style="font-weight:400;color:var(--text-muted);">(opcional si pegaste un link)</span></label>
           <input type="text" id="if-titulo" class="form-control" placeholder="¿De qué trata la idea?">
         </div>
         <div class="form-group">
@@ -955,11 +960,6 @@
         <div class="form-group span-2">
           <label>Notas / descripción</label>
           <textarea id="if-notas" class="form-control" rows="3" placeholder="Describí la idea, referencia, inspiración..."></textarea>
-        </div>
-        <div class="form-group span-2">
-          <label>📁 Link de material bruto / referencia</label>
-          <input type="url" id="if-link" class="form-control" placeholder="https://drive.google.com/... o cualquier URL">
-          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Al pasar la idea a contenido, este link queda cargado como material de referencia.</span>
         </div>
       </div>
     </div>
