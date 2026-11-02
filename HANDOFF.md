@@ -762,3 +762,8 @@ Fix real (en los archivos binarios, no en HTML):
 
 ## [18/10] Mapa de productos COSMART en el Hub
 - Sección "Mapa de productos" en `admin/index.html` (iframe con `srcdoc`) y página `mapa.html` con login propio (mismo usuario del Hub, `js/auth.js`). Ambas leen `GET /admin/mapa` del worker con el token de sesión (`js/mapa.js`); solo el admin de COSMART lo ve. El HTML NO está en este repo (es público): vive en el KV del worker. Se actualiza con el workflow `publicar-mapa.yml` de `cosmart-workers`, así Hub y `mapa.html` muestran siempre lo mismo.
+
+## 02/11/2026 — Panel de ventas: sección «Por producto»
+- `admin/index.html` + `css/style.css` + `js/data.js` (`getVentasPanelProductos`): debajo de las stats, una card por producto de la vertical elegida con visitas, al carrito, checkout, compras, abandonos, conversión, origen del tráfico, ventas, **inversión editable por producto** y profit. Responsive (grids auto-fit, fondos oscuros).
+- Depende del backend nuevo (`/admin/ventas-panel/productos` en marketing-hub, `/admin/metricas-productos` en el core): **no mergear a `main` hasta que ambos workers estén desplegados**.
+- Pendiente: Meta Ads → inversión automática; el toggle de vertical del panel sigue solo con VAMA Academy y Training.

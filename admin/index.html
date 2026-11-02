@@ -445,6 +445,12 @@
           </div>
         </div>
 
+        <div class="vp-prod-wrap" id="vpProductosWrap">
+          <div class="vp-prod-tit">Por producto</div>
+          <div class="vp-prod-sub">Visitas, carrito, checkout, compras, abandono y origen del tráfico de cada ebook/curso del mes. La inversión de cada producto la cargás acá; el profit descuenta las retenciones de arriba.</div>
+          <div id="vpProductos"><div class="vp-prod-vacio">Cargando…</div></div>
+        </div>
+
         <div class="card" style="margin-top:16px;max-width:600px;">
           <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
@@ -2268,7 +2274,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=14';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelProductos, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=14';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -8490,9 +8496,55 @@
       document.getElementById('vpGrid').innerHTML = `<div style="grid-column:1/-1;color:#f87171;font-size:12px;">No se pudo cargar: ${e.message || 'reintentá.'}</div>`;
     }
 
+    cargarProductosVentasPanel();
     cargarAcumuladoVentasPanel();
     _vpCargando = false;
   }
+
+  // Detalle por producto: embudo + origen (core vía proxy del Hub) + inversión propia de cada producto (KV del Hub).
+  async function cargarProductosVentasPanel() {
+    const cont = document.getElementById('vpProductos');
+    if (!cont) return;
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    try {
+      const [met, cfg] = await Promise.all([getVentasPanelProductos(_vpMes), getVentasPanelConfig(_vpVertical, _vpMes)]);
+      const lista = (met.productos || []).filter(p => p.vertical === _vpVertical);
+      if (!lista.length) { cont.innerHTML = '<div class="vp-prod-vacio">Todavía no hay visitas ni ventas por producto en este mes.</div>'; return; }
+      const invs = (cfg && cfg.productos) || {};
+      cont.innerHTML = lista.map(p => {
+        const inv = (invs[p.slug] && invs[p.slug].gastoAnuncios) || 0;
+        const netoARS = p.ventas_ars - p.ventas_ars * (cfg.retencionMP || 0) / 100 - inv;
+        const netoUSD = p.ventas_usd - p.ventas_usd * (cfg.retencionPaypal || 0) / 100;
+        const profit = netoARS;
+        const origen = p.origenes.length ? p.origenes.map(o => `${esc(o.origen)} (${o.visitas})`).join(' · ') : 'Sin datos de origen todavía';
+        return `<div class="vp-prod">
+          <div class="vp-prod-head"><span class="vp-prod-nombre">${esc(p.slug)}</span><span class="vp-prod-conv">Conversión ${p.conversion_pct}%</span></div>
+          <div class="vp-prod-funnel">
+            <div class="vp-prod-kpi"><b>${p.visitas}</b><span>visitas</span></div>
+            <div class="vp-prod-kpi"><b>${p.carritos}</b><span>al carrito</span></div>
+            <div class="vp-prod-kpi"><b>${p.checkouts}</b><span>inician checkout</span></div>
+            <div class="vp-prod-kpi"><b>${p.compras}</b><span>compras</span></div>
+            <div class="vp-prod-kpi"><b>${p.abandonos}</b><span>abandonos</span></div>
+          </div>
+          <div class="vp-prod-origen"><strong>Origen:</strong> ${origen}</div>
+          <div class="vp-prod-money">
+            <div><label>Ventas</label><div class="vp-prod-profit">${vpFormatoMonto(p.ventas_ars, 'ARS')}${p.ventas_usd ? ' + ' + vpFormatoMonto(p.ventas_usd, 'USD') : ''}</div></div>
+            <div><label>Inversión en anuncios (ARS)</label><input type="number" min="0" step="1" class="vp-prod-input" value="${inv}" data-slug="${esc(p.slug)}" onchange="guardarInversionProductoVentasPanel(this.dataset.slug, this.value)"></div>
+            <div><label>Profit (ARS)</label><div class="vp-prod-profit ${profit >= 0 ? 'pos' : 'neg'}">${vpFormatoMonto(profit, 'ARS')}</div></div>
+            ${p.ventas_usd ? `<div><label>Neto PayPal (USD)</label><div class="vp-prod-profit pos">${vpFormatoMonto(netoUSD, 'USD')}</div></div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      cont.innerHTML = `<div class="vp-prod-vacio" style="color:#f87171;">No se pudo cargar el detalle por producto: ${esc(e.message || 'reintentá.')}</div>`;
+    }
+  }
+
+  window.guardarInversionProductoVentasPanel = async function(slug, v) {
+    const n = Math.max(0, Number(v) || 0);
+    try { await setVentasPanelConfig(_vpVertical, _vpMes, { producto: { slug, gastoAnuncios: n } }); cargarProductosVentasPanel(); }
+    catch (e) { alert('No se pudo guardar la inversión: ' + (e.message || 'reintentá')); }
+  };
 
   async function cargarAcumuladoVentasPanel() {
     const det = document.getElementById('vpAcumuladoDetalle');

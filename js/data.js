@@ -865,6 +865,10 @@ export async function getVentasPanelMeses() {
   if (DEMO_MODE) return { ok: true, meses: [] };
   return api('GET', '/admin/ventas-panel/meses');
 }
+export async function getVentasPanelProductos(mes) {
+  if (DEMO_MODE) return { ok: true, mes, productos: [] };
+  return api('GET', `/admin/ventas-panel/productos?mes=${encodeURIComponent(mes)}`);
+}
 export async function getVentasPanelConfig(vertical, mes) {
   if (DEMO_MODE) return { meta: 30, gastoAnuncios: 0, retencionMP: 0 };
   return api('GET', `/admin/ventas-panel/config?vertical=${encodeURIComponent(vertical)}&mes=${encodeURIComponent(mes)}`);
