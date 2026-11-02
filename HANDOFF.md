@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 02/11 — Plan de ejecución y Reportes: scroll propio en el marco (fix "no me anda el scroll en la app de Windows")
+- **Causa probable:** `plan-frame`/`reporte-frame` medían el alto exacto del contenido (sin scroll propio) y dependían de que la rueda/touchpad pasara al contenedor de afuera (`#main-content`); en navegadores de escritorio como el de la app de Windows eso no siempre encadena. En Chromium de prueba SÍ andaba, así que no se pudo reproducir -- el fix es preventivo y estructural.
+- **Ahora:** el marco mide la altura visible (`ajustarAltoMarcoHtml()` en `js/app.js`: viewport − posición del marco, se recalcula en resize/orientación) y el documento scrollea ADENTRO. Los anchors, `position:sticky` y `100vh` del plan funcionan como fueron diseñados. Se eliminó el auto-resize y el parche de anchors (`irASeccion`).
+- Probado con Playwright (1280 y 390 px) con el plan real de Lambo: rueda OK, sin scroll horizontal. Versiones: `app.js?v=70`, `hv=24`. **Si en Windows sigue fallando, pedir versión de la app/navegador** (¿PWA de Edge, app de escritorio?) y probar ahí.
+
 ## 02/11 — Equipo: puesto de colaboradores, equipo en alta y edición de cliente (admin)
 - **Puesto/rol** del colaborador: campo con sugerencias (`datalist#puestosList`) en alta y edición (`col-puesto`, `ec-puesto`), visible como chip en la lista.
 - **Alta de cliente:** bloque "Equipo de la agencia" (`#nc-eqag-list`, solo admin) con casillas de colaboradores activos; al crear se asignan (junto con el responsable, una sola asignación/aviso por persona).

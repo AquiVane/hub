@@ -1102,34 +1102,34 @@ function renderPlan(container) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Sin plan cargado</h3><p>${user.role !== 'client' ? 'Usá "+ Cargar plan" arriba para subir el HTML del plan de ejecución.' : 'Todavía no hay un plan de ejecución para este cliente.'}</p></div>`;
     return;
   }
-  container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  container.innerHTML = `<iframe id="plan-frame" style="width:100%;height:calc(100dvh - 160px);min-height:420px;border:none;border-radius:12px;background:#0b0b0f;display:block;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('plan-frame');
   frame.srcdoc = html;
-  frame.addEventListener('load', () => {
-    try {
-      const doc = frame.contentDocument;
-      const resize = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
-      resize();
-      new ResizeObserver(resize).observe(doc.body);
+  ajustarAltoMarcoHtml(frame);
+}
 
-      // El menú interno del plan usa anchors (#seccion). Como el iframe no
-      // tiene scroll propio (mide el alto exacto del contenido), el salto
-      // nativo del navegador termina llevando a la página entera al tope
-      // del iframe (el header) en vez de a la sección clickeada. Corregimos
-      // scrolleando la página exterior a la posición real de esa sección.
-      const irASeccion = () => {
-        const hash = frame.contentWindow.location.hash;
-        if (!hash) return;
-        let target;
-        try { target = doc.querySelector(hash); } catch (e) { return; }
-        if (!target) return;
-        const rect = target.getBoundingClientRect();
-        const frameRect = frame.getBoundingClientRect();
-        const destino = window.scrollY + frameRect.top + rect.top - 80;
-        window.scrollTo({ top: destino, behavior: 'smooth' });
-      };
-      frame.contentWindow.addEventListener('hashchange', irASeccion);
-    } catch (e) {}
+// Plan y reportes se muestran en un marco con la altura de la pantalla y el
+// documento se desplaza ADENTRO (02/11, "desde la app de Windows no me anda el
+// scroll"). Antes el marco medía el alto exacto del contenido y dependía de que
+// la rueda/touchpad "pasara" al contenedor de afuera, cosa que en algunos
+// navegadores de escritorio (Windows) no hace. Con scroll propio la rueda
+// siempre funciona, los anchors (#seccion) saltan nativamente y los
+// position:sticky / 100vh del documento se comportan como fueron diseñados.
+function ajustarAltoMarcoHtml(frame, margenAbajo = 16) {
+  const fit = () => {
+    if (!frame.isConnected) { window.removeEventListener('resize', fit); return; }
+    const top = frame.getBoundingClientRect().top;
+    const alto = Math.max(420, window.innerHeight - top - margenAbajo);
+    frame.style.height = alto + 'px';
+  };
+  fit();
+  requestAnimationFrame(fit);
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+  frame.addEventListener('load', () => {
+    fit();
+    // Rueda sobre el marco: aseguramos el foco para que las teclas (flechas, RePág) también scrolleen.
+    try { frame.contentWindow.focus(); } catch (e) {}
   });
 }
 
@@ -1193,17 +1193,10 @@ async function renderReportes(container) {
     }
     actual.html = html;
   }
-  wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;height:calc(100dvh - 220px);min-height:420px;border:none;border-radius:12px;background:#0b0b0f;display:block;" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('reporte-frame');
   frame.srcdoc = actual.html;
-  frame.addEventListener('load', () => {
-    try {
-      const doc = frame.contentDocument;
-      const resize = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
-      resize();
-      new ResizeObserver(resize).observe(doc.body);
-    } catch (e) {}
-  });
+  ajustarAltoMarcoHtml(frame);
 }
 // "archivo descargable" (pedido de Vaneh, 28/09) -- el reporte ya se ve
 // en pantalla dentro del iframe, esto lo baja como un .html standalone
