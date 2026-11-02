@@ -1067,7 +1067,7 @@
   </div>
 </div>
 
-<datalist id="puestosList"><option value="Community manager"><option value="Diseño"><option value="Edición de video"><option value="Paid media"><option value="Redacción / copy"><option value="Estrategia"><option value="Atención al cliente"><option value="Administración"></datalist>
+<datalist id="puestosList"><option value="Community manager"><option value="Asistente de Marketing"><option value="Content Creator"><option value="Diseño"><option value="Edición de video"><option value="Paid media"><option value="Redacción / copy"><option value="Estrategia"><option value="Atención al cliente"><option value="Administración"></datalist>
 <div id="newColaboradorModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
@@ -2533,7 +2533,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=25');
+      const res = await fetch('../app/index.html?hv=26');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -2549,7 +2549,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=71');
+      await import('../js/app.js?v=72');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {

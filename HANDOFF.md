@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 02/11 (2) — Plan de ejecución: causa real del "no baja" (script `mkResize` del propio plan) + 2 puestos nuevos
+- **Causa real (reproducida con el plan de Martín Cañeque, cliente `mc`):** el plan trae `window.mkResize`, que en cada evento `resize` pone `frameElement.style.height='0px'` y lo vuelve a `scrollHeight`. Cambiar el alto del marco dispara otro `resize` dentro del documento -> bucle infinito: el contenedor de afuera se queda sin alto, el scroll salta al tope y nunca baja. (Los planes de Lambo y Aquí Vaneh no tienen `mkResize`, por eso en esos sí andaba.)
+- **Fix:** `PREAMBULO_MARCO` (`js/app.js`) se antepone al `srcdoc` de plan y reportes y deja `window.mkResize` como función vacía (ignora la reasignación del plan); el alto lo maneja `montarMarcoAutoalto()` desde afuera. **No tocar los planes de los clientes.** Si otro plan trae su propio auto-resize con otro nombre, el síntoma es el mismo: revisar `frameElement` en su script.
+- Probado: alto estable durante 3 s, rueda hasta el final, cambio de vista del plan (9816 px) sigue el contenido, y los planes de Lambo/pestañas siguen bien. Versiones: `app.js?v=72`, `hv=26`.
+- **Puestos nuevos** en la lista de sugerencias de colaboradores: "Asistente de Marketing" y "Content Creator".
+
 ## 02/11 — Plan de ejecución y Reportes: el marco vuelve a medir todo el contenido (SIN barra interna) + rueda/teclas reenviadas a la página
 - **Pedido de Vaneh:** "desde la app de Windows no me anda el scroll / no baja". Un primer intento le puso scroll propio al marco -- **ERROR: Vaneh lo rechazó** ("barra FEA que nadie te pidió y sigue sin bajar"). **No volver a poner scroll interno** en plan/reportes.
 - **Ahora (`montarMarcoAutoalto()` en `js/app.js`, `scrolling="no"`):** el marco mide el documento (máx. de `scrollHeight`/`body`) y se re-mide ante cualquier cambio (ResizeObserver, MutationObserver, clics dentro del plan = cambio de pestaña, carga de imágenes/fuentes, resize, timers); la rueda (`wheel`) y las teclas (RePág, flechas, espacio, Inicio/Fin) sobre el marco se reenvían al contenedor que scrollea (`scrollerDe()`, hoy `#main-content`); los anchors scrollean ese contenedor. El plan real de Lambo es un documento con pestañas por JS (00 · Resumen, Diagnóstico...), por eso el alto tiene que seguir el cambio de pestaña.

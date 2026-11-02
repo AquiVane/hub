@@ -1104,7 +1104,7 @@ function renderPlan(container) {
   }
   container.innerHTML = `<iframe id="plan-frame" style="width:100%;min-height:calc(100vh - 160px);border:none;border-radius:12px;background:#0b0b0f;display:block;" scrolling="no" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('plan-frame');
-  frame.srcdoc = html;
+  frame.srcdoc = PREAMBULO_MARCO + html;
   montarMarcoAutoalto(frame);
 }
 
@@ -1118,6 +1118,14 @@ function renderPlan(container) {
 // contenido. Acá (1) el alto se vuelve a medir ante cualquier cambio del
 // documento y (2) la rueda y las teclas de scroll sobre el marco se reenvían
 // explícitamente a la página.
+// Algunos planes traen su propio `window.mkResize`, que ante cada evento `resize`
+// pone el alto del marco en 0px y lo vuelve a agrandar: eso dispara otro `resize`
+// (el marco cambió de tamaño) y entra en bucle; en cada vuelta la página de afuera
+// se queda sin contenido, el scroll salta al tope y "no baja" (02/11, plan de
+// Martín Cañeque). Este preámbulo corre ANTES que el script del documento y deja
+// `mkResize` como función vacía (ignora su reasignación): el alto lo maneja
+// montarMarcoAutoalto() desde afuera, sin colapsar nunca el marco.
+const PREAMBULO_MARCO = '<script>try{Object.defineProperty(window,"mkResize",{configurable:true,get:function(){return function(){}},set:function(){}});}catch(e){}<\/script>';
 function scrollerDe(el) {
   for (let n = el.parentElement; n; n = n.parentElement) {
     const o = getComputedStyle(n).overflowY;
@@ -1238,7 +1246,7 @@ async function renderReportes(container) {
   }
   wrap.innerHTML = `<iframe id="reporte-frame" style="width:100%;min-height:calc(100vh - 220px);border:none;border-radius:12px;background:#0b0b0f;display:block;" scrolling="no" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
   const frame = document.getElementById('reporte-frame');
-  frame.srcdoc = actual.html;
+  frame.srcdoc = PREAMBULO_MARCO + actual.html;
   montarMarcoAutoalto(frame);
 }
 // "archivo descargable" (pedido de Vaneh, 28/09) -- el reporte ya se ve
