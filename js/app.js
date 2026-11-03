@@ -3474,6 +3474,8 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-prompt-ia').value = c.promptIA || '';
   document.getElementById('cf-sugerencia-visual').value = c.sugerenciaVisual || '';
   document.getElementById('cf-guion').value = c.guion || '';
+  const bAG = document.getElementById('cf-abrir-guion');
+  if (bAG) bAG.style.display = (editingContenido && STATE.guiones.some(g => g.contenidoId === editingContenido.id)) ? '' : 'none';
   document.getElementById('cf-notas').value = c.notas || '';
   setTimeout(() => {
     const df = document.getElementById('cf-duracion');
@@ -3771,9 +3773,16 @@ window.openGuionModal = function(g) {
     STATE.contenidos.slice().sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''))
       .map(c => `<option value="${c.id}" ${editingGuion?.contenidoId === c.id ? 'selected' : ''}>${escapeHtml(c.titulo)}</option>`).join('');
   document.getElementById('deleteGuionBtn').style.display = editingGuion ? '' : 'none';
+  actualizarBtnAbrirContenido();
   document.getElementById('guionModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('gn-titulo').focus(), 50);
 };
+
+function actualizarBtnAbrirContenido() {
+  const b = document.getElementById('gn-abrir-contenido');
+  if (b) b.style.display = document.getElementById('gn-vinculo').value ? '' : 'none';
+}
+document.getElementById('gn-vinculo').addEventListener('change', actualizarBtnAbrirContenido);
 
 window.openGuionModalById = function(id) {
   const g = STATE.guiones.find(x => x.id === id);
@@ -3783,9 +3792,9 @@ window.openGuionModalById = function(id) {
 function closeGuionModal() { document.getElementById('guionModal').classList.add('hidden'); }
 document.getElementById('closeGuionModal').addEventListener('click', closeGuionModal);
 
-document.getElementById('saveGuionBtn').addEventListener('click', async () => {
+async function guardarGuionModal(cerrar = true) {
   const titulo = document.getElementById('gn-titulo').value.trim();
-  if (!titulo) { alert('El título es obligatorio.'); document.getElementById('gn-titulo').focus(); return; }
+  if (!titulo) { alert('El título es obligatorio.'); document.getElementById('gn-titulo').focus(); return false; }
   const contenidoId = document.getElementById('gn-vinculo').value || null;
   const texto = document.getElementById('gn-texto').value;
   const obj = { ...(editingGuion || {}), titulo, texto, contenidoId, fecha: editingGuion?.fecha || new Date().toISOString().split('T')[0] };
@@ -3803,14 +3812,35 @@ document.getElementById('saveGuionBtn').addEventListener('click', async () => {
         c.guion = texto;
         const savedC = await saveContenido(clientId, c, STATE.contenidos);
         STATE.contenidos[STATE.contenidos.findIndex(x => x.id === savedC.id)] = savedC;
+        // Si el contenido está abierto detrás, se refresca su campo para no pisarlo al guardarlo después.
+        if (editingContenido?.id === savedC.id && !document.getElementById('contenidoModal').classList.contains('hidden')) {
+          document.getElementById('cf-guion').value = texto;
+        }
       }
     }
-    closeGuionModal();
+    if (cerrar) closeGuionModal();
     renderSection('guiones');
+    return true;
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar';
   }
-});
+}
+document.getElementById('saveGuionBtn').addEventListener('click', () => guardarGuionModal(true));
+
+// Guion -> contenido: guarda el guion (así el texto ya queda importado) y abre el contenido vinculado.
+window.abrirContenidoDesdeModalGuion = async function() {
+  const id = document.getElementById('gn-vinculo').value;
+  if (!id) return;
+  if (!(await guardarGuionModal(true))) return;
+  openContenidoModalById(id);
+};
+window.abrirContenidoDeGuion = function(contenidoId) { openContenidoModalById(contenidoId); };
+
+// Contenido -> guion: abre el guion vinculado a este contenido.
+window.abrirGuionDesdeModalContenido = function() {
+  const g = editingContenido && STATE.guiones.find(x => x.contenidoId === editingContenido.id);
+  if (g) openGuionModal(g);
+};
 
 document.getElementById('deleteGuionBtn').addEventListener('click', async () => {
   if (!editingGuion || !confirm('¿Eliminar este guion del repositorio? (el contenido vinculado, si lo tiene, no se borra)')) return;
@@ -3847,7 +3877,7 @@ function guionRowHtml(g) {
       <div style="flex:1;min-width:200px;cursor:pointer;" onclick="openGuionModalById('${g.id}')">
         <div style="font-weight:600;font-size:13.5px;">${escapeHtml(g.titulo)}</div>
         ${contenido
-          ? `<div style="font-size:11px;color:var(--text-muted);">🔗 vinculado a: ${escapeHtml(contenido.titulo)}</div>`
+          ? `<div style="font-size:11px;color:var(--text-muted);">🔗 vinculado a: <a href="#" style="color:#1A4DAA;text-decoration:underline;" onclick="event.stopPropagation();event.preventDefault();abrirContenidoDeGuion('${contenido.id}')">${escapeHtml(contenido.titulo)}</a></div>`
           : `<div style="font-size:11px;color:#94a3b8;">Sin vincular</div>`}
       </div>
       <button class="btn btn-secondary btn-sm" title="Abrir teleprompter" onclick="event.stopPropagation();abrirTeleprompterGuion('${g.id}')">📺</button>
@@ -8168,6 +8198,7 @@ window.eliminarUsuarioEquipo = async function(idx) {
 // Close modals on overlay click
 document.querySelectorAll(HOSTED ? '.modal-overlay[data-cp]' : '.modal-overlay').forEach(overlay => {
   if (overlay.id === 'mustChangePasswordModal') return; // obligatorio, no se cierra clickeando afuera
+  if (overlay.id === 'contenidoModal' || overlay.id === 'guionModal') return; // pedido de Vaneh (03/11): se cierran solo con × / Cancelar, para no perder lo tipeado por un toque afuera
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
 

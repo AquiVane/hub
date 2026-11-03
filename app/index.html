@@ -363,7 +363,10 @@
         <div class="form-group" style="grid-column:span 3;">
           <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <span>🎬 Guion</span>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
+            <span style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" id="cf-abrir-guion" class="btn btn-secondary btn-sm" onclick="abrirGuionDesdeModalContenido()" style="font-size:11px;display:none;">↗ Abrir en Guiones</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
+            </span>
           </label>
           <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
         </div>
@@ -462,7 +465,10 @@
       </div>
       <div class="form-group">
         <label>Vincular a un contenido (opcional)</label>
-        <select id="gn-vinculo" class="form-control"></select>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="gn-vinculo" class="form-control" style="flex:1;min-width:200px;"></select>
+          <button type="button" id="gn-abrir-contenido" class="btn btn-secondary btn-sm" onclick="abrirContenidoDesdeModalGuion()" style="display:none;">↗ Abrir contenido</button>
+        </div>
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -1301,7 +1307,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=72"></script>
+<script type="module" src="../js/app.js?v=73"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

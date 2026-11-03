@@ -769,3 +769,7 @@ Fix real (en los archivos binarios, no en HTML):
 
 ## [18/10] Mapa de productos COSMART en el Hub
 - Sección "Mapa de productos" en `admin/index.html` (iframe con `srcdoc`) y página `mapa.html` con login propio (mismo usuario del Hub, `js/auth.js`). Ambas leen `GET /admin/mapa` del worker con el token de sesión (`js/mapa.js`); solo el admin de COSMART lo ve. El HTML NO está en este repo (es público): vive en el KV del worker. Se actualiza con el workflow `publicar-mapa.yml` de `cosmart-workers`, así Hub y `mapa.html` muestran siempre lo mismo.
+
+## 03/11 — Guiones ↔ Contenidos enlazados en ambos sentidos + modales que no se cierran al tocar afuera (pedido de Vaneh)
+- El guion vinculado ya importaba su texto al contenido al guardar (verificado con datos reales: 10/10 sincronizados). Se agregó: botón **"↗ Abrir contenido"** en el modal del guion (guarda primero y abre el contenido), el título del contenido en la lista de Guiones es link, y en el modal del contenido botón **"↗ Abrir en Guiones"** cuando tiene guion vinculado. Si el contenido está abierto detrás, su campo Guion se refresca al guardar el guion.
+- `contenidoModal` y `guionModal` ya NO se cierran al tocar el fondo (solo con × / Cancelar). Cache-bust `?v=73`.
