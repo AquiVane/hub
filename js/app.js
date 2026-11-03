@@ -1687,7 +1687,6 @@ window.verTodoTrabajoRealizado = function() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'trabajoRealizadoModal';
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   modal.innerHTML = `
     <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column;">
       <div class="modal-header">
@@ -8195,12 +8194,7 @@ window.eliminarUsuarioEquipo = async function(idx) {
   renderEquipoList();
 };
 
-// Close modals on overlay click
-document.querySelectorAll(HOSTED ? '.modal-overlay[data-cp]' : '.modal-overlay').forEach(overlay => {
-  if (overlay.id === 'mustChangePasswordModal') return; // obligatorio, no se cierra clickeando afuera
-  if (overlay.id === 'contenidoModal' || overlay.id === 'guionModal') return; // pedido de Vaneh (03/11): se cierran solo con × / Cancelar, para no perder lo tipeado por un toque afuera
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
-});
+// Los modales NO se cierran al tocar afuera (pedido de Vaneh, 03/11): solo con ×, Cancelar o Guardar.
 
 // ── Mobile sidebar toggle ──────────────────────────────
 const _sidebar = HOSTED ? null : document.querySelector('.sidebar');
