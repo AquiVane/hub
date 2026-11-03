@@ -407,6 +407,8 @@ input, select, textarea { font-family: inherit; }
 .s-aprobado { background: var(--status-aprobado-bg); color: var(--status-aprobado); }
 .s-programado { background: var(--status-programado-bg); color: var(--status-programado); }
 .s-publicado { background: var(--status-publicado-bg); color: var(--status-publicado); }
+.s-singrabar { background: rgba(239,68,68,.16); color: #ef4444; }
+.s-grabado { background: rgba(139,92,246,.18); color: #8b5cf6; }
 
 /* ── PLATFORM BADGE ── */
 .plat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }

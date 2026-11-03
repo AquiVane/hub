@@ -239,6 +239,8 @@
           <label>Estado <span class="req-star">*</span></label>
           <select id="cf-estado" class="form-control">
             <option value="Idea">💡 Idea</option>
+            <option value="Sin grabar">⏺ Sin grabar</option>
+            <option value="Guión grabado">🎬 Guión grabado</option>
             <option value="En proceso">✏️ En proceso</option>
             <option value="En revisión">👁 En revisión</option>
             <option value="Aprobado">✅ Aprobado</option>
@@ -469,6 +471,13 @@
           <select id="gn-vinculo" class="form-control" style="flex:1;min-width:200px;"></select>
           <button type="button" id="gn-abrir-contenido" class="btn btn-secondary btn-sm" onclick="abrirContenidoDesdeModalGuion()" style="display:none;">↗ Abrir contenido</button>
         </div>
+      </div>
+      <div class="form-group">
+        <label>Estado del guion</label>
+        <select id="gn-grabado" class="form-control">
+          <option value="0">⏺ Sin grabar</option>
+          <option value="1">🎬 Guión grabado</option>
+        </select>
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -1307,7 +1316,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=74"></script>
+<script type="module" src="../js/app.js?v=75"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

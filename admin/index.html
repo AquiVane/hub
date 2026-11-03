@@ -2549,7 +2549,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=74');
+      await import('../js/app.js?v=75');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {

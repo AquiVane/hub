@@ -1985,7 +1985,7 @@ const CONT_VISTAS = [['lista', 'Lista'], ['estados', 'Kanban']]; // formas de ve
 const CONT_VISTAS_OCULTAS = ['feed-ig', 'muro-fb', 'stories', 'proceso'];
 // Se muestran en el filtro Ubicación como opciones deshabilitadas "Próximamente" (Vaneh 18/10)
 const CONT_VISTAS_PROXIMAMENTE = ['Feed IG', 'Muro FB', 'Stories IG'];
-const CONT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const CONT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
 const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
@@ -2232,7 +2232,7 @@ function bancoRowHtml(c) {
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
         <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
-          ${['Idea','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
+          ${['Idea','Sin grabar','Guión grabado','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
         </select>
       </td>
       <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
@@ -2379,6 +2379,7 @@ window.bancoUpdateEstado = async function(id, estado) {
   const saved = await saveContenido(clientId, c);
   const i = STATE.contenidos.findIndex(x => x.id === id);
   STATE.contenidos[i] = saved;
+  await estadoContenidoAGuion(saved);
   renderContTab(activeContTab);
   if (currentSection === 'home') renderSection('home');
 };
@@ -2448,6 +2449,8 @@ function renderCalendario(container) {
 function renderKanbanContenidos(container) {
   const cols = [
     { key: 'Idea', label: 'Idea', cls: 's-idea' },
+    { key: 'Sin grabar', label: 'Sin grabar', cls: 's-singrabar' },
+    { key: 'Guión grabado', label: 'Guión grabado', cls: 's-grabado' },
     { key: 'En proceso', label: 'En proceso', cls: 's-proceso' },
     { key: 'En revisión', label: 'En revisión', cls: 's-revision' },
     { key: 'Aprobado', label: 'Aprobado', cls: 's-aprobado' },
@@ -2491,6 +2494,7 @@ function renderKanbanContenidos(container) {
     if (!c) return;
     c.estado = newCol;
     await saveContenido(clientId, c);
+    await estadoContenidoAGuion(c);
     renderContTab('estados');
   });
 }
@@ -3694,6 +3698,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
         STATE.guiones.push(gSaved);
       }
     }
+    await estadoContenidoAGuion(saved);
     notifyAsignacion('contenido', saved, prevContAsignadoEmail);
     closeContenidoModal();
     renderContTab(activeContTab);
@@ -3752,6 +3757,42 @@ let _guionesVerArchivados = false;
 
 function normGuionTitulo(s) { return normImportTexto(s); }
 
+// Estado de grabación (pedido de Vaneh 03/11): cada guion tiene `grabado` (true = "Guión grabado",
+// false/ausente = "Sin grabar"). Contenidos tiene los mismos dos estados. Se sincronizan:
+//  - contenido pasa a 'Guión grabado' / 'Sin grabar' -> su guion vinculado queda igual.
+//  - guion cambia de estado -> el contenido vinculado toma el mismo estado, SOLO si todavía está en una
+//    etapa temprana (Idea / Sin grabar / Guión grabado); nunca pisa Aprobado, Programado, Publicado, etc.
+const ESTADOS_PRE_PRODUCCION = ['Idea', 'Sin grabar', 'Guión grabado'];
+async function estadoContenidoAGuion(c) {
+  if (!c || (c.estado !== 'Guión grabado' && c.estado !== 'Sin grabar')) return;
+  const g = STATE.guiones.find(x => x.contenidoId === c.id);
+  const grabado = c.estado === 'Guión grabado';
+  if (!g || !!g.grabado === grabado) return;
+  const saved = await saveGuion(clientId, { ...g, grabado }, STATE.guiones);
+  STATE.guiones[STATE.guiones.findIndex(x => x.id === saved.id)] = saved;
+}
+async function estadoGuionAContenido(g) {
+  const c = g.contenidoId && STATE.contenidos.find(x => x.id === g.contenidoId);
+  if (!c || !ESTADOS_PRE_PRODUCCION.includes(c.estado)) return;
+  const nuevo = g.grabado ? 'Guión grabado' : 'Sin grabar';
+  if (c.estado === nuevo) return;
+  c.estado = nuevo;
+  const savedC = await saveContenido(clientId, c, STATE.contenidos);
+  STATE.contenidos[STATE.contenidos.findIndex(x => x.id === savedC.id)] = savedC;
+  if (editingContenido?.id === savedC.id && !document.getElementById('contenidoModal').classList.contains('hidden')) document.getElementById('cf-estado').value = nuevo;
+}
+
+let _guionesFiltroGrabado = 'todos';
+window.setGuionesFiltroGrabado = function(v) { _guionesFiltroGrabado = v; renderSection('guiones'); };
+window.toggleGrabadoGuion = async function(id) {
+  const g = STATE.guiones.find(x => x.id === id);
+  if (!g) return;
+  const saved = await saveGuion(clientId, { ...g, grabado: !g.grabado }, STATE.guiones);
+  STATE.guiones[STATE.guiones.findIndex(x => x.id === id)] = saved;
+  await estadoGuionAContenido(saved);
+  renderSection('guiones');
+};
+
 // Si se crea un contenido NUEVO con un título que matchea un guion suelto
 // (sin contenido vinculado todavía) y el contenido no trae ya su propio
 // texto de guion, se linkea solo -- así se cumple "el título es el que
@@ -3767,6 +3808,7 @@ window.openGuionModal = function(g) {
   document.getElementById('modal-guion-title').textContent = editingGuion ? 'Editar guion' : 'Nuevo guion';
   document.getElementById('gn-titulo').value = editingGuion?.titulo || '';
   document.getElementById('gn-texto').value = editingGuion?.texto || '';
+  document.getElementById('gn-grabado').value = editingGuion?.grabado ? '1' : '0';
   const sel = document.getElementById('gn-vinculo');
   sel.innerHTML = '<option value="">-- Sin vincular a ningún contenido --</option>' +
     STATE.contenidos.slice().sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''))
@@ -3796,7 +3838,9 @@ async function guardarGuionModal(cerrar = true) {
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('gn-titulo').focus(); return false; }
   const contenidoId = document.getElementById('gn-vinculo').value || null;
   const texto = document.getElementById('gn-texto').value;
-  const obj = { ...(editingGuion || {}), titulo, texto, contenidoId, fecha: editingGuion?.fecha || new Date().toISOString().split('T')[0] };
+  const grabado = document.getElementById('gn-grabado').value === '1';
+  const cambioEstado = (!!editingGuion?.grabado !== grabado) || (!editingGuion && grabado);
+  const obj = { ...(editingGuion || {}), titulo, texto, grabado, contenidoId, fecha: editingGuion?.fecha || new Date().toISOString().split('T')[0] };
   const btn = document.getElementById('saveGuionBtn');
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
@@ -3817,6 +3861,7 @@ async function guardarGuionModal(cerrar = true) {
         }
       }
     }
+    if (cambioEstado) await estadoGuionAContenido(saved);
     if (cerrar) closeGuionModal();
     renderSection('guiones');
     return true;
@@ -3879,6 +3924,7 @@ function guionRowHtml(g) {
           ? `<div style="font-size:11px;color:var(--text-muted);">🔗 vinculado a: <a href="#" style="color:#1A4DAA;text-decoration:underline;" onclick="event.stopPropagation();event.preventDefault();abrirContenidoDeGuion('${contenido.id}')">${escapeHtml(contenido.titulo)}</a></div>`
           : `<div style="font-size:11px;color:#94a3b8;">Sin vincular</div>`}
       </div>
+      <button class="status-badge ${g.grabado ? 's-grabado' : 's-singrabar'}" style="border:none;cursor:pointer;" title="Tocá para cambiar el estado" onclick="event.stopPropagation();toggleGrabadoGuion('${g.id}')">${g.grabado ? 'Guión grabado' : 'Sin grabar'}</button>
       <button class="btn btn-secondary btn-sm" title="Abrir teleprompter" onclick="event.stopPropagation();abrirTeleprompterGuion('${g.id}')">📺</button>
       <button class="btn btn-secondary btn-sm" title="Editar" onclick="event.stopPropagation();openGuionModalById('${g.id}')">✏️</button>
       <button class="btn btn-secondary btn-sm" title="${g.archivado ? 'Restaurar' : 'Archivar'}" onclick="event.stopPropagation();archivarGuion('${g.id}')">${g.archivado ? '♻️' : '🗄'}</button>
@@ -3889,7 +3935,8 @@ function guionRowHtml(g) {
 function renderGuionesSection(container) {
   const busqueda = _guionesBusqueda;
   const base = STATE.guiones.filter(g => !!g.archivado === _guionesVerArchivados)
-    .filter(g => !busqueda || normGuionTitulo(g.titulo).includes(busqueda));
+    .filter(g => !busqueda || normGuionTitulo(g.titulo).includes(busqueda))
+    .filter(g => _guionesFiltroGrabado === 'todos' || (_guionesFiltroGrabado === 'grabado') === !!g.grabado);
   const all = base.slice().sort((a, b) => (a.fecha || '') < (b.fecha || '') ? 1 : -1);
 
   const hoy = new Date();
@@ -3931,9 +3978,14 @@ function renderGuionesSection(container) {
   const totalArchivados = STATE.guiones.filter(g => g.archivado).length;
 
   container.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
       <button class="btn btn-sm ${!_guionesVerArchivados ? 'btn-primary' : 'btn-secondary'}" onclick="cambiarGuionesVista(false)">Activos (${totalActivos})</button>
       <button class="btn btn-sm ${_guionesVerArchivados ? 'btn-primary' : 'btn-secondary'}" onclick="cambiarGuionesVista(true)">Archivados (${totalArchivados})</button>
+      <select class="form-control" style="width:auto;min-width:150px;" onchange="setGuionesFiltroGrabado(this.value)">
+        <option value="todos" ${_guionesFiltroGrabado === 'todos' ? 'selected' : ''}>Todos los estados</option>
+        <option value="singrabar" ${_guionesFiltroGrabado === 'singrabar' ? 'selected' : ''}>Sin grabar</option>
+        <option value="grabado" ${_guionesFiltroGrabado === 'grabado' ? 'selected' : ''}>Guión grabado</option>
+      </select>
     </div>
     ${all.length ? sinFechaHtml + mesesHtml : `<div class="empty-state"><p>${busqueda ? 'Sin guiones con ese título.' : (_guionesVerArchivados ? 'No hay guiones archivados.' : 'Sin guiones todavía -- creá uno nuevo o traelo desde un contenido que ya tenga guion escrito.')}</p></div>`}
   `;
@@ -3966,7 +4018,7 @@ window.traerGuionDeContenido = async function(contenidoId) {
   const c = STATE.contenidos.find(x => x.id === contenidoId);
   if (!c) return;
   const existente = STATE.guiones.find(g => g.contenidoId === contenidoId);
-  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
+  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', grabado: existente ? !!existente.grabado : c.estado === 'Guión grabado', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
   const saved = await saveGuion(clientId, obj, STATE.guiones);
   if (existente) STATE.guiones[STATE.guiones.findIndex(g => g.id === saved.id)] = saved;
   else STATE.guiones.push(saved);
@@ -3977,7 +4029,7 @@ window.traerGuionDeContenido = async function(contenidoId) {
 // ──────────────────────────────────────────────────────
 // IMPORTAR CONTENIDOS DESDE EXCEL
 // ──────────────────────────────────────────────────────
-const IMPORT_ESTADOS = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const IMPORT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
 const IMPORT_PAUTA_MAP = {
   'solo organico': 'organico',
   'si dark post': 'dark',
@@ -7545,12 +7597,12 @@ function fmtNum(n) {
 }
 
 function statusBadge(estado) {
-  const map = { 'Idea':'s-idea','En proceso':'s-proceso','En revisión':'s-revision','Aprobado':'s-aprobado','Programado':'s-programado','Publicado':'s-publicado' };
+  const map = { 'Idea':'s-idea','Sin grabar':'s-singrabar','Guión grabado':'s-grabado','En proceso':'s-proceso','En revisión':'s-revision','Aprobado':'s-aprobado','Programado':'s-programado','Publicado':'s-publicado' };
   return `<span class="status-badge ${map[estado]||'s-idea'}">${estado||'—'}</span>`;
 }
 
 function statusColor(estado) {
-  const map = { 'Idea':'#94a3b8','En proceso':'#f59e0b','En revisión':'#ec4899','Aprobado':'#10b981','Programado':'#3b82f6','Publicado':'#22c55e' };
+  const map = { 'Idea':'#94a3b8','Sin grabar':'#ef4444','Guión grabado':'#8b5cf6','En proceso':'#f59e0b','En revisión':'#ec4899','Aprobado':'#10b981','Programado':'#3b82f6','Publicado':'#22c55e' };
   return map[estado] || '#94a3b8';
 }
 
