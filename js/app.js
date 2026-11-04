@@ -940,79 +940,7 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'tareas') {
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.className = 'form-control';
-    searchInput.placeholder = '🔎 Buscar tarea...';
-    searchInput.style.cssText = 'width:160px;font-size:12px;padding:6px 10px;';
-    searchInput.value = _tareasBusqueda;
-    searchInput.oninput = (e) => { _tareasBusqueda = e.target.value.trim().toLowerCase(); refreshTareasView(); };
-    actions.appendChild(searchInput);
-    const filtroAsignado = document.createElement('select');
-    filtroAsignado.className = 'form-control';
-    filtroAsignado.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
-    filtroAsignado.innerHTML = '<option value="">👤 Todos</option>' + opcionesFiltroAsignadoTareas() + '<option value="_sin_asignar">Sin asignar</option>';
-    filtroAsignado.value = _tareasFiltroAsignado;
-    filtroAsignado.onchange = (e) => { _tareasFiltroAsignado = e.target.value; refreshTareasView(); };
-    actions.appendChild(filtroAsignado);
-    const filtroPrioridad = document.createElement('select');
-    filtroPrioridad.className = 'form-control';
-    filtroPrioridad.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
-    filtroPrioridad.innerHTML = '<option value="">Prioridad: todas</option><option>Alta</option><option>Media</option><option>Baja</option>';
-    filtroPrioridad.value = _tareasFiltroPrioridad;
-    filtroPrioridad.onchange = (e) => { _tareasFiltroPrioridad = e.target.value; refreshTareasView(); };
-    actions.appendChild(filtroPrioridad);
-    const filtroFecha = document.createElement('select');
-    filtroFecha.className = 'form-control';
-    filtroFecha.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
-    filtroFecha.innerHTML = '<option value="">Vencimiento: todas</option><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="sinfecha">Sin fecha</option>';
-    filtroFecha.value = _tareasFiltroFecha;
-    filtroFecha.onchange = (e) => { _tareasFiltroFecha = e.target.value; refreshTareasView(); };
-    actions.appendChild(filtroFecha);
-    const ordenSel = document.createElement('select');
-    ordenSel.className = 'form-control';
-    ordenSel.style.cssText = 'width:auto;font-size:12px;padding:6px 10px;';
-    ordenSel.innerHTML = '<option value="fecha">Ordenar por: fecha</option><option value="prioridad">Ordenar por: prioridad</option>';
-    ordenSel.value = _tareasOrden;
-    ordenSel.onchange = (e) => { _tareasOrden = e.target.value; refreshTareasView(); };
-    actions.appendChild(ordenSel);
-    if (_tareasBusqueda || _tareasFiltroAsignado || _tareasFiltroPrioridad || _tareasFiltroFecha || _tareasOrden !== 'fecha') {
-      const clearBtn = document.createElement('button');
-      clearBtn.className = 'btn btn-secondary btn-sm';
-      clearBtn.title = 'Limpiar todos los filtros';
-      clearBtn.textContent = '✕ Limpiar filtros';
-      clearBtn.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; _tareasFiltroFecha = ''; _tareasOrden = 'fecha'; renderSection('tareas'); };
-      actions.appendChild(clearBtn);
-    }
-    const viewKanbanBtn = document.createElement('button');
-    viewKanbanBtn.className = 'btn btn-sm ' + (_tareasView === 'kanban' ? 'btn-primary' : 'btn-secondary');
-    viewKanbanBtn.innerHTML = '<i data-lucide="columns" style="width:14px;height:14px;"></i> Kanban';
-    viewKanbanBtn.onclick = () => { _tareasView = 'kanban'; renderSection('tareas'); };
-    actions.appendChild(viewKanbanBtn);
-    const viewCalBtn = document.createElement('button');
-    viewCalBtn.className = 'btn btn-sm ' + (_tareasView === 'calendario' ? 'btn-primary' : 'btn-secondary');
-    viewCalBtn.innerHTML = '<i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario de tareas';
-    viewCalBtn.onclick = () => { _tareasView = 'calendario'; renderSection('tareas'); };
-    actions.appendChild(viewCalBtn);
-    // Carga masiva por Excel (mismo mecanismo y plantilla que Mis Tareas del admin), directo a este cliente.
-    const plantillaTareasBtn = document.createElement('a');
-    plantillaTareasBtn.className = 'btn btn-secondary btn-sm';
-    plantillaTareasBtn.textContent = '📄 Plantilla Excel';
-    plantillaTareasBtn.href = '../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx';
-    plantillaTareasBtn.setAttribute('download', 'Plantilla_Tareas_Hub_COSMART.xlsx');
-    plantillaTareasBtn.title = 'Descargar la plantilla vacía para cargar tareas en masa';
-    actions.appendChild(plantillaTareasBtn);
-    const importTareasBtn = document.createElement('button');
-    importTareasBtn.className = 'btn btn-secondary btn-sm';
-    importTareasBtn.textContent = '📥 Importar Excel';
-    importTareasBtn.title = 'Cargar varias tareas de una vez desde un Excel';
-    importTareasBtn.onclick = () => openImportTareasModal();
-    actions.appendChild(importTareasBtn);
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
-    btn.textContent = '+ Nueva tarea';
-    btn.onclick = () => openTareaModal(null);
-    actions.appendChild(btn);
+    montarAccionesTareas(actions);
     if (_tareasView === 'calendario') renderTareasCalendario(content);
     else renderTareas(content);
     setTimeout(refreshIcons, 50);
@@ -8528,6 +8456,100 @@ if (!HOSTED && user.mustChangePassword) {
 // importar, exportar, traer guion, etc.) van dentro de un menú "⋯" para que
 // no se corte la pantalla; el botón principal queda siempre a la vista.
 // Pedido de Vaneh (18/10): mismo criterio que la app Calendario de contenidos.
+// ── Barra de la sección Tareas ─────────────────────────────────────
+// (04/11) Eran 11 controles sueltos en una sola fila y se cortaban/pisaban con la
+// campanita. Ahora: Buscar · Filtros ▾ (asignado, prioridad, vencimiento, orden) ·
+// Kanban|Calendario · Excel ▾ (plantilla / importar) · + Nueva tarea.
+let _popAbierto = null;
+function cerrarPopAcciones() { if (_popAbierto) { _popAbierto.panel.remove(); _popAbierto = null; } }
+document.addEventListener('click', e => { if (_popAbierto && !_popAbierto.panel.contains(e.target) && !_popAbierto.boton.contains(e.target)) cerrarPopAcciones(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPopAcciones(); });
+window.addEventListener('resize', cerrarPopAcciones);
+function abrirPopAcciones(boton, panel) {
+  if (_popAbierto && _popAbierto.boton === boton) { cerrarPopAcciones(); return; }
+  cerrarPopAcciones();
+  panel.classList.add('pop-acciones');
+  document.body.appendChild(panel);
+  const r = boton.getBoundingClientRect();
+  const ancho = panel.offsetWidth;
+  panel.style.top = Math.round(r.bottom + 6) + 'px';
+  panel.style.left = Math.max(8, Math.min(r.right - ancho, window.innerWidth - ancho - 8)) + 'px';
+  _popAbierto = { boton, panel };
+}
+function filtrosTareasActivos() {
+  return [_tareasFiltroAsignado, _tareasFiltroPrioridad, _tareasFiltroFecha].filter(Boolean).length + (_tareasOrden !== 'fecha' ? 1 : 0);
+}
+function montarAccionesTareas(actions) {
+  const campo = (etiqueta, el) => { const d = document.createElement('div'); d.className = 'pop-campo'; const l = document.createElement('label'); l.textContent = etiqueta; d.append(l, el); return d; };
+  const select = (html, valor, onchange) => { const sel = document.createElement('select'); sel.className = 'form-control'; sel.innerHTML = html; sel.value = valor; sel.onchange = e => { onchange(e.target.value); actualizarFiltrosBtn(); refreshTareasView(); }; return sel; };
+
+  const buscar = document.createElement('input');
+  buscar.type = 'search'; buscar.className = 'form-control tareas-buscar'; buscar.placeholder = '🔎 Buscar tarea...'; buscar.value = _tareasBusqueda;
+  buscar.setAttribute('aria-label', 'Buscar tarea');
+  buscar.oninput = e => { _tareasBusqueda = e.target.value.trim().toLowerCase(); refreshTareasView(); };
+  actions.appendChild(buscar);
+
+  // Filtros ▾
+  const filtrosBtn = document.createElement('button');
+  filtrosBtn.className = 'btn btn-secondary';
+  const actualizarFiltrosBtn = () => {
+    const n = filtrosTareasActivos();
+    filtrosBtn.innerHTML = 'Filtros' + (n ? ` <span class="btn-n">${n}</span>` : '') + ' ▾';
+    filtrosBtn.classList.toggle('con-filtros', !!n);
+  };
+  actualizarFiltrosBtn();
+  filtrosBtn.onclick = e => {
+    e.stopPropagation();
+    const panel = document.createElement('div');
+    panel.append(
+      campo('Asignado a', select('<option value="">👤 Todos</option>' + opcionesFiltroAsignadoTareas() + '<option value="_sin_asignar">Sin asignar</option>', _tareasFiltroAsignado, v => { _tareasFiltroAsignado = v; })),
+      campo('Prioridad', select('<option value="">Todas</option><option>Alta</option><option>Media</option><option>Baja</option>', _tareasFiltroPrioridad, v => { _tareasFiltroPrioridad = v; })),
+      campo('Vencimiento', select('<option value="">Todas</option><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="sinfecha">Sin fecha</option>', _tareasFiltroFecha, v => { _tareasFiltroFecha = v; })),
+      campo('Ordenar por', select('<option value="fecha">Fecha</option><option value="prioridad">Prioridad</option>', _tareasOrden, v => { _tareasOrden = v; })),
+    );
+    const limpiar = document.createElement('button');
+    limpiar.className = 'btn btn-secondary btn-sm'; limpiar.style.width = '100%'; limpiar.textContent = '✕ Limpiar filtros';
+    limpiar.onclick = () => { _tareasBusqueda = ''; _tareasFiltroAsignado = ''; _tareasFiltroPrioridad = ''; _tareasFiltroFecha = ''; _tareasOrden = 'fecha'; cerrarPopAcciones(); renderSection('tareas'); };
+    panel.appendChild(limpiar);
+    abrirPopAcciones(filtrosBtn, panel);
+  };
+  actions.appendChild(filtrosBtn);
+
+  // Kanban | Calendario
+  const seg = document.createElement('div');
+  seg.className = 'seg-toggle'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Vista de tareas');
+  [['kanban', 'columns', 'Kanban'], ['calendario', 'calendar', 'Calendario']].forEach(([vista, icono, texto]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = _tareasView === vista ? 'on' : ''; b.title = texto;
+    b.innerHTML = `<i data-lucide="${icono}" style="width:14px;height:14px;"></i><span class="seg-txt">${texto}</span>`;
+    b.onclick = () => { _tareasView = vista; renderSection('tareas'); };
+    seg.appendChild(b);
+  });
+  actions.appendChild(seg);
+
+  // Excel ▾ (carga masiva, misma plantilla y mecanismo que Mis Tareas del admin; todo va a este cliente)
+  const excelBtn = document.createElement('button');
+  excelBtn.className = 'btn btn-secondary'; excelBtn.innerHTML = '📊<span class="btn-txt-mov"> Excel</span> ▾'; excelBtn.title = 'Cargar tareas en masa desde Excel'; excelBtn.setAttribute('aria-label', 'Excel: plantilla e importar');
+  excelBtn.onclick = e => {
+    e.stopPropagation();
+    const panel = document.createElement('div');
+    const plantilla = document.createElement('a');
+    plantilla.className = 'pop-item'; plantilla.href = '../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx'; plantilla.setAttribute('download', 'Plantilla_Tareas_Hub_COSMART.xlsx');
+    plantilla.textContent = '📄 Descargar plantilla'; plantilla.onclick = () => cerrarPopAcciones();
+    const importar = document.createElement('button');
+    importar.type = 'button'; importar.className = 'pop-item'; importar.textContent = '📥 Importar desde Excel';
+    importar.onclick = () => { cerrarPopAcciones(); openImportTareasModal(); };
+    panel.append(plantilla, importar);
+    abrirPopAcciones(excelBtn, panel);
+  };
+  actions.appendChild(excelBtn);
+
+  const nueva = document.createElement('button');
+  nueva.className = 'btn btn-primary'; nueva.textContent = '+ Nueva tarea';
+  nueva.onclick = () => openTareaModal(null);
+  actions.appendChild(nueva);
+}
+
 function compactarAccionesMobile(actions) {
   if (window.innerWidth > 700) return;
   const sec = [...actions.children].filter(el => !el.classList.contains('btn-primary') && el.tagName !== 'INPUT');

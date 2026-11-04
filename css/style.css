@@ -1592,3 +1592,41 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .admin-shell .cal-day { min-height: 84px; padding: 3px; }
   .admin-shell .cal-event { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; width: auto; height: auto; border-radius: 3px; padding: 2px 3px !important; margin: 2px 0 0; font-size: 9.5px !important; line-height: 1.2; white-space: normal; background: color-mix(in srgb, currentColor 18%, transparent) !important; }
 }
+
+
+/* ══ Barra de la sección Tareas (04/11): Buscar · Filtros ▾ · Kanban|Calendario · Excel ▾ · + Nueva tarea ══ */
+.topbar-right .btn { white-space: nowrap; flex-shrink: 0; }
+.tareas-buscar { width: 180px; flex: 1 1 140px; max-width: 220px; min-width: 90px; font-size: 12.5px; padding: 6px 10px; height: 34px; }
+.btn.con-filtros { border-color: #1A4DAA; color: #1A4DAA; }
+.btn .btn-n { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #E02020; color: #fff; font-size: 11px; font-weight: 700; margin: 0 2px; }
+.seg-toggle { display: inline-flex; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg-toggle button { border: 0; background: transparent; color: var(--text); height: 34px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.seg-toggle button + button { border-left: 1px solid var(--border); }
+.seg-toggle button.on { background: #1A4DAA; color: #fff; }
+.pop-acciones { position: fixed; z-index: 80; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.22); padding: 10px; min-width: 230px; max-width: calc(100vw - 16px); max-height: calc(100vh - 90px); overflow-y: auto; }
+.pop-acciones .pop-campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.pop-acciones .pop-campo label { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); }
+.pop-acciones .pop-campo .form-control { width: 100%; font-size: 13px; padding: 8px 10px; }
+.pop-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 42px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font-size: 13.5px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+.pop-item:hover { background: var(--surface-sunken); }
+@media (max-width: 1100px) { .seg-toggle .seg-txt { display: none; } .seg-toggle button { padding: 0 11px; } }
+@media (max-width: 768px) {
+  .tareas-buscar { flex: 1 1 100%; max-width: none; width: 100%; }
+  .topbar-right { row-gap: 6px; }
+  .seg-toggle button, .tareas-buscar { height: 36px; }
+}
+
+/* Tablet (769–1000 px): la barra de arriba pasa los botones a una 2ª fila, igual que en celular, para no pisar la campanita. */
+@media (min-width: 769px) and (max-width: 900px) {
+  .layout:not(.admin-shell) .topbar { height: auto; min-height: 56px; flex-wrap: wrap; padding: 8px 16px; row-gap: 8px; }
+  .layout:not(.admin-shell) .topbar > div:not(.topbar-right):not(.notif-bell-wrap) { flex: 1 1 0; min-width: 0; }
+  .layout:not(.admin-shell) .notif-bell-wrap { order: 2; margin-left: auto; }
+  .layout:not(.admin-shell) .topbar-right { order: 3; flex: 1 1 100%; width: 100%; margin-left: 0; flex-wrap: wrap; justify-content: flex-start; }
+  .layout:not(.admin-shell) .topbar-right:empty { display: none; }
+}
+/* Tablet y celular: el buscador ocupa su propia fila y el resto (Filtros, vista, Excel, Nueva tarea) entra en una sola. */
+@media (max-width: 900px) {
+  .layout:not(.admin-shell) .topbar-right .form-control.tareas-buscar { flex: 1 1 100%; width: 100%; max-width: none; }
+}
+/* Celular: el botón Excel queda solo con el ícono para que Filtros, vista, Excel y Nueva tarea entren en una fila. */
+@media (max-width: 768px) { .btn-txt-mov { display: none; } }
