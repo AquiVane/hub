@@ -1650,7 +1650,7 @@
     </div>
     <div class="modal-body" style="overflow-y:auto;">
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
-        Columnas esperadas: <strong>Categoría, Área/Cliente, Tarea, Prioridad, Día sugerido, Horario, Fecha límite, Notas</strong>.
+        Columnas esperadas: <strong>Categoría, Área/Cliente, Tarea, Prioridad, Día sugerido, Horario, Fecha límite, Notas, Subtareas</strong> (una subtarea por línea dentro de la celda).
         Revisá el destino de cada fila antes de confirmar — las que queden en "Elegí destino" no se van a importar.
         Si la <strong>Categoría</strong> dice "Contenido", esa fila se crea como Contenido en la sección Contenidos del cliente destino (no como tarea).
       </p>
@@ -2533,7 +2533,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=27');
+      const res = await fetch('../app/index.html?hv=28');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -6130,6 +6130,18 @@
     if (m && MESES_CORTO_IMPORT[m[2]]) return `${anioDefault}-${String(MESES_CORTO_IMPORT[m[2]]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
     return null;
   }
+  // Subtareas del Excel: una por línea dentro de la celda (Alt+Enter) o separadas por punto y coma.
+  function parseSubtareasImport(val) {
+    return String(val == null ? '' : val).split(/\r?\n|;/)
+      .map(x => x.replace(/^\s*(?:[-•·*]|\d{1,2}[.)])\s*/, '').trim()).filter(Boolean).slice(0, 50)
+      .map(titulo => ({ titulo, done: false }));
+  }
+  function mezclarSubtareasImport(existentes, nuevas) {
+    const lista = (existentes || []).slice();
+    const tiene = new Set(lista.map(x => normalizarTextoImport(x.titulo)));
+    (nuevas || []).forEach(x => { if (!tiene.has(normalizarTextoImport(x.titulo))) lista.push(x); });
+    return lista;
+  }
   function normalizarPrioridadImport(val) {
     const n = normalizarTextoImport(val);
     if (n === 'alta') return 'Alta';
@@ -6266,7 +6278,7 @@
         ${filas.map((f, i) => `
           <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
             <td style="font-size:11px;">${f.tipo === 'contenido' ? '📣 Contenido' : '✅ Tarea'}</td>
-            <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}</td>
+            <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}${f.subtareas && f.subtareas.length ? `<div style="font-size:11px;color:var(--text-muted);">☑ ${f.subtareas.length} subtarea${f.subtareas.length !== 1 ? 's' : ''}</div>` : ''}</td>
             <td>${f.prioridad}</td>
             <td>${f.vencimiento || '—'}</td>
             <td style="font-size:11px;color:var(--text-muted);">${f.categoriaOriginal} ${f.areaOriginal ? '· ' + f.areaOriginal : ''}</td>
@@ -6315,7 +6327,7 @@
       const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
 
-      const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas' };
+      const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas', subtareas: 'subtareas', subtarea: 'subtareas', 'sub tareas': 'subtareas' };
       const headerRow = raw[0].map(normalizarTextoImport);
       const fieldByCol = headerRow.map(h => headerMap[h] || null);
       const anioDefault = new Date().getFullYear();
@@ -6340,6 +6352,7 @@
           prioridad: normalizarPrioridadImport(obj.prioridad),
           vencimiento: parseFechaCortaImport(obj.fecha, anioDefault),
           notas: notasPartes.join(' · '),
+          subtareas: parseSubtareasImport(obj.subtareas),
           destino: adivinarDestinoImport(obj.categoria, obj.area),
           categoriaOriginal: obj.categoria || '',
           areaOriginal: obj.area || '',
@@ -6394,6 +6407,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento || existente.vencimiento,
             notas: f.notas || existente.notas,
+            subtareas: mezclarSubtareasImport(existente.subtareas, f.subtareas),
           });
         } else {
           await saveTarea(f.destino, {
@@ -6402,6 +6416,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento,
             notas: f.notas,
+            subtareas: f.subtareas || [],
             asignado: { email: user.email, nombre: user.name || user.email, asignadoPor: { email: user.email, nombre: user.name || user.email } },
             visibleParaCliente: false,
             creadoPor: user.email,
@@ -6538,7 +6553,7 @@
       const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
 
-      const headerMap = { titulo: 'titulo', tarea: 'titulo', vertical: 'vertical', estado: 'estado', prioridad: 'prioridad', vencimiento: 'vencimiento', 'fecha limite': 'vencimiento', 'asignar a': 'asignado', asignado: 'asignado', 'responsable sugerido': 'asignado' };
+      const headerMap = { titulo: 'titulo', tarea: 'titulo', vertical: 'vertical', estado: 'estado', prioridad: 'prioridad', vencimiento: 'vencimiento', 'fecha limite': 'vencimiento', 'asignar a': 'asignado', asignado: 'asignado', 'responsable sugerido': 'asignado' , subtareas: 'subtareas', subtarea: 'subtareas', 'sub tareas': 'subtareas' };
       const headerRow = raw[0].map(normalizarTextoImport);
       const fieldByCol = headerRow.map(h => headerMap[h] || null);
       const anioDefault = new Date().getFullYear();
@@ -6559,6 +6574,7 @@
           prioridad: normalizarPrioridadImport(obj.prioridad),
           vencimiento: parseFechaCortaImport(obj.vencimiento, anioDefault),
           asignado: adivinarAsignadoImport(obj.asignado),
+          subtareas: parseSubtareasImport(obj.subtareas),
           duplicadoId: null,
           accionDuplicado: 'omitir',
         });
@@ -6598,6 +6614,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento || existente.vencimiento,
             asignado: asignadoObj || existente.asignado,
+            subtareas: mezclarSubtareasImport(existente.subtareas, f.subtareas),
           });
         } else {
           await saveTarea(INTERNAS_CLIENT_ID, {
@@ -6607,6 +6624,7 @@
             prioridad: f.prioridad,
             vencimiento: f.vencimiento,
             asignado: asignadoObj,
+            subtareas: f.subtareas || [],
             creadoPor: user.email,
           });
         }

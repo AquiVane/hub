@@ -4289,6 +4289,9 @@ function impTFecha(val, anioDefault) {
   if (m && MESES_CORTO_IMPT[m[2]]) return `${anioDefault}-${String(MESES_CORTO_IMPT[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   return null;
 }
+// Subtareas: una por línea dentro de la celda (Alt+Enter) o separadas por punto y coma.
+const impTSubtareas = v => String(v == null ? '' : v).split(/\r?\n|;/).map(x => x.replace(/^\s*(?:[-•·*]|\d{1,2}[.)])\s*/, '').trim()).filter(Boolean).slice(0, 50).map(titulo => ({ titulo, done: false }));
+const impTMezclar = (existentes, nuevas) => { const l = (existentes || []).slice(); const t = new Set(l.map(x => impTNorm(x.titulo))); (nuevas || []).forEach(x => { if (!t.has(impTNorm(x.titulo))) l.push(x); }); return l; };
 const impTPrioridad = v => { const n = impTNorm(v); return n === 'alta' ? 'Alta' : n === 'baja' ? 'Baja' : 'Media'; };
 let _impTareasRows = [];
 
@@ -4301,6 +4304,7 @@ window.openImportTareasModal = function() {
   document.getElementById('importTareasModal').classList.remove('hidden');
   loadXLSXLib();
 };
+window.impTareasAccion = (i, v) => { if (_impTareasRows[i]) _impTareasRows[i].accionDuplicado = v; };
 window.closeImportTareasModal = function() { document.getElementById('importTareasModal').classList.add('hidden'); };
 
 function renderImpTareasPreview() {
@@ -4312,10 +4316,10 @@ function renderImpTareasPreview() {
     <tbody>${filas.map((f, i) => `
       <tr style="${f.duplicadoId ? 'background:#fffbeb;color:#1a1a2e;' : ''}">
         <td style="font-size:11px;">${f.tipo === 'contenido' ? '📣 Contenido' : '✅ Tarea'}</td>
-        <td style="max-width:260px;overflow-wrap:anywhere;">${f.duplicadoId ? '⚠️ ' : ''}${escapeHtml(f.titulo)}</td>
+        <td style="max-width:260px;overflow-wrap:anywhere;">${f.duplicadoId ? '⚠️ ' : ''}${escapeHtml(f.titulo)}${f.subtareas && f.subtareas.length ? `<div style="font-size:11px;color:var(--text-muted);">☑ ${f.subtareas.length} subtarea${f.subtareas.length !== 1 ? 's' : ''}</div>` : ''}</td>
         <td>${f.tipo === 'contenido' ? '—' : f.prioridad}</td>
         <td>${f.vencimiento || '—'}</td>
-        <td>${f.duplicadoId ? `<select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="_impTareasRows[${i}].accionDuplicado=this.value">
+        <td>${f.duplicadoId ? `<select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="impTareasAccion(${i}, this.value)">
           <option value="omitir" ${f.accionDuplicado === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option>
           <option value="actualizar" ${f.accionDuplicado === 'actualizar' ? 'selected' : ''}>Actualizar la existente</option>
           <option value="nueva" ${f.accionDuplicado === 'nueva' ? 'selected' : ''}>Importar como nueva</option></select>` : '<span style="font-size:11px;color:var(--text-muted);">—</span>'}</td>
@@ -4335,7 +4339,7 @@ document.getElementById('imptar-file-input')?.addEventListener('change', async e
     const hoja = wb.SheetNames.find(n => String(n).trim().toLowerCase() === 'tareas') || wb.SheetNames.find(n => !/^instrucciones?$/i.test(String(n).trim())) || wb.SheetNames[0];
     const raw = XLSX.utils.sheet_to_json(wb.Sheets[hoja], { header: 1, defval: '' });
     if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
-    const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas' };
+    const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas', subtareas: 'subtareas', subtarea: 'subtareas', 'sub tareas': 'subtareas' };
     const campos = raw[0].map(h => headerMap[impTNorm(h)] || null);
     const anio = new Date().getFullYear(), filas = [];
     for (let r = 1; r < raw.length; r++) {
@@ -4346,7 +4350,7 @@ document.getElementById('imptar-file-input')?.addEventListener('change', async e
       if (!titulo) continue;
       const notas = [o.dia, o.horario, o.notas].map(v => String(v || '').trim()).filter(Boolean).join(' · ');
       const cat = impTNorm(o.categoria);
-      filas.push({ titulo, tipo: (cat === 'contenido' || cat === 'contenidos') ? 'contenido' : 'tarea', prioridad: impTPrioridad(o.prioridad), vencimiento: impTFecha(o.fecha, anio), notas, duplicadoId: null, accionDuplicado: 'omitir' });
+      filas.push({ titulo, tipo: (cat === 'contenido' || cat === 'contenidos') ? 'contenido' : 'tarea', prioridad: impTPrioridad(o.prioridad), vencimiento: impTFecha(o.fecha, anio), notas, subtareas: impTSubtareas(o.subtareas), duplicadoId: null, accionDuplicado: 'omitir' });
     }
     if (!filas.length) { statusEl.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Tarea").'; return; }
     filas.forEach(f => {
@@ -4384,14 +4388,14 @@ window.confirmarImportTareas = async function() {
       }
       if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
         const t = lista.find(x => x.id === f.duplicadoId);
-        if (t) { t.prioridad = f.prioridad; t.vencimiento = f.vencimiento || t.vencimiento; t.notas = f.notas || t.notas; nTareas++; }
+        if (t) { t.prioridad = f.prioridad; t.vencimiento = f.vencimiento || t.vencimiento; t.notas = f.notas || t.notas; t.subtareas = impTMezclar(t.subtareas, f.subtareas); nTareas++; }
         return;
       }
       lista.push({
         id: 't' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5), numero: ++numero,
         titulo: f.titulo, estado: 'Sin empezar', prioridad: f.prioridad, vencimiento: f.vencimiento, notas: f.notas,
         asignado: { ...yo, asignadoPor: yo }, visibleParaCliente: user.role === 'client', creadoPor: user.email,
-        subtareas: [], comentarios: [], imagenes: [],
+        subtareas: f.subtareas || [], comentarios: [], imagenes: [],
       });
       nTareas++;
     });
