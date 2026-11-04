@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 04/11 (4) — Tareas: vistas Kanban | Lista + botón Calendario aparte y visible; campanita siempre libre
+- **Pedido de Vaneh:** "Kanban/lista son vistas, calendario es otro botón, lo quiero visible" (igual que Contenidos, donde Lista/Kanban son vistas y el Calendario va aparte) y "dejá la campanita descubierta".
+- **Hay vista Lista nueva** en el panel del cliente (`renderTareasLista()` en `js/app.js`, estilos `.tl-*` al final de `css/style.css`): las mismas tareas, una por renglón y agrupadas por estado en `<details>` (Sin empezar y En progreso abiertos, Listo cerrado), con el círculo de "hecha", código, prioridad, vencimiento, asignado, recurrencia, subtareas, link y los mismos botones (Editar / visible / eliminar). Usa los mismos filtros y orden que Kanban (`tareasFiltradasVista()`, ahora compartido; `renderTareas` lo usa también). `_tareasView` ahora vale `kanban | lista | calendario`.
+- **Barra:** `[Kanban | Lista]` segmentado (solo íconos ≤1100 px) · botón **📅 Calendario** con texto siempre visible (se pinta azul cuando está activo; tocarlo de nuevo vuelve al Kanban) · Filtros ▾ · Excel ▾ · + Nueva tarea.
+- **Campanita:** entre 769 y 1180 px y en celular la barra pasa a dos filas (buscador en la primera fila, el resto en la segunda), así ningún botón tapa la campanita. Verificado con Playwright en 1366/1280/1181/1180/1100/1060/820/390/360 px en las tres vistas (sin solapamientos ni scroll horizontal).
+- Versiones: `app.js?v=79`, `style.css?v=40`.
+
 ## 04/11 (3) — Barra de la sección Tareas rehecha (se cortaba y pisaba la campanita) + responsive
 - **Pedido de Vaneh:** con "Plantilla Excel" e "Importar Excel" la barra tenía 11 controles sueltos en una fila y se cortaba ("quedó como el ojete") -- ordenar y optimizar también el responsive.
 - **Ahora (`montarAccionesTareas()` en `js/app.js`):** Buscar · **Filtros ▾** (popover con Asignado, Prioridad, Vencimiento, Ordenar + "Limpiar filtros"; muestra un globito rojo con la cantidad de filtros activos) · **Kanban | Calendario** (botón segmentado; en ≤1100 px solo íconos) · **📊 Excel ▾** (Descargar plantilla / Importar desde Excel) · **+ Nueva tarea**. Popover genérico reutilizable: `abrirPopAcciones(boton, panel)` / `cerrarPopAcciones()` (se cierra con clic afuera, Esc o resize). Los filtros siguen siendo los mismos (`sinfecha` es el valor real de "Sin fecha").

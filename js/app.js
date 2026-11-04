@@ -942,6 +942,7 @@ function renderSection(sec) {
   else if (sec === 'tareas') {
     montarAccionesTareas(actions);
     if (_tareasView === 'calendario') renderTareasCalendario(content);
+    else if (_tareasView === 'lista') renderTareasLista(content);
     else renderTareas(content);
     setTimeout(refreshIcons, 50);
   }
@@ -5005,16 +5006,13 @@ function refreshTareasView() {
   // con el contenido nuevo, si no la restauración no tiene efecto).
   const scrollPos = el.scrollTop;
   if (_tareasView === 'calendario') renderTareasCalendario(el);
+  else if (_tareasView === 'lista') renderTareasLista(el);
   else renderTareas(el);
   requestAnimationFrame(() => { el.scrollTop = scrollPos; });
 }
 
-function renderTareas(container) {
-  const cols = [
-    { key: 'Sin empezar', label: 'Sin empezar', color: '#94a3b8' },
-    { key: 'En progreso', label: 'En progreso', color: '#3b82f6' },
-    { key: 'Listo', label: 'Listo', color: '#10b981' },
-  ];
+// Filtros y orden de Tareas, compartidos por Kanban y Lista.
+function tareasFiltradasVista() {
   let tareasBase = tareasVisibles(STATE.tareas);
   // Permisos por tarea (27/09): restringidaA es una regla del EQUIPO, no
   // del cliente -- un cliente real ya filtró por visibleParaCliente arriba,
@@ -5027,7 +5025,6 @@ function renderTareas(container) {
   if (_tareasFiltroPrioridad) tareasBase = tareasBase.filter(t => t.prioridad === _tareasFiltroPrioridad);
   if (_tareasFiltroFecha) tareasBase = tareasBase.filter(t => fechaEnRangoFiltro(t.vencimiento || '', _tareasFiltroFecha));
   const archivadas = tareasBase.filter(t => t.archivado);
-
   const PRIO_ORDEN_TAREAS = { Alta: 0, Media: 1, Baja: 2 };
   const ordenarTareas = (lista) => [...lista].sort((a, b) => {
     if (_tareasOrden === 'prioridad') {
@@ -5038,6 +5035,16 @@ function renderTareas(container) {
     const bFecha = (b.vencimiento || '9999') + 'T' + (b.hora || '00:00');
     return aFecha > bFecha ? 1 : -1;
   });
+  return { tareasBase, archivadas, ordenarTareas };
+}
+
+function renderTareas(container) {
+  const cols = [
+    { key: 'Sin empezar', label: 'Sin empezar', color: '#94a3b8' },
+    { key: 'En progreso', label: 'En progreso', color: '#3b82f6' },
+    { key: 'Listo', label: 'Listo', color: '#10b981' },
+  ];
+  const { tareasBase, archivadas, ordenarTareas } = tareasFiltradasVista();
 
   container.innerHTML = `<div class="kanban-board" id="kanban-tareas">${cols.map(col => {
     const items = ordenarTareas(tareasBase.filter(t => t.estado === col.key && !t.archivado));
@@ -5113,6 +5120,62 @@ function renderTareas(container) {
     refreshTareasView();
     saveTarea(clientId, t, STATE.tareas).catch(() => {});
   });
+}
+
+// Vista Lista de Tareas: las mismas tareas del Kanban, una por renglón y agrupadas por estado.
+function renderTareasLista(container) {
+  const grupos = [
+    { key: 'Sin empezar', color: '#94a3b8', abierto: true },
+    { key: 'En progreso', color: '#3b82f6', abierto: true },
+    { key: 'Listo', color: '#10b981', abierto: false },
+  ];
+  const { tareasBase, archivadas, ordenarTareas } = tareasFiltradasVista();
+  const fila = t => {
+    const listo = t.estado === 'Listo';
+    const vencido = t.vencimiento && new Date(t.vencimiento + 'T00:00:00') < new Date() && !listo;
+    const prio = t.prioridad ? `<span class="tl-badge" style="background:${t.prioridad === 'Alta' ? '#fee2e2' : t.prioridad === 'Media' ? '#fff7ed' : '#f1f5f9'};color:${t.prioridad === 'Alta' ? '#b91c1c' : t.prioridad === 'Media' ? '#c2410c' : '#475569'};">${t.prioridad}</span>` : '';
+    const subs = t.subtareas?.length ? `<span>☑ ${t.subtareas.filter(x => x.done).length}/${t.subtareas.length} subtareas</span>` : '';
+    return `
+    <div class="tl-fila${listo ? ' tl-listo' : ''}" onclick="openTareaModal('${t.id}')">
+      <button type="button" class="tl-check${listo ? ' on' : ''}" onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" aria-label="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}">${listo ? '✓' : ''}</button>
+      <div class="tl-main">
+        <div class="tl-titulo">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span class="tl-cod">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
+        <div class="tl-meta">
+          ${prio}
+          ${t.vencimiento ? `<span style="${vencido ? 'color:#dc2626;font-weight:600;' : ''}">📅 ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</span>` : ''}
+          ${t.asignado?.nombre ? `<span>👤 ${t.asignado.nombre}</span>` : ''}
+          ${t.recurrencia ? `<span>↻ ${t.recurrencia}</span>` : ''}
+          ${subs}
+          ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" rel="noopener" onclick="event.stopPropagation();">🔗 Link</a>` : ''}
+        </div>
+      </div>
+      <div class="tl-acc">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openTareaModal('${t.id}')">Editar</button>
+        ${user.role !== 'client' ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleTareaVisibleCliente('${t.id}')" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTareaDirecta('${t.id}')" title="Eliminar">×</button>
+      </div>
+    </div>`;
+  };
+  container.innerHTML = `<div class="tl-lista">${grupos.map(g => {
+    const items = ordenarTareas(tareasBase.filter(t => t.estado === g.key && !t.archivado));
+    return `<details class="tl-grupo" ${g.abierto || items.length === 0 ? 'open' : ''}>
+      <summary><span class="kanban-col-dot" style="background:${g.color};"></span><span class="tl-grupo-titulo">${g.key}</span><span class="col-count">${items.length}</span>
+        <button type="button" class="tl-agregar" onclick="event.preventDefault();event.stopPropagation();openTareaModal(null,'${g.key}')">+ Agregar</button></summary>
+      ${items.length ? items.map(fila).join('') : '<div class="tl-vacio">Sin tareas en este estado.</div>'}
+    </details>`;
+  }).join('')}</div>
+  ${archivadas.length ? `
+    <div style="margin-top:20px;">
+      <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivadas':'▼ Ver archivadas (${archivadas.length})'">▼ Ver archivadas (${archivadas.length})</button>
+      <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+        ${archivadas.map(t => `<div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="desarchivarTarea('${t.id}')">Restaurar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')">🗑</button>
+          </div></div>`).join('')}
+      </div>
+    </div>` : ''}`;
 }
 
 function renderTareasCalendario(container) {
@@ -8515,10 +8578,10 @@ function montarAccionesTareas(actions) {
   };
   actions.appendChild(filtrosBtn);
 
-  // Kanban | Calendario
+  // Vistas: Kanban | Lista (segmentado) y, aparte y siempre visible, el Calendario.
   const seg = document.createElement('div');
   seg.className = 'seg-toggle'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Vista de tareas');
-  [['kanban', 'columns', 'Kanban'], ['calendario', 'calendar', 'Calendario']].forEach(([vista, icono, texto]) => {
+  [['kanban', 'columns', 'Kanban'], ['lista', 'list', 'Lista']].forEach(([vista, icono, texto]) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = _tareasView === vista ? 'on' : ''; b.title = texto;
     b.innerHTML = `<i data-lucide="${icono}" style="width:14px;height:14px;"></i><span class="seg-txt">${texto}</span>`;
@@ -8526,6 +8589,13 @@ function montarAccionesTareas(actions) {
     seg.appendChild(b);
   });
   actions.appendChild(seg);
+  const calBtn = document.createElement('button');
+  calBtn.type = 'button';
+  calBtn.className = 'btn ' + (_tareasView === 'calendario' ? 'btn-primary' : 'btn-secondary');
+  calBtn.innerHTML = '<i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario';
+  calBtn.title = 'Calendario de tareas';
+  calBtn.onclick = () => { _tareasView = _tareasView === 'calendario' ? 'kanban' : 'calendario'; renderSection('tareas'); };
+  actions.appendChild(calBtn);
 
   // Excel ▾ (carga masiva, misma plantilla y mecanismo que Mis Tareas del admin; todo va a este cliente)
   const excelBtn = document.createElement('button');

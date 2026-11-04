@@ -1616,8 +1616,8 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .seg-toggle button, .tareas-buscar { height: 36px; }
 }
 
-/* Tablet (769–1000 px): la barra de arriba pasa los botones a una 2ª fila, igual que en celular, para no pisar la campanita. */
-@media (min-width: 769px) and (max-width: 900px) {
+/* Tablet y notebook angosto (769–1180 px): la barra de arriba pasa los botones a una 2ª fila, igual que en celular, para no pisar la campanita. */
+@media (min-width: 769px) and (max-width: 1180px) {
   .layout:not(.admin-shell) .topbar { height: auto; min-height: 56px; flex-wrap: wrap; padding: 8px 16px; row-gap: 8px; }
   .layout:not(.admin-shell) .topbar > div:not(.topbar-right):not(.notif-bell-wrap) { flex: 1 1 0; min-width: 0; }
   .layout:not(.admin-shell) .notif-bell-wrap { order: 2; margin-left: auto; }
@@ -1625,8 +1625,36 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .layout:not(.admin-shell) .topbar-right:empty { display: none; }
 }
 /* Tablet y celular: el buscador ocupa su propia fila y el resto (Filtros, vista, Excel, Nueva tarea) entra en una sola. */
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .layout:not(.admin-shell) .topbar-right .form-control.tareas-buscar { flex: 1 1 100%; width: 100%; max-width: none; }
 }
 /* Celular: el botón Excel queda solo con el ícono para que Filtros, vista, Excel y Nueva tarea entren en una fila. */
 @media (max-width: 768px) { .btn-txt-mov { display: none; } }
+
+/* ══ Tareas: vista Lista (04/11) ══ */
+.tl-lista { display: flex; flex-direction: column; gap: 14px; }
+.tl-grupo { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.tl-grupo > summary { display: flex; align-items: center; gap: 8px; padding: 12px 14px; cursor: pointer; list-style: none; font-weight: 700; font-size: 14px; color: var(--text); }
+.tl-grupo > summary::-webkit-details-marker { display: none; }
+.tl-grupo > summary::after { content: '▾'; margin-left: 4px; color: var(--text-muted); transition: transform .15s; }
+.tl-grupo:not([open]) > summary::after { transform: rotate(-90deg); }
+.tl-agregar { margin-left: auto; border: 0; background: transparent; color: var(--accent, #1A4DAA); font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 6px 8px; }
+.tl-fila { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); cursor: pointer; }
+.tl-fila:hover { background: var(--surface-sunken); }
+.tl-fila.tl-listo .tl-titulo { text-decoration: line-through; color: var(--text-muted); }
+.tl-check { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cbd5e1; background: transparent; color: #fff; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.tl-check.on { border-color: #10b981; background: #10b981; }
+.tl-main { flex: 1 1 auto; min-width: 0; }
+.tl-titulo { font-size: 14px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.tl-cod { color: var(--text-muted); font-weight: 400; }
+.tl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 3px; font-size: 12px; color: var(--text-muted); }
+.tl-meta a { color: var(--accent, #1A4DAA); text-decoration: none; }
+.tl-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.tl-acc { display: flex; gap: 4px; flex: 0 0 auto; }
+.tl-vacio { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); }
+@media (max-width: 768px) {
+  .tl-fila { align-items: flex-start; flex-wrap: wrap; }
+  .tl-main { flex: 1 1 calc(100% - 40px); }
+  .tl-acc { flex: 1 1 100%; padding-left: 34px; }
+  .tl-check { margin-top: 2px; }
+}
