@@ -70,6 +70,9 @@
       <button class="nav-item" onclick="showSection('mapa')">
         <i data-lucide="map" class="nav-icon"></i><span>Mapa de productos</span>
       </button>
+      <button class="nav-item" id="navInventarioBtn" onclick="showSection('inventario')">
+        <i data-lucide="package-search" class="nav-icon"></i><span>Inventario COSMART</span>
+      </button>
       <button class="nav-item" onclick="showSection('proyectos')">
         <i data-lucide="rocket" class="nav-icon"></i><span>Proyectos</span>
       </button>
@@ -531,6 +534,18 @@
         </div>
         <div id="mapa-estado" style="font-size:14px;margin-bottom:8px"></div>
         <iframe id="mapa-iframe" title="Mapa de productos COSMART" allow="fullscreen" allowfullscreen style="width:100%;height:calc(100vh - 150px);min-height:480px;border:1px solid var(--border,#d7deea);border-radius:12px;background:#F2EDE6"></iframe>
+      </div>
+      <!-- Inventario de productos digitales de COSMART (uso interno, 04/11/2026): mismo mecanismo que el
+      Mapa. El HTML vive en el worker (GET /admin/mapa?doc=inventario, solo admin de COSMART) y se
+      publica con el workflow publicar-inventario.yml de cosmart-workers. Oculto para otras agencias. -->
+      <div id="sec-inventario" class="hidden">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <h2 style="margin:0;flex:1 1 200px">Inventario COSMART</h2>
+          <button class="btn btn-secondary" type="button" onclick="cargarInventarioAdmin()">Actualizar</button>
+          <button class="btn btn-secondary" type="button" onclick="inventarioPantallaCompleta()">Pantalla completa</button>
+        </div>
+        <div id="inventario-estado" style="font-size:14px;margin-bottom:8px"></div>
+        <iframe id="inventario-iframe" title="Inventario de productos digitales de COSMART" allow="fullscreen" allowfullscreen style="width:100%;height:calc(100vh - 150px);min-height:480px;border:1px solid var(--border,#d7deea);border-radius:12px;background:#091C47"></iframe>
       </div>
       <div id="sec-contenidospropios" class="hidden">
         <!-- Contenidos, Guiones, Pauta y Dashboard de la agencia: el MISMO módulo del panel de cliente
@@ -2313,6 +2328,7 @@
     // "Gestión COSMART" es el nombre de la sección de tareas internas
     // (sin cliente) -- tiene sentido solo para la agencia COSMART. Para
     // cualquier otra agencia se llama simplemente "Gestión interna".
+    document.getElementById('navInventarioBtn')?.remove();
     document.getElementById('navGestionInternaLabel').textContent = 'Gestión interna';
     document.getElementById('secGestionInternaLabel').textContent = 'Gestión interna';
     const logoImg = document.getElementById('sidebarLogoImg');
@@ -2580,13 +2596,23 @@
     (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).catch(() => { document.getElementById('mapa-estado').textContent = 'Tu navegador no permite pantalla completa acá: usá "Abrir en otra pestaña".'; });
   };
 
+  window.cargarInventarioAdmin = async function() {
+    const { mostrarMapa } = await import('../js/mapa.js');
+    mostrarMapa(document.getElementById('inventario-iframe'), document.getElementById('inventario-estado'), 'inventario');
+  };
+  window.inventarioPantallaCompleta = function() {
+    const f = document.getElementById('inventario-iframe');
+    (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).catch(() => { document.getElementById('inventario-estado').textContent = 'Tu navegador no permite pantalla completa acá.'; });
+  };
+
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa','inventario'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
     if (sec === 'mapa') cargarMapaAdmin();
+    if (sec === 'inventario') cargarInventarioAdmin();
     if (sec === 'mistareas') loadMisTareas();
     if (sec === 'colaboradores') loadColaboradores();
     if (sec === 'internas') loadInternas();
