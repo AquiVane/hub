@@ -867,51 +867,7 @@ function renderSection(sec) {
   }
   else if (sec === 'dashboard') { renderDashboard(content); setTimeout(refreshIcons, 50); }
   else if (sec === 'contenidos') {
-    if (!esPropioAgencia) {
-      const rptBtn = document.createElement('button');
-      rptBtn.className = 'btn btn-secondary';
-      rptBtn.textContent = '📊 Reporte';
-      rptBtn.onclick = () => openReporteModal();
-      actions.appendChild(rptBtn);
-    }
-    const plantillaBtn = document.createElement('a');
-    plantillaBtn.className = 'btn btn-secondary';
-    plantillaBtn.textContent = '📄 Plantilla Excel';
-    plantillaBtn.href = '../plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx';
-    plantillaBtn.setAttribute('download', 'Plantilla_Contenidos_Hub_COSMART.xlsx');
-    plantillaBtn.title = 'Descargar la plantilla vacía para cargar el calendario de contenidos';
-    actions.appendChild(plantillaBtn);
-    const importBtn = document.createElement('button');
-    importBtn.className = 'btn btn-secondary';
-    importBtn.textContent = '📥 Importar Excel';
-    importBtn.onclick = () => openImportModal();
-    actions.appendChild(importBtn);
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'btn btn-secondary';
-    exportBtn.textContent = '📤 Exportar Excel';
-    exportBtn.title = 'Bajar el calendario de contenidos cargado, con las mismas columnas que la plantilla';
-    exportBtn.onclick = () => exportarContenidosExcel();
-    actions.appendChild(exportBtn);
-    if (user.role !== 'client') {
-      const dupBtn = document.createElement('button');
-      dupBtn.className = 'btn btn-secondary';
-      dupBtn.textContent = '🧹 Duplicados';
-      dupBtn.title = 'Buscar contenidos cargados dos veces con el mismo título';
-      dupBtn.onclick = () => abrirDuplicadosContenidoModal();
-      actions.appendChild(dupBtn);
-      const quickBtn = document.createElement('button');
-      quickBtn.className = 'btn btn-secondary';
-      quickBtn.textContent = '⚡ Actualizar estado/notas';
-      quickBtn.title = 'Subí un Excel simple (Título + Estado/Notas/Comentario) para actualizar contenidos ya cargados sin tocar el resto de los campos';
-      quickBtn.onclick = () => openQuickUpdateModal();
-      actions.appendChild(quickBtn);
-    }
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-primary btn-rojo';
-    btn.textContent = '+ Nuevo contenido';
-    btn.onclick = () => openContenidoModal(null);
-    actions.appendChild(btn);
-    compactarAccionesMobile(actions);
+    montarAccionesContenidos(actions);
     renderContenidos(content);
     setTimeout(refreshIcons, 50);
   }
@@ -8599,7 +8555,7 @@ function montarAccionesTareas(actions) {
 
   // Excel ▾ (carga masiva, misma plantilla y mecanismo que Mis Tareas del admin; todo va a este cliente)
   const excelBtn = document.createElement('button');
-  excelBtn.className = 'btn btn-secondary'; excelBtn.innerHTML = '📊<span class="btn-txt-mov"> Excel</span> ▾'; excelBtn.title = 'Cargar tareas en masa desde Excel'; excelBtn.setAttribute('aria-label', 'Excel: plantilla e importar');
+  excelBtn.className = 'btn btn-secondary'; excelBtn.innerHTML = '📗<span class="btn-txt-mov"> Excel</span> ▾'; excelBtn.title = 'Cargar tareas en masa desde Excel'; excelBtn.setAttribute('aria-label', 'Excel: plantilla e importar');
   excelBtn.onclick = e => {
     e.stopPropagation();
     const panel = document.createElement('div');
@@ -8618,6 +8574,49 @@ function montarAccionesTareas(actions) {
   nueva.className = 'btn btn-primary'; nueva.textContent = '+ Nueva tarea';
   nueva.onclick = () => openTareaModal(null);
   actions.appendChild(nueva);
+}
+
+// Barra de Contenidos (04/11): eran 7 botones sueltos que se encimaban con la campanita.
+// Ahora: Reporte · Excel ▾ (plantilla, importar, exportar y, para el equipo, actualizar estado/notas) ·
+// Duplicados (solo equipo) · + Nuevo contenido. Mismas funciones de siempre, ninguna se quitó.
+function montarAccionesContenidos(actions) {
+  if (!esPropioAgencia) {
+    const rptBtn = document.createElement('button');
+    rptBtn.className = 'btn btn-secondary';
+    rptBtn.textContent = '📊 Reporte';
+    rptBtn.onclick = () => openReporteModal();
+    actions.appendChild(rptBtn);
+  }
+  const excelBtn = document.createElement('button');
+  excelBtn.className = 'btn btn-secondary'; excelBtn.innerHTML = '📗 Excel ▾'; excelBtn.title = 'Plantilla, importar y exportar el calendario de contenidos';
+  excelBtn.setAttribute('aria-label', 'Excel: plantilla, importar y exportar');
+  excelBtn.onclick = e => {
+    e.stopPropagation();
+    const panel = document.createElement('div');
+    const item = (txt, fn, title) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pop-item'; b.textContent = txt; if (title) b.title = title; b.onclick = () => { cerrarPopAcciones(); fn(); }; return b; };
+    const plantilla = document.createElement('a');
+    plantilla.className = 'pop-item'; plantilla.href = '../plantillas/Plantilla_Contenidos_Hub_COSMART.xlsx'; plantilla.setAttribute('download', 'Plantilla_Contenidos_Hub_COSMART.xlsx');
+    plantilla.textContent = '📄 Descargar plantilla'; plantilla.title = 'Descargar la plantilla vacía para cargar el calendario de contenidos'; plantilla.onclick = () => cerrarPopAcciones();
+    panel.append(plantilla,
+      item('📥 Importar desde Excel', () => openImportModal()),
+      item('📤 Exportar a Excel', () => exportarContenidosExcel(), 'Bajar el calendario de contenidos cargado, con las mismas columnas que la plantilla'));
+    if (user.role !== 'client') panel.append(item('⚡ Actualizar estado/notas', () => openQuickUpdateModal(), 'Subí un Excel simple (Título + Estado/Notas/Comentario) para actualizar contenidos ya cargados sin tocar el resto de los campos'));
+    abrirPopAcciones(excelBtn, panel);
+  };
+  actions.appendChild(excelBtn);
+  if (user.role !== 'client') {
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'btn btn-secondary';
+    dupBtn.textContent = '🧹 Duplicados';
+    dupBtn.title = 'Buscar contenidos cargados dos veces con el mismo título';
+    dupBtn.onclick = () => abrirDuplicadosContenidoModal();
+    actions.appendChild(dupBtn);
+  }
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary btn-rojo';
+  btn.textContent = '+ Nuevo contenido';
+  btn.onclick = () => openContenidoModal(null);
+  actions.appendChild(btn);
 }
 
 function compactarAccionesMobile(actions) {
