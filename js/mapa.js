@@ -6,12 +6,12 @@ import { getSessionToken } from './auth.js';
 
 const auth = () => ({ 'Authorization': `Bearer ${getSessionToken()}` });
 
-export async function traerMapa() {
-  const res = await fetch(WORKER_URL + '/admin/mapa', { headers: auth() });
+export async function traerMapa(doc) {
+  const res = await fetch(WORKER_URL + '/admin/mapa' + (doc ? '?doc=' + encodeURIComponent(doc) : ''), { headers: auth() });
   if (res.status === 403 || res.status === 401) throw new Error('Esta sección es solo para el admin de COSMART con la sesión iniciada.');
   if (!res.ok) throw new Error('No pude cargar el mapa. Probá de nuevo.');
   const d = await res.json();
-  if (!d.html) throw new Error('El mapa todavía no fue publicado. Pedile a Claude que lo publique.');
+  if (!d.html) throw new Error('Todavía no fue publicado. Pedile a Claude que lo publique.');
   return d.html;
 }
 
@@ -24,10 +24,10 @@ export async function subirMapa(html) {
   if (!res.ok) throw new Error('No se pudo subir el mapa.');
 }
 
-export async function mostrarMapa(iframe, estado) {
-  estado.textContent = 'Cargando el mapa…';
+export async function mostrarMapa(iframe, estado, doc) {
+  estado.textContent = 'Cargando…';
   try {
-    iframe.srcdoc = await traerMapa();
+    iframe.srcdoc = await traerMapa(doc);
     estado.textContent = '';
   } catch (e) {
     iframe.srcdoc = '';
