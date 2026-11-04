@@ -512,6 +512,28 @@
   </div>
 </div>
 
+<!-- Modal: Importar tareas desde Excel (panel del cliente) -->
+<div id="importTareasModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h3>Importar tareas desde Excel</h3>
+      <button class="modal-close" onclick="closeImportTareasModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Subí las tareas en Excel con la plantilla de siempre (botón <strong>📄 Plantilla Excel</strong>). Columnas: <strong>Categoría, Área/Cliente, Tarea, Prioridad, Día sugerido, Horario, Fecha límite, Notas</strong> — se reconocen por su nombre, no importa el orden. Fila 1 = encabezados. Solo la columna <strong>Tarea</strong> es obligatoria. Si la <strong>Categoría</strong> dice "Contenido", esa fila se crea como Contenido en lugar de tarea. Todo se carga en este cliente.
+      </p>
+      <input type="file" id="imptar-file-input" accept=".xlsx,.xls" class="form-control">
+      <div id="imptar-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+      <div id="imptar-preview" style="margin-top:14px;max-height:420px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportTareasModal()">Cancelar</button>
+      <button class="btn btn-primary" id="imptar-confirm" onclick="confirmarImportTareas()" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Importar contenidos desde Excel -->
 <div id="importContenidoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:760px;">

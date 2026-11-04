@@ -5,7 +5,7 @@ import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarN
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getGuiones, saveGuion, deleteGuion,
-  getTareas, saveTarea, deleteTarea,
+  getTareas, saveTarea, deleteTarea, saveTareasList,
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias,
@@ -994,6 +994,20 @@ function renderSection(sec) {
     viewCalBtn.innerHTML = '<i data-lucide="calendar" style="width:14px;height:14px;"></i> Calendario de tareas';
     viewCalBtn.onclick = () => { _tareasView = 'calendario'; renderSection('tareas'); };
     actions.appendChild(viewCalBtn);
+    // Carga masiva por Excel (mismo mecanismo y plantilla que Mis Tareas del admin), directo a este cliente.
+    const plantillaTareasBtn = document.createElement('a');
+    plantillaTareasBtn.className = 'btn btn-secondary btn-sm';
+    plantillaTareasBtn.textContent = '📄 Plantilla Excel';
+    plantillaTareasBtn.href = '../plantillas/Plantilla_Tareas_Hub_COSMART.xlsx';
+    plantillaTareasBtn.setAttribute('download', 'Plantilla_Tareas_Hub_COSMART.xlsx');
+    plantillaTareasBtn.title = 'Descargar la plantilla vacía para cargar tareas en masa';
+    actions.appendChild(plantillaTareasBtn);
+    const importTareasBtn = document.createElement('button');
+    importTareasBtn.className = 'btn btn-secondary btn-sm';
+    importTareasBtn.textContent = '📥 Importar Excel';
+    importTareasBtn.title = 'Cargar varias tareas de una vez desde un Excel';
+    importTareasBtn.onclick = () => openImportTareasModal();
+    actions.appendChild(importTareasBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
     btn.textContent = '+ Nueva tarea';
@@ -4257,6 +4271,148 @@ function loadXLSXLib() {
   });
   return _xlsxLoadPromise;
 }
+
+// ── Importar tareas desde Excel (panel del cliente) ─────────────────
+// Misma plantilla y columnas que "Importar Excel" de Mis Tareas (admin); acá el destino
+// es siempre ESTE cliente, así que no hay selector de destino.
+const MESES_CORTO_IMPT = { ene:1,enero:1,feb:2,febrero:2,mar:3,marzo:3,abr:4,abril:4,may:5,mayo:5,jun:6,junio:6,jul:7,julio:7,ago:8,agosto:8,sep:9,set:9,septiembre:9,setiembre:9,oct:10,octubre:10,nov:11,noviembre:11,dic:12,diciembre:12 };
+const impTNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+function impTFecha(val, anioDefault) {
+  if (!val) return null;
+  if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+  const s = String(val).trim();
+  let m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = s.match(/^(\d{1,2})[/-](\d{1,2})$/);
+  if (m) return `${anioDefault}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = impTNorm(s).match(/^(\d{1,2}) de ([a-z]+)$/);
+  if (m && MESES_CORTO_IMPT[m[2]]) return `${anioDefault}-${String(MESES_CORTO_IMPT[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return null;
+}
+const impTPrioridad = v => { const n = impTNorm(v); return n === 'alta' ? 'Alta' : n === 'baja' ? 'Baja' : 'Media'; };
+let _impTareasRows = [];
+
+window.openImportTareasModal = function() {
+  _impTareasRows = [];
+  document.getElementById('imptar-file-input').value = '';
+  document.getElementById('imptar-status').textContent = '';
+  document.getElementById('imptar-preview').innerHTML = '';
+  document.getElementById('imptar-confirm').disabled = true;
+  document.getElementById('importTareasModal').classList.remove('hidden');
+  loadXLSXLib();
+};
+window.closeImportTareasModal = function() { document.getElementById('importTareasModal').classList.add('hidden'); };
+
+function renderImpTareasPreview() {
+  const filas = _impTareasRows;
+  const dup = filas.filter(f => f.duplicadoId).length, cont = filas.filter(f => f.tipo === 'contenido').length;
+  document.getElementById('imptar-status').textContent = `${filas.length} fila(s) encontradas${cont ? ` · ${cont} se crean como Contenido` : ''}${dup ? ` · ${dup} ya existen en este cliente` : ''}.`;
+  document.getElementById('imptar-preview').innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
+    <thead><tr><th>Tipo</th><th>Tarea / Contenido</th><th>Prioridad</th><th>Fecha</th><th>Si ya existe</th></tr></thead>
+    <tbody>${filas.map((f, i) => `
+      <tr style="${f.duplicadoId ? 'background:#fffbeb;color:#1a1a2e;' : ''}">
+        <td style="font-size:11px;">${f.tipo === 'contenido' ? '📣 Contenido' : '✅ Tarea'}</td>
+        <td style="max-width:260px;overflow-wrap:anywhere;">${f.duplicadoId ? '⚠️ ' : ''}${escapeHtml(f.titulo)}</td>
+        <td>${f.tipo === 'contenido' ? '—' : f.prioridad}</td>
+        <td>${f.vencimiento || '—'}</td>
+        <td>${f.duplicadoId ? `<select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="_impTareasRows[${i}].accionDuplicado=this.value">
+          <option value="omitir" ${f.accionDuplicado === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option>
+          <option value="actualizar" ${f.accionDuplicado === 'actualizar' ? 'selected' : ''}>Actualizar la existente</option>
+          <option value="nueva" ${f.accionDuplicado === 'nueva' ? 'selected' : ''}>Importar como nueva</option></select>` : '<span style="font-size:11px;color:var(--text-muted);">—</span>'}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+}
+
+document.getElementById('imptar-file-input')?.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('imptar-status'), confirmBtn = document.getElementById('imptar-confirm');
+  document.getElementById('imptar-preview').innerHTML = '';
+  confirmBtn.disabled = true; _impTareasRows = [];
+  if (!file) return;
+  statusEl.textContent = 'Leyendo archivo…';
+  try {
+    await loadXLSXLib();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+    const hoja = wb.SheetNames.find(n => String(n).trim().toLowerCase() === 'tareas') || wb.SheetNames.find(n => !/^instrucciones?$/i.test(String(n).trim())) || wb.SheetNames[0];
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[hoja], { header: 1, defval: '' });
+    if (!raw.length) { statusEl.textContent = 'El archivo no tiene filas.'; return; }
+    const headerMap = { categoria: 'categoria', 'area cliente': 'area', 'area/cliente': 'area', area: 'area', tarea: 'tarea', prioridad: 'prioridad', 'dia sugerido': 'dia', horario: 'horario', 'fecha limite': 'fecha', notas: 'notas' };
+    const campos = raw[0].map(h => headerMap[impTNorm(h)] || null);
+    const anio = new Date().getFullYear(), filas = [];
+    for (let r = 1; r < raw.length; r++) {
+      const row = raw[r];
+      if (!row || row.every(v => v === '' || v == null)) continue;
+      const o = {}; campos.forEach((c, ci) => { if (c) o[c] = row[ci]; });
+      const titulo = String(o.tarea || '').trim();
+      if (!titulo) continue;
+      const notas = [o.dia, o.horario, o.notas].map(v => String(v || '').trim()).filter(Boolean).join(' · ');
+      const cat = impTNorm(o.categoria);
+      filas.push({ titulo, tipo: (cat === 'contenido' || cat === 'contenidos') ? 'contenido' : 'tarea', prioridad: impTPrioridad(o.prioridad), vencimiento: impTFecha(o.fecha, anio), notas, duplicadoId: null, accionDuplicado: 'omitir' });
+    }
+    if (!filas.length) { statusEl.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Tarea").'; return; }
+    filas.forEach(f => {
+      const n = impTNorm(f.titulo);
+      const existente = (f.tipo === 'contenido' ? STATE.contenidos : STATE.tareas).find(x => !x.archivado && impTNorm(x.titulo) === n);
+      if (existente) f.duplicadoId = existente.id;
+    });
+    _impTareasRows = filas;
+    renderImpTareasPreview();
+    confirmBtn.disabled = false;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.';
+  }
+});
+
+window.confirmarImportTareas = async function() {
+  const btn = document.getElementById('imptar-confirm');
+  const aProcesar = _impTareasRows.filter(f => !f.duplicadoId || f.accionDuplicado !== 'omitir');
+  if (!aProcesar.length) { alert('No hay ninguna fila para importar (todas ya existen y están en "Omitir").'); return; }
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+    const yo = { email: user.email, nombre: user.name || user.email };
+    // Tareas: se arma la lista completa y se guarda UNA vez (una sola vuelta al servidor para todo el Excel).
+    const lista = (await getTareas(clientId)).slice();
+    let numero = Math.max(0, ...lista.map(t => t.numero || 0));
+    let nTareas = 0, nCont = 0;
+    const contNuevos = [], contActualizar = [];
+    aProcesar.forEach((f, i) => {
+      if (f.tipo === 'contenido') {
+        if (f.duplicadoId && f.accionDuplicado === 'actualizar') contActualizar.push(f);
+        else contNuevos.push({ titulo: f.titulo, estado: 'Idea', fechaPub: f.vencimiento || null, notas: f.notas, creadoPor: user.email });
+        return;
+      }
+      if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
+        const t = lista.find(x => x.id === f.duplicadoId);
+        if (t) { t.prioridad = f.prioridad; t.vencimiento = f.vencimiento || t.vencimiento; t.notas = f.notas || t.notas; nTareas++; }
+        return;
+      }
+      lista.push({
+        id: 't' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5), numero: ++numero,
+        titulo: f.titulo, estado: 'Sin empezar', prioridad: f.prioridad, vencimiento: f.vencimiento, notas: f.notas,
+        asignado: { ...yo, asignadoPor: yo }, visibleParaCliente: user.role === 'client', creadoPor: user.email,
+        subtareas: [], comentarios: [], imagenes: [],
+      });
+      nTareas++;
+    });
+    if (nTareas) { await saveTareasList(clientId, lista); STATE.tareas = await getTareas(clientId); }
+    if (contNuevos.length) { await saveContenidosBulk(clientId, contNuevos); nCont += contNuevos.length; }
+    for (const f of contActualizar) {
+      const c = STATE.contenidos.find(x => x.id === f.duplicadoId);
+      if (c) { await saveContenido(clientId, { ...c, fechaPub: f.vencimiento || c.fechaPub, notas: f.notas || c.notas }); nCont++; }
+    }
+    if (nCont) STATE.contenidos = await getContenidos(clientId);
+    closeImportTareasModal();
+    updateBadges();
+    renderSection(currentSection);
+    alert(`Listo: ${nTareas} tarea(s)${nCont ? ` y ${nCont} contenido(s)` : ''} cargadas.`);
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo completar la importación: ' + (e.message || 'intentá de nuevo.') + '\nRevisá la lista de tareas antes de volver a importar.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
+};
 
 function closeImportModal() {
   document.getElementById('importContenidoModal').classList.add('hidden');

@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 04/11 — Carga masiva de tareas por Excel en el panel del cliente (sección Tareas)
+- **Pedido de Vaneh:** "los clientes no tienen subida de tareas masivas". Antes solo existía en Mis Tareas del admin (multi-cliente) y para contenidos/campañas en el panel del cliente.
+- **Ahora:** en la barra de Tareas del panel del cliente hay "📄 Plantilla Excel" (misma `Plantilla_Tareas_Hub_COSMART.xlsx`) y "📥 Importar Excel" (`openImportTareasModal`, modal `#importTareasModal` en `app/index.html`, lógica en `js/app.js` junto a `openImportModal`). Mismas columnas y reglas que el import del admin (Categoría, Área/Cliente, Tarea [obligatoria], Prioridad, Día sugerido, Horario, Fecha límite, Notas; fechas `15/11`, `15-11-2026`, `12 de noviembre`); el destino es siempre ESE cliente (sin selector). Categoría "Contenido" -> se crea como Contenido en estado "Idea". Duplicados por título (Omitir / Actualizar / Importar como nueva, por defecto Omitir). Las tareas se guardan en UNA sola vuelta (`saveTareasList`) con `numero` correlativo; `visibleParaCliente` = true solo si quien importa es el propio cliente.
+- Ojo: los contenidos creados por este camino cuentan como "contenidos nuevos" y disparan el mail al cliente principal (regla del 02/11) cuando los carga el equipo.
+- Probado con Playwright (1280 y 390 px, Excel armado con la propia librería): 4 filas leídas, 1 duplicado omitido, tareas #2 y #3 creadas, contenido creado como Idea con fecha. Versiones: `app.js?v=73`, `hv=27`.
+
 ## 02/11 — Ideas de contenido: link de referencia a la vista, título opcional y captura rápida
 Pedido de Vaneh ("a veces es solo una idea"; pegarle el link a Claude y que lo guarde). `app/index.html` + `js/app.js` (Banco de ideas, sirve a Contenidos propios `_cosmart` → tipo `ideasContenido`, y a cada cliente → `ideas`):
 - Modal "Nueva idea": el campo **🔗 Link de referencia** pasó arriba del todo (mismo `if-link` / `linkDriveRef`, sin migración); el **título es opcional** si hay link (se arma "Idea desde Instagram/TikTok/…"); al pegar el link en una idea NUEVA se autocompletan formato y plataforma (`detectarRedLink`).
