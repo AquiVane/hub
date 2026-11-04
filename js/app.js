@@ -5,7 +5,7 @@ import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarN
 import {
   getClientData, saveClientData, getContenidos, saveContenido, deleteContenido, saveContenidosBulk, updateContenidosBulk,
   getGuiones, saveGuion, deleteGuion,
-  getTareas, saveTarea, deleteTarea, saveTareasList,
+  getTareas, saveTarea, deleteTarea, saveTareasList, getLeadsCliente, saveLeadsCliente,
   getCampanas, saveCampana, deleteCampana, saveCampanasBulk,
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias,
@@ -16,7 +16,7 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=14';
+} from './data.js?v=15';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -282,6 +282,7 @@ async function init() {
       if (STATE.reportes.length || user.role !== 'client') document.getElementById('nav-reportes').classList.remove('hidden');
     }
     setupNav();
+    iniciarCrmNuevo();
     const openTipo = params.get('open');
     const openId = params.get('id');
     if (openTipo === 'contenido' && openId && STATE.contenidos.some(c => c.id === openId)) {
@@ -561,10 +562,12 @@ window.addEventListener('hub-datos-remotos', async e => {
     if (tipos.has('campanas')) STATE.campanas = await getCampanas(clientId);
     if (tipos.has('guiones')) STATE.guiones = await getGuiones(clientId);
     if (tipos.has(IDEAS_TIPO)) STATE.ideas = await getIdeas(clientId, IDEAS_TIPO);
+    if (tipos.has('leads') && STATE.leads) STATE.leads = await getLeadsCliente(clientId);
   } catch (err) { return; }
   if (_edicionEnCurso()) return;
   if (currentSection === 'tareas') refreshTareasView();
   else if (currentSection === 'contenidos' && document.getElementById('cont-tab-body')) renderContTab(activeContTab);
+  else if (currentSection === 'crm' && STATE.leads) renderCrm(document.getElementById('crm-cuerpo') || document.getElementById('main-content'));
   else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links'].includes(currentSection)) renderSection(currentSection);
 });
 
@@ -842,8 +845,9 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones', crm: 'CRM' };
   const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', guiones: 'Repositorio de guiones para grabar, vinculados o no a un contenido', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
+  subs.crm = 'Contactos interesados en tu negocio, por etapa';
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -900,6 +904,12 @@ function renderSection(sec) {
     if (_tareasView === 'calendario') renderTareasCalendario(content);
     else if (_tareasView === 'lista') renderTareasLista(content);
     else renderTareas(content);
+    setTimeout(refreshIcons, 50);
+  }
+  else if (sec === 'crm') {
+    marcarCrmVisto();
+    montarAccionesCrm(actions);
+    renderCrmSeccion(content);
     setTimeout(refreshIcons, 50);
   }
   else if (sec === 'pauta') {
@@ -8617,6 +8627,322 @@ function montarAccionesContenidos(actions) {
   btn.textContent = '+ Nuevo contenido';
   btn.onclick = () => openContenidoModal(null);
   actions.appendChild(btn);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CRM del cliente (04/11, pedido de Vaneh): los contactos interesados en el negocio del
+// cliente, en un tablero por etapas. Datos en `/data/:clientId/leads` (sin backend nuevo).
+// Los carga el propio cliente o el equipo; se pueden importar/exportar por Excel con el
+// "origen" (de dónde vino cada contacto). Es independiente del CRM de la agencia (admin).
+// ═══════════════════════════════════════════════════════════════════
+const CRM_ETAPAS = [
+  { key: 'Nuevo', color: '#94a3b8' }, { key: 'Contactado', color: '#3b82f6' }, { key: 'En conversación', color: '#8b5cf6' },
+  { key: 'Propuesta', color: '#f59e0b' }, { key: 'Ganado', color: '#10b981' }, { key: 'Perdido', color: '#ef4444' },
+];
+const CRM_ORIGEN_COLOR = { instagram: '#c13584', facebook: '#1877f2', tiktok: '#111827', linkedin: '#0a66c2', whatsapp: '#16a34a', web: '#0ea5e9', referido: '#d97706', evento: '#7c3aed', 'publicidad paga': '#dc2626', 'base propia': '#475569' };
+const crmOrigenColor = o => CRM_ORIGEN_COLOR[impTNorm(o)] || '#64748b';
+let _crmBusqueda = '', _crmFiltroOrigen = '', _crmFiltroEtiqueta = '';
+let _crmEditando = null, _crmEtapaNueva = 'Nuevo';
+
+function crmVisto() { try { return localStorage.getItem('hub_crm_visto_' + (user.email || '')) === '1'; } catch (e) { return false; } }
+function marcarCrmVisto() {
+  try { localStorage.setItem('hub_crm_visto_' + (user.email || ''), '1'); } catch (e) {}
+  document.getElementById('crm-nuevo')?.classList.add('hidden');
+  document.getElementById('bnav-more')?.classList.remove('con-nuevo');
+}
+function iniciarCrmNuevo() {
+  const nav = document.getElementById('nav-crm');
+  if (!nav) return;
+  if (esPropioAgencia) { nav.classList.add('hidden'); return; } // la agencia tiene su propio CRM en el admin
+  if (crmVisto()) document.getElementById('crm-nuevo')?.classList.add('hidden');
+  else document.getElementById('bnav-more')?.classList.add('con-nuevo');
+}
+const crmEtiquetas = txt => [...new Set(String(txt || '').split(/[,;]/).map(x => x.trim()).filter(Boolean))].slice(0, 12);
+const crmDigitos = t => String(t || '').replace(/\D/g, '');
+
+function montarAccionesCrm(actions) {
+  const buscar = document.createElement('input');
+  buscar.type = 'search'; buscar.className = 'form-control tareas-buscar'; buscar.placeholder = '🔎 Buscar contacto...'; buscar.value = _crmBusqueda;
+  buscar.setAttribute('aria-label', 'Buscar contacto');
+  buscar.oninput = e => { _crmBusqueda = e.target.value.trim().toLowerCase(); if (STATE.leads) renderCrm(document.getElementById('crm-cuerpo')); };
+  actions.appendChild(buscar);
+
+  const filtrosBtn = document.createElement('button');
+  filtrosBtn.className = 'btn btn-secondary';
+  const pintarFiltros = () => { const n = [_crmFiltroOrigen, _crmFiltroEtiqueta].filter(Boolean).length; filtrosBtn.innerHTML = 'Filtros' + (n ? ` <span class="btn-n">${n}</span>` : '') + ' ▾'; filtrosBtn.classList.toggle('con-filtros', !!n); };
+  pintarFiltros();
+  filtrosBtn.onclick = e => {
+    e.stopPropagation();
+    const lista = STATE.leads || [];
+    const origenes = [...new Set(lista.map(l => l.origen).filter(Boolean))].sort();
+    const etiquetas = [...new Set(lista.flatMap(l => l.etiquetas || []))].sort();
+    const campo = (et, html, valor, fn) => { const d = document.createElement('div'); d.className = 'pop-campo'; const l = document.createElement('label'); l.textContent = et; const sel = document.createElement('select'); sel.className = 'form-control'; sel.innerHTML = html; sel.value = valor; sel.onchange = ev => { fn(ev.target.value); pintarFiltros(); renderCrm(document.getElementById('crm-cuerpo')); }; d.append(l, sel); return d; };
+    const panel = document.createElement('div');
+    panel.append(
+      campo('Origen', '<option value="">Todos</option>' + origenes.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join(''), _crmFiltroOrigen, v => { _crmFiltroOrigen = v; }),
+      campo('Etiqueta', '<option value="">Todas</option>' + etiquetas.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join(''), _crmFiltroEtiqueta, v => { _crmFiltroEtiqueta = v; }));
+    const limpiar = document.createElement('button');
+    limpiar.className = 'btn btn-secondary btn-sm'; limpiar.style.width = '100%'; limpiar.textContent = '✕ Limpiar filtros';
+    limpiar.onclick = () => { _crmBusqueda = ''; _crmFiltroOrigen = ''; _crmFiltroEtiqueta = ''; cerrarPopAcciones(); renderSection('crm'); };
+    panel.appendChild(limpiar);
+    abrirPopAcciones(filtrosBtn, panel);
+  };
+  actions.appendChild(filtrosBtn);
+
+  const excelBtn = document.createElement('button');
+  excelBtn.className = 'btn btn-secondary'; excelBtn.innerHTML = '📗<span class="btn-txt-mov"> Excel</span> ▾'; excelBtn.title = 'Importar y exportar contactos con Excel';
+  excelBtn.setAttribute('aria-label', 'Excel: plantilla, importar y exportar');
+  excelBtn.onclick = e => {
+    e.stopPropagation();
+    const panel = document.createElement('div');
+    const plantilla = document.createElement('a');
+    plantilla.className = 'pop-item'; plantilla.href = '../plantillas/Plantilla_CRM_Hub_COSMART.xlsx'; plantilla.setAttribute('download', 'Plantilla_CRM_Hub_COSMART.xlsx');
+    plantilla.textContent = '📄 Descargar plantilla'; plantilla.onclick = () => cerrarPopAcciones();
+    const item = (txt, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pop-item'; b.textContent = txt; b.onclick = () => { cerrarPopAcciones(); fn(); }; return b; };
+    panel.append(plantilla, item('📥 Importar desde Excel', abrirImportLeads), item('📤 Exportar a Excel', exportarLeadsExcel));
+    abrirPopAcciones(excelBtn, panel);
+  };
+  actions.appendChild(excelBtn);
+
+  const nuevo = document.createElement('button');
+  nuevo.className = 'btn btn-primary'; nuevo.textContent = '+ Nuevo contacto';
+  nuevo.onclick = () => abrirLeadModal(null);
+  actions.appendChild(nuevo);
+}
+
+async function renderCrmSeccion(container) {
+  container.innerHTML = '<div id="crm-cuerpo"></div>';
+  const cuerpo = document.getElementById('crm-cuerpo');
+  if (!STATE.leads) {
+    cuerpo.innerHTML = '<div class="crm-vacio">Cargando contactos…</div>';
+    try { STATE.leads = await getLeadsCliente(clientId); if (!Array.isArray(STATE.leads)) STATE.leads = []; }
+    catch (e) { cuerpo.innerHTML = `<div class="crm-vacio">No se pudieron cargar los contactos.<br><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="renderSection('crm')">Reintentar</button></div>`; return; }
+    if (currentSection !== 'crm') return;
+  }
+  renderCrm(document.getElementById('crm-cuerpo'));
+}
+
+function leadsFiltrados() {
+  return (STATE.leads || []).filter(l =>
+    (!_crmFiltroOrigen || l.origen === _crmFiltroOrigen) &&
+    (!_crmFiltroEtiqueta || (l.etiquetas || []).includes(_crmFiltroEtiqueta)) &&
+    (!_crmBusqueda || impTNorm([l.nombre, l.empresa, l.email, l.telefono, l.origen, (l.etiquetas || []).join(' '), l.notas].join(' ')).includes(impTNorm(_crmBusqueda))));
+}
+
+function renderCrm(container) {
+  if (!container) return;
+  const todos = STATE.leads || [];
+  if (!todos.length) {
+    container.innerHTML = `<div class="crm-vacio"><div style="font-size:42px;">📇</div><h3 style="margin:8px 0 6px;color:var(--text);">Todavía no hay contactos</h3>
+      <p style="max-width:460px;margin:0 auto 16px;">Cargá a las personas interesadas en tu negocio y seguilas por etapa: nuevo, contactado, en conversación, propuesta, ganado o perdido. Podés importarlos desde un Excel indicando de dónde vino cada uno.</p>
+      <button class="btn btn-primary" onclick="abrirLeadModal(null)">+ Nuevo contacto</button>
+      <button class="btn btn-secondary" onclick="abrirImportLeads()">📥 Importar desde Excel</button></div>`;
+    return;
+  }
+  const filtrados = leadsFiltrados();
+  const hoy = new Date().toISOString().split('T')[0];
+  const monto = n => Number(n || 0).toLocaleString('es-AR');
+  const tarjeta = l => {
+    const vencido = l.proximoContacto && l.proximoContacto < hoy && !['Ganado', 'Perdido'].includes(l.etapa);
+    const wa = crmDigitos(l.telefono);
+    return `
+    <div class="kanban-card crm-card" draggable="true" data-id="${l.id}" onclick="if(!this._dragged)abrirLeadModal('${l.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)">
+      <div class="crm-nombre">${escapeHtml(l.nombre)}</div>
+      ${l.empresa ? `<div class="crm-emp">${escapeHtml(l.empresa)}</div>` : ''}
+      <div class="crm-chips">
+        ${l.origen ? `<span class="crm-origen" style="background:${crmOrigenColor(l.origen)};">${escapeHtml(l.origen)}</span>` : ''}
+        ${(l.etiquetas || []).slice(0, 3).map(t => `<span class="crm-chip">${escapeHtml(t)}</span>`).join('')}${(l.etiquetas || []).length > 3 ? `<span class="crm-chip">+${l.etiquetas.length - 3}</span>` : ''}
+      </div>
+      <div class="crm-meta">
+        ${l.telefono ? `<span>📞 ${wa.length >= 8 ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation();">${escapeHtml(l.telefono)}</a>` : escapeHtml(l.telefono)}</span>` : ''}
+        ${l.email ? `<span>✉️ <a href="mailto:${escapeHtml(l.email)}" onclick="event.stopPropagation();">${escapeHtml(l.email)}</a></span>` : ''}
+        ${l.monto ? `<span>💲 ${monto(l.monto)}</span>` : ''}
+        ${l.proximoContacto ? `<span style="${vencido ? 'color:#dc2626;font-weight:600;' : ''}">📅 Seguimiento: ${fmtDate(l.proximoContacto)}</span>` : ''}
+        ${l.notas ? `<span style="color:var(--text-muted);">${escapeHtml(String(l.notas).slice(0, 90))}${String(l.notas).length > 90 ? '…' : ''}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();abrirLeadModal('${l.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarLead('${l.id}')" title="Eliminar">×</button>
+      </div>
+    </div>`;
+  };
+  container.innerHTML = `<div class="kanban-board crm-board" id="kanban-crm">${CRM_ETAPAS.map(e => {
+    const items = filtrados.filter(l => (l.etapa || 'Nuevo') === e.key).sort((a, b) => String(b.actualizadoEn || '').localeCompare(String(a.actualizadoEn || '')));
+    return `<div class="kanban-col" data-col="${e.key}" style="flex:1;max-width:none;">
+      <div class="kanban-col-header"><span class="kanban-col-dot" style="background:${e.color};"></span><span class="col-title">${e.key}</span><span class="col-count">${items.length}</span></div>
+      <div class="kanban-cards" data-col="${e.key}">${items.map(tarjeta).join('')}</div>
+      <button class="kanban-add-btn" onclick="abrirLeadModal(null,'${e.key}')">+ Agregar</button>
+    </div>`;
+  }).join('')}</div>`;
+  initKanbanDrag('#kanban-crm', STATE.leads, async (id, nuevaEtapa) => {
+    const l = STATE.leads.find(x => x.id === id);
+    if (!l || l.etapa === nuevaEtapa) return;
+    l.etapa = nuevaEtapa; l.actualizadoEn = new Date().toISOString();
+    renderCrm(document.getElementById('crm-cuerpo'));
+    saveLeadsCliente(clientId, STATE.leads).catch(() => alert('No se pudo guardar el cambio de etapa. Revisá tu conexión.'));
+  });
+}
+
+window.abrirLeadModal = function(id, etapa) {
+  _crmEditando = id ? (STATE.leads || []).find(l => l.id === id) || null : null;
+  const l = _crmEditando || {};
+  document.getElementById('lead-modal-title').textContent = _crmEditando ? 'Editar contacto' : 'Nuevo contacto';
+  document.getElementById('ld-etapa').innerHTML = CRM_ETAPAS.map(e => `<option>${e.key}</option>`).join('');
+  document.getElementById('ld-nombre').value = l.nombre || '';
+  document.getElementById('ld-empresa').value = l.empresa || '';
+  document.getElementById('ld-email').value = l.email || '';
+  document.getElementById('ld-telefono').value = l.telefono || '';
+  document.getElementById('ld-origen').value = l.origen || '';
+  document.getElementById('ld-etapa').value = l.etapa || etapa || 'Nuevo';
+  document.getElementById('ld-monto').value = l.monto || '';
+  document.getElementById('ld-proximo').value = l.proximoContacto || '';
+  document.getElementById('ld-etiquetas').value = (l.etiquetas || []).join(', ');
+  document.getElementById('ld-notas').value = l.notas || '';
+  document.getElementById('ld-eliminar').classList.toggle('hidden', !_crmEditando);
+  document.getElementById('leadModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('ld-nombre').focus(), 60);
+};
+window.cerrarLeadModal = function() { document.getElementById('leadModal').classList.add('hidden'); };
+window.guardarLead = async function() {
+  const nombre = document.getElementById('ld-nombre').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio.'); return; }
+  const ahora = new Date().toISOString();
+  const datos = {
+    nombre, empresa: document.getElementById('ld-empresa').value.trim(), email: document.getElementById('ld-email').value.trim(),
+    telefono: document.getElementById('ld-telefono').value.trim(), origen: document.getElementById('ld-origen').value.trim(),
+    etapa: document.getElementById('ld-etapa').value, monto: Number(document.getElementById('ld-monto').value) || 0,
+    proximoContacto: document.getElementById('ld-proximo').value || '', etiquetas: crmEtiquetas(document.getElementById('ld-etiquetas').value),
+    notas: document.getElementById('ld-notas').value.trim(), actualizadoEn: ahora,
+  };
+  if (!STATE.leads) STATE.leads = [];
+  if (_crmEditando) Object.assign(_crmEditando, datos);
+  else STATE.leads.push({ id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), creadoEn: ahora, creadoPor: user.email, ...datos });
+  try { await saveLeadsCliente(clientId, STATE.leads); }
+  catch (e) { alert('No se pudo guardar el contacto: ' + (e.message || 'intentá de nuevo.')); return; }
+  cerrarLeadModal();
+  if (currentSection === 'crm') renderCrm(document.getElementById('crm-cuerpo'));
+};
+window.eliminarLead = async function(id) {
+  const l = (STATE.leads || []).find(x => x.id === id);
+  if (!l || !confirm(`¿Eliminar a ${l.nombre}? No se puede deshacer.`)) return;
+  STATE.leads = STATE.leads.filter(x => x.id !== id);
+  try { await saveLeadsCliente(clientId, STATE.leads); } catch (e) { alert('No se pudo eliminar: ' + (e.message || 'intentá de nuevo.')); STATE.leads = await getLeadsCliente(clientId); }
+  renderCrm(document.getElementById('crm-cuerpo'));
+};
+window.eliminarLeadModal = async function() { if (_crmEditando) { const id = _crmEditando.id; cerrarLeadModal(); await eliminarLead(id); } };
+
+// ── Excel: importar (con el origen de cada contacto) y exportar ──
+let _impLeadsRows = [];
+window.abrirImportLeads = function() {
+  _impLeadsRows = [];
+  document.getElementById('il-file-input').value = '';
+  document.getElementById('il-status').textContent = '';
+  document.getElementById('il-preview').innerHTML = '';
+  document.getElementById('il-confirm').disabled = true;
+  document.getElementById('importLeadsModal').classList.remove('hidden');
+  loadXLSXLib();
+};
+window.cerrarImportLeads = function() { document.getElementById('importLeadsModal').classList.add('hidden'); };
+// "$ 80.000" (punto de miles, como se escribe en Argentina), "80.000,50", "80000" o "1500.5".
+const crmMonto = v => {
+  if (typeof v === 'number') return isFinite(v) ? Math.max(0, v) : 0;
+  const t = String(v == null ? '' : v).replace(/[^0-9,.-]/g, '');
+  if (!t) return 0;
+  const n = Number(/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
+  return isFinite(n) ? Math.max(0, n) : 0;
+};
+const CRM_HEADERS = {
+  nombre: 'nombre', 'nombre y apellido': 'nombre', contacto: 'nombre', empresa: 'empresa', email: 'email', 'e mail': 'email', correo: 'email', mail: 'email',
+  telefono: 'telefono', whatsapp: 'telefono', celular: 'telefono', tel: 'telefono', 'telefono whatsapp': 'telefono',
+  origen: 'origen', 'de donde vino': 'origen', fuente: 'origen', canal: 'origen', etiquetas: 'etiquetas', etiqueta: 'etiquetas',
+  etapa: 'etapa', estado: 'etapa', 'monto estimado': 'monto', monto: 'monto', 'proximo seguimiento': 'proximo', seguimiento: 'proximo', notas: 'notas', nota: 'notas',
+};
+function crmEsDuplicado(f) {
+  const e = String(f.email || '').toLowerCase(), t = crmDigitos(f.telefono).slice(-8);
+  return (STATE.leads || []).find(l => (e && String(l.email || '').toLowerCase() === e) || (t.length >= 8 && crmDigitos(l.telefono).slice(-8) === t));
+}
+function renderImpLeadsPreview() {
+  const f = _impLeadsRows, dup = f.filter(x => x.duplicadoId).length;
+  document.getElementById('il-status').textContent = `${f.length} contacto(s) encontrados${dup ? ` · ${dup} ya existen (mismo email o teléfono)` : ''}.`;
+  document.getElementById('il-preview').innerHTML = `<div class="table-wrapper table-scroll-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Origen</th><th>Etapa</th><th>Contacto</th><th>Si ya existe</th></tr></thead><tbody>${f.map((x, i) => `
+    <tr style="${x.duplicadoId ? 'background:#fffbeb;color:#1a1a2e;' : ''}">
+      <td style="overflow-wrap:anywhere;">${x.duplicadoId ? '⚠️ ' : ''}${escapeHtml(x.nombre)}${x.empresa ? `<div style="font-size:11px;color:var(--text-muted);">${escapeHtml(x.empresa)}</div>` : ''}</td>
+      <td>${x.origen ? `<span class="crm-origen" style="background:${crmOrigenColor(x.origen)};">${escapeHtml(x.origen)}</span>` : '—'}</td>
+      <td>${x.etapa}</td>
+      <td style="font-size:12px;overflow-wrap:anywhere;">${escapeHtml(x.email || x.telefono || '—')}</td>
+      <td>${x.duplicadoId ? `<select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="impLeadsAccion(${i}, this.value)"><option value="omitir" ${x.accion === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option><option value="actualizar" ${x.accion === 'actualizar' ? 'selected' : ''}>Actualizar el existente</option><option value="nueva" ${x.accion === 'nueva' ? 'selected' : ''}>Importar como nuevo</option></select>` : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+window.impLeadsAccion = (i, v) => { if (_impLeadsRows[i]) _impLeadsRows[i].accion = v; };
+document.getElementById('il-file-input')?.addEventListener('change', async e => {
+  const file = e.target.files[0], st = document.getElementById('il-status'), btn = document.getElementById('il-confirm');
+  document.getElementById('il-preview').innerHTML = ''; btn.disabled = true; _impLeadsRows = [];
+  if (!file) return;
+  st.textContent = 'Leyendo archivo…';
+  try {
+    await loadXLSXLib();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+    const hoja = wb.SheetNames.find(n => /^(contactos|crm|leads)$/i.test(String(n).trim())) || wb.SheetNames.find(n => !/^instrucciones?$/i.test(String(n).trim())) || wb.SheetNames[0];
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[hoja], { header: 1, defval: '' });
+    if (!raw.length) { st.textContent = 'El archivo no tiene filas.'; return; }
+    const campos = raw[0].map(h => CRM_HEADERS[impTNorm(h)] || null);
+    const origenGlobal = document.getElementById('il-origen').value.trim();
+    const anio = new Date().getFullYear(), filas = [];
+    for (let r = 1; r < raw.length; r++) {
+      const row = raw[r];
+      if (!row || row.every(v => v === '' || v == null)) continue;
+      const o = {}; campos.forEach((c, ci) => { if (c) o[c] = row[ci]; });
+      const nombre = String(o.nombre || '').trim();
+      if (!nombre) continue;
+      const etapaTxt = impTNorm(o.etapa);
+      filas.push({
+        nombre, empresa: String(o.empresa || '').trim(), email: String(o.email || '').trim(), telefono: String(o.telefono || '').trim(),
+        origen: String(o.origen || '').trim() || origenGlobal, etiquetas: crmEtiquetas(o.etiquetas),
+        etapa: (CRM_ETAPAS.find(x => impTNorm(x.key) === etapaTxt) || CRM_ETAPAS[0]).key, monto: crmMonto(o.monto),
+        proximoContacto: impTFecha(o.proximo, anio) || '', notas: String(o.notas || '').trim(), duplicadoId: null, accion: 'omitir',
+      });
+    }
+    if (!filas.length) { st.textContent = 'No se encontraron filas válidas (revisá que exista la columna "Nombre").'; return; }
+    filas.forEach(f => { const d = crmEsDuplicado(f); if (d) f.duplicadoId = d.id; });
+    _impLeadsRows = filas; renderImpLeadsPreview(); btn.disabled = false;
+  } catch (err) { console.error(err); st.textContent = 'No se pudo leer el archivo. Verificá que sea un .xlsx válido.'; }
+});
+// Si se cambia el origen general después de elegir el archivo, se re-aplica a las filas sin origen propio.
+document.getElementById('il-origen')?.addEventListener('input', () => { if (document.getElementById('il-file-input').files[0]) document.getElementById('il-file-input').dispatchEvent(new Event('change')); });
+window.confirmarImportLeads = async function() {
+  const btn = document.getElementById('il-confirm');
+  const aProcesar = _impLeadsRows.filter(f => !f.duplicadoId || f.accion !== 'omitir');
+  if (!aProcesar.length) { alert('No hay ningún contacto para importar (todos ya existen y están en "Omitir").'); return; }
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try {
+    const ahora = new Date().toISOString();
+    const lista = (await getLeadsCliente(clientId)).slice();
+    let nuevos = 0, actualizados = 0;
+    aProcesar.forEach((f, i) => {
+      const base = { nombre: f.nombre, empresa: f.empresa, email: f.email, telefono: f.telefono, origen: f.origen, etiquetas: f.etiquetas, etapa: f.etapa, monto: f.monto, proximoContacto: f.proximoContacto, notas: f.notas, actualizadoEn: ahora };
+      if (f.duplicadoId && f.accion === 'actualizar') {
+        const l = lista.find(x => x.id === f.duplicadoId);
+        if (l) { Object.entries(base).forEach(([k, v]) => { if (k === 'etiquetas') l.etiquetas = [...new Set([...(l.etiquetas || []), ...v])]; else if (v !== '' && v !== 0 && v != null) l[k] = v; }); actualizados++; }
+        return;
+      }
+      lista.push({ id: 'l' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5), creadoEn: ahora, creadoPor: user.email, ...base }); nuevos++;
+    });
+    await saveLeadsCliente(clientId, lista);
+    STATE.leads = lista;
+    cerrarImportLeads();
+    if (currentSection === 'crm') renderCrm(document.getElementById('crm-cuerpo'));
+    alert(`Listo: ${nuevos} contacto(s) nuevo(s)${actualizados ? ` y ${actualizados} actualizado(s)` : ''}.`);
+  } catch (e) { console.error(e); alert('No se pudo completar la importación: ' + (e.message || 'intentá de nuevo.')); }
+  finally { btn.disabled = false; btn.textContent = 'Importar'; }
+};
+async function exportarLeadsExcel() {
+  if (!(STATE.leads || []).length) { alert('Todavía no hay contactos para exportar.'); return; }
+  await loadXLSXLib();
+  const filas = [['Nombre', 'Empresa', 'Email', 'Teléfono', 'Origen', 'Etiquetas', 'Etapa', 'Monto estimado', 'Próximo seguimiento', 'Notas'],
+    ...STATE.leads.map(l => [l.nombre, l.empresa || '', l.email || '', l.telefono || '', l.origen || '', (l.etiquetas || []).join(', '), l.etapa || 'Nuevo', l.monto || '', l.proximoContacto || '', l.notas || ''])];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filas), 'Contactos');
+  XLSX.writeFile(wb, `CRM_${(STATE.client?.nombre || STATE.client?.name || clientId).replace(/[^a-z0-9]+/gi, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function compactarAccionesMobile(actions) {

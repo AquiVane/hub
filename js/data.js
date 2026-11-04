@@ -267,6 +267,16 @@ export async function saveRecursos(clientId, lista) {
   await api('POST', `/data/${clientId}/recursos`, lista);
 }
 
+// ── CRM del cliente (04/11): sus propios contactos interesados, un tablero por etapas ──
+export async function getLeadsCliente(clientId) {
+  if (DEMO_MODE) return getDemoData(clientId).leads || [];
+  return api('GET', `/data/${clientId}/leads`);
+}
+export async function saveLeadsCliente(clientId, lista) {
+  if (DEMO_MODE) { const d = getDemoData(clientId); d.leads = lista; saveDemoData(clientId, d); return; }
+  await api('POST', `/data/${clientId}/leads`, lista);
+}
+
 // ── Tareas ────────────────────────────────────────────────────
 
 export async function getTareas(clientId) {

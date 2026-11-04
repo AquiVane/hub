@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=40">
+  <link rel="stylesheet" href="../css/style.css?v=42">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -84,6 +84,10 @@
       </button>
       <button class="nav-item hidden" id="nav-reportes" data-section="reportes">
         <i data-lucide="bar-chart-2" class="nav-icon"></i><span>Reportes</span>
+      </button>
+      <button class="nav-item" id="nav-crm" data-section="crm">
+        <i data-lucide="contact" class="nav-icon"></i><span>CRM</span>
+        <span class="pill-nuevo" id="crm-nuevo">NUEVO</span>
       </button>
       <button class="nav-item" data-section="links">
         <i data-lucide="link" class="nav-icon"></i><span>Links y Archivos</span>
@@ -508,6 +512,63 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="document.getElementById('traerGuionModal').classList.add('hidden')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Contacto del CRM (nuevo / editar) -->
+<div id="leadModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h3 id="lead-modal-title">Nuevo contacto</h3>
+      <button class="modal-close" onclick="cerrarLeadModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre <span class="req-star">*</span></label><input type="text" id="ld-nombre" class="form-control" placeholder="Nombre y apellido"></div>
+        <div class="form-group"><label>Empresa</label><input type="text" id="ld-empresa" class="form-control"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="ld-email" class="form-control" placeholder="contacto@email.com"></div>
+        <div class="form-group"><label>Teléfono / WhatsApp</label><input type="tel" id="ld-telefono" class="form-control" placeholder="+54 9 11 ..."></div>
+        <div class="form-group"><label>¿De dónde vino?</label><input type="text" id="ld-origen" class="form-control" list="origenesList" placeholder="Instagram, Web, Referido..." maxlength="40"></div>
+        <div class="form-group"><label>Etapa</label><select id="ld-etapa" class="form-control"></select></div>
+        <div class="form-group"><label>Monto estimado</label><input type="number" id="ld-monto" class="form-control" min="0" step="any" inputmode="decimal" placeholder="0"></div>
+        <div class="form-group"><label>Próximo seguimiento</label><input type="date" id="ld-proximo" class="form-control"></div>
+        <div class="form-group span-2"><label>Etiquetas <span style="font-weight:400;color:var(--text-muted);">(separadas por coma)</span></label><input type="text" id="ld-etiquetas" class="form-control" placeholder="Ej: evento, empresa grande"></div>
+        <div class="form-group span-2"><label>Notas</label><textarea id="ld-notas" class="form-control" rows="3" placeholder="Qué necesita, qué se habló, próximos pasos..."></textarea></div>
+      </div>
+      <datalist id="origenesList"><option value="Instagram"><option value="Facebook"><option value="TikTok"><option value="LinkedIn"><option value="WhatsApp"><option value="Web"><option value="Referido"><option value="Evento"><option value="Publicidad paga"><option value="Base propia"><option value="Otro"></datalist>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger hidden" id="ld-eliminar" onclick="eliminarLeadModal()" style="margin-right:auto;">Eliminar</button>
+      <button class="btn btn-secondary" onclick="cerrarLeadModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarLead()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Importar contactos del CRM desde Excel -->
+<div id="importLeadsModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h3>Importar contactos desde Excel</h3>
+      <button class="modal-close" onclick="cerrarImportLeads()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">
+        Subí tus contactos con la plantilla (menú <strong>📗 Excel ▾ → Descargar plantilla</strong>). Columnas: <strong>Nombre, Empresa, Email, Teléfono, Origen, Etiquetas, Etapa, Monto estimado, Próximo seguimiento, Notas</strong> — se reconocen por el nombre, no importa el orden. Solo <strong>Nombre</strong> es obligatorio.
+      </p>
+      <div class="form-group">
+        <label>¿De dónde vienen estos contactos?</label>
+        <input type="text" id="il-origen" class="form-control" list="origenesList" placeholder="Ej: Instagram, Evento, Base propia" maxlength="40">
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Se usa como origen en las filas del Excel que no traen la columna <strong>Origen</strong> completa.</span>
+      </div>
+      <input type="file" id="il-file-input" accept=".xlsx,.xls" class="form-control">
+      <div id="il-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+      <div id="il-preview" style="margin-top:14px;max-height:380px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarImportLeads()">Cancelar</button>
+      <button class="btn btn-primary" id="il-confirm" onclick="confirmarImportLeads()" disabled>Importar</button>
     </div>
   </div>
 </div>
@@ -1338,7 +1399,7 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=80"></script>
+<script type="module" src="../js/app.js?v=82"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

@@ -1658,3 +1658,23 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .tl-acc { flex: 1 1 100%; padding-left: 34px; }
   .tl-check { margin-top: 2px; }
 }
+
+/* ══ CRM del cliente (04/11) ══ */
+.pill-nuevo { margin-left: auto; background: #E02020; color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: .5px; padding: 2px 7px; border-radius: 10px; line-height: 1.4; }
+.pill-nuevo.hidden { display: none; }
+.bnav-btn.con-nuevo { position: relative; }
+.bnav-btn.con-nuevo::after { content: ''; position: absolute; top: 6px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: #E02020; border: 2px solid var(--surface); }
+.crm-board .kanban-col { min-width: 240px; }
+.crm-card .crm-nombre { font-size: 13.5px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.crm-card .crm-emp { font-size: 12px; color: var(--text-muted); }
+.crm-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.crm-chip { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--surface-sunken); color: var(--text-muted); border: 1px solid var(--border); }
+.crm-origen { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; color: #fff; }
+.crm-meta { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text-muted); }
+.crm-meta a { color: var(--accent, #1A4DAA); text-decoration: none; overflow-wrap: anywhere; }
+.crm-vacio { text-align: center; padding: 48px 16px; color: var(--text-muted); }
+/* CRM en celular: 6 etapas -> la barra de estados pasa a 2 filas de 3 para que se lean completas. */
+@media (max-width: 768px) {
+  #crm-cuerpo .kb-tabs { flex-wrap: wrap; }
+  #crm-cuerpo .kb-tab { flex: 1 1 calc(33.333% - 6px); }
+}
