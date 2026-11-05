@@ -147,8 +147,23 @@ export async function wrap(method, path, body, raw) {
       // Si ocurre 409/503 no borra la cola ni vuelve a escribir a ciegas.
       const queued = await enqueue(path, body);
       if(navigator.onLine !== false) {
-        try { await syncPath(path); markOnline(); return {ok:true}; }
-        catch(e) { if(e?.isNet)markOffline(); throw e; }
+        try {
+          await syncPathReintentando(path); ultimoError = null; markOnline();
+          // Estaba sincronizado, pero el cartel seguía mostrando "1 cambio sin sincronizar" (lo pinta enqueue()
+          // antes de mandar) hasta que se tocaba "Reintentar" (04/11, Vaneh: "siempre me da falla ... y recién ahí
+          // se sincroniza"). Se repinta ya, y sin cartel de "todo bien" en cada guardado normal.
+          if (!(lastSynced && (lastSynced.parked || lastSynced.remoteChanged))) lastSynced = null;
+          render();
+          return {ok:true};
+        }
+        catch(e) {
+          if (e?.isNet) markOffline();
+          recordarError(e); render();
+          // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir
+          // adelante y el cartel ofrece "Reintentar" (o se reintenta solo a los 20 s).
+          if (e && typeof e === 'object') e.queued = true;
+          throw e;
+        }
       }
       return queued;
     }
@@ -231,7 +246,40 @@ async function enqueue(path, body) {
 // ── Sincronización ────────────────────────────────────────────
 async function rawGet(path) { return rawFn('GET', path, null); }
 
-async function syncPath(path) {
+// Un solo sincronizado por lista a la vez: el guardado, el "Reintentar", el chequeo periódico y el
+// tiempo real podían correr juntos sobre la misma lista y pisarse (el segundo recibía un 409).
+const candados = new Map();
+function conCandado(path, fn) {
+  const previo = candados.get(path) || Promise.resolve();
+  const sig = previo.catch(() => {}).then(fn);
+  candados.set(path, sig);
+  sig.catch(() => {}).finally(() => { if (candados.get(path) === sig) candados.delete(path); });
+  return sig;
+}
+async function syncPath(path) { return conCandado(path, () => syncPathInterno(path)); }
+
+// Errores que suelen ser del momento (dos pedidos que se cruzan, una lectura que llega atrasada, un corte
+// de red): se reintentan solos, con una lectura fresca cada vez, ANTES de molestar con el cartel.
+// (04/11, Vaneh: en Android "siempre" fallaba el primer guardado y el "Reintentar" siempre andaba.)
+const STATUS_PASAJEROS = new Set([409, 425, 429, 500, 502, 503, 504]);
+const CODIGOS_PASAJEROS = /KV_NO_ACTUALIZADO|COMMIT_PENDIENTE|GUARDADO_INCIERTO|VERSION_CHANGED/;
+function esPasajero(e) { return !!e && (e.isNet === true || STATUS_PASAJEROS.has(e.status) || CODIGOS_PASAJEROS.test(String(e.code || ''))); }
+async function syncPathReintentando(path) {
+  let ultimo;
+  for (let i = 0; i < 4; i++) {
+    try { await syncPath(path); return; }
+    catch (e) {
+      ultimo = e;
+      if (!esPasajero(e) || i === 3) break;
+      await new Promise(r => setTimeout(r, 700 * (i + 1) + Math.random() * 300));
+    }
+  }
+  throw ultimo;
+}
+let ultimoError = null; // { status, code } del último fallo, para mostrarlo en el cartel
+const recordarError = e => { if (e && typeof e === 'object' && !e.isNet) ultimoError = { status: e.status || '', code: e.code || '' }; };
+
+async function syncPathInterno(path) {
   const p = await kGet('pending', path);
   if (!p || !rawFn) return;
   const fresh = await rawGet(path);
@@ -363,11 +411,12 @@ export async function syncAll() {
     let failed = false;
     try {
       for (const path of await kPaths('pending')) {
-        try { await syncPath(path); }
-        catch (e) { failed = true; if (e && e.isNet) { markOffline(); break; } console.warn('[offline] no se pudo sincronizar', path, e); }
+        try { await syncPathReintentando(path); }
+        catch (e) { failed = true; if (e && e.isNet) { markOffline(); break; } recordarError(e); console.warn('[offline] no se pudo sincronizar', path, e); }
       }
     } finally { syncing = false; }
     if (!failed && !(await pendingCount())) {
+      ultimoError = null;
       if (lastSynced) {
         window.dispatchEvent(new CustomEvent('hub-synced', { detail: lastSynced }));
         clearTimeout(syncedTimer);
@@ -442,7 +491,7 @@ async function render() {
   let cls = '', html = '';
   if (off) { cls = 'off'; html = n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado'; }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
-  else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar`; }
+  else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
   else if (lastSynced && lastSynced.parked) { cls = 'off'; html = 'Algunos cambios tuyos chocaron con los de otra persona. La administración va a elegir la versión.'; }
   else if (lastSynced) { cls = 'ok'; html = lastSynced.remoteChanged ? '✓ Sincronizado · hay novedades del equipo' : '✓ Todo sincronizado'; }
   else if (conflictosAbiertos) { cls = 'off'; html = `${conflictosAbiertos} conflicto${conflictosAbiertos === 1 ? '' : 's'} por resolver`; }
@@ -696,5 +745,5 @@ function boot() {
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.hubOffline = { syncAll, pendingCount, refreshConflictos, reviewConflictos };
+  window.hubOffline = { syncAll, pendingCount, refreshConflictos, reviewConflictos, render, estado: () => ({ syncing, flagOffline, conflictOpen, lastSynced, ultimoError }) };
 }

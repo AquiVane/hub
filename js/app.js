@@ -16,7 +16,7 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=15';
+} from './data.js?v=16';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -3579,7 +3579,15 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   };
 
   try {
-    const saved = await saveContenido(clientId, obj);
+    let saved;
+    try { saved = await saveContenido(clientId, obj); }
+    catch (e) {
+      // Si falló la sincronización DESPUÉS de guardar en el dispositivo (e.queued), el contenido no se pierde:
+      // queda en la cola y el cartel de arriba ofrece "Reintentar". Se sigue como si se hubiera guardado.
+      if (!(e && e.queued && obj.id)) throw e;
+      saved = obj;
+      console.warn('[contenido] guardado en el dispositivo; la sincronización quedó pendiente', e);
+    }
     if (editingContenido) {
       const i = STATE.contenidos.findIndex(c => c.id === saved.id);
       STATE.contenidos[i] = saved;
