@@ -16,7 +16,7 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=16';
+} from './data.js?v=18';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo

@@ -124,11 +124,23 @@ export async function wrap(method, path, body, raw) {
       if (c) return clone(c.local);
     }
     try {
-      const data = await raw();
+      let data;
+      try { data = await raw(); }
+      catch (e0) { // un 5xx/429 del momento: una segunda lectura rápida antes de rendirse
+        if (!(e0 && !e0.isNet && (e0.status >= 500 || e0.status === 429))) throw e0;
+        await new Promise(r => setTimeout(r, 600));
+        data = await raw();
+      }
       markOnline();
       await kSet('cache', path, { server: data, local: data, at: Date.now() });
       return data;
     } catch (e) {
+      if (e && !e.isNet && (e.status >= 500 || e.status === 429)) {
+        // El servidor tuvo un error pasajero al LEER: si hay copia en el dispositivo se usa esa (el guardado se
+        // fusiona después contra la lista fresca del servidor), en vez de cortar lo que la persona estaba haciendo.
+        const c = await kGet('cache', path);
+        if (c) return clone(c.local);
+      }
       if (e && e.isNet) {
         const c = await kGet('cache', path);
         if (c) { markOffline(); return clone(c.local); }
@@ -158,9 +170,10 @@ export async function wrap(method, path, body, raw) {
         }
         catch(e) {
           if (e?.isNet) markOffline();
-          recordarError(e); render();
-          // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir
-          // adelante y el cartel ofrece "Reintentar" (o se reintenta solo a los 20 s).
+          recordarError(e);
+          // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir adelante,
+          // y la app lo sigue reintentando sola en segundo plano (si el error es pasajero).
+          if (esPasajero(e)) programarReintentosFondo(); else { fondoHasta = 0; render(); }
           if (e && typeof e === 'object') e.queued = true;
           throw e;
         }
@@ -266,18 +279,38 @@ const CODIGOS_PASAJEROS = /KV_NO_ACTUALIZADO|COMMIT_PENDIENTE|GUARDADO_INCIERTO|
 function esPasajero(e) { return !!e && (e.isNet === true || STATUS_PASAJEROS.has(e.status) || CODIGOS_PASAJEROS.test(String(e.code || ''))); }
 async function syncPathReintentando(path) {
   let ultimo;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     try { await syncPath(path); return; }
     catch (e) {
       ultimo = e;
-      if (!esPasajero(e) || i === 3) break;
-      await new Promise(r => setTimeout(r, 700 * (i + 1) + Math.random() * 300));
+      if (!esPasajero(e) || i === 2) break;
+      await new Promise(r => setTimeout(r, 500 * (i + 1) + Math.random() * 250));
     }
   }
   throw ultimo;
 }
 let ultimoError = null; // { status, code } del último fallo, para mostrarlo en el cartel
-const recordarError = e => { if (e && typeof e === 'object' && !e.isNet) ultimoError = { status: e.status || '', code: e.code || '' }; };
+let ultimoCorte = '';   // motivo del último corte de red (ej. "Failed to fetch"), para diagnosticar
+let fondoHasta = 0;     // hasta cuándo la app sigue reintentando sola (mientras tanto el cartel NO es rojo)
+let fondoTimers = [];
+const recordarError = e => {
+  if (!e || typeof e !== 'object') return;
+  if (e.isNet) ultimoCorte = String(e.message || e.name || 'sin detalle').slice(0, 60);
+  else ultimoError = { status: e.status || '', code: e.code || '' };
+};
+// (05/11, Vaneh: en Android el primer guardado queda en rojo y a la segunda sincroniza.) Un fallo pasajero de red o
+// del servidor ya no deja un cartel rojo esperando que se toque "Reintentar": el cambio queda guardado en el teléfono
+// y se reintenta solo a los 2, 6, 12, 25 y 45 s. Recién si TODO eso falla, el cartel pasa a rojo con "Reintentar".
+function programarReintentosFondo() {
+  fondoTimers.forEach(clearTimeout); fondoTimers = [];
+  fondoHasta = Date.now() + 50000;
+  [2000, 6000, 12000, 25000, 45000].forEach(ms => fondoTimers.push(setTimeout(async () => {
+    if (!(await pendingCount())) { fondoHasta = 0; fondoTimers.forEach(clearTimeout); fondoTimers = []; render(); return; }
+    syncAll();
+  }, ms)));
+  fondoTimers.push(setTimeout(() => { fondoHasta = 0; render(); }, 50500));
+  render();
+}
 
 async function syncPathInterno(path) {
   const p = await kGet('pending', path);
@@ -335,6 +368,7 @@ async function syncPathInterno(path) {
   const remoteChanged = !eq(merged, c.local);
   await kSet('cache', path, { server: merged, local: merged, at: Date.now() });
   await kDel('pending', path);
+  markOnline(); // se pudo hablar con el servidor: ya no corresponde el cartel "Sin conexión"
   lastSynced = { ...(lastSynced || {}), remoteChanged: (lastSynced && lastSynced.remoteChanged) || remoteChanged };
 }
 
@@ -489,8 +523,10 @@ async function render() {
   const b = ensureBar();
   const plural = n === 1 ? '' : 's';
   let cls = '', html = '';
-  if (off) { cls = 'off'; html = n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado'; }
+  if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado en tu teléfono · sincronizando…'; } // corte pasajero: se reintenta solo
+  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoCorte && navigator.onLine !== false ? ` (${ultimoCorte})` : ''); }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
+  else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = `Guardado en tu teléfono · sincronizando…`; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
   else if (lastSynced && lastSynced.parked) { cls = 'off'; html = 'Algunos cambios tuyos chocaron con los de otra persona. La administración va a elegir la versión.'; }
   else if (lastSynced) { cls = 'ok'; html = lastSynced.remoteChanged ? '✓ Sincronizado · hay novedades del equipo' : '✓ Todo sincronizado'; }
