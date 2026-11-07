@@ -136,6 +136,7 @@
           <button class="btn btn-secondary" id="btnClientesMenu" onclick="toggleClientesMenu()" title="Más opciones"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
           <div id="clientesMenuDropdown" class="hidden client-row-menu" style="position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:220px;max-height:60vh;overflow-y:auto;"></div>
         </div>
+        <button class="btn btn-secondary" id="btnActualizar" style="flex-shrink:0;" onclick="hubActualizar()" title="Actualizar" aria-label="Actualizar"><i data-lucide="refresh-cw" id="iconActualizar" style="width:16px;height:16px;"></i></button>
         <div class="notif-bell-wrap">
           <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
             <i data-lucide="bell" style="width:16px;height:16px;"></i>
@@ -2813,6 +2814,7 @@
   };
 
   window.showSection = function(sec) {
+    try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa','inventario','instagram'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
@@ -2842,6 +2844,25 @@
   // Sincronización en vivo (01/11): cuando offline.js avisa que otro dispositivo
   // cambió datos, se vuelve a cargar la sección visible -- salvo que haya un
   // modal abierto o se esté escribiendo (se reintenta en unos segundos).
+  // Actualizar sin cerrar la app: Instagram se recarga en el lugar; el resto recarga la página y vuelve a la misma sección.
+  window.hubActualizar = async function () {
+    const ic = document.getElementById('iconActualizar');
+    if (ic) ic.style.animation = 'hubSpin .8s linear infinite';
+    const visible = ['instagram'].find(x => { const el = document.getElementById(`sec-${x}`); return el && !el.classList.contains('hidden'); });
+    if (visible === 'instagram' && window.cargarInstagram) { try { await window.cargarInstagram(); } catch (e) {} if (ic) ic.style.animation = ''; return; }
+    location.reload();
+  };
+  (function () {
+    const st = document.createElement('style'); st.textContent = '@keyframes hubSpin{to{transform:rotate(360deg)}}'; document.head.appendChild(st);
+    // Al abrir, volver a la última sección en la que estabas (en vez de ir siempre al inicio).
+    setTimeout(() => {
+      let sec = null; try { sec = localStorage.getItem('mh_admin_sec'); } catch (e) {}
+      if (!sec || sec === 'clientes') return;
+      const btn = document.querySelector(`.nav-item[onclick*="showSection('${sec}')"]`);
+      if (btn) btn.click();
+    }, 700);
+  })();
+
   const LIVE_LOADERS = {
     clientes: () => loadClients(), mistareas: () => loadMisTareas(), internas: () => loadInternas(),
     ideas: () => loadIdeasAdmin(), proyectos: () => loadProyectos(), colaboradores: () => loadColaboradores(),
@@ -9515,6 +9536,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=11"></script>
+<script type="module" src="../js/instagram.js?v=12"></script>
 </body>
 </html>

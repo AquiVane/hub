@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (5) — Botón "Actualizar" y volver a la última sección (pedido de Vaneh, usa el Hub como app)
+- Nuevo botón circular ⟳ en la barra de arriba del admin (antes de la campanita). En Instagram recarga los datos en el lugar; en el resto recarga la página. Se guarda la última sección en `localStorage.mh_admin_sec` y al abrir/recargar vuelve a ella (antes siempre iba al inicio). Solo admin; el panel de clientes (`app/index.html`) no se tocó (preguntar si lo quiere). `instagram.js?v=12`. Probado en 1280 y 390 px.
+
 ## 07/11 (4) — Instagram: "Recuperar comentarios" (comentarios viejos sin respuesta, enviados de a poco)
 - Pedido de Vaneh: al quedarse sin contactos en ManyChat quedaron comentarios sin responder en el reel del libro. Botón **Recuperar comentarios** en cada regla atada a una publicación: busca los comentarios con la palabra que no tienen respuesta de la cuenta, muestra el resumen (ya respondidos / ya atendidos / de hace más de 7 días = Meta no permite DM / para enviar) y deja elegir el ritmo (10, 20, 40, 60 o 120 por hora), con Empezar / Pausar / Reanudar / Volver a buscar / Descartar y barra de progreso. Sigue solo aunque cierre la pantalla. `instagram.js?v=10`, `data.js?v=21`.
 
