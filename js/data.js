@@ -964,3 +964,8 @@ export async function repararSuscripcionInstagram() {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/instagram/suscripcion', {});
 }
+
+export async function recuperarInstagram(reglaId, accion, body = {}) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', `/admin/instagram/recuperar/${encodeURIComponent(reglaId)}/${accion}`, body);
+}

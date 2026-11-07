@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (4) — Instagram: "Recuperar comentarios" (comentarios viejos sin respuesta, enviados de a poco)
+- Pedido de Vaneh: al quedarse sin contactos en ManyChat quedaron comentarios sin responder en el reel del libro. Botón **Recuperar comentarios** en cada regla atada a una publicación: busca los comentarios con la palabra que no tienen respuesta de la cuenta, muestra el resumen (ya respondidos / ya atendidos / de hace más de 7 días = Meta no permite DM / para enviar) y deja elegir el ritmo (10, 20, 40, 60 o 120 por hora), con Empezar / Pausar / Reanudar / Volver a buscar / Descartar y barra de progreso. Sigue solo aunque cierre la pantalla. `instagram.js?v=10`, `data.js?v=21`.
+
 ## 07/11 (3) — Plantilla "Libro · DIRECTO" (aprobada por Vaneh) mientras Meta revisa el acceso avanzado
 - Los toques de botón de usuarias reales NO llegan hasta que Meta apruebe el acceso avanzado (la app ya está Live; verificación de empresa enviada el 07/11, ~2 días hábiles; falta enviar la revisión de la app: textos y guion de video preparados). Para que ande hoy: plantilla `libro-directo` (primer mensaje de Vaneh + botón "⚓Ver info Libro" → training.cosmart.com.ar/precio). Cuando Meta apruebe: apagar la regla Directo y prender la de dos pasos. `instagram.js?v=9`.
 

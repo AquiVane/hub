@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram } from './data.js?v=20';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram } from './data.js?v=21';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -9,6 +9,8 @@ let reglaEditando = null;
 let tabActual = null;
 const F = { auto: { estado: 'todas', q: '', modo: '' }, panel: 'total', act: { regla: '', res: '', per: '7', q: '', vista: 'evento' } };
 let pagAct = 1;
+const recAbiertos = new Set();
+let recTimer = null;
 const POR_PAG = 25;
 const PLANTILLAS = { libro: {"nombre": "Libro: La P de precio", "modo": "dos-pasos", "mediaId": "4020982225636735346", "mediaInfo": "Reel del libro (elegí la publicación para confirmar)", "palabras": "Libro", "respuestasPublicas": ["Un gusto conocerte {nombre}, ya te estoy enviando el link a tu DM 🧲", "Hola {nombre}, encantada de tenerte por acá, te estoy mandando la info por mensaje privado🧭. Revisalo", "Claro {nombre}, un placer. Te envío por Mensaje privado la info. ⚓Miralo."], "dmTexto": "Hola {nombre}! Cómo estás? 🧲 Te doy la bienvenida a mi cuenta. Soy Vaneh, estratega de marketing digital y 🧭 te ayudo a darle estructura a tu negocio o servicio, un gusto que estés por acá.\nPreparé la info sobre negociación y fijación de precios para que puedas tener todo a mano.\nTocá el botón para obtenerla.", "confirmarBoton": "⚓Conocer + del libro", "exigirSeguir": true, "seguirTexto": "Fantástico, estoy haciendo esto exclusivo para mis seguidores y suscriptores.\nSeguime para que puedas crecer tu negocio o emprendimientos", "seguirBoton": "Ya te sigo ✅", "entregaTexto": "Gracias por seguirme y bienvenido/a a la comunidad!\nAhora sí, tocá el botón y descubrí cómo fijar y negociar precios de manera SMART y efectiva.\nTe regalo el 🧲 de la suerte para que atraigas todo lo que te merecés.\nTocá el botón", "botonTexto": "⚓Ver info Libro", "botonUrl": "https://training.cosmart.com.ar/precio", "seguimiento1Texto": "¿Pudiste acceder al link sin problema? 😊 Si necesitás algo, escribime por acá y te ayudo.", "seguimientoDemoraMin": 60, "encuestaTexto": "Aprovecho que te tengo por acá 🙌 Estoy pensando en abrir una suscripción muy económica dentro de Instagram para emprendedores y dueños de negocio como vos: contenido todos los días para aumentar tus ventas, de una profesional con más de 10 años de trayectoria en marketing digital, y con todos los videos grabados para verlos cuando quieras.\n\n¿Serías tan amable de contestarme estas dos preguntas? Tus respuestas me sirven mucho para evaluar si este esfuerzo tendría buena recepción.\n\n1️⃣ ¿Te interesaría estar en esa comunidad?\n2️⃣ ¿Te suscribirías por u$s 2 por mes?\n\nEmpecemos por la primera 👇", "encuesta2Texto": "¡Genial! 🙌 Y la segunda: ¿te suscribirías por u$s 2 por mes?", "encuestaGraciasTexto": "¡Gracias por tus respuestas! 💛 Y de paso ya aprendiste algo más: preguntarle a tu público antes de lanzar algo es una excelente manera de optimizar tu negocio. ¡Nos leemos!", "unaVezPorPersona": true}, 'libro-directo': {"nombre": "Libro: La P de precio (directo)", "modo": "directo", "mediaId": "4020982225636735346", "mediaInfo": "Reel del libro (elegí la publicación para confirmar)", "palabras": "Libro", "respuestasPublicas": ["Un gusto conocerte {nombre}, ya te estoy enviando el link a tu DM 🧲", "Hola {nombre}, encantada de tenerte por acá, te estoy mandando la info por mensaje privado🧭. Revisalo", "Claro {nombre}, un placer. Te envío por Mensaje privado la info. ⚓Miralo."], "dmTexto": "Hola {nombre}! Cómo estás? \n\n🧲 Te doy la bienvenida a mi cuenta. Soy Vaneh, estratega de marketing digital y 🧭 te ayudo a darle estructura a tu negocio o servicio, un gusto que estés por acá.\n\nPreparé la info sobre negociación y fijación de precios para que puedas tener todo a mano.\nTocá el botón para obtenerla.", "botonTexto": "⚓Ver info Libro", "botonUrl": "https://training.cosmart.com.ar/precio", "unaVezPorPersona": true} };
 
@@ -77,9 +79,14 @@ function pintarReglas() {
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igDuplicar('${esc(r.id)}')">Duplicar</button>
+        ${r.mediaId ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="igEliminar('${esc(r.id)}')">Eliminar</button>
       </div>
+      <div id="igRec-${esc(r.id)}" style="display:${recAbiertos.has(r.id) ? '' : 'none'};margin-top:12px;border-top:1px solid #1A4DAA;padding-top:12px;"></div>
     </div>`).join('');
+  l.forEach(r => { if (recAbiertos.has(r.id)) pintarRec(r.id); });
+  clearTimeout(recTimer);
+  if (Object.values(estado.recuperaciones || {}).some(x => x && x.estado === 'corriendo')) recTimer = setTimeout(() => { if (tabActual === 'auto') window.cargarInstagram(); }, 30000);
 }
 
 window.igAlternar = async function (id, input) {
@@ -155,6 +162,52 @@ window.igGuardarRegla = async function () {
     botonTexto: $('igFBotonTxt').value, botonUrl: $('igFBotonUrl').value, unaVezPorPersona: $('igFUnaVez').checked,
   };
   try { await saveInstagramRegla(regla); aviso('Regla guardada.'); window.igCerrarForm(); await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
+};
+
+
+// ── Recuperar comentarios sin respuesta ───────────────────────
+window.igRecToggle = function (id) {
+  const el = $('igRec-' + id); if (!el) return;
+  if (recAbiertos.has(id)) { recAbiertos.delete(id); el.style.display = 'none'; return; }
+  recAbiertos.add(id); el.style.display = ''; pintarRec(id);
+};
+function pintarRec(id) {
+  const el = $('igRec-' + id); if (!el) return;
+  const st = (estado.recuperaciones || {})[id];
+  if (!st) {
+    el.innerHTML = `<div class="ig-sub" style="margin:0 0 8px;">Busca en tu publicación los comentarios que tienen la palabra de esta regla y <b>todavía no recibieron respuesta tuya</b>, para mandarles el mensaje de a poco.</div>
+      <button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Buscar comentarios sin respuesta</button>`;
+    return;
+  }
+  const r = st.resumen || {};
+  const hechos = (st.enviados || 0) + (st.fallos || 0) + (st.saltados || 0) + (st.vencidos || 0);
+  const pct = st.total ? Math.round(hechos * 100 / st.total) : 100;
+  const nombres = { listo: 'Listo para empezar', corriendo: 'Enviando…', pausada: 'En pausa', terminada: 'Terminado' };
+  el.innerHTML = `
+    <div class="ig-sub" style="margin:0 0 6px;color:#fff;font-size:13px;">Encontré <b>${r.conPalabra || 0}</b> comentarios con la palabra en esta publicación: <b>${r.yaRespondidos || 0}</b> ya tenían respuesta tuya, <b>${r.yaAtendidos || 0}</b> ya los atendió el sistema y <b>${r.fueraDeVentana || 0}</b> son de hace más de 7 días (Instagram no permite mandarles mensaje privado). Quedan <b>${st.total || 0}</b> para enviar.</div>
+    <div class="ig-sub" style="margin:0 0 4px;color:#fff;"><b>${nombres[st.estado] || st.estado}</b> · enviados ${st.enviados || 0} de ${st.total || 0}${st.fallos ? ' · fallos ' + st.fallos : ''}${st.saltados ? ' · saltados ' + st.saltados : ''}${st.vencidos ? ' · vencidos ' + st.vencidos : ''}</div>
+    <div style="background:#060F22;border-radius:999px;height:10px;overflow:hidden;margin-bottom:8px;"><div style="width:${pct}%;height:100%;background:#22c55e;"></div></div>
+    ${st.motivo ? `<div class="ig-sub" style="color:#fca5a5;">${esc(st.motivo)}</div>` : ''}
+    <div class="ig-fil" style="margin:8px 0 0;">
+      ${st.estado !== 'corriendo' && st.estado !== 'terminada' && st.total > (st.pos || 0) ? `
+        <select id="igRecRitmo-${esc(id)}" class="form-control">${[10, 20, 40, 60, 120].map(n => `<option value="${n}" ${n === (st.porHora || 20) ? 'selected' : ''}>${n} por hora</option>`).join('')}</select>
+        <button class="btn btn-primary btn-sm" onclick="igRecIniciar('${esc(id)}',this)">${st.estado === 'pausada' ? 'Reanudar' : 'Empezar a enviar'}</button>` : ''}
+      ${st.estado === 'corriendo' ? `<button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','pausar',this)">Pausar</button>` : ''}
+      ${st.estado !== 'corriendo' ? `<button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Volver a buscar</button>
+        <button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','cancelar',this)">Descartar</button>` : ''}
+    </div>`;
+}
+window.igRecAccion = async function (id, accion, btn) {
+  if (accion === 'cancelar' && !confirm('¿Descartar esta búsqueda? Lo ya enviado no se deshace.')) return;
+  if (btn) btn.disabled = true;
+  if (accion === 'escanear') aviso('Buscando comentarios en tu publicación…');
+  try { await recuperarInstagram(id, accion); aviso(accion === 'escanear' ? 'Búsqueda lista.' : 'Listo.'); await window.cargarInstagram(); }
+  catch (e) { aviso(e.message, true); if (btn) btn.disabled = false; }
+};
+window.igRecIniciar = async function (id, btn) {
+  const sel = $('igRecRitmo-' + id); btn.disabled = true;
+  try { await recuperarInstagram(id, 'iniciar', { porHora: sel ? sel.value : 20 }); aviso('Empezó el envío. Podés cerrar esta pantalla: sigue solo.'); await window.cargarInstagram(); }
+  catch (e) { aviso(e.message, true); btn.disabled = false; }
 };
 
 // ── Panel de control ──────────────────────────────────────────
