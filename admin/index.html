@@ -2773,7 +2773,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=85');
+      await import('../js/app.js?v=86');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -2844,16 +2844,7 @@
   // Sincronización en vivo (01/11): cuando offline.js avisa que otro dispositivo
   // cambió datos, se vuelve a cargar la sección visible -- salvo que haya un
   // modal abierto o se esté escribiendo (se reintenta en unos segundos).
-  // Actualizar sin cerrar la app: Instagram se recarga en el lugar; el resto recarga la página y vuelve a la misma sección.
-  window.hubActualizar = async function () {
-    const ic = document.getElementById('iconActualizar');
-    if (ic) ic.style.animation = 'hubSpin .8s linear infinite';
-    const visible = ['instagram'].find(x => { const el = document.getElementById(`sec-${x}`); return el && !el.classList.contains('hidden'); });
-    if (visible === 'instagram' && window.cargarInstagram) { try { await window.cargarInstagram(); } catch (e) {} if (ic) ic.style.animation = ''; return; }
-    location.reload();
-  };
   (function () {
-    const st = document.createElement('style'); st.textContent = '@keyframes hubSpin{to{transform:rotate(360deg)}}'; document.head.appendChild(st);
     // Al abrir, volver a la última sección en la que estabas (en vez de ir siempre al inicio).
     setTimeout(() => {
       let sec = null; try { sec = localStorage.getItem('mh_admin_sec'); } catch (e) {}
@@ -3571,7 +3562,7 @@
   document.addEventListener('click', (e) => {
     const dd = document.getElementById('clientesMenuDropdown');
     const btn = document.getElementById('btnClientesMenu');
-    if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !(btn && btn.contains(e.target))) dd.classList.add('hidden');
+    if (dd && !dd.classList.contains('hidden') && !(e.composedPath ? e.composedPath().includes(dd) : dd.contains(e.target)) && !(btn && (e.composedPath ? e.composedPath().includes(btn) : btn.contains(e.target)))) dd.classList.add('hidden');
   });
 
   const INTERNAS_CLIENT_ID = '_cosmart';
@@ -3949,7 +3940,7 @@
   // el activo, y acá se llama desde el menú de la fila del cliente, no
   // desde el nav -- llamarla igual rompería silenciosamente esa parte.
   window.irAProcesosDeCliente = function(clientId) {
-    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.client-row-menu:not(#clientesMenuDropdown)').forEach(m => m.classList.add('hidden'));
     _procClienteId = clientId;
     ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== 'procesos');
@@ -7091,7 +7082,7 @@
     const menu = btn.nextElementSibling;
     if (!menu) return;
     const abrir = menu.classList.contains('hidden');
-    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.client-row-menu:not(#clientesMenuDropdown)').forEach(m => m.classList.add('hidden'));
     if (abrir) menu.classList.remove('hidden');
   };
 
@@ -7111,7 +7102,7 @@
     }
   };
   document.addEventListener('click', () => {
-    document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.client-row-menu:not(#clientesMenuDropdown)').forEach(m => m.classList.add('hidden'));
   });
 
   // ── Equipo de la agencia: casillas de colaboradores (alta y edición de cliente) ──
@@ -9208,7 +9199,7 @@
       document.getElementById('fab-dial-main').setAttribute('aria-expanded', abrir ? 'true' : 'false');
       if (abrir) { actualizarOpcionNuevoContenido(); asegurarOpcionesCrear(); }
     };
-    document.addEventListener('click', (e) => { if (!d.contains(e.target)) cerrarFabDial(); });
+    document.addEventListener('click', (e) => { if (!(e.composedPath ? e.composedPath().includes(d) : d.contains(e.target))) cerrarFabDial(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFabDial(); });
     return d;
   }
@@ -9536,6 +9527,7 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
+<script src="../js/refresh.js?v=1"></script>
 <script type="module" src="../js/instagram.js?v=12"></script>
 </body>
 </html>

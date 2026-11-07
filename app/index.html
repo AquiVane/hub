@@ -169,6 +169,7 @@
         <div class="topbar-sub" id="topbar-sub">Resumen del mes</div>
       </div>
       <div class="topbar-right" id="topbar-actions"></div>
+      <button class="btn btn-secondary" id="btnActualizar" style="flex-shrink:0;" onclick="hubActualizar()" title="Actualizar" aria-label="Actualizar"><i data-lucide="refresh-cw" id="iconActualizar" style="width:16px;height:16px;"></i></button>
       <div class="notif-bell-wrap">
         <button class="btn btn-secondary notif-bell-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notificaciones">
           <i data-lucide="bell" style="width:16px;height:16px;"></i>
@@ -1399,7 +1400,8 @@
   </div>
 </div>
 
-<script type="module" src="../js/app.js?v=85"></script>
+<script src="../js/refresh.js?v=1"></script>
+<script type="module" src="../js/app.js?v=86"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

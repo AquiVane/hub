@@ -297,7 +297,9 @@ async function init() {
     } else if (esPropioAgencia) {
       renderSection('contenidos');
     } else {
-      renderSection('home');
+      let ult = null; try { ult = embedMode ? null : localStorage.getItem('mh_cli_sec_' + clientId); } catch (e) {}
+      const okNav = ult && NAV_SCOPE.querySelector(`.nav-item[data-section="${ult}"]:not(.hidden)`);
+      renderSection(okNav ? ult : 'home');
     }
     setTimeout(() => refreshIcons(), 100);
     // Avisa a admin/index.html (el padre del iframe) que ya terminó de
@@ -644,7 +646,7 @@ async function setupClientSwitcher() {
     dropdown.classList.contains('hidden') ? abrir() : dropdown.classList.add('hidden');
   });
   document.addEventListener('click', e => {
-    if (!dropdown.contains(e.target) && !trigger.contains(e.target)) dropdown.classList.add('hidden');
+    if (!(e.composedPath ? e.composedPath().includes(dropdown) : dropdown.contains(e.target)) && !(e.composedPath ? e.composedPath().includes(trigger) : trigger.contains(e.target))) dropdown.classList.add('hidden');
   });
 }
 
@@ -839,6 +841,7 @@ function setupNav() {
 
 function renderSection(sec) {
   currentSection = sec;
+  if (!embedMode) { try { localStorage.setItem('mh_cli_sec_' + clientId, sec); } catch (e) {} }
   NAV_SCOPE.querySelectorAll('.nav-item[data-section]').forEach(b => {
     b.classList.toggle('active', b.dataset.section === sec);
   });
@@ -6750,7 +6753,7 @@ window.toggleArchivoMenu = function(id, ev) {
   }
 };
 document.addEventListener('click', () => {
-  document.querySelectorAll('.client-row-menu').forEach(m => m.classList.add('hidden'));
+  document.querySelectorAll('.client-row-menu:not(#clientesMenuDropdown)').forEach(m => m.classList.add('hidden'));
 });
 
 // Subir una carpeta entera de la compu (selector nativo de carpetas vía
@@ -8499,7 +8502,7 @@ if (!HOSTED && user.mustChangePassword) {
 // Kanban|Calendario · Excel ▾ (plantilla / importar) · + Nueva tarea.
 let _popAbierto = null;
 function cerrarPopAcciones() { if (_popAbierto) { _popAbierto.panel.remove(); _popAbierto = null; } }
-document.addEventListener('click', e => { if (_popAbierto && !_popAbierto.panel.contains(e.target) && !_popAbierto.boton.contains(e.target)) cerrarPopAcciones(); });
+document.addEventListener('click', e => { if (_popAbierto && !(e.composedPath ? e.composedPath().includes(_popAbierto.panel) : _popAbierto.panel.contains(e.target)) && !(e.composedPath ? e.composedPath().includes(_popAbierto.boton) : _popAbierto.boton.contains(e.target))) cerrarPopAcciones(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPopAcciones(); });
 window.addEventListener('resize', cerrarPopAcciones);
 function abrirPopAcciones(boton, panel) {

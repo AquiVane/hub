@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (6) — Botón ⟳ (recarga forzada), volver a la última sección y arreglo de los 3 puntitos (admin + panel de clientes)
+- **Botón ⟳ Actualizar** (`js/refresh.js`, admin y `app/index.html`, antes de la campanita): borra cachés/service worker, pide de nuevo los archivos de la misma origen con `cache:'reload'` y recarga (equivale a Ctrl+Shift+R; pedido de Vaneh porque en la app instalada solo podía cerrar y reabrir).
+- **Última sección:** admin guarda `mh_admin_sec`; panel de clientes guarda `mh_cli_sec_<clientId>` (no en modo embed). Al abrir/recargar vuelve ahí en vez del inicio. `app.js?v=86`.
+- **Bug: los 3 puntitos del admin no abrían** (se abrían y se cerraban en el mismo instante): dos listeners globales (`admin/index.html` ×2 y `js/app.js`) cerraban TODO `.client-row-menu` en cualquier clic, incluido `#clientesMenuDropdown` de la barra. Ahora lo excluyen (`:not(#clientesMenuDropdown)`); además los "cerrar al tocar afuera" usan `composedPath()` porque Lucide redibuja el ícono y el `target` queda desconectado.
+- **Regla nueva de Vaneh (07/11):** cuando se corrigen errores de lo que Claude armó en la sesión, mergear y desplegar sin pedir permiso (contar después). Para features nuevas sigue valiendo preguntar antes del deploy.
+
 ## 07/11 (5) — Botón "Actualizar" y volver a la última sección (pedido de Vaneh, usa el Hub como app)
 - Nuevo botón circular ⟳ en la barra de arriba del admin (antes de la campanita). En Instagram recarga los datos en el lugar; en el resto recarga la página. Se guarda la última sección en `localStorage.mh_admin_sec` y al abrir/recargar vuelve a ella (antes siempre iba al inicio). Solo admin; el panel de clientes (`app/index.html`) no se tocó (preguntar si lo quiere). `instagram.js?v=12`. Probado en 1280 y 390 px.
 
