@@ -5,6 +5,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 let estado = null;
 let reglaEditando = null;
+const PLANTILLAS = { libro: {"nombre": "Libro: La P de precio", "modo": "dos-pasos", "mediaId": "4020982225636735346", "mediaInfo": "Reel del libro (elegí la publicación para confirmar)", "palabras": "Libro", "respuestasPublicas": ["Un gusto conocerte {nombre}, ya te estoy enviando el link a tu DM 🧲", "Hola {nombre}, encantada de tenerte por acá, te estoy mandando la info por mensaje privado🧭. Revisalo", "Claro {nombre}, un placer. Te envío por Mensaje privado la info. ⚓Miralo."], "dmTexto": "Hola {nombre}! Cómo estás? 🧲 Te doy la bienvenida a mi cuenta. Soy Vaneh, estratega de marketing digital y 🧭 te ayudo a darle estructura a tu negocio o servicio, un gusto que estés por acá.\nPreparé la info sobre negociación y fijación de precios para que puedas tener todo a mano.\nTocá el botón para obtenerla.", "confirmarBoton": "⚓Conocer + del libro", "exigirSeguir": true, "seguirTexto": "Fantástico, estoy haciendo esto exclusivo para mis seguidores y suscriptores.\nSeguime para que puedas crecer tu negocio o emprendimientos", "seguirBoton": "Ya te sigo ✅", "entregaTexto": "Gracias por seguirme y bienvenido/a a la comunidad!\nAhora sí, tocá el botón y descubrí cómo fijar y negociar precios de manera SMART y efectiva.\nTe regalo el 🧲 de la suerte para que atraigas todo lo que te merecés.\nTocá el botón", "botonTexto": "⚓Ver info Libro", "botonUrl": "https://training.cosmart.com.ar/precio", "seguimiento1Texto": "¿Pudiste acceder al link sin problema? 😊 Si necesitás algo, escribime por acá y te ayudo.", "seguimientoDemoraMin": 60, "encuestaTexto": "Aprovecho que te tengo por acá 🙌 Estoy pensando en abrir una suscripción muy económica dentro de Instagram para emprendedores y dueños de negocio como vos: contenido todos los días para aumentar tus ventas, de una profesional con más de 10 años de trayectoria en marketing digital, y con todos los videos grabados para verlos cuando quieras.\n\n¿Serías tan amable de contestarme estas dos preguntas? Tus respuestas me sirven mucho para evaluar si este esfuerzo tendría buena recepción.\n\n1️⃣ ¿Te interesaría estar en esa comunidad?\n2️⃣ ¿Te suscribirías por u$s 2 por mes?\n\nEmpecemos por la primera 👇", "encuesta2Texto": "¡Genial! 🙌 Y la segunda: ¿te suscribirías por u$s 2 por mes?", "encuestaGraciasTexto": "¡Gracias por tus respuestas! 💛 Y de paso ya aprendiste algo más: preguntarle a tu público antes de lanzar algo es una excelente manera de optimizar tu negocio. ¡Nos leemos!", "unaVezPorPersona": true} };
 
 function aviso(msg, error) { const el = $('igAviso'); if (!el) return; el.textContent = msg; el.style.color = error ? '#fca5a5' : '#86efac'; el.style.display = msg ? 'block' : 'none'; }
 
@@ -38,6 +39,7 @@ function pintarReglas() {
       <div class="ig-sub">${r.mediaId ? '📌 ' + esc(r.mediaInfo || r.mediaId) : '📌 Todos los posts y reels'} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : 'Cualquier comentario'}</div>
       <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos' + (r.exigirSeguir ? ' (exige seguir)' : '') + ' · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
       <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · DMs enviados ${r.stats?.dms || 0}${r.modo === 'dos-pasos' ? ' · tocaron el botón ' + (r.stats?.confirmaciones || 0) : ''} · fallos ${r.stats?.fallos || 0}</div>
+      ${r.encuestaTexto ? `<div class="ig-sub">Encuesta · Pregunta 1: Sí ${r.encuesta?.p1?.si || 0} / No ${r.encuesta?.p1?.no || 0} · Pregunta 2: Sí ${r.encuesta?.p2?.si || 0} / No ${r.encuesta?.p2?.no || 0}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igAlternar('${esc(r.id)}')">${r.activa ? 'Pausar' : 'Activar'}</button>
@@ -104,6 +106,15 @@ function abrirForm() {
   $('igFConfirmar').value = r.confirmarBoton || '';
   $('igFEntrega').value = r.entregaTexto || '';
   $('igFSeguimiento').value = r.seguimientoTexto || '';
+  $('igFExigir').checked = !!r.exigirSeguir;
+  $('igFSeguirTxt').value = r.seguirTexto || '';
+  $('igFSeguirBtn').value = r.seguirBoton || '';
+  $('igFSeg1').value = r.seguimiento1Texto || '';
+  $('igFDemora').value = r.seguimientoDemoraMin || '';
+  $('igFEnc1').value = r.encuestaTexto || '';
+  $('igFEnc2').value = r.encuesta2Texto || '';
+  $('igFGracias').value = r.encuestaGraciasTexto || '';
+  $('igFPlantilla').value = '';
   window.igCambiarModo();
   $('igPostsGrid').innerHTML = '';
   $('igFormWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -114,6 +125,11 @@ window.igCambiarModo = function () {
   $('igFSeguirWrap').style.display = dos && $('igFExigir').checked ? '' : 'none';
   $('igFDmLabel').textContent = dos ? 'Primer mensaje (SIN link; lleva el botón de confirmación). Podés usar {nombre}' : 'Mensaje privado (DM). Podés usar {nombre}';
   $('igFBotonLabel').textContent = dos ? 'Texto del botón final con el link (máx. 20)' : 'Texto del botón (máx. 20)';
+};
+window.igUsarPlantilla = function () {
+  const t = PLANTILLAS[$('igFPlantilla').value]; if (!t) return;
+  reglaEditando = { ...t, palabras: [t.palabras], id: undefined };
+  abrirForm(); $('igFPlantilla').value = '';
 };
 window.igCerrarForm = function () { $('igFormWrap').style.display = 'none'; reglaEditando = null; };
 
@@ -137,7 +153,7 @@ window.igGuardarRegla = async function () {
     id: reglaEditando?.id, nombre: $('igFNombre').value, activa: reglaEditando?.activa !== false,
     mediaId: $('igFMediaId').value, mediaInfo: $('igFMediaInfo').value, palabras: $('igFPalabras').value,
     respuestasPublicas: $('igFPublicas').value, dmTexto: $('igFDm').value,
-    modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value, exigirSeguir: $('igFExigir').checked, seguirTexto: $('igFSeguirTxt').value, seguirBoton: $('igFSeguirBtn').value,
+    modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value, seguimiento1Texto: $('igFSeg1').value, seguimientoDemoraMin: $('igFDemora').value, encuestaTexto: $('igFEnc1').value, encuesta2Texto: $('igFEnc2').value, encuestaGraciasTexto: $('igFGracias').value, exigirSeguir: $('igFExigir').checked, seguirTexto: $('igFSeguirTxt').value, seguirBoton: $('igFSeguirBtn').value,
     botonTexto: $('igFBotonTxt').value, botonUrl: $('igFBotonUrl').value, unaVezPorPersona: $('igFUnaVez').checked,
   };
   try { await saveInstagramRegla(regla); aviso('Regla guardada.'); window.igCerrarForm(); await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }

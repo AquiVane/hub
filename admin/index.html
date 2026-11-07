@@ -539,6 +539,11 @@
           <div id="igReglasLista"></div>
           <div id="igFormWrap" class="ig-box" style="display:none;">
             <h3 style="font-size:15px;font-weight:700;">Regla</h3>
+            <label>Empezar desde una plantilla</label>
+            <select id="igFPlantilla" class="form-control" onchange="igUsarPlantilla()">
+              <option value="">— En blanco —</option>
+              <option value="libro">Libro "La P de precio" (dos pasos, exige seguir, encuesta)</option>
+            </select>
             <label>Nombre (solo para vos)</label><input id="igFNombre" class="form-control" maxlength="80" placeholder="Ej: Reel guía IA">
             <label>¿En qué publicación?</label>
             <div class="ig-row"><span id="igFMediaTxt" style="flex:1;font-size:13px;"></span><button class="btn btn-sm btn-secondary" onclick="igElegirPost()">Elegir publicación</button></div>
@@ -563,6 +568,16 @@
                 <textarea id="igFSeguirTxt" class="form-control" rows="2" maxlength="640" placeholder="Para recibirlo, seguime primero 🙌 Cuando lo hagas, tocá el botón."></textarea>
                 <label>Texto del botón para reintentar (máx. 20)</label><input id="igFSeguirBtn" class="form-control" maxlength="20" placeholder="Ya te sigo">
               </div>
+              <label>Mensaje a la hora de la entrega (opcional; ej. "¿Pudiste acceder al link?")</label>
+              <textarea id="igFSeg1" class="form-control" rows="2" maxlength="1000"></textarea>
+              <label>¿Cuántos minutos después de la entrega? (1 a 1380; por defecto 60)</label>
+              <input id="igFDemora" class="form-control" type="number" min="1" max="1380" placeholder="60">
+              <label>Encuesta (opcional): mensaje con las dos preguntas a la vista. Lleva botones Sí / No y responde solo la pregunta 1</label>
+              <textarea id="igFEnc1" class="form-control" rows="4" maxlength="1000"></textarea>
+              <label>Si contesta Sí a la 1: pregunta 2 (también con botones Sí / No)</label>
+              <textarea id="igFEnc2" class="form-control" rows="2" maxlength="640"></textarea>
+              <label>Agradecimiento final</label>
+              <textarea id="igFGracias" class="form-control" rows="2" maxlength="1000"></textarea>
               <label>Mensaje de seguimiento (opcional; llega justo después, para seguir la conversación)</label>
               <textarea id="igFSeguimiento" class="form-control" rows="2" maxlength="1000" placeholder="¿Ya estás vendiendo con Instagram o recién empezás?"></textarea>
             </div>
@@ -9402,6 +9417,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=4"></script>
+<script type="module" src="../js/instagram.js?v=5"></script>
 </body>
 </html>
