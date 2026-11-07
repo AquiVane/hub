@@ -490,52 +490,79 @@
         <style>
           #sec-instagram .ig-card{background:#0D2B6B;border:1px solid #1A4DAA;border-radius:12px;padding:14px;margin-bottom:10px;color:#fff;}
           #sec-instagram .ig-sub{font-size:12px;color:#cbd5e1;margin-top:4px;word-break:break-word;}
-          #sec-instagram .ig-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
+          #sec-instagram .ig-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#1A4DAA;color:#fff;}
           #sec-instagram .ig-log{background:#091C47;border:1px solid #1A4DAA;border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;color:#fff;}
           #sec-instagram .ig-box{background:#091C47;border:1px solid #1A4DAA;border-radius:12px;padding:16px;margin-bottom:16px;color:#fff;}
           #sec-instagram .ig-box label{display:block;font-size:12px;font-weight:700;margin:10px 0 4px;color:#e2e8f0;}
           #sec-instagram .ig-box .form-control{width:100%;box-sizing:border-box;}
           #sec-instagram .ig-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-          #sec-instagram .ig-row .form-control{flex:1;min-width:180px;}
+          #sec-instagram .ig-row .form-control{flex:1;min-width:150px;}
           #sec-instagram #igPostsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px;}
           #sec-instagram .ig-post{cursor:pointer;background:#0D2B6B;border-radius:8px;padding:6px;color:#fff;}
           #sec-instagram .ig-post-img{aspect-ratio:1;background:#060F22;border-radius:6px;overflow:hidden;}
           #sec-instagram .ig-post-img img{width:100%;height:100%;object-fit:cover;}
+          /* pestañas */
+          #sec-instagram .ig-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
+          #sec-instagram .ig-tab{flex:0 0 auto;border:1px solid #1A4DAA;background:#091C47;color:#cbd5e1;font-weight:700;font-size:13px;padding:9px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;}
+          #sec-instagram .ig-tab.on{background:#E02020;border-color:#E02020;color:#fff;}
+          #sec-instagram .ig-pane.hidden{display:none;}
+          /* interruptor verde */
+          #sec-instagram .ig-sw{position:relative;display:inline-block;width:46px;height:26px;flex:0 0 auto;}
+          #sec-instagram .ig-sw input{opacity:0;width:0;height:0;position:absolute;}
+          #sec-instagram .ig-sw span{position:absolute;inset:0;background:#475569;border-radius:26px;transition:.2s;cursor:pointer;}
+          #sec-instagram .ig-sw span:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+          #sec-instagram .ig-sw input:checked + span{background:#22c55e;}
+          #sec-instagram .ig-sw input:checked + span:before{transform:translateX(20px);}
+          #sec-instagram .ig-sw input:focus-visible + span{outline:2px solid #fff;outline-offset:2px;}
+          /* filtros */
+          #sec-instagram .ig-seg{display:inline-flex;border:1px solid #1A4DAA;border-radius:999px;overflow:hidden;}
+          #sec-instagram .ig-seg button{background:#091C47;color:#cbd5e1;border:0;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;}
+          #sec-instagram .ig-seg button.on{background:#1A4DAA;color:#fff;}
+          #sec-instagram .ig-fil{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+          #sec-instagram .ig-fil .form-control{width:auto;min-width:130px;max-width:100%;font-size:12px;padding:6px 8px;}
+          /* panel */
+          #sec-instagram .ig-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+          #sec-instagram .ig-kpi{background:#0D2B6B;border:1px solid #1A4DAA;border-radius:12px;padding:12px;color:#fff;}
+          #sec-instagram .ig-kpi b{display:block;font-size:26px;line-height:1.1;}
+          #sec-instagram .ig-kpi span{font-size:12px;color:#cbd5e1;}
+          #sec-instagram .ig-tbl{width:100%;border-collapse:collapse;font-size:13px;color:#fff;}
+          #sec-instagram .ig-tbl th,#sec-instagram .ig-tbl td{padding:8px 6px;border-bottom:1px solid #1A4DAA;text-align:right;}
+          #sec-instagram .ig-tbl th:first-child,#sec-instagram .ig-tbl td:first-child{text-align:left;}
+          #sec-instagram .ig-scroll{overflow-x:auto;}
+          #sec-instagram .ig-bars{display:flex;align-items:flex-end;gap:4px;height:110px;}
+          #sec-instagram .ig-bars div{flex:1;background:#1A4DAA;border-radius:4px 4px 0 0;min-height:2px;position:relative;}
+          #sec-instagram .ig-bars div.hoy{background:#E02020;}
+          #sec-instagram .ig-bar-lbl{display:flex;gap:4px;font-size:10px;color:#cbd5e1;margin-top:4px;}
+          #sec-instagram .ig-bar-lbl span{flex:1;text-align:center;overflow:hidden;}
+          #sec-instagram details.ig-user{background:#091C47;border:1px solid #1A4DAA;border-radius:10px;padding:10px;margin-bottom:8px;color:#fff;font-size:13px;}
+          #sec-instagram details.ig-user summary{cursor:pointer;font-weight:700;}
+          @media (max-width:520px){#sec-instagram .ig-kpi b{font-size:22px;}}
         </style>
         <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
           <h2 style="font-size:18px;font-weight:700;">Instagram · Respuestas automáticas</h2>
           <span class="text-muted text-sm">Alguien comenta → le respondés en público y le llega un mensaje con un botón a tu página</span>
         </div>
         <div id="igAviso" style="display:none;margin-bottom:12px;font-weight:600;"></div>
-        <div class="ig-box">
-          <div id="igEstadoCuenta" style="font-weight:600;"></div>
-          <details id="igPasos" style="margin-top:10px;">
-            <summary style="cursor:pointer;font-weight:700;">Conexión con Meta (se hace una sola vez)</summary>
-            <ol style="font-size:13px;line-height:1.7;padding-left:18px;margin:10px 0;color:#e2e8f0;">
-              <li>En <strong>developers.facebook.com</strong> creá una app tipo <strong>Business</strong> con el caso de uso <em>Administrar mensajes y contenido en Instagram</em>.</li>
-              <li>En <em>Instagram → Configuración de la API con inicio de sesión de Instagram</em>: agregá tu cuenta como <strong>probador de Instagram</strong> (y aceptá la invitación desde Instagram → Configuración → Apps y sitios web → Invitaciones de probador). Después tocá <strong>Generar token</strong> y pegalo abajo.</li>
-              <li>Copiá el <strong>App Secret</strong> (Configuración de la app → Básica) y pegalo abajo.</li>
-              <li>En <em>Webhooks</em> (producto Instagram): pegá la URL y el token de verificación de abajo, y suscribite a los campos <strong>comments</strong> y <strong>messages</strong> (este último hace falta para el modo en dos pasos).</li>
-              <li>Permisos: <code>instagram_business_basic</code>, <code>instagram_business_manage_comments</code> y <code>instagram_business_manage_messages</code>. Para tu propia cuenta no hace falta revisión de Meta.</li>
-            </ol>
-            <label>URL del webhook (callback)</label>
-            <div class="ig-row"><input id="igWebhookUrl" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igWebhookUrl')">Copiar</button></div>
-            <label>Token de verificación</label>
-            <div class="ig-row"><input id="igVerifyToken" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igVerifyToken')">Copiar</button></div>
-            <label>Token de acceso de Instagram</label>
-            <input id="igToken" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el token generado">
-            <label>ID de la cuenta de Instagram (el número que muestra Meta junto al token; en apps nuevas es obligatorio)</label>
-            <input id="igIgId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 17841400000000000">
-            <label>App Secret de Meta <span id="igAppSecretEstado" style="font-weight:400;margin-left:6px;"></span></label>
-            <input id="igAppSecret" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el App Secret">
-            <div class="ig-row" style="margin-top:12px;">
-              <button class="btn btn-primary btn-sm" onclick="igGuardarConexion()">Guardar conexión</button>
-              <button id="igBtnDesconectar" class="btn btn-secondary btn-sm" onclick="igDesconectar()" style="display:none;">Desconectar</button>
-            </div>
-          </details>
+        <div class="ig-tabs" id="igTabs">
+          <button class="ig-tab" data-tab="auto" onclick="igTab('auto')">Automatizaciones</button>
+          <button class="ig-tab" data-tab="panel" onclick="igTab('panel')">Panel de control</button>
+          <button class="ig-tab" data-tab="act" onclick="igTab('act')">Actividad</button>
+          <button class="ig-tab" data-tab="conf" onclick="igTab('conf')">Configuración</button>
         </div>
-        <div id="igReglasWrap" style="display:none;">
-          <div class="ig-row" style="margin-bottom:10px;"><h3 style="font-size:15px;font-weight:700;flex:1;">Reglas</h3><button class="btn btn-primary btn-sm" onclick="igNuevaRegla()">+ Nueva regla</button></div>
+
+        <div id="igPaneAuto" class="ig-pane hidden">
+          <div class="ig-fil">
+            <div class="ig-seg" id="igSegEstado">
+              <button data-v="todas" class="on" onclick="igFiltroAuto('estado','todas')">Todas</button>
+              <button data-v="activas" onclick="igFiltroAuto('estado','activas')">Activas</button>
+              <button data-v="pausadas" onclick="igFiltroAuto('estado','pausadas')">Pausadas</button>
+            </div>
+            <input id="igBuscarRegla" class="form-control" placeholder="🔎 Buscar por título o palabra" oninput="igFiltroAuto('q',this.value)">
+            <select id="igFiltroModo" class="form-control" onchange="igFiltroAuto('modo',this.value)">
+              <option value="">Todos los modos</option><option value="directo">Directo</option><option value="dos-pasos">En dos pasos</option>
+            </select>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="igNuevaRegla()">+ Nueva regla</button>
+          </div>
           <div id="igReglasLista"></div>
           <div id="igFormWrap" class="ig-box" style="display:none;">
             <h3 style="font-size:15px;font-weight:700;">Regla</h3>
@@ -544,7 +571,7 @@
               <option value="">— En blanco —</option>
               <option value="libro">Libro "La P de precio" (dos pasos, exige seguir, encuesta)</option>
             </select>
-            <label>Nombre (solo para vos)</label><input id="igFNombre" class="form-control" maxlength="80" placeholder="Ej: Reel guía IA">
+            <label>Título de la regla</label><input id="igFNombre" class="form-control" maxlength="80" placeholder="Ej: Reel guía IA">
             <label>¿En qué publicación?</label>
             <div class="ig-row"><span id="igFMediaTxt" style="flex:1;font-size:13px;"></span><button class="btn btn-sm btn-secondary" onclick="igElegirPost()">Elegir publicación</button></div>
             <input type="hidden" id="igFMediaId"><input type="hidden" id="igFMediaInfo"><div id="igPostsGrid"></div>
@@ -586,13 +613,78 @@
             <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="igFUnaVez" checked> Mandar el mensaje una sola vez por persona</label>
             <div class="ig-row" style="margin-top:12px;"><button class="btn btn-primary btn-sm" onclick="igGuardarRegla()">Guardar regla</button><button class="btn btn-secondary btn-sm" onclick="igCerrarForm()">Cancelar</button></div>
           </div>
-          <h3 style="font-size:15px;font-weight:700;margin:18px 0 10px;">Últimos comentarios atendidos</h3>
+        </div>
+
+        <div id="igPanePanel" class="ig-pane hidden">
+          <div class="ig-fil">
+            <div class="ig-seg" id="igSegPanel">
+              <button data-v="hoy" onclick="igFiltroPanel('hoy')">Hoy</button>
+              <button data-v="7" onclick="igFiltroPanel('7')">7 días</button>
+              <button data-v="30" onclick="igFiltroPanel('30')">30 días</button>
+              <button data-v="total" class="on" onclick="igFiltroPanel('total')">Total</button>
+            </div>
+            <span class="ig-sub" id="igPanelNota" style="margin:0;color:#475569;"></span>
+          </div>
+          <div class="ig-kpis" id="igKpis"></div>
+          <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Encuesta</h3><div id="igEncuesta"></div></div>
+          <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 10px;">Comentarios atendidos por día (últimos 14 días)</h3><div class="ig-bars" id="igBars"></div><div class="ig-bar-lbl" id="igBarLbl"></div></div>
+          <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Por regla (totales)</h3><div class="ig-scroll" id="igPorRegla"></div></div>
+        </div>
+
+        <div id="igPaneAct" class="ig-pane hidden">
+          <div class="ig-fil">
+            <select id="igActRegla" class="form-control" onchange="igFiltroAct('regla',this.value)"></select>
+            <select id="igActRes" class="form-control" onchange="igFiltroAct('res',this.value)">
+              <option value="">Todos los resultados</option><option value="enviado">Mensajes enviados</option><option value="entregado">Recursos entregados</option>
+              <option value="pidió seguir">Pidió seguirte</option><option value="respuesta">Respuestas de encuesta</option><option value="saltado">Saltados</option><option value="falló">Fallos</option><option value="aviso">Avisos</option>
+            </select>
+            <select id="igActPer" class="form-control" onchange="igFiltroAct('per',this.value)">
+              <option value="hoy">Hoy</option><option value="7" selected>Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="todo">Todo lo guardado</option>
+            </select>
+            <input id="igActQ" class="form-control" placeholder="🔎 Usuario o comentario" oninput="igFiltroAct('q',this.value)">
+            <div class="ig-seg" id="igSegVista">
+              <button data-v="evento" class="on" onclick="igFiltroAct('vista','evento')">Por evento</button>
+              <button data-v="persona" onclick="igFiltroAct('vista','persona')">Por persona</button>
+            </div>
+          </div>
+          <div class="ig-sub" id="igActCuenta" style="margin:0 0 10px;color:#475569;"></div>
           <div id="igLogs"></div>
-          <div class="ig-box" style="margin-top:14px;">
+          <div style="text-align:center;margin:10px 0;"><button class="btn btn-secondary btn-sm" id="igMas" style="display:none;" onclick="igVerMas()">Ver más</button></div>
+          <p class="ig-sub" style="color:#475569;">Se guardan los últimos 500 eventos para consultar acá. Los totales del Panel de control se cuentan aparte y no se pierden.</p>
+        </div>
+
+        <div id="igPaneConf" class="ig-pane hidden">
+          <div class="ig-box">
+          <div id="igEstadoCuenta" style="font-weight:600;"></div>
+          <details id="igPasos" style="margin-top:10px;">
+            <summary style="cursor:pointer;font-weight:700;">Conexión con Meta (se hace una sola vez)</summary>
+            <ol style="font-size:13px;line-height:1.7;padding-left:18px;margin:10px 0;color:#e2e8f0;">
+              <li>En <strong>developers.facebook.com</strong> creá una app tipo <strong>Business</strong> con el caso de uso <em>Administrar mensajes y contenido en Instagram</em>.</li>
+              <li>En <em>Instagram → Configuración de la API con inicio de sesión de Instagram</em>: agregá tu cuenta como <strong>probador de Instagram</strong> (y aceptá la invitación desde Instagram → Configuración → Apps y sitios web → Invitaciones de probador). Después tocá <strong>Generar token</strong> y pegalo abajo.</li>
+              <li>Copiá el <strong>App Secret</strong> (Configuración de la app → Básica) y pegalo abajo.</li>
+              <li>En <em>Webhooks</em> (producto Instagram): pegá la URL y el token de verificación de abajo, y suscribite a los campos <strong>comments</strong> y <strong>messages</strong> (este último hace falta para el modo en dos pasos).</li>
+              <li>Permisos: <code>instagram_business_basic</code>, <code>instagram_business_manage_comments</code> y <code>instagram_business_manage_messages</code>. Para tu propia cuenta no hace falta revisión de Meta.</li>
+            </ol>
+            <label>URL del webhook (callback)</label>
+            <div class="ig-row"><input id="igWebhookUrl" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igWebhookUrl')">Copiar</button></div>
+            <label>Token de verificación</label>
+            <div class="ig-row"><input id="igVerifyToken" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igVerifyToken')">Copiar</button></div>
+            <label>Token de acceso de Instagram</label>
+            <input id="igToken" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el token generado">
+            <label>ID de la cuenta de Instagram (el número que muestra Meta junto al token; en apps nuevas es obligatorio)</label>
+            <input id="igIgId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 17841400000000000">
+            <label>App Secret de Meta <span id="igAppSecretEstado" style="font-weight:400;margin-left:6px;"></span></label>
+            <input id="igAppSecret" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el App Secret">
+            <div class="ig-row" style="margin-top:12px;">
+              <button class="btn btn-primary btn-sm" onclick="igGuardarConexion()">Guardar conexión</button>
+              <button id="igBtnDesconectar" class="btn btn-secondary btn-sm" onclick="igDesconectar()" style="display:none;">Desconectar</button>
+            </div>
+          </details>
+        </div>
+          <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Avisos de Instagram</h3>
             <button class="btn btn-primary btn-sm" onclick="igReparar()">Revisar y reparar suscripción de avisos</button>
             <div id="igReparoRes" class="ig-sub" style="margin-top:8px;font-size:13px;"></div>
-          </div>
-          <details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:700;font-size:13px;">Diagnóstico técnico (lo último que mandó Instagram)</summary><div id="igDiag" style="margin-top:8px;"></div></details>
+            <details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:700;font-size:13px;">Diagnóstico técnico (lo último que mandó Instagram)</summary><div id="igDiag" style="margin-top:8px;"></div></details></div>
         </div>
       </div>
 
@@ -9422,6 +9514,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=7"></script>
+<script type="module" src="../js/instagram.js?v=8"></script>
 </body>
 </html>

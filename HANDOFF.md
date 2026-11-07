@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (2) — Instagram: pantalla rehecha con pestañas (Automatizaciones · Panel de control · Actividad · Configuración)
+- Pedido de Vaneh: interruptor verde a la derecha de cada regla (prende/apaga), título de la regla, filtros (todas/activas/pausadas, búsqueda, modo), **Panel de control** con totales (hoy / 7 / 30 días / total: comentarios, mensajes, tocaron el botón, entregas, seguir, fallos, encuesta con %, barras de 14 días, tabla por regla), **Actividad** paginada (25 + "Ver más") con filtros por regla/resultado/período/usuario y vista "Por persona" desplegable, y **Configuración** (conexión, reparar suscripción, diagnóstico). "Duplicar" regla. `js/instagram.js` reescrito (`instagram.js?v=8`). Probado en 1280 y 390 px con API simulada. Necesita el deploy de `marketing-hub` con los contadores (ver HANDOFF de cosmart-workers, 07/11).
+
 ## 07/11 — Sección "Instagram" en el admin (respuestas automáticas a comentarios, reemplazo de ManyChat)
 - Nueva sección en el menú del admin (`#sec-instagram`, `js/instagram.js`, 6 funciones nuevas al final de `js/data.js`; `data.js` pasó a `?v=19` en `admin/index.html`). Guía de conexión con Meta, reglas (publicación elegida desde tus últimas 24, palabras clave, respuestas públicas, DM, botón con link) y últimos comentarios atendidos. Backend: ver HANDOFF de `cosmart-workers` (07/11). Probado en 1280 y 390 px con API simulada; no contra Meta real. Fondos de la paleta oscura de la marca. Selector de modo en la regla: directo o en dos pasos (botón de confirmación → link + seguimiento); `instagram.js?v=5`; plantilla "Libro", mensaje a la hora y encuesta (campos nuevos en la regla dos-pasos); casilla "Exigir que me sigan" con mensaje y botón de reintento.
 
