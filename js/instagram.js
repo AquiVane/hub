@@ -59,12 +59,12 @@ function pintarLogs() {
 }
 
 window.igGuardarConexion = async function () {
-  const token = $('igToken').value.trim(), appSecret = $('igAppSecret').value.trim();
+  const token = $('igToken').value.trim(), appSecret = $('igAppSecret').value.trim(), igUserId = $('igIgId').value.trim();
   if (!token && !appSecret) { aviso('Pegá el token y/o el App Secret.', true); return; }
   aviso('Verificando con Instagram…');
   try {
-    await setInstagramConfig({ token, appSecret });
-    $('igToken').value = ''; $('igAppSecret').value = '';
+    await setInstagramConfig({ token, appSecret, igUserId });
+    $('igToken').value = ''; $('igAppSecret').value = ''; $('igIgId').value = '';
     aviso('Guardado.'); await window.cargarInstagram();
   } catch (e) { aviso(e.message, true); }
 };

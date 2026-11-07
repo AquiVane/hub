@@ -524,6 +524,8 @@
             <div class="ig-row"><input id="igVerifyToken" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igVerifyToken')">Copiar</button></div>
             <label>Token de acceso de Instagram</label>
             <input id="igToken" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el token generado">
+            <label>ID de la cuenta de Instagram (el número que muestra Meta junto al token; en apps nuevas es obligatorio)</label>
+            <input id="igIgId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 17841400000000000">
             <label>App Secret de Meta <span id="igAppSecretEstado" style="font-weight:400;margin-left:6px;"></span></label>
             <input id="igAppSecret" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el App Secret">
             <div class="ig-row" style="margin-top:12px;">
@@ -9400,6 +9402,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=3"></script>
+<script type="module" src="../js/instagram.js?v=4"></script>
 </body>
 </html>
