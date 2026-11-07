@@ -933,3 +933,29 @@ export async function getChatNoLeidos() {
   if (DEMO_MODE) return { total: 0, porConversacion: {} };
   return api('GET', '/chat/no-leidos');
 }
+
+// ── Respuestas automáticas de Instagram (07/11): comentario → respuesta pública + DM con botón ──
+export async function getInstagram() {
+  if (DEMO_MODE) return { conectada: false, reglas: [], logs: [], webhookUrl: '', verifyToken: '' };
+  return api('GET', '/admin/instagram');
+}
+export async function setInstagramConfig(datos) {
+  if (DEMO_MODE) { alert('En modo demo no se puede conectar Instagram.'); return { ok: false }; }
+  return api('POST', '/admin/instagram/config', datos);
+}
+export async function desconectarInstagram() {
+  if (DEMO_MODE) return { ok: true };
+  return api('DELETE', '/admin/instagram/config');
+}
+export async function getInstagramPosts() {
+  if (DEMO_MODE) return { posts: [] };
+  return api('GET', '/admin/instagram/posts');
+}
+export async function saveInstagramRegla(regla) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/admin/instagram/reglas', regla);
+}
+export async function deleteInstagramRegla(id) {
+  if (DEMO_MODE) return { ok: true };
+  return api('DELETE', `/admin/instagram/reglas/${encodeURIComponent(id)}`);
+}

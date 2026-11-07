@@ -85,6 +85,9 @@
       <button class="nav-item" id="navCrmBtn" onclick="showSection('crm')">
         <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
       </button>
+      <button class="nav-item" onclick="showSection('instagram')">
+        <i data-lucide="message-circle" class="nav-icon"></i><span>Instagram</span>
+      </button>
       <button class="nav-item" onclick="showSection('actividad')">
         <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
       </button>
@@ -479,6 +482,77 @@
           <div class="procesos-content" id="procesosContent">
             <div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Elegí o creá un proceso</h3><p>Los procesos quedan agrupados por cliente (o por vertical, si elegiste COSMART).</p></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Respuestas automáticas de Instagram -->
+      <div id="sec-instagram" class="hidden">
+        <style>
+          #sec-instagram .ig-card{background:#0D2B6B;border:1px solid #1A4DAA;border-radius:12px;padding:14px;margin-bottom:10px;color:#fff;}
+          #sec-instagram .ig-sub{font-size:12px;color:#cbd5e1;margin-top:4px;word-break:break-word;}
+          #sec-instagram .ig-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
+          #sec-instagram .ig-log{background:#091C47;border:1px solid #1A4DAA;border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;color:#fff;}
+          #sec-instagram .ig-box{background:#091C47;border:1px solid #1A4DAA;border-radius:12px;padding:16px;margin-bottom:16px;color:#fff;}
+          #sec-instagram .ig-box label{display:block;font-size:12px;font-weight:700;margin:10px 0 4px;color:#e2e8f0;}
+          #sec-instagram .ig-box .form-control{width:100%;box-sizing:border-box;}
+          #sec-instagram .ig-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+          #sec-instagram .ig-row .form-control{flex:1;min-width:180px;}
+          #sec-instagram #igPostsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px;}
+          #sec-instagram .ig-post{cursor:pointer;background:#0D2B6B;border-radius:8px;padding:6px;color:#fff;}
+          #sec-instagram .ig-post-img{aspect-ratio:1;background:#060F22;border-radius:6px;overflow:hidden;}
+          #sec-instagram .ig-post-img img{width:100%;height:100%;object-fit:cover;}
+        </style>
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Instagram · Respuestas automáticas</h2>
+          <span class="text-muted text-sm">Alguien comenta → le respondés en público y le llega un mensaje con un botón a tu página</span>
+        </div>
+        <div id="igAviso" style="display:none;margin-bottom:12px;font-weight:600;"></div>
+        <div class="ig-box">
+          <div id="igEstadoCuenta" style="font-weight:600;"></div>
+          <details id="igPasos" style="margin-top:10px;">
+            <summary style="cursor:pointer;font-weight:700;">Conexión con Meta (se hace una sola vez)</summary>
+            <ol style="font-size:13px;line-height:1.7;padding-left:18px;margin:10px 0;color:#e2e8f0;">
+              <li>En <strong>developers.facebook.com</strong> creá una app tipo <strong>Business</strong> con el caso de uso <em>Administrar mensajes y contenido en Instagram</em>.</li>
+              <li>En <em>Instagram → Configuración de la API con inicio de sesión de Instagram</em>: agregá tu cuenta como <strong>probador de Instagram</strong> (y aceptá la invitación desde Instagram → Configuración → Apps y sitios web → Invitaciones de probador). Después tocá <strong>Generar token</strong> y pegalo abajo.</li>
+              <li>Copiá el <strong>App Secret</strong> (Configuración de la app → Básica) y pegalo abajo.</li>
+              <li>En <em>Webhooks</em> (producto Instagram): pegá la URL y el token de verificación de abajo, y suscribite al campo <strong>comments</strong>.</li>
+              <li>Permisos: <code>instagram_business_basic</code>, <code>instagram_business_manage_comments</code> y <code>instagram_business_manage_messages</code>. Para tu propia cuenta no hace falta revisión de Meta.</li>
+            </ol>
+            <label>URL del webhook (callback)</label>
+            <div class="ig-row"><input id="igWebhookUrl" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igWebhookUrl')">Copiar</button></div>
+            <label>Token de verificación</label>
+            <div class="ig-row"><input id="igVerifyToken" class="form-control" readonly><button class="btn btn-sm btn-secondary" onclick="igCopiar('igVerifyToken')">Copiar</button></div>
+            <label>Token de acceso de Instagram</label>
+            <input id="igToken" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el token generado">
+            <label>App Secret de Meta <span id="igAppSecretEstado" style="font-weight:400;margin-left:6px;"></span></label>
+            <input id="igAppSecret" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el App Secret">
+            <div class="ig-row" style="margin-top:12px;">
+              <button class="btn btn-primary btn-sm" onclick="igGuardarConexion()">Guardar conexión</button>
+              <button id="igBtnDesconectar" class="btn btn-secondary btn-sm" onclick="igDesconectar()" style="display:none;">Desconectar</button>
+            </div>
+          </details>
+        </div>
+        <div id="igReglasWrap" style="display:none;">
+          <div class="ig-row" style="margin-bottom:10px;"><h3 style="font-size:15px;font-weight:700;flex:1;">Reglas</h3><button class="btn btn-primary btn-sm" onclick="igNuevaRegla()">+ Nueva regla</button></div>
+          <div id="igReglasLista"></div>
+          <div id="igFormWrap" class="ig-box" style="display:none;">
+            <h3 style="font-size:15px;font-weight:700;">Regla</h3>
+            <label>Nombre (solo para vos)</label><input id="igFNombre" class="form-control" maxlength="80" placeholder="Ej: Reel guía IA">
+            <label>¿En qué publicación?</label>
+            <div class="ig-row"><span id="igFMediaTxt" style="flex:1;font-size:13px;"></span><button class="btn btn-sm btn-secondary" onclick="igElegirPost()">Elegir publicación</button></div>
+            <input type="hidden" id="igFMediaId"><input type="hidden" id="igFMediaInfo"><div id="igPostsGrid"></div>
+            <label>Palabras clave (separadas por coma; vacío = responde a cualquier comentario)</label><input id="igFPalabras" class="form-control" placeholder="quiero, link, info">
+            <label>Respuestas públicas (una por línea; se elige una al azar. Vacío = no responde en público). Podés usar {nombre}</label>
+            <textarea id="igFPublicas" class="form-control" rows="3" placeholder="¡Listo {nombre}! Te lo mandé por mensaje 📩"></textarea>
+            <label>Mensaje privado (DM). Podés usar {nombre}</label>
+            <textarea id="igFDm" class="form-control" rows="4" maxlength="640" placeholder="¡Hola {nombre}! Acá tenés lo que te prometí 👇"></textarea>
+            <label>Texto del botón (máx. 20)</label><input id="igFBotonTxt" class="form-control" maxlength="20" placeholder="Entrar ahora">
+            <label>Link del botón</label><input id="igFBotonUrl" class="form-control" type="url" placeholder="https://cosmart.com.ar/...">
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="igFUnaVez" checked> Mandar el mensaje una sola vez por persona</label>
+            <div class="ig-row" style="margin-top:12px;"><button class="btn btn-primary btn-sm" onclick="igGuardarRegla()">Guardar regla</button><button class="btn btn-secondary btn-sm" onclick="igCerrarForm()">Cancelar</button></div>
+          </div>
+          <h3 style="font-size:15px;font-weight:700;margin:18px 0 10px;">Últimos comentarios atendidos</h3>
+          <div id="igLogs"></div>
         </div>
       </div>
 
@@ -2283,7 +2357,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=18';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=19';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2606,7 +2680,7 @@
   };
 
   window.showSection = function(sec) {
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa','inventario'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa','inventario','instagram'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -2624,6 +2698,7 @@
     if (sec === 'ideas') loadIdeasAdmin();
     if (sec === 'proyectos') loadProyectos();
     if (sec === 'crm') loadLeadsAdmin();
+    if (sec === 'instagram') window.cargarInstagram?.();
     if (sec === 'ventas-panel') loadVentasPanel();
     if (sec === 'newsletter') cargarNewsletter();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarConectorClaude(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
@@ -9307,5 +9382,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
+<script type="module" src="../js/instagram.js?v=1"></script>
 </body>
 </html>
