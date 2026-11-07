@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (3) — Plantilla "Libro · DIRECTO" (aprobada por Vaneh) mientras Meta revisa el acceso avanzado
+- Los toques de botón de usuarias reales NO llegan hasta que Meta apruebe el acceso avanzado (la app ya está Live; verificación de empresa enviada el 07/11, ~2 días hábiles; falta enviar la revisión de la app: textos y guion de video preparados). Para que ande hoy: plantilla `libro-directo` (primer mensaje de Vaneh + botón "⚓Ver info Libro" → training.cosmart.com.ar/precio). Cuando Meta apruebe: apagar la regla Directo y prender la de dos pasos. `instagram.js?v=9`.
+
 ## 07/11 (2) — Instagram: pantalla rehecha con pestañas (Automatizaciones · Panel de control · Actividad · Configuración)
 - Pedido de Vaneh: interruptor verde a la derecha de cada regla (prende/apaga), título de la regla, filtros (todas/activas/pausadas, búsqueda, modo), **Panel de control** con totales (hoy / 7 / 30 días / total: comentarios, mensajes, tocaron el botón, entregas, seguir, fallos, encuesta con %, barras de 14 días, tabla por regla), **Actividad** paginada (25 + "Ver más") con filtros por regla/resultado/período/usuario y vista "Por persona" desplegable, y **Configuración** (conexión, reparar suscripción, diagnóstico). "Duplicar" regla. `js/instagram.js` reescrito (`instagram.js?v=8`). Probado en 1280 y 390 px con API simulada. Necesita el deploy de `marketing-hub` con los contadores (ver HANDOFF de cosmart-workers, 07/11).
 
