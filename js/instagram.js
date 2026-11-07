@@ -87,7 +87,8 @@ function pintarReglas() {
     </div>`).join('');
   l.forEach(r => { if (recAbiertos.has(r.id)) pintarRec(r.id); });
   clearTimeout(recTimer);
-  if (Object.values(estado.recuperaciones || {}).some(x => x && x.estado === 'corriendo')) recTimer = setTimeout(() => { if (tabActual === 'auto') window.cargarInstagram(); }, 30000);
+  const _rec = Object.values(estado.recuperaciones || {});
+  if (_rec.some(x => x && (x.estado === 'buscando' || x.estado === 'corriendo'))) recTimer = setTimeout(() => { if (tabActual === 'auto') window.cargarInstagram(); }, _rec.some(x => x && x.estado === 'buscando') ? 4000 : 30000);
 }
 
 window.igAlternar = async function (id, input) {
@@ -182,6 +183,15 @@ function pintarRec(id) {
       <button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Buscar comentarios sin respuesta</button>`;
     return;
   }
+  if (st.estado === 'buscando') {
+    el.innerHTML = msgHtml + `<div style="padding:10px;border-radius:8px;font-weight:700;font-size:13px;background:#14532d;color:#fff;">⏳ Buscando comentarios en tu publicación… sigue en segundo plano, podés dejar esta pantalla abierta: se actualiza sola.</div>`;
+    return;
+  }
+  if (st.estado === 'error') {
+    el.innerHTML = msgHtml + `<div style="padding:10px;border-radius:8px;font-weight:700;font-size:13px;background:#7f1d1d;color:#fff;word-break:break-word;">No se pudo buscar: ${esc(st.motivo || 'error desconocido')}</div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Volver a buscar</button> <button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','cancelar',this)">Descartar</button></div>`;
+    return;
+  }
   const r = st.resumen || {};
   const hechos = (st.enviados || 0) + (st.fallos || 0) + (st.saltados || 0) + (st.vencidos || 0);
   const pct = st.total ? Math.round(hechos * 100 / st.total) : 100;
@@ -203,11 +213,12 @@ function pintarRec(id) {
 window.igRecAccion = async function (id, accion, btn) {
   if (accion === 'cancelar' && !confirm('¿Descartar esta búsqueda? Lo ya enviado no se deshace.')) return;
   if (btn) btn.disabled = true;
-  recMsg[id] = { cargando: true, txt: accion === 'escanear' ? 'Buscando comentarios en tu publicación… puede tardar un minuto, no cierres esta pantalla.' : 'Procesando…' };
+  recMsg[id] = { cargando: true, txt: accion === 'escanear' ? 'Iniciando la búsqueda…' : 'Procesando…' };
   pintarRec(id);
   try {
     await recuperarInstagram(id, accion);
-    recMsg[id] = { txt: accion === 'escanear' ? 'Búsqueda lista. Revisá el resumen y elegí el ritmo.' : accion === 'pausar' ? 'Envío pausado.' : 'Listo.' };
+    recMsg[id] = accion === 'escanear' ? null : { txt: accion === 'pausar' ? 'Envío pausado.' : 'Listo.' };
+    if (!recMsg[id]) delete recMsg[id];
     await window.cargarInstagram();
   } catch (e) { recMsg[id] = { error: true, txt: 'No se pudo: ' + e.message }; pintarRec(id); }
   if (btn) btn.disabled = false;

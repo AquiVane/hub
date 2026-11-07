@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (7) — Arreglos: rebote al volver a la sección + la búsqueda de comentarios pasa a segundo plano
+- **Rebote:** al abrir el admin se veía Clientes y 0,7 s después saltaba a la sección guardada. Ahora un escudo CSS en el `<head>` (`#hubRestoreStyle`) oculta Clientes desde el primer instante y la restauración corre apenas termina de evaluarse el módulo (`setTimeout(volver, 0)`; llamarla antes da `_topbarSec` en zona muerta). Probado: no se llega a ver Clientes.
+- **Recuperar comentarios:** buscar ~500 comentarios tardaba más de los 20 s que espera el Hub ("Se colgó el pedido…"). Ahora `POST .../escanear` responde al instante (`estado:'buscando'`) y la búsqueda corre en el Durable Object `IgRecuperar` (tarea `scan` → `ejecutarEscaneo`), que deja `listo` (con resumen) o `error` (con el detalle de cada intento). La pantalla muestra "Buscando… sigue en segundo plano" y se actualiza sola cada 4 s. `graph()` ahora corta a los 20 s. `instagram.js?v=13`.
 ## 07/11 (6) — Botón ⟳ (recarga forzada), volver a la última sección y arreglo de los 3 puntitos (admin + panel de clientes)
 - **Botón ⟳ Actualizar** (`js/refresh.js`, admin y `app/index.html`, antes de la campanita): borra cachés/service worker, pide de nuevo los archivos de la misma origen con `cache:'reload'` y recarga (equivale a Ctrl+Shift+R; pedido de Vaneh porque en la app instalada solo podía cerrar y reabrir).
 - **Última sección:** admin guarda `mh_admin_sec`; panel de clientes guarda `mh_cli_sec_<clientId>` (no en modo embed). Al abrir/recargar vuelve ahí en vez del inicio. `app.js?v=86`.
