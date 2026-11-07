@@ -990,5 +990,12 @@ export async function descargarContactosInstagram() {
 // Pasa a R2 las imágenes viejas guardadas como texto dentro de los datos del cliente (el panel cargaba decenas de MB).
 export async function optimizarCargaCliente(clientId) {
   if (DEMO_MODE) return { ok: true, imagenesMigradas: 0 };
-  return api('POST', `/admin/optimizar-carga/${encodeURIComponent(clientId)}`, {});
+  // Pasar 16 MB de imágenes a R2 lleva más de los 20 s que espera `api()`: acá se espera hasta 3 minutos.
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 180000);
+  try {
+    const res = await fetch(WORKER_URL + `/admin/optimizar-carga/${encodeURIComponent(clientId)}`, { method: 'POST', headers: { Authorization: 'Bearer ' + getSessionToken(), 'Content-Type': 'application/json' }, body: '{}', signal: ctl.signal });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error || 'No se pudo optimizar.');
+    return d;
+  } finally { clearTimeout(t); }
 }

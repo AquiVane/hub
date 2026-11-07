@@ -17,7 +17,7 @@ import {
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
   optimizarCargaCliente
-} from './data.js?v=23';
+} from './data.js?v=24';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -457,8 +457,8 @@ function comprimirLogo(dataUrl, maxLado = 320) {
         const k = Math.min(1, maxLado / Math.max(img.width, img.height));
         const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        let out = c.toDataURL('image/webp', 0.9);
-        if (!out.startsWith('data:image/webp')) out = c.toDataURL('image/png');
+        const esJpeg = /^data:image\/jpe?g/i.test(dataUrl);
+        const out = esJpeg ? c.toDataURL('image/jpeg', 0.9) : c.toDataURL('image/png');
         resolve(out.length < dataUrl.length ? out : dataUrl);
       } catch (e) { resolve(dataUrl); }
     };
@@ -640,7 +640,7 @@ function applyClientLogo(src) {
     // y si es PNG (suele venir con transparencia) fondo blanco atrás,
     // para que se distinga en el sidebar oscuro.
     wrap.classList.add('has-logo');
-    wrap.classList.toggle('logo-png', /\.png($|\?)|^data:image\/png/i.test(src));
+    wrap.classList.toggle('logo-png', /\.(png|webp)($|\?)|^data:image\/(png|webp)/i.test(src));
   }
 }
 
