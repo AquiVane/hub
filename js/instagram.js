@@ -36,8 +36,8 @@ function pintarReglas() {
         <span class="ig-tag" style="${r.activa ? 'background:#14532d;color:#bbf7d0;' : 'background:#334155;color:#cbd5e1;'}">${r.activa ? 'Activa' : 'Pausada'}</span>
       </div>
       <div class="ig-sub">${r.mediaId ? '📌 ' + esc(r.mediaInfo || r.mediaId) : '📌 Todos los posts y reels'} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : 'Cualquier comentario'}</div>
-      <div class="ig-sub">Botón: ${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
-      <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · DMs enviados ${r.stats?.dms || 0} · fallos ${r.stats?.fallos || 0}</div>
+      <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
+      <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · DMs enviados ${r.stats?.dms || 0}${r.modo === 'dos-pasos' ? ' · tocaron el botón ' + (r.stats?.confirmaciones || 0) : ''} · fallos ${r.stats?.fallos || 0}</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igAlternar('${esc(r.id)}')">${r.activa ? 'Pausar' : 'Activar'}</button>
@@ -49,7 +49,7 @@ function pintarReglas() {
 function pintarLogs() {
   const l = estado.logs || [];
   $('igLogs').innerHTML = l.length ? l.slice(0, 50).map(x => {
-    const color = x.dm === 'enviado' ? '#86efac' : x.dm === 'saltado' ? '#cbd5e1' : '#fca5a5';
+    const color = (x.dm === 'enviado' || x.dm === 'entregado') ? '#86efac' : x.dm === 'saltado' ? '#cbd5e1' : '#fca5a5';
     return `<div class="ig-log"><span style="color:${color};font-weight:700;">${esc(x.dm)}</span> · ${new Date(x.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
       ${x.usuario ? ' · @' + esc(x.usuario) : ''}${x.regla ? ' · ' + esc(x.regla) : ''}
       ${x.texto ? `<div class="ig-sub">"${esc(x.texto)}"</div>` : ''}
@@ -100,9 +100,20 @@ function abrirForm() {
   $('igFBotonTxt').value = r.botonTexto || '';
   $('igFBotonUrl').value = r.botonUrl || '';
   $('igFUnaVez').checked = r.unaVezPorPersona !== false;
+  $('igFModo').value = r.modo === 'dos-pasos' ? 'dos-pasos' : 'directo';
+  $('igFConfirmar').value = r.confirmarBoton || '';
+  $('igFEntrega').value = r.entregaTexto || '';
+  $('igFSeguimiento').value = r.seguimientoTexto || '';
+  window.igCambiarModo();
   $('igPostsGrid').innerHTML = '';
   $('igFormWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+window.igCambiarModo = function () {
+  const dos = $('igFModo').value === 'dos-pasos';
+  $('igFPaso2').style.display = dos ? '' : 'none';
+  $('igFDmLabel').textContent = dos ? 'Primer mensaje (SIN link; lleva el botón de confirmación). Podés usar {nombre}' : 'Mensaje privado (DM). Podés usar {nombre}';
+  $('igFBotonLabel').textContent = dos ? 'Texto del botón final con el link (máx. 20)' : 'Texto del botón (máx. 20)';
+};
 window.igCerrarForm = function () { $('igFormWrap').style.display = 'none'; reglaEditando = null; };
 
 window.igElegirPost = async function () {
@@ -125,6 +136,7 @@ window.igGuardarRegla = async function () {
     id: reglaEditando?.id, nombre: $('igFNombre').value, activa: reglaEditando?.activa !== false,
     mediaId: $('igFMediaId').value, mediaInfo: $('igFMediaInfo').value, palabras: $('igFPalabras').value,
     respuestasPublicas: $('igFPublicas').value, dmTexto: $('igFDm').value,
+    modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value,
     botonTexto: $('igFBotonTxt').value, botonUrl: $('igFBotonUrl').value, unaVezPorPersona: $('igFUnaVez').checked,
   };
   try { await saveInstagramRegla(regla); aviso('Regla guardada.'); window.igCerrarForm(); await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
