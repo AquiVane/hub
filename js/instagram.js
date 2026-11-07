@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: respuestas automáticas a comentarios (reemplazo de ManyChat).
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla } from './data.js?v=19';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram } from './data.js?v=20';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -65,6 +65,16 @@ function pintarDiag() {
   $('igDiag').innerHTML = l.length ? l.map(d => `<div class="ig-log">${new Date(d.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' })} · ${esc((d.campos || []).join(', ') || 'sin campos')}
       <div class="ig-sub">cuenta ${d.cuentaMapeada ? 'reconocida' : '<b style="color:#fca5a5;">NO reconocida (' + esc(d.entryId) + ')</b>'} · firma ${d.firmaValida ? 'válida' : '<b style="color:#fca5a5;">inválida</b>'}</div></div>`).join('') : '<p class="text-muted text-sm">Todavía no llegó ningún aviso de Instagram.</p>';
 }
+
+window.igReparar = async function () {
+  const el = $('igReparoRes'); el.textContent = 'Consultando a Instagram…';
+  try {
+    const r = await repararSuscripcionInstagram();
+    const f = a => (a && a.length ? a.join(', ') : 'ninguno');
+    el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
+      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>');
+  } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
+};
 
 window.igGuardarConexion = async function () {
   const token = $('igToken').value.trim(), appSecret = $('igAppSecret').value.trim(), igUserId = $('igIgId').value.trim();

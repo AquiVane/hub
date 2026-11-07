@@ -959,3 +959,8 @@ export async function deleteInstagramRegla(id) {
   if (DEMO_MODE) return { ok: true };
   return api('DELETE', `/admin/instagram/reglas/${encodeURIComponent(id)}`);
 }
+
+export async function repararSuscripcionInstagram() {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', '/admin/instagram/suscripcion', {});
+}
