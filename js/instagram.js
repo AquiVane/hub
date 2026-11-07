@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram } from './data.js?v=21';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram } from './data.js?v=22';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -39,17 +39,20 @@ function pintarTodo() {
   $('igPasos').open = !conectada();
   document.querySelectorAll('#igTabs .ig-tab').forEach(b => { b.style.display = (!conectada() && b.dataset.tab !== 'conf') ? 'none' : ''; });
   const guardada = lsGet('igTab');
-  igTab(!conectada() ? 'conf' : (tabActual || (['auto', 'panel', 'act', 'conf'].includes(guardada) ? guardada : 'auto')));
+  igTab(!conectada() ? 'conf' : (tabActual || (['auto', 'panel', 'act', 'ct', 'conf'].includes(guardada) ? guardada : 'auto')));
   const sel = $('igActRegla'); const v = F.act.regla;
   sel.innerHTML = '<option value="">Todas las reglas</option>' + (e.reglas || []).map(r => `<option value="${esc(r.id)}">${esc(r.nombre)}</option>`).join('');
   sel.value = v;
+  const rsel = $('igCtRegla'); const rv = rsel.value;
+  rsel.innerHTML = '<option value="">Todas las reglas</option>' + [...new Set((e.reglas || []).map(r => r.nombre))].map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); rsel.value = rv;
   pintarReglas(); pintarPanel(); pintarAct(); pintarDiag();
 }
 
 window.igTab = function (t) {
   tabActual = t; lsSet('igTab', t);
   document.querySelectorAll('#igTabs .ig-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  ['auto', 'panel', 'act', 'conf'].forEach(x => { const el = $('igPane' + { auto: 'Auto', panel: 'Panel', act: 'Act', conf: 'Conf' }[x]); if (el) el.classList.toggle('hidden', x !== t); });
+  ['auto', 'panel', 'act', 'ct', 'conf'].forEach(x => { const el = $('igPane' + { auto: 'Auto', panel: 'Panel', act: 'Act', ct: 'Ct', conf: 'Conf' }[x]); if (el) el.classList.toggle('hidden', x !== t); });
+  if (t === 'ct') igCtCargar(true);
 };
 
 // ── Automatizaciones ──────────────────────────────────────────
@@ -305,6 +308,38 @@ function pintarAct() {
   $('igMas').style.display = total > pagAct * POR_PAG ? '' : 'none';
   if (total > pagAct * POR_PAG) $('igMas').textContent = `Ver más (${total - pagAct * POR_PAG} restantes)`;
 }
+
+
+// ── Contactos ─────────────────────────────────────────────────
+let ctItems = [], ctCursor = null, ctTimer = null, ctCargando = false;
+const ST = { enviado: ['Mensaje enviado', '#86efac'], pendiente: ['Pendiente de envío', '#fde68a'], 'respondido-previo': ['Ya respondido antes', '#cbd5e1'], vencido: ['Más de 7 días', '#cbd5e1'], 'falló': ['Falló el envío', '#fca5a5'] };
+window.igCtFiltro = function () { clearTimeout(ctTimer); ctTimer = setTimeout(() => igCtCargar(true), 350); };
+window.igCtMas = function () { igCtCargar(false); };
+async function igCtCargar(reiniciar) {
+  if (ctCargando) return; ctCargando = true;
+  if (reiniciar) { ctItems = []; ctCursor = null; $('igCtTabla').innerHTML = '<p class="ig-sub" style="color:#fff;">Cargando contactos…</p>'; }
+  try {
+    const r = await getContactosInstagram({ q: $('igCtQ').value.trim(), estado: $('igCtEstado').value, regla: $('igCtRegla').value, cursor: reiniciar ? '' : (ctCursor || '') });
+    ctItems = ctItems.concat(r.items || []); ctCursor = r.cursor;
+    pintarCt(r.total);
+  } catch (e) { $('igCtTabla').innerHTML = `<p class="ig-sub" style="color:#fca5a5;">${esc(e.message)}</p>`; }
+  ctCargando = false;
+}
+function pintarCt(total) {
+  const fila = m => { const [txt, col] = ST[m.st] || [m.st, '#cbd5e1']; return `<tr>
+    <td><a href="https://www.instagram.com/${esc(m.u)}/" target="_blank" rel="noopener" style="color:#8DB4FF;">@${esc(m.u)}</a></td>
+    <td>${m.t1 ? fmt(m.t1) : ''}</td><td>${m.n || 1}</td><td style="color:${col};font-weight:700;">${esc(txt)}${m.mo ? '<div class="ig-sub" style="color:#fca5a5;">' + esc(m.mo) + '</div>' : ''}</td>
+    <td style="text-align:left;">${esc(m.rg)}</td><td>${esc(m.p1 || '—')}</td><td>${esc(m.p2 || '—')}</td></tr>`; };
+  $('igCtTabla').innerHTML = ctItems.length ? `<table class="ig-tbl"><thead><tr><th>Usuario</th><th>Último comentario</th><th>Coment.</th><th style="text-align:left;">Mensaje</th><th style="text-align:left;">Regla</th><th>P1</th><th>P2</th></tr></thead><tbody>${ctItems.map(fila).join('')}</tbody></table>` : '<p class="ig-sub" style="color:#fff;">Todavía no hay contactos con estos filtros. Se arma sola cuando alguien comenta o cuando usás “Recuperar comentarios”.</p>';
+  $('igCtCuenta').textContent = `${total || 0} contactos en total · mostrando ${ctItems.length}`;
+  $('igCtMas').style.display = ctCursor ? '' : 'none';
+}
+window.igCtDescargar = async function () {
+  const b = $('igCtDescargar'); b.disabled = true; const t = b.textContent; b.textContent = 'Preparando…';
+  try { await descargarContactosInstagram(); aviso('Descarga lista: contactos al día de este momento.'); }
+  catch (e) { aviso(e.message, true); }
+  b.disabled = false; b.textContent = t;
+};
 
 // ── Configuración ─────────────────────────────────────────────
 function pintarDiag() {

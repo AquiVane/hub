@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (8) — Instagram: pestaña "Contactos" (base de datos de quienes comentan) con descarga CSV al día
+- Pedido de Vaneh: ir armando la base para contactar después (mails/imanes más adelante). Pestaña **Contactos**: buscador por @usuario (empieza con), filtros por estado y regla, tabla paginada ("Ver más") y botón **⬇ Descargar Excel (CSV)** que baja la lista completa en ese momento (UTF-8 con BOM + `sep=;`, abre bien en Excel). `data.js?v=22`, `instagram.js?v=14`. Probado en 1280 y 390 px.
+
 ## 07/11 (7) — Arreglos: rebote al volver a la sección + la búsqueda de comentarios pasa a segundo plano
 - **Rebote:** al abrir el admin se veía Clientes y 0,7 s después saltaba a la sección guardada. Ahora un escudo CSS en el `<head>` (`#hubRestoreStyle`) oculta Clientes desde el primer instante y la restauración corre apenas termina de evaluarse el módulo (`setTimeout(volver, 0)`; llamarla antes da `_topbarSec` en zona muerta). Probado: no se llega a ver Clientes.
 - **Recuperar comentarios:** buscar ~500 comentarios tardaba más de los 20 s que espera el Hub ("Se colgó el pedido…"). Ahora `POST .../escanear` responde al instante (`estado:'buscando'`) y la búsqueda corre en el Durable Object `IgRecuperar` (tarea `scan` → `ejecutarEscaneo`), que deja `listo` (con resumen) o `error` (con el detalle de cada intento). La pantalla muestra "Buscando… sigue en segundo plano" y se actualiza sola cada 4 s. `graph()` ahora corta a los 20 s. `instagram.js?v=13`.

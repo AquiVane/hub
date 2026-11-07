@@ -969,3 +969,20 @@ export async function recuperarInstagram(reglaId, accion, body = {}) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', `/admin/instagram/recuperar/${encodeURIComponent(reglaId)}/${accion}`, body);
 }
+
+// Base de contactos de Instagram (07/11): lista paginada y descarga CSV siempre al día.
+export async function getContactosInstagram({ q = '', estado = '', regla = '', cursor = '' } = {}) {
+  if (DEMO_MODE) return { items: [], cursor: null, total: 0 };
+  const p = new URLSearchParams();
+  if (q) p.set('q', q); if (estado) p.set('estado', estado); if (regla) p.set('regla', regla); if (cursor) p.set('cursor', cursor);
+  return api('GET', `/admin/instagram/contactos${p.toString() ? '?' + p : ''}`);
+}
+export async function descargarContactosInstagram() {
+  if (DEMO_MODE) throw new Error('En modo demo no hay contactos.');
+  const res = await fetch(WORKER_URL + '/admin/instagram/contactos/csv', { headers: { Authorization: 'Bearer ' + getSessionToken() } });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'No se pudo descargar.'); }
+  const blob = await res.blob();
+  const hoy = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `contactos-instagram-${hoy}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
