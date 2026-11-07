@@ -555,6 +555,12 @@
               <label>Texto del botón de confirmación (máx. 20)</label><input id="igFConfirmar" class="form-control" maxlength="20" placeholder="SISTEMA">
               <label>Mensaje que llega después de tocarlo (lleva el botón con el link)</label>
               <textarea id="igFEntrega" class="form-control" rows="3" maxlength="640" placeholder="¡Acá lo tenés! Tocá el botón 👇"></textarea>
+              <label style="display:flex;gap:8px;align-items:center;font-weight:700;"><input type="checkbox" id="igFExigir" onchange="igCambiarModo()"> Exigir que me sigan para recibirlo</label>
+              <div id="igFSeguirWrap" style="display:none;">
+                <label>Mensaje si todavía no te siguen (lleva el botón para reintentar; se repite hasta que te sigan)</label>
+                <textarea id="igFSeguirTxt" class="form-control" rows="2" maxlength="640" placeholder="Para recibirlo, seguime primero 🙌 Cuando lo hagas, tocá el botón."></textarea>
+                <label>Texto del botón para reintentar (máx. 20)</label><input id="igFSeguirBtn" class="form-control" maxlength="20" placeholder="Ya te sigo">
+              </div>
               <label>Mensaje de seguimiento (opcional; llega justo después, para seguir la conversación)</label>
               <textarea id="igFSeguimiento" class="form-control" rows="2" maxlength="1000" placeholder="¿Ya estás vendiendo con Instagram o recién empezás?"></textarea>
             </div>
@@ -9394,6 +9400,6 @@
 </script>
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=2"></script>
+<script type="module" src="../js/instagram.js?v=3"></script>
 </body>
 </html>

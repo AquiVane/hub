@@ -36,7 +36,7 @@ function pintarReglas() {
         <span class="ig-tag" style="${r.activa ? 'background:#14532d;color:#bbf7d0;' : 'background:#334155;color:#cbd5e1;'}">${r.activa ? 'Activa' : 'Pausada'}</span>
       </div>
       <div class="ig-sub">${r.mediaId ? '📌 ' + esc(r.mediaInfo || r.mediaId) : '📌 Todos los posts y reels'} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : 'Cualquier comentario'}</div>
-      <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
+      <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos' + (r.exigirSeguir ? ' (exige seguir)' : '') + ' · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
       <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · DMs enviados ${r.stats?.dms || 0}${r.modo === 'dos-pasos' ? ' · tocaron el botón ' + (r.stats?.confirmaciones || 0) : ''} · fallos ${r.stats?.fallos || 0}</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
@@ -111,6 +111,7 @@ function abrirForm() {
 window.igCambiarModo = function () {
   const dos = $('igFModo').value === 'dos-pasos';
   $('igFPaso2').style.display = dos ? '' : 'none';
+  $('igFSeguirWrap').style.display = dos && $('igFExigir').checked ? '' : 'none';
   $('igFDmLabel').textContent = dos ? 'Primer mensaje (SIN link; lleva el botón de confirmación). Podés usar {nombre}' : 'Mensaje privado (DM). Podés usar {nombre}';
   $('igFBotonLabel').textContent = dos ? 'Texto del botón final con el link (máx. 20)' : 'Texto del botón (máx. 20)';
 };
@@ -136,7 +137,7 @@ window.igGuardarRegla = async function () {
     id: reglaEditando?.id, nombre: $('igFNombre').value, activa: reglaEditando?.activa !== false,
     mediaId: $('igFMediaId').value, mediaInfo: $('igFMediaInfo').value, palabras: $('igFPalabras').value,
     respuestasPublicas: $('igFPublicas').value, dmTexto: $('igFDm').value,
-    modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value,
+    modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value, exigirSeguir: $('igFExigir').checked, seguirTexto: $('igFSeguirTxt').value, seguirBoton: $('igFSeguirBtn').value,
     botonTexto: $('igFBotonTxt').value, botonUrl: $('igFBotonUrl').value, unaVezPorPersona: $('igFUnaVez').checked,
   };
   try { await saveInstagramRegla(regla); aviso('Regla guardada.'); window.igCerrarForm(); await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
