@@ -16,7 +16,8 @@ import {
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
-} from './data.js?v=18';
+  optimizarCargaCliente
+} from './data.js?v=23';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -250,7 +251,7 @@ async function init() {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async ev => {
-        const logo = ev.target.result;
+        const logo = await comprimirLogo(ev.target.result);
         if (!STATE.home) STATE.home = { prioridades: [], todos: [], links: [], webTareas: [], archivos: [] };
         STATE.home.logoEmpresa = logo;
         applyClientLogo(logo);
@@ -302,6 +303,7 @@ async function init() {
       renderSection(okNav ? ult : 'home');
     }
     setTimeout(() => refreshIcons(), 100);
+    setTimeout(() => optimizarCargaEnSegundoPlano(), 2500);
     // Avisa a admin/index.html (el padre del iframe) que ya terminó de
     // pintar -- así la pantalla de carga con la brújula desaparece recién
     // cuando hay contenido real, no antes (Vaneh, 11/10: no quería ni el
@@ -442,6 +444,56 @@ if (!HOSTED) window.abrirDesdeNotif = async function(id) {
   if (n.link) { window.location.href = n.link; return; }
   document.getElementById('notifDropdown')?.classList.add('hidden');
 };
+
+// ── Carga rápida (07/11): imágenes pesadas guardadas como texto dentro de los datos ──
+// Lambo tardaba una vida en abrir porque un contenido traía 16 MB de imágenes y el logo 4,3 MB pegados como base64.
+// Las imágenes de contenidos/tareas las pasa a R2 el servidor (sin recomprimir, con copia de seguridad); el logo lo
+// achica este navegador (es un círculo chico en la barra lateral).
+function comprimirLogo(dataUrl, maxLado = 320) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const k = Math.min(1, maxLado / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        let out = c.toDataURL('image/webp', 0.9);
+        if (!out.startsWith('data:image/webp')) out = c.toDataURL('image/png');
+        resolve(out.length < dataUrl.length ? out : dataUrl);
+      } catch (e) { resolve(dataUrl); }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+function avisoOptimizacion(txt) {
+  const d = document.createElement('div');
+  d.textContent = txt; d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#091C47;color:#fff;border:1px solid #1A4DAA;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;z-index:9999;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.35);';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 6000);
+}
+let _optimizando = false;
+async function optimizarCargaEnSegundoPlano() {
+  if (_optimizando || user.role === 'client' || embedMode || HOSTED || esPropioAgencia) return;
+  _optimizando = true;
+  try {
+    // 1) Logo pesado: se achica y se guarda una sola vez.
+    const logo = STATE.home && STATE.home.logoEmpresa;
+    if (typeof logo === 'string' && logo.length > 200000) {
+      const chico = await comprimirLogo(logo);
+      if (chico.length < logo.length * 0.6) { STATE.home.logoEmpresa = chico; await saveHomeData(clientId, STATE.home); applyClientLogo(chico); }
+    }
+    // 2) Imágenes pesadas de contenidos y tareas: las pasa el servidor a R2.
+    const pesa = (STATE.contenidos ? JSON.stringify(STATE.contenidos).length : 0) + (STATE.tareas ? JSON.stringify(STATE.tareas).length : 0);
+    if (pesa > 400000) {
+      const r = await optimizarCargaCliente(clientId);
+      if (r && r.imagenesMigradas > 0) {
+        avisoOptimizacion(`Optimicé ${r.imagenesMigradas} ${r.imagenesMigradas === 1 ? 'imagen pesada' : 'imágenes pesadas'} de este cliente: ahora abre mucho más rápido.`);
+        await loadAllData(); renderSection(currentSection);
+      }
+    }
+  } catch (e) { console.warn('[optimizar carga]', e && e.message); }
+  _optimizando = false;
+}
 
 async function loadAllData() {
   // Pedido de Vaneh (11/09, y de nuevo 13/09: "no puede tardar más de 1

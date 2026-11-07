@@ -986,3 +986,9 @@ export async function descargarContactosInstagram() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `contactos-instagram-${hoy}.csv`;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
+
+// Pasa a R2 las imágenes viejas guardadas como texto dentro de los datos del cliente (el panel cargaba decenas de MB).
+export async function optimizarCargaCliente(clientId) {
+  if (DEMO_MODE) return { ok: true, imagenesMigradas: 0 };
+  return api('POST', `/admin/optimizar-carga/${encodeURIComponent(clientId)}`, {});
+}

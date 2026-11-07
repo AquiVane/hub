@@ -1,5 +1,11 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 07/11 (9) — Carga rápida de paneles: Lambo tardaba una vida (21 MB por carga) — causa y arreglo
+- **Medición** (`GET /admin/diag-carga/:clientId`, solo admin, devuelve peso/tiempo por dato sin el contenido): Lambo (`lb`) = contenidos **16 MB** (una sola ficha, `[100].imagenes`, imágenes pegadas como base64), logo de la empresa **4,3 MB** (`home.logoEmpresa` base64), tareas 263 KB, plan 403 KB. Cada carga bajaba ~21 MB.
+- **Arreglo:** (1) servidor: `POST /admin/optimizar-carga/:clientId` (`src/optimizar-carga.js`) pasa las imágenes base64 > ~100 KB de contenidos (vía el coordinador, con versión) y tareas a R2 (mismo formato `{key, filename, size, isImage}` que ya usa el Hub; **sin recomprimir**) y deja **copia de seguridad** previa en R2 `backups/<agencia:cliente>/<tipo>-<ts>.json`; idempotente. (2) `js/app.js`: a los 2,5 s de abrir un cliente (admin/colaborador, no embed) comprime el logo pesado en el navegador (webp ≤320 px) y, si contenidos+tareas pesan > 400 KB, llama al endpoint y recarga con un aviso. Los logos nuevos ya entran comprimidos. `app.js?v=87`, `data.js?v=23`.
+- **Lección:** `node --check` sobre un `.js` con `import` no detecta una coma suelta en el `import`; revisar copiando a `.mjs`.
+- **Ojo:** la causa es general (cualquier cliente con imágenes viejas en base64); el diagnóstico sirve para otros paneles lentos.
+
 ## 07/11 (8) — Instagram: pestaña "Contactos" (base de datos de quienes comentan) con descarga CSV al día
 - Pedido de Vaneh: ir armando la base para contactar después (mails/imanes más adelante). Pestaña **Contactos**: buscador por @usuario (empieza con), filtros por estado y regla, tabla paginada ("Ver más") y botón **⬇ Descargar Excel (CSV)** que baja la lista completa en ese momento (UTF-8 con BOM + `sep=;`, abre bien en Excel). `data.js?v=22`, `instagram.js?v=14`. Probado en 1280 y 390 px.
 
