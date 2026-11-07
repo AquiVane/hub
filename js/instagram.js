@@ -25,7 +25,7 @@ function pintar() {
   $('igBtnDesconectar').style.display = e.conectada ? '' : 'none';
   $('igReglasWrap').style.display = e.conectada && e.appSecretCargado ? '' : 'none';
   $('igPasos').open = !(e.conectada && e.appSecretCargado);
-  pintarReglas(); pintarLogs();
+  pintarReglas(); pintarLogs(); pintarDiag();
 }
 
 function pintarReglas() {
@@ -58,6 +58,12 @@ function pintarLogs() {
       ${x.motivo ? `<div class="ig-sub" style="color:#fca5a5;">${esc(x.motivo)}</div>` : ''}
       ${x.publico ? `<div class="ig-sub">Respuesta pública: ${esc(x.publico)}</div>` : ''}</div>`;
   }).join('') : '<p class="text-muted text-sm">Cuando alguien comente, vas a ver acá qué pasó con cada comentario.</p>';
+}
+
+function pintarDiag() {
+  const l = estado.diagnostico || [];
+  $('igDiag').innerHTML = l.length ? l.map(d => `<div class="ig-log">${new Date(d.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' })} · ${esc((d.campos || []).join(', ') || 'sin campos')}
+      <div class="ig-sub">cuenta ${d.cuentaMapeada ? 'reconocida' : '<b style="color:#fca5a5;">NO reconocida (' + esc(d.entryId) + ')</b>'} · firma ${d.firmaValida ? 'válida' : '<b style="color:#fca5a5;">inválida</b>'}</div></div>`).join('') : '<p class="text-muted text-sm">Todavía no llegó ningún aviso de Instagram.</p>';
 }
 
 window.igGuardarConexion = async function () {
