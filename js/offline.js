@@ -31,7 +31,16 @@ let syncedTimer = null;
 
 export const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
 export function realtimeListo() { return wsAbierto; }
-export function configure(raw) { rawFn = raw; startRealtime(); }
+// Cualquier respuesta del servidor (incluso un error 4xx/5xx) prueba que HAY conexión: ahí se baja el cartel de "Sin
+// conexión" (antes quedaba pegado si lo que fallaba era otra cosa -- 08/11, Vaneh en Windows: "quedó colgada ahí").
+function alcanzable() { lastOk = Date.now(); if (flagOffline) { flagOffline = false; render(); } }
+export function configure(raw) {
+  rawFn = async (...a) => {
+    try { const r = await raw(...a); alcanzable(); return r; }
+    catch (e) { if (e && !e.isNet) alcanzable(); throw e; }
+  };
+  startRealtime();
+}
 
 // ── IndexedDB mínimo (si falla, todo sigue andando sin modo offline) ──
 let dbp = null;
@@ -138,6 +147,7 @@ export async function wrap(method, path, body, raw) {
       await kSet('cache', path, { server: data, local: data, at: Date.now() });
       return data;
     } catch (e) {
+      if (e && !e.isNet) alcanzable();
       if (e && !e.isNet && (e.status >= 500 || e.status === 429)) {
         // El servidor tuvo un error pasajero al LEER: si hay copia en el dispositivo se usa esa (el guardado se
         // fusiona después contra la lista fresca del servidor), en vez de cortar lo que la persona estaba haciendo.
@@ -173,7 +183,7 @@ export async function wrap(method, path, body, raw) {
         }
         catch(e) {
           if (e?.isNet) markOffline();
-          recordarError(e);
+          recordarError(e, path);
           // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir adelante,
           // y la app lo sigue reintentando sola en segundo plano (si el error es pasajero).
           if (esPasajero(e)) programarReintentosFondo(); else { fondoHasta = 0; render(); }
@@ -296,8 +306,10 @@ let ultimoError = null; // { status, code } del último fallo, para mostrarlo en
 let ultimoCorte = '';   // motivo del último corte de red (ej. "Failed to fetch"), para diagnosticar
 let fondoHasta = 0;     // hasta cuándo la app sigue reintentando sola (mientras tanto el cartel NO es rojo)
 let fondoTimers = [];
-const recordarError = e => {
+let ultimoDetalle = null; // { path, status, code, msg, isNet, at } del último fallo, para diagnosticar desde el cartel
+const recordarError = (e, path) => {
   if (!e || typeof e !== 'object') return;
+  ultimoDetalle = { path: path || (ultimoDetalle && ultimoDetalle.path) || '', status: e.status || '', code: e.code || '', msg: String(e.message || e.name || '').slice(0, 120), isNet: !!e.isNet, at: Date.now() };
   if (e.isNet) ultimoCorte = String(e.message || e.name || 'sin detalle').slice(0, 60);
   else ultimoError = { status: e.status || '', code: e.code || '' };
 };
@@ -450,7 +462,7 @@ export async function syncAll() {
     try {
       for (const path of await kPaths('pending')) {
         try { await syncPathReintentando(path); }
-        catch (e) { failed = true; if (e && e.isNet) { markOffline(); break; } recordarError(e); console.warn('[offline] no se pudo sincronizar', path, e); }
+        catch (e) { failed = true; recordarError(e, path); if (e && e.isNet) { markOffline(); break; } console.warn('[offline] no se pudo sincronizar', path, e); }
       }
     } finally { syncing = false; }
     if (!failed && !(await pendingCount())) {
@@ -523,10 +535,33 @@ function ensureBar() {
   bar.id = 'hubOfflineBar';
   bar.setAttribute('role', 'status');
   bar.setAttribute('aria-live', 'polite');
+  bar.addEventListener('click', e => { if (e.target.tagName !== 'BUTTON') diagnostico(); });
+  bar.style.cursor = 'pointer';
   document.body.appendChild(bar);
   return bar;
 }
 
+const detalleCorto = () => {
+  const d = ultimoDetalle; if (!d) return '';
+  const lista = (d.path || '').split('/').slice(2, 4).join('/');
+  return [lista, d.status, d.code, d.isNet ? (d.msg || 'sin respuesta') : ''].filter(Boolean).join(' · ').slice(0, 90);
+};
+// Tocar el cartel (no los botones) muestra el detalle técnico: sirve para saber qué se traba cuando algo "queda colgado".
+async function diagnostico() {
+  const paths = await kPaths('pending');
+  const filas = [];
+  for (const p of paths) { const x = await kGet('pending', p); filas.push(`  ${p}: ${!x ? '?' : x.mode === 'items' ? Object.keys(x.ops).length + ' cambio(s) por ítem' : 'lista entera'}`); }
+  const d = ultimoDetalle;
+  alert([
+    'DIAGNÓSTICO DE SINCRONIZACIÓN', '',
+    'Pendientes (' + paths.length + '):', ...(filas.length ? filas : ['  ninguno']), '',
+    'Último fallo: ' + (d ? `${d.path} · estado ${d.status || '-'} · ${d.code || '-'} · ${d.isNet ? 'SIN RESPUESTA' : 'respondió'} · ${d.msg || ''} · hace ${Math.round((Date.now() - d.at) / 1000)} s` : 'ninguno'),
+    'El navegador dice online: ' + navigator.onLine,
+    'Última respuesta real del servidor: ' + (lastOk ? 'hace ' + Math.round((Date.now() - lastOk) / 1000) + ' s' : 'nunca en esta sesión'),
+    'Tiempo real conectado: ' + wsAbierto, 'Sincronizando ahora: ' + syncing + ' · conflicto abierto: ' + conflictOpen,
+    'Versión: offline.js v13',
+  ].join('\n'));
+}
 async function render() {
   if (!document.body || !localStorage.getItem('mh_session_token')) return;
   const n = await pendingCount();
@@ -535,7 +570,7 @@ async function render() {
   const plural = n === 1 ? '' : 's';
   let cls = '', html = '';
   if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado en tu teléfono · sincronizando…'; } // corte pasajero: se reintenta solo
-  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoCorte && navigator.onLine !== false ? ` (${ultimoCorte})` : (navigator.onLine === false ? ' (el navegador marca sin red)' : '')); }
+  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoDetalle && navigator.onLine !== false ? ` (${detalleCorto()})` : (navigator.onLine === false ? ' (el navegador marca sin red)' : '')); }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
   else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = `Guardado en tu teléfono · sincronizando…`; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
@@ -794,5 +829,5 @@ function boot() {
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.hubOffline = { syncAll, pendingCount, refreshConflictos, reviewConflictos, render, estado: () => ({ syncing, flagOffline, conflictOpen, lastSynced, ultimoError }) };
+  window.hubOffline = { diagnostico, syncAll, pendingCount, refreshConflictos, reviewConflictos, render, estado: () => ({ syncing, flagOffline, conflictOpen, lastSynced, ultimoError }) };
 }
