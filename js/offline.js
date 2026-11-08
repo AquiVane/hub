@@ -20,8 +20,11 @@ const DB_NAME = 'hub-offline';
 const RE_DATA = /^\/data\/[^/]+\/[^/]+$/;
 
 let rawFn = null;          // la api() "cruda" de data.js (sin offline)
+let lastOk = 0;            // última vez que el servidor contestó de verdad (manda por encima de navigator.onLine)
 let flagOffline = false;   // true si el último pedido falló por red
 let syncing = false;
+let syncingDesde = 0;
+let ultimaPasada = 0;
 let conflictOpen = false;
 let lastSynced = null;     // { remoteChanged, at } para el cartel de "Sincronizado"
 let syncedTimer = null;
@@ -116,7 +119,7 @@ export async function wrap(method, path, body, raw) {
   const isData = RE_DATA.test(path);
 
   if (method === 'GET') {
-    if (isData && navigator.onLine !== false && (await kGet('pending', path))) {
+    if (isData && (await kGet('pending', path))) {
       try { await syncPath(path); } catch (e) { /* queda pendiente */ }
     }
     if (await kGet('pending', path)) {
@@ -158,7 +161,7 @@ export async function wrap(method, path, body, raw) {
       // Preserva la base original, combina contra lectura fresca y envía CAS.
       // Si ocurre 409/503 no borra la cola ni vuelve a escribir a ciegas.
       const queued = await enqueue(path, body);
-      if(navigator.onLine !== false) {
+      {
         try {
           await syncPathReintentando(path); ultimoError = null; markOnline();
           // Estaba sincronizado, pero el cartel seguía mostrando "1 cambio sin sincronizar" (lo pinta enqueue()
@@ -180,7 +183,7 @@ export async function wrap(method, path, body, raw) {
       }
       return queued;
     }
-    if (navigator.onLine !== false && !(await kGet('pending', path))) {
+    if (!(await kGet('pending', path))) {
       try {
         const r = await raw();
         markOnline();
@@ -264,7 +267,7 @@ async function rawGet(path) { return rawFn('GET', path, null); }
 const candados = new Map();
 function conCandado(path, fn) {
   const previo = candados.get(path) || Promise.resolve();
-  const sig = previo.catch(() => {}).then(fn);
+  const sig = Promise.race([previo.catch(() => {}), new Promise(r => setTimeout(r, 30000))]).then(fn); // 30 s máx. esperando a otro
   candados.set(path, sig);
   sig.catch(() => {}).finally(() => { if (candados.get(path) === sig) candados.delete(path); });
   return sig;
@@ -401,7 +404,7 @@ async function estacionarConflictos(path, conflicts) {
 // ── Administración: ver y desempatar conflictos ──
 let conflictosAbiertos = 0;
 export async function refreshConflictos() {
-  if (me().role !== 'admin' || !rawFn || navigator.onLine === false) return;
+  if (me().role !== 'admin' || !rawFn) return;
   try {
     const l = await wrap('GET', CONFLICTOS, null, () => rawFn('GET', CONFLICTOS));
     conflictosAbiertos = (Array.isArray(l) ? l : []).filter(r => r.estado === 'abierto').length;
@@ -438,10 +441,11 @@ export async function reviewConflictos() {
 }
 
 export async function syncAll() {
+  if (syncing && Date.now() - syncingDesde > 90000) syncing = false; // por si una pasada quedó colgada
   if (syncing || conflictOpen) return;
-  if (navigator.onLine === false) { render(); return; }
   const run = async () => {
-    syncing = true; render();
+    ultimaPasada = Date.now();
+    syncing = true; syncingDesde = Date.now(); render();
     let failed = false;
     try {
       for (const path of await kPaths('pending')) {
@@ -459,12 +463,19 @@ export async function syncAll() {
     }
     render();
   };
-  if (navigator.locks && navigator.locks.request) await navigator.locks.request('hub-sync', { ifAvailable: true }, l => (l ? run() : undefined));
+  if (navigator.locks && navigator.locks.request) await navigator.locks.request('hub-sync', { ifAvailable: true }, l => (l || Date.now() - ultimaPasada > 60000 ? run() : undefined));
   else await run();
 }
 
 function markOffline() { if (!flagOffline) { flagOffline = true; render(); } }
+// (08/11, Vaneh en iPhone: "tengo conexión y hace rato que estoy esperando", cartel "Sin conexión · 2 cambios pendientes".)
+// Safari con la app instalada a veces deja `navigator.onLine` en false con red sana, y todo el sistema le hacía caso: no
+// intentaba sincronizar NUNCA. Ahora solo cuenta como "sin conexión" si de verdad falló un pedido, o si el navegador dice
+// "sin red" Y hace más de 20 s que el servidor no contesta. Y siempre se INTENTA: si de verdad no hay red, el pedido falla
+// al instante y listo.
+const sinRed = () => flagOffline || (navigator.onLine === false && Date.now() - lastOk > 20000);
 function markOnline() {
+  lastOk = Date.now();
   if (flagOffline) { flagOffline = false; render(); }
   pendingCount().then(n => { if (n && !syncing) syncAll(); });
 }
@@ -472,7 +483,7 @@ function markOnline() {
 // ── Salir de la sesión sin perder cambios ─────────────────────
 export async function beforeLogout() {
   let n = await pendingCount();
-  if (n && navigator.onLine !== false) {
+  if (n) {
     await Promise.race([syncAll(), new Promise(r => setTimeout(r, 10000))]);
     n = await pendingCount();
   }
@@ -519,12 +530,12 @@ function ensureBar() {
 async function render() {
   if (!document.body || !localStorage.getItem('mh_session_token')) return;
   const n = await pendingCount();
-  const off = navigator.onLine === false || flagOffline;
+  const off = sinRed();
   const b = ensureBar();
   const plural = n === 1 ? '' : 's';
   let cls = '', html = '';
   if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado en tu teléfono · sincronizando…'; } // corte pasajero: se reintenta solo
-  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoCorte && navigator.onLine !== false ? ` (${ultimoCorte})` : ''); }
+  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoCorte && navigator.onLine !== false ? ` (${ultimoCorte})` : (navigator.onLine === false ? ' (el navegador marca sin red)' : '')); }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
   else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = `Guardado en tu teléfono · sincronizando…`; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
@@ -534,7 +545,7 @@ async function render() {
   if (!cls) { b.style.display = 'none'; return; }
   b.className = cls;
   b.textContent = html;
-  if (!off && !syncing && n) { const r = document.createElement('button'); r.textContent = 'Reintentar'; r.onclick = () => syncAll(); b.appendChild(r); }
+  if (!syncing && n && cls !== 'ok') { const r = document.createElement('button'); r.textContent = 'Reintentar'; r.onclick = () => { flagOffline = false; syncAll(); }; b.appendChild(r); }
   if (cls === 'off' && !lastSynced && conflictosAbiertos) { const r = document.createElement('button'); r.textContent = 'Resolver'; r.onclick = () => reviewConflictos(); b.appendChild(r); }
   if (cls === 'ok' && lastSynced.remoteChanged) { const r = document.createElement('button'); r.textContent = 'Actualizar'; r.onclick = () => location.reload(); b.appendChild(r); }
   b.style.display = 'flex';
@@ -685,7 +696,7 @@ let liveBusy = false;
 let lastLive = 0;
 async function liveTick() {
   lastLive = Date.now();
-  if (liveBusy || document.hidden || navigator.onLine === false || syncing || conflictOpen || !rawFn) return;
+  if (liveBusy || document.hidden || syncing || conflictOpen || !rawFn) return;
   liveBusy = true;
   try {
     const paths = (await kPaths('cache')).filter(p => p !== CONFLICTOS && !LIVE_EXCLUIR.test(p));
@@ -699,7 +710,7 @@ async function liveTick() {
     await Promise.all(recientes.slice(0, LIVE_MAX).map(async ({ p }) => {
       if (await kGet('pending', p)) return;
       let fresh;
-      try { fresh = await rawGet(p); } catch (e) { return; }
+      try { fresh = await rawGet(p); lastOk = Date.now(); } catch (e) { return; }
       const c = await kGet('cache', p);
       if (c && !eq(c.server, fresh)) {
         await kSet('cache', p, { server: fresh, local: fresh, at: Date.now() });
@@ -771,6 +782,8 @@ function boot() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   window.addEventListener('online', () => { flagOffline = false; render(); syncAll().then(refreshConflictos); });
   window.addEventListener('offline', () => render());
+  window.addEventListener('pageshow', () => { pendingCount().then(n => { if (n) syncAll(); }); });
+  window.addEventListener('focus', () => { pendingCount().then(n => { if (n && !syncing) syncAll(); }); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); syncAll(); } });
   setInterval(() => { pendingCount().then(n => { if (n && !syncing && !conflictOpen) syncAll(); }); }, 20000);
   render();
