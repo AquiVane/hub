@@ -875,3 +875,7 @@ Fix real (en los archivos binarios, no en HTML):
 
 ## 04/11/2026 — Sección «Inventario COSMART» (admin, solo COSMART)
 - `admin/index.html`: ítem de menú `navInventarioBtn` + `#sec-inventario` (iframe con `srcdoc`), se oculta a otras agencias. `js/mapa.js`: `traerMapa(doc)`/`mostrarMapa(iframe, estado, doc)` aceptan `doc='inventario'` -> `GET /admin/mapa?doc=inventario`. Contenido y cómo actualizarlo: HANDOFF de `cosmart-workers` (misma fecha). Necesita el deploy de `marketing-hub` y publicar el inventario para mostrar algo.
+
+## 08/11/2026 — Instagram: límite de Meta (#4) y "Reintentar fallidos"
+- Los 13 fallos del panel eran `(#4) Application request limit reached` (límite de llamadas de la app), no mensajes en "Solicitudes".
+- Hub: en el panel de recuperación de cada regla aparece **"Reintentar los N mensajes que fallaron"** (cuenta los `dm:'falló'` del historial sin envío posterior). Reenvía solo el privado, sin repetir la respuesta pública. `instagram.js?v=15`.

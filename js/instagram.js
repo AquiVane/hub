@@ -176,6 +176,16 @@ window.igRecToggle = function (id) {
   if (recAbiertos.has(id)) { recAbiertos.delete(id); el.style.display = 'none'; return; }
   recAbiertos.add(id); el.style.display = ''; pintarRec(id); el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
+function fallidosDe(id) {
+  const logs = estado.logs || []; const ok = new Set(logs.filter(x => x.dm === 'enviado' && x.comentarioId).map(x => x.comentarioId)); const v = new Set();
+  logs.forEach(x => { if (x.reglaId === id && x.dm === 'falló' && x.comentarioId && !ok.has(x.comentarioId)) v.add(x.comentarioId); });
+  return v.size;
+}
+function btnReintentar(id, st) {
+  const n = fallidosDe(id);
+  if (!n || (st && st.estado === 'listo' && st.total > (st.pos || 0))) return '';
+  return `<div style="margin:8px 0 0;"><button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','reintentar',this)">Reintentar los ${n} mensajes que fallaron</button><div class="ig-sub" style="margin-top:4px;">Reenvía solo el mensaje privado (la respuesta pública no se repite). Si Meta sigue limitando, espera y vuelve a intentar sola.</div></div>`;
+}
 function pintarRec(id) {
   const el = $('igRec-' + id); if (!el) return;
   const st = (estado.recuperaciones || {})[id];
@@ -183,7 +193,7 @@ function pintarRec(id) {
   const msgHtml = m ? `<div style="margin:0 0 10px;padding:10px;border-radius:8px;font-weight:700;font-size:13px;background:${m.error ? '#7f1d1d' : '#14532d'};color:#fff;">${m.cargando ? '⏳ ' : ''}${esc(m.txt)}</div>` : '';
   if (!st) {
     el.innerHTML = msgHtml + `<div class="ig-sub" style="margin:0 0 8px;">Busca en tu publicación los comentarios que tienen la palabra de esta regla y <b>todavía no recibieron respuesta tuya</b>, para mandarles el mensaje de a poco.</div>
-      <button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Buscar comentarios sin respuesta</button>`;
+      <button class="btn btn-primary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Buscar comentarios sin respuesta</button>` + btnReintentar(id, st);
     return;
   }
   if (st.estado === 'buscando') {
@@ -211,16 +221,16 @@ function pintarRec(id) {
       ${st.estado === 'corriendo' ? `<button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','pausar',this)">Pausar</button>` : ''}
       ${st.estado !== 'corriendo' ? `<button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','escanear',this)">Volver a buscar</button>
         <button class="btn btn-secondary btn-sm" onclick="igRecAccion('${esc(id)}','cancelar',this)">Descartar</button>` : ''}
-    </div>`;
+    </div>` + btnReintentar(id, st);
 }
 window.igRecAccion = async function (id, accion, btn) {
   if (accion === 'cancelar' && !confirm('¿Descartar esta búsqueda? Lo ya enviado no se deshace.')) return;
   if (btn) btn.disabled = true;
-  recMsg[id] = { cargando: true, txt: accion === 'escanear' ? 'Iniciando la búsqueda…' : 'Procesando…' };
+  recMsg[id] = { cargando: true, txt: accion === 'escanear' ? 'Iniciando la búsqueda…' : accion === 'reintentar' ? 'Preparando el reintento…' : 'Procesando…' };
   pintarRec(id);
   try {
     await recuperarInstagram(id, accion);
-    recMsg[id] = accion === 'escanear' ? null : { txt: accion === 'pausar' ? 'Envío pausado.' : 'Listo.' };
+    recMsg[id] = accion === 'escanear' ? null : { txt: accion === 'pausar' ? 'Envío pausado.' : accion === 'reintentar' ? 'Listo: se reenvían de a poco, solos. Podés cerrar esta pantalla.' : 'Listo.' };
     if (!recMsg[id]) delete recMsg[id];
     await window.cargarInstagram();
   } catch (e) { recMsg[id] = { error: true, txt: 'No se pudo: ' + e.message }; pintarRec(id); }
