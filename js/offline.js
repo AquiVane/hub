@@ -200,7 +200,8 @@ export async function wrap(method, path, body, raw) {
         await kSet('cache', path, { server: body, local: body, at: Date.now() });
         return r;
       } catch (e) {
-        if (!e || !e.isNet) throw e;
+        if (!e || !e.isNet) { if (e) alcanzable(); throw e; }
+        recordarError(e, path);
         markOffline();
       }
     }
@@ -462,7 +463,7 @@ export async function syncAll() {
     try {
       for (const path of await kPaths('pending')) {
         try { await syncPathReintentando(path); }
-        catch (e) { failed = true; recordarError(e, path); if (e && e.isNet) { markOffline(); break; } console.warn('[offline] no se pudo sincronizar', path, e); }
+        catch (e) { failed = true; recordarError(e, path); if (e && e.isNet) { markOffline(); continue; /* una lista que no responde no frena a las demás */ } console.warn('[offline] no se pudo sincronizar', path, e); }
       }
     } finally { syncing = false; }
     if (!failed && !(await pendingCount())) {
@@ -559,7 +560,7 @@ async function diagnostico() {
     'El navegador dice online: ' + navigator.onLine,
     'Última respuesta real del servidor: ' + (lastOk ? 'hace ' + Math.round((Date.now() - lastOk) / 1000) + ' s' : 'nunca en esta sesión'),
     'Tiempo real conectado: ' + wsAbierto, 'Sincronizando ahora: ' + syncing + ' · conflicto abierto: ' + conflictOpen,
-    'Versión: offline.js v13',
+    'Versión: offline.js v14',
   ].join('\n'));
 }
 async function render() {
