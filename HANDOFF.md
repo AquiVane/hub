@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 08/11 — Meta Ads: conexión por token de usuario del sistema (Configuración del admin) — FASE 1 del panel de métricas
+- Tarjeta **📊 Meta Ads** en Configuración: nombre + token (password) → `POST /admin/ads/conexion` verifica con Meta (`/me/adaccounts`), guarda el token en el servidor (nunca se devuelve) y lista las cuentas publicitarias encontradas; "Quitar" borra la conexión. `data.js?v=25`.
+- Pendiente de esta fase: pantalla de métricas (admin con selector de cliente + panel del cliente), checkboxes de métricas (`/admin/ads/config`), gráficos, presupuesto asignado/ROAS de equilibrio manuales, comisiones, ventas por PRODUCTO (no por vertical, pedido explícito de Vaneh). Ver HANDOFF de `cosmart-workers` 08/11.
+
 ## 07/11 (10) — Carga rápida: ajustes tras probar con Lambo en producción
 - **Resultado medido (Lambo `lb`)**: 21.263 KB → **764 KB** por carga (contenidos 16.267 → 294 KB; tareas 263 → 28 KB; logo 4.319 → 27 KB).
 - **Por qué no se veía el cartel**: `api()` corta a los 20 s y pasar 16 MB a R2 lleva más; el Hub se rendía antes de que el servidor terminara (y el catch lo escondía). Ahora `optimizarCargaCliente` usa su propio `fetch` con espera de 3 min. (La optimización de Lambo se corrió una vez a mano con el conector del Hub: `POST /admin/optimizar-carga/lb`, copias en R2 `backups/lb/…`.) Posibles objetos huérfanos en R2 del primer intento abortado (sin costo relevante).

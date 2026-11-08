@@ -999,3 +999,13 @@ export async function optimizarCargaCliente(clientId) {
     return d;
   } finally { clearTimeout(t); }
 }
+
+// Métricas de Meta Ads (08/11): conexión por token de usuario del sistema, cuentas, métricas y configuración.
+export async function getAdsConexiones() { if (DEMO_MODE) return { conexiones: [], catalogo: [] }; return api('GET', '/admin/ads/cuentas'); }
+export async function conectarMetaAds(nombre, token) { return api('POST', '/admin/ads/conexion', { nombre, token }); }
+export async function quitarConexionAds(id) { return api('DELETE', `/admin/ads/conexion/${encodeURIComponent(id)}`); }
+export async function getAdsConfig() { if (DEMO_MODE) return { metricas: [], catalogo: [] }; return api('GET', '/admin/ads/config'); }
+export async function setAdsConfig(metricas) { return api('POST', '/admin/ads/config', { metricas }); }
+export async function getAdsInsights(cuenta, desde, hasta, fresco = false) {
+  return api('GET', `/admin/ads/insights?cuenta=${encodeURIComponent(cuenta)}&desde=${desde}&hasta=${hasta}${fresco ? '&fresco=1' : ''}`);
+}

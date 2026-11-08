@@ -1244,6 +1244,19 @@
           </div>
         </div>
         <div class="card" style="max-width:600px;margin-bottom:20px;">
+          <div class="card-header"><h2>📊 Meta Ads (métricas de anuncios)</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Conectá un portfolio de Meta con un <strong>token de usuario del sistema</strong> (solo lectura, no vence). El Hub trae solo el gasto y los resultados de tus campañas: <strong>no puede modificar anuncios</strong>. El token se guarda en el servidor y no se vuelve a mostrar.</p>
+            <div id="adsConexiones" style="margin-bottom:12px;"></div>
+            <label style="font-size:12px;font-weight:700;">Nombre de la conexión</label>
+            <input id="adsNombre" class="form-control" placeholder="Ej: Conglomerado Contacto Smart" style="margin-bottom:8px;">
+            <label style="font-size:12px;font-weight:700;">Token de acceso</label>
+            <input id="adsToken" class="form-control" type="password" autocomplete="off" placeholder="Pegá acá el token generado en Meta" style="margin-bottom:8px;">
+            <button class="btn btn-primary btn-sm" onclick="conectarAdsAdmin(this)">Conectar</button>
+            <span id="adsMsg" style="font-size:12px;margin-left:8px;"></span>
+          </div>
+        </div>
+        <div class="card" style="max-width:600px;margin-bottom:20px;">
           <div class="card-header"><h2>🔗 Webhook hacia tu CRM</h2></div>
           <div class="card-body">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Pegá acá la URL de tu propio CRM y el Hub le va a mandar un aviso (POST con JSON) cada vez que pase algo relevante: cliente nuevo, tarea completada, contenido publicado o campaña creada. Así conectás el Hub con el CRM que ya uses, sin pasos manuales.</p>
@@ -2510,7 +2523,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig } from '../js/data.js?v=24';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds } from '../js/data.js?v=25';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2855,7 +2868,7 @@
     if (sec === 'instagram') window.cargarInstagram?.();
     if (sec === 'ventas-panel') loadVentasPanel();
     if (sec === 'newsletter') cargarNewsletter();
-    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarConectorClaude(); cargarCuentasPubAgencia(); cargarWebhookConfig(); actualizarEstadoPushHub(); cargarEmkConfig(); }
+    if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarConectorClaude(); cargarCuentasPubAgencia(); cargarWebhookConfig(); cargarAdsConexiones(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
     actualizarBotonTopbar(sec);
   };
@@ -8393,6 +8406,33 @@
     document.getElementById('emkEdicion-status').textContent = 'Guardando...';
     try { _emkCfgCache = await setEmkConfig({ ediciones }); renderEdicionesEmkUI(); document.getElementById('emkEdicion-status').textContent = '✓ Guardado.'; }
     catch (e) { document.getElementById('emkEdicion-status').textContent = 'No se pudo guardar: ' + (e.message || 'intentá de nuevo.'); }
+  };
+
+  // ── Meta Ads: conexión por token de usuario del sistema ──────────────────
+  window.cargarAdsConexiones = async function () {
+    const el = document.getElementById('adsConexiones'); if (!el) return;
+    try {
+      const r = await getAdsConexiones();
+      const esc2 = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      el.innerHTML = (r.conexiones || []).length ? r.conexiones.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;align-items:center;"><strong style="flex:1;">${esc2(c.nombre)}</strong><button class="btn btn-secondary btn-sm" onclick="quitarAdsAdmin('${esc2(c.id)}')">Quitar</button></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${(c.cuentas || []).length} cuenta(s) publicitaria(s): ${(c.cuentas || []).map(x => esc2(x.nombre) + ' (' + esc2(x.numero) + ', ' + esc2(x.moneda) + ')').join(' · ') || 'ninguna'}</div></div>`).join('') : '<div style="font-size:12px;color:var(--text-muted);">Todavía no hay ninguna conexión.</div>';
+    } catch (e) { el.innerHTML = '<div style="font-size:12px;color:#E02020;">' + String(e.message || e) + '</div>'; }
+  };
+  window.conectarAdsAdmin = async function (btn) {
+    const msg = document.getElementById('adsMsg'); const token = document.getElementById('adsToken').value.trim();
+    if (!token) { msg.style.color = '#E02020'; msg.textContent = 'Pegá el token.'; return; }
+    btn.disabled = true; msg.style.color = 'var(--text-muted)'; msg.textContent = 'Verificando con Meta…';
+    try {
+      const r = await conectarMetaAds(document.getElementById('adsNombre').value.trim(), token);
+      document.getElementById('adsToken').value = ''; msg.style.color = '#10b981'; msg.textContent = `Conectado: ${(r.conexion.cuentas || []).length} cuenta(s) encontrada(s).`;
+      cargarAdsConexiones();
+    } catch (e) { msg.style.color = '#E02020'; msg.textContent = e.message || 'No se pudo conectar.'; }
+    btn.disabled = false;
+  };
+  window.quitarAdsAdmin = async function (id) {
+    if (!confirm('¿Quitar esta conexión? El token se borra del servidor.')) return;
+    try { await quitarConexionAds(id); cargarAdsConexiones(); } catch (e) { alert(e.message || 'No se pudo quitar.'); }
   };
 
   // ── Cuentas publicitarias propias de la agencia ──────────────────
