@@ -77,7 +77,7 @@ function pintarReglas() {
         <span style="font-size:12px;color:#cbd5e1;">${r.activa ? 'Activa' : 'Pausada'}</span>
         <label class="ig-sw" title="Prender / apagar"><input type="checkbox" ${r.activa ? 'checked' : ''} onchange="igAlternar('${esc(r.id)}', this)"><span></span></label>
       </div>
-      <div class="ig-sub">📌 ${r.mediaId ? esc(r.mediaInfo || r.mediaId) : 'Todos los posts y reels'} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : 'Cualquier comentario'}</div>
+      <div class="ig-sub">${r.disparador === 'historia' ? '📲 Respuesta a historias' : '📌 ' + (r.mediaId ? esc(r.mediaInfo || r.mediaId) : 'Todos los posts y reels')} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : (r.disparador === 'historia' ? 'Cualquier respuesta' : 'Cualquier comentario')}</div>
       <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos' + (r.exigirSeguir ? ' (exige seguir)' : '') + ' · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
       <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · Mensajes ${r.stats?.dms || 0}${r.modo === 'dos-pasos' ? ' · Recursos entregados ' + (r.stats?.confirmaciones || 0) : ''} · Fallos ${r.stats?.fallos || 0}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -117,6 +117,7 @@ function abrirForm() {
   const r = reglaEditando;
   $('igFormWrap').style.display = '';
   $('igFNombre').value = r.nombre || '';
+  $('igFDisp').value = r.disparador === 'historia' ? 'historia' : 'comentario';
   $('igFMediaId').value = r.mediaId || '';
   $('igFMediaInfo').value = r.mediaInfo || '';
   $('igFMediaTxt').textContent = r.mediaId ? '📌 ' + (r.mediaInfo || r.mediaId) : '📌 Todos los posts y reels';
@@ -144,6 +145,10 @@ function abrirForm() {
   $('igFormWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 window.igCambiarModo = function () {
+  const hist = $('igFDisp').value === 'historia';
+  $('igFPostWrap').style.display = hist ? 'none' : '';
+  $('igFPubWrap').style.display = hist ? 'none' : '';
+  $('igFPalLabel').textContent = hist ? 'Palabra que tienen que escribir al responder la historia (separadas por coma; vacío = cualquier respuesta)' : 'Palabras clave (separadas por coma; vacío = responde a cualquier comentario)';
   const dos = $('igFModo').value === 'dos-pasos';
   $('igFPaso2').style.display = dos ? '' : 'none';
   $('igFSeguirWrap').style.display = dos && $('igFExigir').checked ? '' : 'none';
@@ -159,6 +164,7 @@ window.igCerrarForm = function () { $('igFormWrap').style.display = 'none'; regl
 window.igGuardarRegla = async function () {
   const regla = {
     id: reglaEditando?.id, nombre: $('igFNombre').value, activa: reglaEditando ? reglaEditando.activa !== false : true,
+    disparador: $('igFDisp').value,
     mediaId: $('igFMediaId').value, mediaInfo: $('igFMediaInfo').value, palabras: $('igFPalabras').value,
     respuestasPublicas: $('igFPublicas').value, dmTexto: $('igFDm').value,
     modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value,
@@ -403,7 +409,9 @@ window.igReparar = async function () {
   try {
     const r = await repararSuscripcionInstagram();
     const f = a => (a && a.length ? a.join(', ') : 'ninguno');
+    const ap = r.app || {};
+    const appHtml = ap.ok ? `<br><b>Avisos de la app (Meta):</b> estaban <b>${esc(f(ap.camposAntes))}</b>` + (ap.faltaban && ap.faltaban.length ? ` · faltaban <b>${esc(ap.faltaban.join(', '))}</b> → ${ap.reparado ? '<b style="color:#86efac;">agregados</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(ap.error) + '</b>'}` : ' · <b style="color:#86efac;">completos</b>') : `<br><b style="color:#fca5a5;">Avisos de la app: ${esc(ap.error || 'sin dato')}</b>`;
     el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
-      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>');
+      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml;
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };

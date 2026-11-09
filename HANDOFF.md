@@ -879,3 +879,7 @@ Fix real (en los archivos binarios, no en HTML):
 ## 08/11/2026 — Instagram: límite de Meta (#4) y "Reintentar fallidos"
 - Los 13 fallos del panel eran `(#4) Application request limit reached` (límite de llamadas de la app), no mensajes en "Solicitudes".
 - Hub: en el panel de recuperación de cada regla aparece **"Reintentar los N mensajes que fallaron"** (cuenta los `dm:'falló'` del historial sin envío posterior). Reenvía solo el privado, sin repetir la respuesta pública. `instagram.js?v=15`.
+
+## 09/11/2026 — Instagram: reglas para respuestas a historias + avisos a nivel de app
+- Regla nueva "Qué activa la regla": comentario (como siempre) o **respuesta a una historia** con palabra clave (ej. "ruta") → llega el DM (directo o dos pasos). Sin respuesta pública ni "Recuperar". `instagram.js?v=16`. Autoservicio: se arma desde el formulario, sin pedirme código.
+- Botón "Revisar y reparar suscripción de avisos" ahora también revisa los avisos de la APP (Meta > Webhooks > Instagram): si solo estaba `comments`, agrega `messages` y `messaging_postbacks`. Hipótesis del problema histórico (el toque del botón no activaba la secuencia): sin esos campos a nivel app, Meta no manda ni botones ni mensajes.
