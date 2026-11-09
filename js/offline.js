@@ -20,15 +20,27 @@ const DB_NAME = 'hub-offline';
 const RE_DATA = /^\/data\/[^/]+\/[^/]+$/;
 
 let rawFn = null;          // la api() "cruda" de data.js (sin offline)
+let lastOk = 0;            // última vez que el servidor contestó de verdad (manda por encima de navigator.onLine)
 let flagOffline = false;   // true si el último pedido falló por red
 let syncing = false;
+let syncingDesde = 0;
+let ultimaPasada = 0;
 let conflictOpen = false;
 let lastSynced = null;     // { remoteChanged, at } para el cartel de "Sincronizado"
 let syncedTimer = null;
 
 export const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
 export function realtimeListo() { return wsAbierto; }
-export function configure(raw) { rawFn = raw; startRealtime(); }
+// Cualquier respuesta del servidor (incluso un error 4xx/5xx) prueba que HAY conexión: ahí se baja el cartel de "Sin
+// conexión" (antes quedaba pegado si lo que fallaba era otra cosa -- 08/11, Vaneh en Windows: "quedó colgada ahí").
+function alcanzable() { lastOk = Date.now(); if (flagOffline) { flagOffline = false; render(); } }
+export function configure(raw) {
+  rawFn = async (...a) => {
+    try { const r = await raw(...a); alcanzable(); return r; }
+    catch (e) { if (e && !e.isNet) alcanzable(); throw e; }
+  };
+  startRealtime();
+}
 
 // ── IndexedDB mínimo (si falla, todo sigue andando sin modo offline) ──
 let dbp = null;
@@ -116,7 +128,7 @@ export async function wrap(method, path, body, raw) {
   const isData = RE_DATA.test(path);
 
   if (method === 'GET') {
-    if (isData && navigator.onLine !== false && (await kGet('pending', path))) {
+    if (isData && (await kGet('pending', path))) {
       try { await syncPath(path); } catch (e) { /* queda pendiente */ }
     }
     if (await kGet('pending', path)) {
@@ -135,6 +147,7 @@ export async function wrap(method, path, body, raw) {
       await kSet('cache', path, { server: data, local: data, at: Date.now() });
       return data;
     } catch (e) {
+      if (e && !e.isNet) alcanzable();
       if (e && !e.isNet && (e.status >= 500 || e.status === 429)) {
         // El servidor tuvo un error pasajero al LEER: si hay copia en el dispositivo se usa esa (el guardado se
         // fusiona después contra la lista fresca del servidor), en vez de cortar lo que la persona estaba haciendo.
@@ -158,7 +171,7 @@ export async function wrap(method, path, body, raw) {
       // Preserva la base original, combina contra lectura fresca y envía CAS.
       // Si ocurre 409/503 no borra la cola ni vuelve a escribir a ciegas.
       const queued = await enqueue(path, body);
-      if(navigator.onLine !== false) {
+      {
         try {
           await syncPathReintentando(path); ultimoError = null; markOnline();
           // Estaba sincronizado, pero el cartel seguía mostrando "1 cambio sin sincronizar" (lo pinta enqueue()
@@ -170,7 +183,7 @@ export async function wrap(method, path, body, raw) {
         }
         catch(e) {
           if (e?.isNet) markOffline();
-          recordarError(e);
+          recordarError(e, path);
           // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir adelante,
           // y la app lo sigue reintentando sola en segundo plano (si el error es pasajero).
           if (esPasajero(e)) programarReintentosFondo(); else { fondoHasta = 0; render(); }
@@ -180,14 +193,15 @@ export async function wrap(method, path, body, raw) {
       }
       return queued;
     }
-    if (navigator.onLine !== false && !(await kGet('pending', path))) {
+    if (!(await kGet('pending', path))) {
       try {
         const r = await raw();
         markOnline();
         await kSet('cache', path, { server: body, local: body, at: Date.now() });
         return r;
       } catch (e) {
-        if (!e || !e.isNet) throw e;
+        if (!e || !e.isNet) { if (e) alcanzable(); throw e; }
+        recordarError(e, path);
         markOffline();
       }
     }
@@ -264,7 +278,7 @@ async function rawGet(path) { return rawFn('GET', path, null); }
 const candados = new Map();
 function conCandado(path, fn) {
   const previo = candados.get(path) || Promise.resolve();
-  const sig = previo.catch(() => {}).then(fn);
+  const sig = Promise.race([previo.catch(() => {}), new Promise(r => setTimeout(r, 30000))]).then(fn); // 30 s máx. esperando a otro
   candados.set(path, sig);
   sig.catch(() => {}).finally(() => { if (candados.get(path) === sig) candados.delete(path); });
   return sig;
@@ -293,8 +307,10 @@ let ultimoError = null; // { status, code } del último fallo, para mostrarlo en
 let ultimoCorte = '';   // motivo del último corte de red (ej. "Failed to fetch"), para diagnosticar
 let fondoHasta = 0;     // hasta cuándo la app sigue reintentando sola (mientras tanto el cartel NO es rojo)
 let fondoTimers = [];
-const recordarError = e => {
+let ultimoDetalle = null; // { path, status, code, msg, isNet, at } del último fallo, para diagnosticar desde el cartel
+const recordarError = (e, path) => {
   if (!e || typeof e !== 'object') return;
+  ultimoDetalle = { path: path || (ultimoDetalle && ultimoDetalle.path) || '', status: e.status || '', code: e.code || '', msg: String(e.message || e.name || '').slice(0, 120), isNet: !!e.isNet, at: Date.now() };
   if (e.isNet) ultimoCorte = String(e.message || e.name || 'sin detalle').slice(0, 60);
   else ultimoError = { status: e.status || '', code: e.code || '' };
 };
@@ -401,7 +417,7 @@ async function estacionarConflictos(path, conflicts) {
 // ── Administración: ver y desempatar conflictos ──
 let conflictosAbiertos = 0;
 export async function refreshConflictos() {
-  if (me().role !== 'admin' || !rawFn || navigator.onLine === false) return;
+  if (me().role !== 'admin' || !rawFn) return;
   try {
     const l = await wrap('GET', CONFLICTOS, null, () => rawFn('GET', CONFLICTOS));
     conflictosAbiertos = (Array.isArray(l) ? l : []).filter(r => r.estado === 'abierto').length;
@@ -438,15 +454,16 @@ export async function reviewConflictos() {
 }
 
 export async function syncAll() {
+  if (syncing && Date.now() - syncingDesde > 90000) syncing = false; // por si una pasada quedó colgada
   if (syncing || conflictOpen) return;
-  if (navigator.onLine === false) { render(); return; }
   const run = async () => {
-    syncing = true; render();
+    ultimaPasada = Date.now();
+    syncing = true; syncingDesde = Date.now(); render();
     let failed = false;
     try {
       for (const path of await kPaths('pending')) {
         try { await syncPathReintentando(path); }
-        catch (e) { failed = true; if (e && e.isNet) { markOffline(); break; } recordarError(e); console.warn('[offline] no se pudo sincronizar', path, e); }
+        catch (e) { failed = true; recordarError(e, path); if (e && e.isNet) { markOffline(); continue; /* una lista que no responde no frena a las demás */ } console.warn('[offline] no se pudo sincronizar', path, e); }
       }
     } finally { syncing = false; }
     if (!failed && !(await pendingCount())) {
@@ -459,12 +476,19 @@ export async function syncAll() {
     }
     render();
   };
-  if (navigator.locks && navigator.locks.request) await navigator.locks.request('hub-sync', { ifAvailable: true }, l => (l ? run() : undefined));
+  if (navigator.locks && navigator.locks.request) await navigator.locks.request('hub-sync', { ifAvailable: true }, l => (l || Date.now() - ultimaPasada > 60000 ? run() : undefined));
   else await run();
 }
 
 function markOffline() { if (!flagOffline) { flagOffline = true; render(); } }
+// (08/11, Vaneh en iPhone: "tengo conexión y hace rato que estoy esperando", cartel "Sin conexión · 2 cambios pendientes".)
+// Safari con la app instalada a veces deja `navigator.onLine` en false con red sana, y todo el sistema le hacía caso: no
+// intentaba sincronizar NUNCA. Ahora solo cuenta como "sin conexión" si de verdad falló un pedido, o si el navegador dice
+// "sin red" Y hace más de 20 s que el servidor no contesta. Y siempre se INTENTA: si de verdad no hay red, el pedido falla
+// al instante y listo.
+const sinRed = () => flagOffline || (navigator.onLine === false && Date.now() - lastOk > 20000);
 function markOnline() {
+  lastOk = Date.now();
   if (flagOffline) { flagOffline = false; render(); }
   pendingCount().then(n => { if (n && !syncing) syncAll(); });
 }
@@ -472,7 +496,7 @@ function markOnline() {
 // ── Salir de la sesión sin perder cambios ─────────────────────
 export async function beforeLogout() {
   let n = await pendingCount();
-  if (n && navigator.onLine !== false) {
+  if (n) {
     await Promise.race([syncAll(), new Promise(r => setTimeout(r, 10000))]);
     n = await pendingCount();
   }
@@ -512,19 +536,42 @@ function ensureBar() {
   bar.id = 'hubOfflineBar';
   bar.setAttribute('role', 'status');
   bar.setAttribute('aria-live', 'polite');
+  bar.addEventListener('click', e => { if (e.target.tagName !== 'BUTTON') diagnostico(); });
+  bar.style.cursor = 'pointer';
   document.body.appendChild(bar);
   return bar;
 }
 
+const detalleCorto = () => {
+  const d = ultimoDetalle; if (!d) return '';
+  const lista = (d.path || '').split('/').slice(2, 4).join('/');
+  return [lista, d.status, d.code, d.isNet ? (d.msg || 'sin respuesta') : ''].filter(Boolean).join(' · ').slice(0, 90);
+};
+// Tocar el cartel (no los botones) muestra el detalle técnico: sirve para saber qué se traba cuando algo "queda colgado".
+async function diagnostico() {
+  const paths = await kPaths('pending');
+  const filas = [];
+  for (const p of paths) { const x = await kGet('pending', p); filas.push(`  ${p}: ${!x ? '?' : x.mode === 'items' ? Object.keys(x.ops).length + ' cambio(s) por ítem' : 'lista entera'}`); }
+  const d = ultimoDetalle;
+  alert([
+    'DIAGNÓSTICO DE SINCRONIZACIÓN', '',
+    'Pendientes (' + paths.length + '):', ...(filas.length ? filas : ['  ninguno']), '',
+    'Último fallo: ' + (d ? `${d.path} · estado ${d.status || '-'} · ${d.code || '-'} · ${d.isNet ? 'SIN RESPUESTA' : 'respondió'} · ${d.msg || ''} · hace ${Math.round((Date.now() - d.at) / 1000)} s` : 'ninguno'),
+    'El navegador dice online: ' + navigator.onLine,
+    'Última respuesta real del servidor: ' + (lastOk ? 'hace ' + Math.round((Date.now() - lastOk) / 1000) + ' s' : 'nunca en esta sesión'),
+    'Tiempo real conectado: ' + wsAbierto, 'Sincronizando ahora: ' + syncing + ' · conflicto abierto: ' + conflictOpen,
+    'Versión: offline.js v14',
+  ].join('\n'));
+}
 async function render() {
   if (!document.body || !localStorage.getItem('mh_session_token')) return;
   const n = await pendingCount();
-  const off = navigator.onLine === false || flagOffline;
+  const off = sinRed();
   const b = ensureBar();
   const plural = n === 1 ? '' : 's';
   let cls = '', html = '';
   if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado en tu teléfono · sincronizando…'; } // corte pasajero: se reintenta solo
-  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoCorte && navigator.onLine !== false ? ` (${ultimoCorte})` : ''); }
+  else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoDetalle && navigator.onLine !== false ? ` (${detalleCorto()})` : (navigator.onLine === false ? ' (el navegador marca sin red)' : '')); }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
   else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = `Guardado en tu teléfono · sincronizando…`; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
@@ -534,7 +581,7 @@ async function render() {
   if (!cls) { b.style.display = 'none'; return; }
   b.className = cls;
   b.textContent = html;
-  if (!off && !syncing && n) { const r = document.createElement('button'); r.textContent = 'Reintentar'; r.onclick = () => syncAll(); b.appendChild(r); }
+  if (!syncing && n && cls !== 'ok') { const r = document.createElement('button'); r.textContent = 'Reintentar'; r.onclick = () => { flagOffline = false; syncAll(); }; b.appendChild(r); }
   if (cls === 'off' && !lastSynced && conflictosAbiertos) { const r = document.createElement('button'); r.textContent = 'Resolver'; r.onclick = () => reviewConflictos(); b.appendChild(r); }
   if (cls === 'ok' && lastSynced.remoteChanged) { const r = document.createElement('button'); r.textContent = 'Actualizar'; r.onclick = () => location.reload(); b.appendChild(r); }
   b.style.display = 'flex';
@@ -685,7 +732,7 @@ let liveBusy = false;
 let lastLive = 0;
 async function liveTick() {
   lastLive = Date.now();
-  if (liveBusy || document.hidden || navigator.onLine === false || syncing || conflictOpen || !rawFn) return;
+  if (liveBusy || document.hidden || syncing || conflictOpen || !rawFn) return;
   liveBusy = true;
   try {
     const paths = (await kPaths('cache')).filter(p => p !== CONFLICTOS && !LIVE_EXCLUIR.test(p));
@@ -699,7 +746,7 @@ async function liveTick() {
     await Promise.all(recientes.slice(0, LIVE_MAX).map(async ({ p }) => {
       if (await kGet('pending', p)) return;
       let fresh;
-      try { fresh = await rawGet(p); } catch (e) { return; }
+      try { fresh = await rawGet(p); lastOk = Date.now(); } catch (e) { return; }
       const c = await kGet('cache', p);
       if (c && !eq(c.server, fresh)) {
         await kSet('cache', p, { server: fresh, local: fresh, at: Date.now() });
@@ -771,6 +818,8 @@ function boot() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   window.addEventListener('online', () => { flagOffline = false; render(); syncAll().then(refreshConflictos); });
   window.addEventListener('offline', () => render());
+  window.addEventListener('pageshow', () => { pendingCount().then(n => { if (n) syncAll(); }); });
+  window.addEventListener('focus', () => { pendingCount().then(n => { if (n && !syncing) syncAll(); }); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); syncAll(); } });
   setInterval(() => { pendingCount().then(n => { if (n && !syncing && !conflictOpen) syncAll(); }); }, 20000);
   render();
@@ -781,5 +830,5 @@ function boot() {
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.hubOffline = { syncAll, pendingCount, refreshConflictos, reviewConflictos, render, estado: () => ({ syncing, flagOffline, conflictOpen, lastSynced, ultimoError }) };
+  window.hubOffline = { diagnostico, syncAll, pendingCount, refreshConflictos, reviewConflictos, render, estado: () => ({ syncing, flagOffline, conflictOpen, lastSynced, ultimoError }) };
 }

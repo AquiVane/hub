@@ -1,5 +1,5 @@
 import { WORKER_URL, DEMO_MODE } from './firebase.js';
-import { beforeLogout } from './offline.js?v=11'; // MISMA versión que importa data.js: si difieren se cargan dos copias del módulo (dos carteles, una sin conexión al servidor)
+import { beforeLogout } from './offline.js?v=14'; // MISMA versión que importa data.js: si difieren se cargan dos copias del módulo (dos carteles, una sin conexión al servidor)
 
 // ── Demo users (modo sin worker configurado) ──────────────────
 const DEMO_USERS = {
