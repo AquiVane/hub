@@ -360,7 +360,7 @@ window.igCtDescargar = async function () {
 // ── Configuración ─────────────────────────────────────────────
 function pintarDiag() {
   const l = estado.diagnostico || [];
-  $('igDiag').innerHTML = l.length ? l.map(d => `<div class="ig-log">${new Date(d.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' })} · ${esc((d.campos || []).join(', ') || 'sin campos')}
+  $('igDiag').innerHTML = l.length ? l.map(d => d.sondeo ? `<div class="ig-log">${new Date(d.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' })} · lectura de la conversación (respaldo del botón)<div class="ig-sub"><b style="color:#fca5a5;">${esc(d.sondeo)}: ${esc(d.error || '')}</b></div></div>` : `<div class="ig-log">${new Date(d.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' })} · ${esc((d.campos || []).join(', ') || 'sin campos')}
       <div class="ig-sub">cuenta ${d.cuentaMapeada ? 'reconocida' : '<b style="color:#fca5a5;">NO reconocida (' + esc(d.entryId) + ')</b>'} · firma ${d.firmaValida ? 'válida' : '<b style="color:#fca5a5;">inválida</b>'}</div></div>`).join('') : '<p class="text-muted text-sm">Todavía no llegó ningún aviso de Instagram.</p>';
 }
 window.igGuardarConexion = async function () {

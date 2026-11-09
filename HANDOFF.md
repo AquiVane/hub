@@ -901,3 +901,7 @@ Fix real (en los archivos binarios, no en HTML):
 ## 09/11/2026 — Instagram: reglas para respuestas a historias + avisos a nivel de app
 - Regla nueva "Qué activa la regla": comentario (como siempre) o **respuesta a una historia** con palabra clave (ej. "ruta") → llega el DM (directo o dos pasos). Sin respuesta pública ni "Recuperar". `instagram.js?v=16`. Autoservicio: se arma desde el formulario, sin pedirme código.
 - Botón "Revisar y reparar suscripción de avisos" ahora también revisa los avisos de la APP (Meta > Webhooks > Instagram): si solo estaba `comments`, agrega `messages` y `messaging_postbacks`. Hipótesis del problema histórico (el toque del botón no activaba la secuencia): sin esos campos a nivel app, Meta no manda ni botones ni mensajes.
+
+## 09/11/2026 (tarde) — Respaldo: leer la conversación cuando Meta no avisa el toque del botón
+- Prueba real: Meta manda los avisos de PRUEBA (messages/messaging_postbacks) pero nunca los reales de mensajes/botones (rol de evaluador aceptado, ManyChat con canal desactivado, permiso de mensajes activo). Causa en Meta sin resolver.
+- Solución: `ig_pend:<agencia>` guarda a quién se le mandó el paso 1 (24 h). Un sondeo por vuelta (DO `IG_RECUPERAR`, id `<agencia>:_sondeo`, tarea `sondeo`) consulta `/{ig}/conversations?platform=instagram` y, si ve el texto del botón escrito por la persona, ejecuta `procesarToque` (misma secuencia de siempre). Cada 20 s los primeros 5 min, 60 s hasta 1 h, 180 s después; ante #4 espera 10 min. El Diagnóstico muestra fallos del sondeo. `instagram.js?v=17`.
