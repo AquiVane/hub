@@ -2340,6 +2340,11 @@
           <label>Código para tareas</label>
           <input type="text" id="ecl-codigo" class="form-control" placeholder="Ej: GA" maxlength="4" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase();">
         </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Email principal <span style="font-weight:400;color:var(--text-muted);">(acceso del cliente al Hub)</span></label>
+          <input type="email" id="ecl-email" class="form-control" placeholder="cliente@email.com" autocomplete="off">
+          <p id="ecl-email-ayuda" style="font-size:11px;color:var(--text-muted);margin:4px 0 0;">Si lo cambiás, el acceso pasa al mail nuevo con la misma contraseña. Si el cliente no tenía mail, se le crea la cuenta y le llega la bienvenida.</p>
+        </div>
         <div class="form-group">
           <label>Estado</label>
           <select id="ecl-activo" class="form-control">
@@ -2429,7 +2434,7 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="agregarUsuarioEditCliente()" style="height:38px;">+ Agregar</button>
       </div>
 
-      <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">Para cambiar el email de acceso o la contraseña, pedile a COSMART (dev) que lo actualice desde el backend — por ahora esto edita solo los datos del negocio.</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:16px;">La contraseña la cambia cada persona desde "Olvidé mi contraseña" en el login.</p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeEditClientModal()">Cancelar</button>
@@ -7358,6 +7363,11 @@
     document.getElementById('ecl-nombre').value = client.nombre || client.name || '';
     document.getElementById('ecl-codigo').value = client.codigo || codigoDesdeNombre(client.nombre || client.name || clientId);
     document.getElementById('ecl-activo').value = client.activo === false ? 'false' : 'true';
+    const eclEmail = document.getElementById('ecl-email');
+    eclEmail.value = client.email || '';
+    eclEmail.dataset.orig = (client.email || '').trim().toLowerCase();
+    eclEmail.disabled = user.role !== 'admin';
+    document.getElementById('ecl-email-ayuda').style.display = user.role === 'admin' ? '' : 'none';
 
     const respSel = document.getElementById('ecl-responsable');
     respSel.innerHTML = `<option value="">Sin asignar</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
@@ -7449,6 +7459,12 @@
     const ig3 = document.getElementById('ec-ig3').value.trim();
     const instagrams = [ig1, ig2, ig3].filter(Boolean);
 
+    const emailEl = document.getElementById('ecl-email');
+    const emailNuevo = emailEl.value.trim().toLowerCase();
+    const cambiaEmail = !emailEl.disabled && emailNuevo !== (emailEl.dataset.orig || '');
+    if (cambiaEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNuevo)) { alert('El email principal no es válido.'); return; }
+    if (cambiaEmail && !confirm(`¿Cambiar el email principal a ${emailNuevo}? El acceso del cliente pasa a ese mail.`)) return;
+
     const responsableSel = document.getElementById('ecl-responsable');
     const responsableEmail = responsableSel.value;
     const responsableNombre = responsableEmail === user.email ? (user.name || user.email) : (responsableSel.selectedOptions[0]?.textContent || '');
@@ -7477,6 +7493,7 @@
       }
       await saveClientData(_editClientId, {
         ...(usuariosPayload ? { usuarios: usuariosPayload } : {}),
+        ...(cambiaEmail ? { email: emailNuevo } : {}),
         nombre,
         codigo: (document.getElementById('ecl-codigo').value.trim() || codigoDesdeNombre(nombre)).toUpperCase(),
         activo: document.getElementById('ecl-activo').value === 'true',

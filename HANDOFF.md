@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 10/11 (2) — Editar cliente: campo "Email principal" (solo admin)
+- En el modal Editar cliente (`ecl-email`) se puede agregar o cambiar el mail principal; confirma antes de guardar. El backend (`handleUpdateClient`, ver HANDOFF de cosmart-workers) mueve la cuenta conservando la contraseña. Pendiente de desplegar el worker.
+
 ## 10/11 — El formulario de contenido ya no se queda en "Guardando…" (offline.js v15)
 - **Síntoma (Vaneh, iPhone, "Editar contenido" con guion):** botón "Guardando…" y cartel "Sincronizando…" colgados. Es el mismo problema de fondo que `_cosmart/guiones · Failed to fetch` (ver 08/11): el servidor no contesta esa lista y cada intento esperaba hasta 20 s (timeout de `rawApi`), x3 intentos, más el guardado del guion en el mismo formulario.
 - **Cambios:** `offline.js` -> `conLimite()`: el guardado de contenidos espera como máximo 8 s por la sincronización (después el cambio ya está guardado en el teléfono, sigue en segundo plano y repinta el cartel al terminar; el error `e.queued`/`e.tarda` lo toma el formulario como "guardado"); el POST de otras listas (guiones, tareas...) también 8 s y queda en la cola; la LECTURA con copia local espera como máximo 6 s y devuelve la copia mientras sigue actualizando. `app.js` (formulario de contenido): el guardado del guion (+ estado) corre aparte y el formulario lo espera máx. 6 s. Probado: con los guiones colgados 25 s el formulario cierra a los 6 s; con contenido y guiones colgados 25 s, a los 14 s (antes sin límite).
