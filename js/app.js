@@ -3649,28 +3649,37 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     } else {
       STATE.contenidos.push(saved);
     }
-    if (guionAVincular) {
-      const gSaved = await saveGuion(clientId, { ...guionAVincular, contenidoId: saved.id }, STATE.guiones);
-      STATE.guiones[STATE.guiones.findIndex(g => g.id === gSaved.id)] = gSaved;
-    } else if (guionTexto.trim()) {
-      // El guion se tipeó directo en el modal de contenido (no vino del
-      // repositorio suelto) -- antes solo quedaba guardado en el
-      // contenido y nunca aparecía en la sección Guiones. Pedido de
-      // Vaneh (11/10): "cuando cargo un contenido... esos guiones no
-      // aparecen en la lista de guiones" -- la relación tiene que andar
-      // en los dos sentidos, no solo Guiones -> Contenido.
-      const gExistente = STATE.guiones.find(g => g.contenidoId === saved.id);
-      if (gExistente) {
-        if (gExistente.texto !== guionTexto || gExistente.titulo !== titulo) {
-          const gSaved = await saveGuion(clientId, { ...gExistente, titulo, texto: guionTexto }, STATE.guiones);
-          STATE.guiones[STATE.guiones.findIndex(g => g.id === gSaved.id)] = gSaved;
+    // Los guiones se guardan en su propia lista (que puede ser pesada o tardar): el formulario espera como máximo 6 s y
+    // sigue; lo que falta termina solo en segundo plano y queda en la cola si no hay respuesta.
+    const guardarGuionDelModal = async () => {
+      if (guionAVincular) {
+        const gSaved = await saveGuion(clientId, { ...guionAVincular, contenidoId: saved.id }, STATE.guiones);
+        STATE.guiones[STATE.guiones.findIndex(g => g.id === gSaved.id)] = gSaved;
+      } else if (guionTexto.trim()) {
+        // El guion se tipeó directo en el modal de contenido (no vino del
+        // repositorio suelto) -- antes solo quedaba guardado en el
+        // contenido y nunca aparecía en la sección Guiones. Pedido de
+        // Vaneh (11/10): "cuando cargo un contenido... esos guiones no
+        // aparecen en la lista de guiones" -- la relación tiene que andar
+        // en los dos sentidos, no solo Guiones -> Contenido.
+        const gExistente = STATE.guiones.find(g => g.contenidoId === saved.id);
+        if (gExistente) {
+          if (gExistente.texto !== guionTexto || gExistente.titulo !== titulo) {
+            const gSaved = await saveGuion(clientId, { ...gExistente, titulo, texto: guionTexto }, STATE.guiones);
+            STATE.guiones[STATE.guiones.findIndex(g => g.id === gSaved.id)] = gSaved;
+          }
+        } else {
+          const gSaved = await saveGuion(clientId, { titulo, texto: guionTexto, contenidoId: saved.id, fecha: new Date().toISOString().split('T')[0] }, STATE.guiones);
+          STATE.guiones.push(gSaved);
         }
-      } else {
-        const gSaved = await saveGuion(clientId, { titulo, texto: guionTexto, contenidoId: saved.id, fecha: new Date().toISOString().split('T')[0] }, STATE.guiones);
-        STATE.guiones.push(gSaved);
       }
+      await estadoContenidoAGuion(saved);
+    };
+    {
+      const gp = guardarGuionDelModal();
+      gp.catch(e => console.warn('[contenido] el guion quedó pendiente', e));
+      await Promise.race([gp.catch(() => {}), new Promise(r => setTimeout(r, 6000))]);
     }
-    await estadoContenidoAGuion(saved);
     notifyAsignacion('contenido', saved, prevContAsignadoEmail);
     closeContenidoModal();
     renderContTab(activeContTab);

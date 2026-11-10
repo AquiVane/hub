@@ -135,6 +135,8 @@ export async function wrap(method, path, body, raw) {
       const c = await kGet('cache', path);
       if (c) return clone(c.local);
     }
+    const copia0 = await kGet('cache', path);
+    const leer = async () => {
     try {
       let data;
       try { data = await raw(); }
@@ -162,6 +164,10 @@ export async function wrap(method, path, body, raw) {
       }
       throw e;
     }
+    };
+    // Con copia local, la lectura no puede hacer esperar más de 6 s: se muestra la copia y la lectura sigue (y actualiza la copia).
+    if (copia0) { const r = await conLimite(leer(), 6000); return r === LIMITE ? clone(copia0.local) : r; }
+    return leer();
   }
 
   if (method === 'POST' && isData) {
@@ -173,15 +179,25 @@ export async function wrap(method, path, body, raw) {
       const queued = await enqueue(path, body);
       {
         try {
-          await syncPathReintentando(path); ultimoError = null; markOnline();
-          // Estaba sincronizado, pero el cartel seguía mostrando "1 cambio sin sincronizar" (lo pinta enqueue()
-          // antes de mandar) hasta que se tocaba "Reintentar" (04/11, Vaneh: "siempre me da falla ... y recién ahí
-          // se sincroniza"). Se repinta ya, y sin cartel de "todo bien" en cada guardado normal.
-          if (!(lastSynced && (lastSynced.parked || lastSynced.remoteChanged))) lastSynced = null;
-          render();
+          // La sincronización sigue sola aunque se pase el límite (y repinta el cartel cuando termina).
+          const pr = syncPathReintentando(path).then(() => {
+            ultimoError = null; markOnline();
+            // Estaba sincronizado, pero el cartel seguía mostrando "1 cambio sin sincronizar" (lo pinta enqueue()
+            // antes de mandar) hasta que se tocaba "Reintentar" (04/11). Se repinta ya, y sin cartel de "todo bien".
+            if (!(lastSynced && (lastSynced.parked || lastSynced.remoteChanged))) lastSynced = null;
+            render();
+          });
+          const r = await conLimite(pr, 8000);
+          if (r === LIMITE) {
+            programarReintentosFondo();
+            const tarda = new Error('La sincronización está tardando: el cambio quedó guardado en el teléfono.');
+            tarda.queued = true; tarda.tarda = true;
+            throw tarda;
+          }
           return {ok:true};
         }
         catch(e) {
+          if (e?.tarda) throw e;
           if (e?.isNet) markOffline();
           recordarError(e, path);
           // El cambio YA está guardado en este dispositivo y en la cola: quien llama puede seguir adelante,
@@ -195,9 +211,9 @@ export async function wrap(method, path, body, raw) {
     }
     if (!(await kGet('pending', path))) {
       try {
-        const r = await raw();
-        markOnline();
-        await kSet('cache', path, { server: body, local: body, at: Date.now() });
+        const rp = raw().then(async res => { markOnline(); await kSet('cache', path, { server: body, local: body, at: Date.now() }); return res; });
+        const r = await conLimite(rp, 8000);
+        if (r === LIMITE) { programarReintentosFondo(); return enqueue(path, body); } // sigue en el aire: queda en la cola (el sync no duplica)
         return r;
       } catch (e) {
         if (!e || !e.isNet) { if (e) alcanzable(); throw e; }
@@ -272,6 +288,12 @@ async function enqueue(path, body) {
 
 // ── Sincronización ────────────────────────────────────────────
 async function rawGet(path) { return rawFn('GET', path, null); }
+
+// Una persona que toca "Guardar" no puede quedar esperando al servidor: pasados unos segundos el cambio ya está guardado
+// en el teléfono y se sigue en segundo plano (08/11, Vaneh: el formulario quedaba en "Guardando…" con la lista de guiones
+// sin responder; cada intento esperaba hasta 20 s).
+const LIMITE = Symbol('limite');
+const conLimite = (promesa, ms) => { promesa.catch(() => {}); return Promise.race([promesa, new Promise(r => setTimeout(() => r(LIMITE), ms))]); };
 
 // Un solo sincronizado por lista a la vez: el guardado, el "Reintentar", el chequeo periódico y el
 // tiempo real podían correr juntos sobre la misma lista y pisarse (el segundo recibía un 409).
@@ -560,7 +582,7 @@ async function diagnostico() {
     'El navegador dice online: ' + navigator.onLine,
     'Última respuesta real del servidor: ' + (lastOk ? 'hace ' + Math.round((Date.now() - lastOk) / 1000) + ' s' : 'nunca en esta sesión'),
     'Tiempo real conectado: ' + wsAbierto, 'Sincronizando ahora: ' + syncing + ' · conflicto abierto: ' + conflictOpen,
-    'Versión: offline.js v14',
+    'Versión: offline.js v15',
   ].join('\n'));
 }
 async function render() {
