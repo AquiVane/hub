@@ -884,6 +884,12 @@ export async function setVentasPanelConfig(vertical, mes, parcial) {
   return api('PUT', `/admin/ventas-panel/config?vertical=${encodeURIComponent(vertical)}&mes=${encodeURIComponent(mes)}`, parcial);
 }
 
+// ── Visitas de todos los sitios (12/11) ──
+export async function getVisitas(dias) {
+  if (DEMO_MODE) return { ok: true, periodo_dias: dias, total: { visitas: 0, unicos: 0 }, sitios: [] };
+  return api('GET', `/admin/visitas?dias=${encodeURIComponent(dias)}`);
+}
+
 export async function saveLead(lead) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/leads', lead);

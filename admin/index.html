@@ -391,6 +391,34 @@
         <p class="text-muted text-sm" id="nlNota" style="margin-top:14px;"></p>
       </div>
 
+      <!-- Visitas de todos los sitios (12/11) -->
+      <div id="sec-visitas" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Visitas</h2>
+          <span class="text-muted text-sm">Cuánta gente entra a todos tus sitios, qué ve y cuántos llegan al carrito</span>
+        </div>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:12px;">
+          <div class="seg" id="visRango">
+            <button class="seg-btn" data-d="7">7 días</button>
+            <button class="seg-btn active" data-d="30">30 días</button>
+            <button class="seg-btn" data-d="90">90 días</button>
+          </div>
+        </div>
+        <div id="visTabs" class="flex gap-8" style="flex-wrap:wrap;margin-bottom:16px;"></div>
+        <div id="visKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;"></div>
+        <div class="card" style="margin-bottom:16px;"><div class="card-body">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Visitas por día</div>
+          <div id="visSerie" style="display:flex;align-items:flex-end;gap:2px;height:110px;"></div>
+          <div id="visSerieEje" class="text-muted text-sm" style="display:flex;justify-content:space-between;margin-top:4px;"></div>
+        </div></div>
+        <div id="visEmbudo"></div>
+        <div class="card"><div class="card-body">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Páginas más visitadas</div>
+          <div id="visPaginas" style="overflow-x:auto;"></div>
+        </div></div>
+        <p class="text-muted text-sm" id="visNota" style="margin-top:14px;"></p>
+      </div>
+
       <!-- Panel de ventas (VAMA Academy / Training, 11/10) -->
       <div id="sec-ventas-panel" class="hidden">
         <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
@@ -2560,7 +2588,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds } from '../js/data.js?v=26';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=27';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -2779,6 +2807,11 @@
     btnVentasPanel.innerHTML = '<i data-lucide="trending-up" class="nav-icon"></i><span>Panel de ventas</span>';
     btnVentasPanel.onclick = () => showSection('ventas-panel');
     document.querySelector('.nav-section').appendChild(btnVentasPanel);
+    const btnVisitas = document.createElement('button');
+    btnVisitas.className = 'nav-item';
+    btnVisitas.innerHTML = '<i data-lucide="bar-chart-3" class="nav-icon"></i><span>Visitas</span>';
+    btnVisitas.onclick = () => showSection('visitas');
+    document.querySelector('.nav-section').appendChild(btnVisitas);
     const btnNewsletter = document.createElement('button');
     btnNewsletter.className = 'nav-item';
     btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
@@ -2884,7 +2917,7 @@
 
   window.showSection = function(sec) {
     try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','newsletter','mapa','inventario','instagram'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','instagram'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -2904,6 +2937,7 @@
     if (sec === 'crm') loadLeadsAdmin();
     if (sec === 'instagram') window.cargarInstagram?.();
     if (sec === 'ventas-panel') loadVentasPanel();
+    if (sec === 'visitas') cargarVisitas();
     if (sec === 'newsletter') cargarNewsletter();
     if (sec === 'config') { cargarClaudeConfigStatus(); cargarIntegracionesChatGPT(); cargarConectorClaude(); cargarCuentasPubAgencia(); cargarWebhookConfig(); cargarAdsConexiones(); actualizarEstadoPushHub(); cargarEmkConfig(); }
     if (sec === 'recursos') loadRecursos();
@@ -8803,6 +8837,73 @@
     _vpMes = nuevoMes;
     cargarVentasPanel();
   };
+
+  // ── Visitas de todos los sitios (12/11) ──
+  const VIS_NOMBRES = { training: 'Training', vama: 'VAMA Academy', cosmart: 'COSMART', desing: 'Desing', euforia: 'Euforia', mpg: 'MPG', comunicos: 'ComuniCOS', rumbovoraz: 'Rumbo Voraz', shows: 'Shows', talent: 'Talent', germanaquino: 'Germán Aquino', hub: 'Marketing Hub', 'vama-apps': 'VAMA Apps', apps: 'COSMART Apps', biensmart: 'BienSmart' };
+  const visNombre = (k) => VIS_NOMBRES[k] || k;
+  const visNum = (n) => Number(n || 0).toLocaleString('es-AR');
+  const visEsc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let _visDias = 30, _visSitio = 'todos', _visData = null;
+
+  async function cargarVisitas() {
+    document.getElementById('visRango').querySelectorAll('.seg-btn').forEach(b => {
+      b.onclick = () => { _visDias = Number(b.dataset.d); cargarVisitas(); };
+      b.classList.toggle('active', Number(b.dataset.d) === _visDias);
+    });
+    document.getElementById('visKpis').innerHTML = '<div class="text-muted text-sm">Cargando…</div>';
+    try { _visData = await getVisitas(_visDias); }
+    catch (e) { document.getElementById('visKpis').innerHTML = '<div class="text-muted text-sm">No se pudieron cargar las visitas.</div>'; return; }
+    renderVisitas();
+  }
+  window.cargarVisitas = cargarVisitas;
+
+  function visCombinar(sitios) {
+    const o = { visitas: 0, unicos: 0, ultimas_24h: { visitas: 0, unicos: 0 }, carrito: { agregados: 0, personas: 0 }, checkout: { visitas: 0, unicos: 0, iniciados: 0 }, compras: 0, paginas: [], serie: [] };
+    const dias = {};
+    for (const s of sitios) {
+      o.visitas += s.visitas; o.unicos += s.unicos;
+      o.ultimas_24h.visitas += s.ultimas_24h.visitas; o.ultimas_24h.unicos += s.ultimas_24h.unicos;
+      o.carrito.agregados += s.carrito.agregados; o.carrito.personas += s.carrito.personas;
+      o.checkout.visitas += s.checkout.visitas; o.checkout.unicos += s.checkout.unicos; o.checkout.iniciados += s.checkout.iniciados;
+      o.compras += s.compras;
+      for (const p of s.paginas) o.paginas.push({ ...p, sitio: s.sitio });
+      for (const d of s.serie) { dias[d.dia] = dias[d.dia] || { dia: d.dia, visitas: 0 }; dias[d.dia].visitas += d.visitas; }
+    }
+    o.paginas.sort((a, b) => b.visitas - a.visitas); o.paginas = o.paginas.slice(0, 15);
+    o.serie = Object.values(dias).sort((a, b) => a.dia < b.dia ? -1 : 1);
+    return o;
+  }
+
+  function renderVisitas() {
+    const d = _visData; if (!d) return;
+    const tabs = [{ k: 'todos', n: 'Todos' }, ...d.sitios.map(s => ({ k: s.sitio, n: visNombre(s.sitio) }))];
+    document.getElementById('visTabs').innerHTML = tabs.map(t => `<button class="btn btn-sm ${t.k === _visSitio ? 'btn-primary' : 'btn-secondary'}" data-k="${visEsc(t.k)}">${visEsc(t.n)}</button>`).join('');
+    document.querySelectorAll('#visTabs button').forEach(b => b.onclick = () => { _visSitio = b.dataset.k; renderVisitas(); });
+    if (_visSitio !== 'todos' && !d.sitios.some(s => s.sitio === _visSitio)) _visSitio = 'todos';
+    const s = _visSitio === 'todos' ? visCombinar(d.sitios) : d.sitios.find(x => x.sitio === _visSitio);
+    if (_visSitio === 'todos') { s.visitas = d.total.visitas; s.unicos = d.total.unicos; }
+    const kpi = (t, v, sub) => `<div class="card"><div class="card-body"><div class="text-muted text-sm">${t}</div><div style="font-size:26px;font-weight:800;margin:2px 0;">${visNum(v)}</div><div class="text-muted text-sm">${sub || ''}</div></div></div>`;
+    document.getElementById('visKpis').innerHTML =
+      kpi('Visitantes únicos', s.unicos, `últimas 24 h: ${visNum(s.ultimas_24h.unicos)}`) +
+      kpi('Visitas (páginas vistas)', s.visitas, `últimas 24 h: ${visNum(s.ultimas_24h.visitas)}`) +
+      kpi('Visitas al checkout', s.checkout.visitas, `${visNum(s.checkout.unicos)} personas`) +
+      kpi('Agregados al carrito', s.carrito.agregados, `${visNum(s.carrito.personas)} personas`) +
+      kpi('Compras', s.compras, s.unicos ? `${(s.compras / s.unicos * 100).toFixed(1)}% de los visitantes` : '');
+    // serie
+    const max = Math.max(1, ...s.serie.map(x => x.visitas));
+    document.getElementById('visSerie').innerHTML = s.serie.length
+      ? s.serie.map(x => `<div title="${visEsc(x.dia)}: ${visNum(x.visitas)}" style="flex:1;min-width:2px;height:${Math.max(3, Math.round(x.visitas / max * 100))}%;background:#4fd699;border-radius:2px 2px 0 0;"></div>`).join('')
+      : '<div class="text-muted text-sm">Sin datos todavía en este período.</div>';
+    document.getElementById('visSerieEje').innerHTML = s.serie.length ? `<span>${visEsc(s.serie[0].dia)}</span><span>${visEsc(s.serie[s.serie.length - 1].dia)}</span>` : '';
+    // embudo
+    const pasos = [['Visitantes únicos', s.unicos], ['Agregaron al carrito', s.carrito.personas], ['Llegaron al checkout', s.checkout.unicos], ['Dejaron su mail', s.checkout.iniciados]];
+    document.getElementById('visEmbudo').innerHTML = (s.carrito.personas || s.checkout.unicos) ? `<div class="card" style="margin-bottom:16px;"><div class="card-body"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">Embudo de compra</div>${pasos.map(([n, v]) => `<div style="margin-bottom:8px;"><div class="text-sm" style="display:flex;justify-content:space-between;gap:8px;"><span>${n}</span><b>${visNum(v)}</b></div><div style="background:rgba(127,127,127,.2);border-radius:4px;height:8px;"><div style="width:${s.unicos ? Math.min(100, v / s.unicos * 100) : 0}%;height:8px;background:#4fd699;border-radius:4px;"></div></div></div>`).join('')}</div></div>` : '';
+    // páginas
+    document.getElementById('visPaginas').innerHTML = s.paginas.length
+      ? `<table style="width:100%;font-size:13px;border-collapse:collapse;"><thead><tr class="text-muted" style="text-align:left;"><th style="padding:6px 8px 6px 0;">Página</th><th style="padding:6px 8px;text-align:right;">Visitas</th><th style="padding:6px 0 6px 8px;text-align:right;">Únicos</th></tr></thead><tbody>${s.paginas.map(p => `<tr style="border-top:1px solid rgba(127,127,127,.2);"><td style="padding:6px 8px 6px 0;word-break:break-all;">${_visSitio === 'todos' ? `<span class="text-muted">${visEsc(visNombre(p.sitio))} · </span>` : ''}${visEsc(p.path)}</td><td style="padding:6px 8px;text-align:right;">${visNum(p.visitas)}</td><td style="padding:6px 0 6px 8px;text-align:right;">${visNum(p.unicos)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="text-muted text-sm">Sin datos todavía.</div>';
+    document.getElementById('visNota').textContent = 'Visitante único = navegador/dispositivo (una persona que entra desde el celular y la compu cuenta dos). Las horas son de Argentina. Los sitios aparecen en cuanto empiezan a mandar visitas.';
+  }
 
   async function loadVentasPanel() {
     _vpMes = new Date().toISOString().slice(0, 7);
