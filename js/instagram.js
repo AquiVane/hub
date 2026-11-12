@@ -422,8 +422,10 @@ window.igReparar = async function () {
     const f = a => (a && a.length ? a.join(', ') : 'ninguno');
     const ap = r.app || {};
     const appHtml = ap.ok ? `<br><b>Avisos de la app (Meta):</b> estaban <b>${esc(f(ap.camposAntes))}</b>` + (ap.faltaban && ap.faltaban.length ? ` · faltaban <b>${esc(ap.faltaban.join(', '))}</b> → ${ap.reparado ? '<b style="color:#86efac;">agregados</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(ap.error) + '</b>'}` : ' · <b style="color:#86efac;">completos</b>') : `<br><b style="color:#fca5a5;">Avisos de la app: ${esc(ap.error || 'sin dato')}</b>`;
+    const fb = r.facebook || {};
+    const fbHtml = fb.conectada ? `<br><b>Facebook (página ${esc(fb.pageId)}):</b> ` + (fb.consultaOk ? `suscripta a <b>${esc(f(fb.campos))}</b>` + (['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).length ? ` · faltan <b>${esc(['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).join(', '))}</b> (activalos con "Añadir suscripciones" en Meta)` : ' · <b style="color:#86efac;">completos</b>') : `<b style="color:#fca5a5;">no pude consultar: ${esc(fb.error)}</b>`) + (fb.ultimoAviso ? ` · último aviso recibido: <b>${esc(new Date(fb.ultimoAviso.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' }))}</b>` : ' · <b style="color:#fca5a5;">todavía no llegó ningún aviso de Facebook</b>') : '<br><b>Facebook:</b> sin página conectada.';
     el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
-      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml;
+      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml + fbHtml;
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
 
@@ -432,7 +434,9 @@ window.igReparar = async function () {
 function pintarFb() {
   const f = (estado && estado.facebook) || {};
   const el = $('igFbEstado'); if (!el) return;
-  el.innerHTML = f.conectada ? `<b style="color:#86efac;">Conectada:</b> ${esc(f.pageName || f.pageId)}` : 'Todavía no está conectada la página de Facebook.';
+  const ua = f.ultimoAviso;
+  const avisoHtml = ua ? `<br>Último aviso de Facebook recibido: <b>${esc(new Date(ua.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' }))}</b> (${esc((ua.campos || []).join(', '))})${ua.reconocida ? '' : ' · <i>de prueba o de otra página</i>'}` : '<br><b style="color:#fca5a5;">Todavía no llegó ningún aviso de Facebook.</b> Si ya activaste feed en Meta, comentá o usá el botón Test y recargá esta pantalla.';
+  el.innerHTML = (f.conectada ? `<b style="color:#86efac;">Conectada:</b> ${esc(f.pageName || f.pageId)}` : 'Todavía no está conectada la página de Facebook.') + avisoHtml;
   $('igFbBtnDesconectar').style.display = f.conectada ? '' : 'none';
 }
 window.igConectarFb = async function () {
