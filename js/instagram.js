@@ -465,9 +465,10 @@ window.igElegirPostFb = async function () {
         <div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:22px;">💬 ${p.n}</div><div class="ig-sub">Último: “${esc(p.ult || '—')}”<br>${esc(new Date(p.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}</div></div>`;
     }).join('');
     $('igFbGrid').innerHTML = todas + conImg + vistosHtml;
-    const nota = !(posts || []).length
-      ? (vistosHtml ? 'Facebook no deja leer las publicaciones de la página (falta el permiso en el token), así que te muestro las publicaciones <b>donde ya llegaron comentarios</b>: elegí la que corresponde mirando el último comentario.' : 'Todavía no llegó ningún comentario de Facebook para mostrar acá. Cuando alguien comente en la publicación, va a aparecer en esta lista.')
-      : '';
+    const sinLista = !(posts || []).length;
+    const causa = sinLista ? `<b style="color:#fca5a5;">Facebook no deja leer las publicaciones de la página con el token que está cargado.</b>${aviso ? ' (' + esc(aviso) + ')' : ''} Falta el permiso <b>pages_read_engagement</b> en el <b>token de la página</b> (agregarlo a la app no alcanza: el token tiene que generarse de nuevo aceptándolo). Mientras tanto la regla funciona con <b>"Todas las publicaciones"</b> y la palabra clave.` : '';
+    const sugeridas = sinLista && vistosHtml ? ' Debajo podés elegir una publicación donde ya llegaron comentarios.' : '';
+    const nota = causa + sugeridas;
     const n = $('igFbNota'); n.innerHTML = nota; n.style.display = nota ? '' : 'none';   // un solo cartel, se reemplaza en cada clic
   } catch (e) { $('igFbGrid').innerHTML = ''; aviso(e.message, true); }
 };
