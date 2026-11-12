@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 12/11 — Sección "Visitas" (todos los sitios)
+- Pedido de Vaneh: ver en el Hub cuánta gente entra a TODOS sus sitios. Nueva sección **Visitas** en el admin (solo admin COSMART): 7/30/90 días, pestaña por sitio + "Todos", visitantes únicos, visitas, visitas al checkout, agregados al carrito, compras, gráfico por día, embudo y páginas más vistas. `getVisitas` en `data.js` (v=27) → `GET /admin/visitas` de `marketing-hub` → core.
+- Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
+- Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
+
 ## 10/11 (2) — Editar cliente: campo "Email principal" (solo admin)
 - En el modal Editar cliente (`ecl-email`) se puede agregar o cambiar el mail principal; confirma antes de guardar. El backend (`handleUpdateClient`, ver HANDOFF de cosmart-workers) mueve la cuenta conservando la contraseña. Pendiente de desplegar el worker.
 
