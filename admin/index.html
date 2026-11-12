@@ -749,6 +749,8 @@
             <div id="igFbEstado" class="ig-sub" style="margin-bottom:8px;font-size:13px;"></div>
             <label>ID de la página de Facebook (opcional: si lo dejás vacío se busca la página vinculada a tu Instagram)</label>
             <input id="igFbPageId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 1234567890123456">
+            <label>Token de la página (opcional: pegalo acá si Meta no deja conectarla solo; nunca lo pegues en el chat)</label>
+            <input id="igFbPageToken" class="form-control" type="password" autocomplete="off" placeholder="Token de acceso de la página">
             <div class="ig-row" style="margin-top:10px;">
               <button class="btn btn-primary btn-sm" onclick="igConectarFb()">Conectar página de Facebook</button>
               <button id="igFbBtnDesconectar" class="btn btn-secondary btn-sm" onclick="igDesconectarFb()" style="display:none;">Desconectar</button>
@@ -9740,6 +9742,6 @@
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=19"></script>
+<script type="module" src="../js/instagram.js?v=20"></script>
 </body>
 </html>

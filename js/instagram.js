@@ -438,7 +438,7 @@ function pintarFb() {
 window.igConectarFb = async function () {
   const el = $('igFbRes'); el.textContent = 'Conectando con Facebook…';
   try {
-    const r = await conectarFacebook($('igFbPageId').value.trim());
+    const r = await conectarFacebook($('igFbPageId').value.trim(), $('igFbPageToken').value.trim()); $('igFbPageToken').value = '';
     el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>'}. Falta el paso de Webhooks en Meta (abajo).`;
     await window.cargarInstagram();
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
