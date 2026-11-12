@@ -156,7 +156,7 @@ window.igCambiarModo = function () {
   $('igFPostWrap').style.display = hist || canal === 'facebook' ? 'none' : '';
   $('igFFbWrap').style.display = !hist && canal !== 'instagram' ? '' : 'none';
   $('igFCanalAviso').style.display = canal !== 'instagram' ? '' : 'none';
-  if (canal !== 'instagram' && $('igFModo').value === 'dos-pasos') { $('igFModo').value = 'directo'; }
+  if (canal === 'facebook' && $('igFModo').value === 'dos-pasos') { $('igFModo').value = 'directo'; }
   $('igFPostLabel').textContent = canal === 'ambos' ? '¿En qué publicación de Instagram?' : '¿En qué publicación?';
   $('igFPubWrap').style.display = hist ? 'none' : '';
   $('igFPalLabel').textContent = hist ? 'Palabra que tienen que escribir al responder la historia (separadas por coma; vacío = cualquier respuesta)' : 'Palabras clave (separadas por coma; vacío = responde a cualquier comentario)';
