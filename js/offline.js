@@ -129,7 +129,11 @@ export async function wrap(method, path, body, raw) {
 
   if (method === 'GET') {
     if (isData && (await kGet('pending', path))) {
-      try { await syncPath(path); } catch (e) { /* queda pendiente */ }
+      // Con un cambio pendiente de antes, leer NO puede quedar esperando su sincronización (07/11-12/11, Vaneh: "siempre
+      // me da error al guardar"; cada guardado nuevo leía primero y esperaba aquí sin límite). Se intenta hasta 5 s y,
+      // si no termina, se sigue con la copia del dispositivo mientras la sincronización continúa en segundo plano.
+      const sp = syncPath(path).catch(() => { /* queda pendiente */ });
+      await conLimite(sp, 5000);
     }
     if (await kGet('pending', path)) {
       const c = await kGet('cache', path);
