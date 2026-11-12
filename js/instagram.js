@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts } from './data.js?v=27';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts } from './data.js?v=28';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -424,8 +424,12 @@ window.igReparar = async function () {
     const appHtml = ap.ok ? `<br><b>Avisos de la app (Meta):</b> estaban <b>${esc(f(ap.camposAntes))}</b>` + (ap.faltaban && ap.faltaban.length ? ` · faltaban <b>${esc(ap.faltaban.join(', '))}</b> → ${ap.reparado ? '<b style="color:#86efac;">agregados</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(ap.error) + '</b>'}` : ' · <b style="color:#86efac;">completos</b>') : `<br><b style="color:#fca5a5;">Avisos de la app: ${esc(ap.error || 'sin dato')}</b>`;
     const fb = r.facebook || {};
     const fbHtml = fb.conectada ? `<br><b>Facebook (página ${esc(fb.pageId)}):</b> ` + (fb.consultaOk ? `suscripta a <b>${esc(f(fb.campos))}</b>` + (['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).length ? ` · faltan <b>${esc(['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).join(', '))}</b> (activalos con "Añadir suscripciones" en Meta)` : ' · <b style="color:#86efac;">completos</b>') : `<b style="color:#fca5a5;">no pude consultar: ${esc(fb.error)}</b>`) + (fb.ultimoAviso ? ` · último aviso recibido: <b>${esc(new Date(fb.ultimoAviso.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' }))}</b>` : ' · <b style="color:#fca5a5;">todavía no llegó ningún aviso de Facebook</b>') : '<br><b>Facebook:</b> sin página conectada.';
+    const tk = fb.token;
+    const tkHtml = !fb.conectada ? '' : !tk ? '' : tk.ok
+      ? `<br><b>Token de la página (lo informa Facebook):</b> ${tk.valido ? 'válido' : '<b style="color:#fca5a5;">INVÁLIDO</b>'} · tipo <b>${esc(tk.tipo || '?')}</b> · vence: <b>${tk.expira ? esc(new Date(tk.expira * 1000).toLocaleString('es-AR')) : 'no vence'}</b><br>Permisos que trae: <b>${esc(f(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>')
+      : `<br><b style="color:#fca5a5;">Token de la página: ${esc(tk.error)}</b>`;
     el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
-      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml + fbHtml;
+      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml + fbHtml + tkHtml;
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
 
@@ -442,7 +446,7 @@ function pintarFb() {
 window.igConectarFb = async function () {
   const el = $('igFbRes'); el.textContent = 'Conectando con Facebook…';
   try {
-    const r = await conectarFacebook($('igFbPageId').value.trim(), $('igFbPageToken').value.trim()); $('igFbPageToken').value = '';
+    const r = await conectarFacebook($('igFbPageId').value.trim(), $('igFbPageToken').value.trim(), $('igFbAppId').value.trim()); $('igFbPageToken').value = '';
     el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>'}. Falta el paso de Webhooks en Meta (abajo).`;
     await window.cargarInstagram();
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }

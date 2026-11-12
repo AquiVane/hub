@@ -971,9 +971,9 @@ export async function repararSuscripcionInstagram() {
   return api('POST', '/admin/instagram/suscripcion', {});
 }
 
-export async function conectarFacebook(pageId = '', pageToken = '') {
+export async function conectarFacebook(pageId = '', pageToken = '', appId = '') {
   if (DEMO_MODE) return { ok: true, pageName: 'Página demo', suscripcion: 'ok' };
-  return api('POST', '/admin/instagram/facebook', { pageId, pageToken });
+  return api('POST', '/admin/instagram/facebook', { pageId, pageToken, appId });
 }
 export async function desconectarFacebook() {
   if (DEMO_MODE) return { ok: true };
