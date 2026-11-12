@@ -447,7 +447,14 @@ window.igConectarFb = async function () {
   const el = $('igFbRes'); el.textContent = 'Conectando con Facebook…';
   try {
     const r = await conectarFacebook($('igFbPageId').value.trim(), $('igFbPageToken').value.trim(), $('igFbAppId').value.trim()); $('igFbPageToken').value = '';
-    el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>'}. Falta el paso de Webhooks en Meta (abajo).`;
+    const tk = r.token;
+    const f2 = a => (a && a.length ? a.join(', ') : 'ninguno');
+    const susHtml = r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta desde acá</b>' : (String(r.suscripcion).startsWith('pendiente') ? 'se suscribió desde Meta (con "Añadir suscripciones"); desde acá no se puede porque el token no trae <b>pages_manage_metadata</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>');
+    const tkHtml = !tk ? '' : tk.ok
+      ? `<br>Permisos que trae el token (lo informa Facebook): <b>${esc(f2(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>')
+      : `<br><span style="color:#fca5a5;">${esc(tk.error)}</span>`;
+    const avisoHtml = r.ultimoAviso ? ' · Los avisos de Facebook ya llegan al sistema.' : ' · Todavía no llegó ningún aviso de Facebook (probá el botón Test de Meta).';
+    el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${susHtml}.${avisoHtml}${tkHtml}`;
     await window.cargarInstagram();
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
