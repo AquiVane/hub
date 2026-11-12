@@ -965,6 +965,19 @@ export async function repararSuscripcionInstagram() {
   return api('POST', '/admin/instagram/suscripcion', {});
 }
 
+export async function conectarFacebook(pageId = '') {
+  if (DEMO_MODE) return { ok: true, pageName: 'Página demo', suscripcion: 'ok' };
+  return api('POST', '/admin/instagram/facebook', { pageId });
+}
+export async function desconectarFacebook() {
+  if (DEMO_MODE) return { ok: true };
+  return api('DELETE', '/admin/instagram/facebook');
+}
+export async function getFacebookPosts() {
+  if (DEMO_MODE) return { posts: [] };
+  return api('GET', '/admin/instagram/fbposts');
+}
+
 export async function recuperarInstagram(reglaId, accion, body = {}) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', `/admin/instagram/recuperar/${encodeURIComponent(reglaId)}/${accion}`, body);

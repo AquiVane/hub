@@ -582,9 +582,19 @@
               <option value="comentario">Un comentario en una publicación o reel</option>
               <option value="historia">Una respuesta a una de mis historias</option>
             </select>
-            <div id="igFPostWrap"><label>¿En qué publicación?</label>
+            <div id="igFCanalWrap"><label>¿Dónde responde?</label>
+            <select id="igFCanal" class="form-control" onchange="igCambiarModo()">
+              <option value="instagram">Solo Instagram</option>
+              <option value="facebook">Solo Facebook (comentarios de la página)</option>
+              <option value="ambos">Instagram y Facebook</option>
+            </select>
+            <div id="igFCanalAviso" class="ig-sub" style="display:none;margin-top:4px;">En Facebook por ahora funciona solo el modo "Directo".</div></div>
+            <div id="igFPostWrap"><label id="igFPostLabel">¿En qué publicación?</label>
             <div class="ig-row"><span id="igFMediaTxt" style="flex:1;font-size:13px;"></span><button class="btn btn-sm btn-secondary" onclick="igElegirPost()">Elegir publicación</button></div>
             <input type="hidden" id="igFMediaId"><input type="hidden" id="igFMediaInfo"><div id="igPostsGrid"></div></div>
+            <div id="igFFbWrap" style="display:none;"><label>Publicación de Facebook</label>
+            <div class="ig-row"><span id="igFFbTxt" style="flex:1;font-size:13px;"></span><button class="btn btn-sm btn-secondary" onclick="igElegirPostFb()">Elegir publicación de Facebook</button></div>
+            <input type="hidden" id="igFFbId"><input type="hidden" id="igFFbInfo"><div id="igFbGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px;"></div></div>
             <label id="igFPalLabel">Palabras clave (separadas por coma; vacío = responde a cualquier comentario)</label><input id="igFPalabras" class="form-control" placeholder="quiero, link, info">
             <div id="igFPubWrap"><label>Respuestas públicas (una por línea; se elige una al azar. Vacío = no responde en público). Podés usar {nombre}</label>
             <textarea id="igFPublicas" class="form-control" rows="3" placeholder="¡Listo {nombre}! Te lo mandé por mensaje 📩"></textarea></div>
@@ -707,6 +717,23 @@
             </div>
           </details>
         </div>
+          <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Facebook (página)</h3>
+            <div id="igFbEstado" class="ig-sub" style="margin-bottom:8px;font-size:13px;"></div>
+            <label>ID de la página de Facebook (opcional: si lo dejás vacío se busca la página vinculada a tu Instagram)</label>
+            <input id="igFbPageId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 1234567890123456">
+            <div class="ig-row" style="margin-top:10px;">
+              <button class="btn btn-primary btn-sm" onclick="igConectarFb()">Conectar página de Facebook</button>
+              <button id="igFbBtnDesconectar" class="btn btn-secondary btn-sm" onclick="igDesconectarFb()" style="display:none;">Desconectar</button>
+            </div>
+            <div id="igFbRes" class="ig-sub" style="margin-top:8px;font-size:13px;"></div>
+            <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;font-size:13px;">Un paso en Meta (se hace una sola vez)</summary>
+              <ol class="ig-sub" style="margin:8px 0 0 18px;line-height:1.6;">
+                <li>En developers.facebook.com → tu app → <b>Webhooks</b>.</li>
+                <li>Arriba elegí el producto <b>Page</b> (Página) en el desplegable.</li>
+                <li>Pegá la misma <b>URL de devolución de llamada</b> y el mismo <b>token de verificación</b> que usás para Instagram, y tocá <b>Verificar y guardar</b>.</li>
+                <li>Suscribite al campo <b>feed</b> (activá el interruptor).</li>
+              </ol></details>
+          </div>
           <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Avisos de Instagram</h3>
             <button class="btn btn-primary btn-sm" onclick="igReparar()">Revisar y reparar suscripción de avisos</button>
             <div id="igReparoRes" class="ig-sub" style="margin-top:8px;font-size:13px;"></div>
@@ -2533,7 +2560,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds } from '../js/data.js?v=25';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds } from '../js/data.js?v=26';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -9612,6 +9639,6 @@
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=17"></script>
+<script type="module" src="../js/instagram.js?v=18"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram } from './data.js?v=25';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts } from './data.js?v=26';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -22,6 +22,7 @@ const hoyAR = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10
 
 window.cargarInstagram = async function () {
   try { estado = await getInstagram(); } catch (e) { aviso(e.message, true); return; }
+  pintarFb();
   pintarTodo();
 };
 
@@ -77,7 +78,7 @@ function pintarReglas() {
         <span style="font-size:12px;color:#cbd5e1;">${r.activa ? 'Activa' : 'Pausada'}</span>
         <label class="ig-sw" title="Prender / apagar"><input type="checkbox" ${r.activa ? 'checked' : ''} onchange="igAlternar('${esc(r.id)}', this)"><span></span></label>
       </div>
-      <div class="ig-sub">${r.disparador === 'historia' ? '📲 Respuesta a historias' : '📌 ' + (r.mediaId ? esc(r.mediaInfo || r.mediaId) : 'Todos los posts y reels')} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : (r.disparador === 'historia' ? 'Cualquier respuesta' : 'Cualquier comentario')}</div>
+      <div class="ig-sub">${r.canal === 'facebook' ? '📘 Facebook · ' + (r.fbPostId ? esc(r.fbPostInfo || r.fbPostId) : 'todas las publicaciones') : r.disparador === 'historia' ? '📲 Respuesta a historias' : (r.canal === 'ambos' ? '📘 Facebook + ' : '') + '📌 ' + (r.mediaId ? esc(r.mediaInfo || r.mediaId) : 'Todos los posts y reels')} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : (r.disparador === 'historia' ? 'Cualquier respuesta' : 'Cualquier comentario')}</div>
       <div class="ig-sub">${r.modo === 'dos-pasos' ? 'En dos pasos' + (r.exigirSeguir ? ' (exige seguir)' : '') + ' · botón "' + esc(r.confirmarBoton) + '" → ' : 'Directo · '}${r.botonUrl ? esc(r.botonTexto) + ' → ' + esc(r.botonUrl) : 'sin botón'}</div>
       <div class="ig-sub">Coincidencias ${r.stats?.coincidencias || 0} · Mensajes ${r.stats?.dms || 0}${r.modo === 'dos-pasos' ? ' · Recursos entregados ' + (r.stats?.confirmaciones || 0) : ''} · Fallos ${r.stats?.fallos || 0}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -118,6 +119,10 @@ function abrirForm() {
   $('igFormWrap').style.display = '';
   $('igFNombre').value = r.nombre || '';
   $('igFDisp').value = r.disparador === 'historia' ? 'historia' : 'comentario';
+  $('igFCanal').value = ['facebook', 'ambos'].includes(r.canal) ? r.canal : 'instagram';
+  $('igFFbId').value = r.fbPostId || ''; $('igFFbInfo').value = r.fbPostInfo || '';
+  $('igFFbTxt').textContent = r.fbPostId ? '📌 ' + (r.fbPostInfo || r.fbPostId) : '📌 Todas las publicaciones de la página';
+  $('igFbGrid').innerHTML = '';
   $('igFMediaId').value = r.mediaId || '';
   $('igFMediaInfo').value = r.mediaInfo || '';
   $('igFMediaTxt').textContent = r.mediaId ? '📌 ' + (r.mediaInfo || r.mediaId) : '📌 Todos los posts y reels';
@@ -146,7 +151,13 @@ function abrirForm() {
 }
 window.igCambiarModo = function () {
   const hist = $('igFDisp').value === 'historia';
-  $('igFPostWrap').style.display = hist ? 'none' : '';
+  const canal = hist ? 'instagram' : $('igFCanal').value;
+  $('igFCanalWrap').style.display = hist ? 'none' : '';
+  $('igFPostWrap').style.display = hist || canal === 'facebook' ? 'none' : '';
+  $('igFFbWrap').style.display = !hist && canal !== 'instagram' ? '' : 'none';
+  $('igFCanalAviso').style.display = canal !== 'instagram' ? '' : 'none';
+  if (canal !== 'instagram' && $('igFModo').value === 'dos-pasos') { $('igFModo').value = 'directo'; }
+  $('igFPostLabel').textContent = canal === 'ambos' ? '¿En qué publicación de Instagram?' : '¿En qué publicación?';
   $('igFPubWrap').style.display = hist ? 'none' : '';
   $('igFPalLabel').textContent = hist ? 'Palabra que tienen que escribir al responder la historia (separadas por coma; vacío = cualquier respuesta)' : 'Palabras clave (separadas por coma; vacío = responde a cualquier comentario)';
   const dos = $('igFModo').value === 'dos-pasos';
@@ -164,7 +175,7 @@ window.igCerrarForm = function () { $('igFormWrap').style.display = 'none'; regl
 window.igGuardarRegla = async function () {
   const regla = {
     id: reglaEditando?.id, nombre: $('igFNombre').value, activa: reglaEditando ? reglaEditando.activa !== false : true,
-    disparador: $('igFDisp').value,
+    disparador: $('igFDisp').value, canal: $('igFCanal').value, fbPostId: $('igFFbId').value, fbPostInfo: $('igFFbInfo').value,
     mediaId: $('igFMediaId').value, mediaInfo: $('igFMediaInfo').value, palabras: $('igFPalabras').value,
     respuestasPublicas: $('igFPublicas').value, dmTexto: $('igFDm').value,
     modo: $('igFModo').value, confirmarBoton: $('igFConfirmar').value, entregaTexto: $('igFEntrega').value, seguimientoTexto: $('igFSeguimiento').value,
@@ -414,4 +425,39 @@ window.igReparar = async function () {
     el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
       (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml;
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
+};
+
+
+// ── Facebook ──────────────────────────────────────────────────
+function pintarFb() {
+  const f = (estado && estado.facebook) || {};
+  const el = $('igFbEstado'); if (!el) return;
+  el.innerHTML = f.conectada ? `<b style="color:#86efac;">Conectada:</b> ${esc(f.pageName || f.pageId)}` : 'Todavía no está conectada la página de Facebook.';
+  $('igFbBtnDesconectar').style.display = f.conectada ? '' : 'none';
+}
+window.igConectarFb = async function () {
+  const el = $('igFbRes'); el.textContent = 'Conectando con Facebook…';
+  try {
+    const r = await conectarFacebook($('igFbPageId').value.trim());
+    el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>'}. Falta el paso de Webhooks en Meta (abajo).`;
+    await window.cargarInstagram();
+  } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
+};
+window.igDesconectarFb = async function () {
+  if (!confirm('¿Desconectar la página de Facebook? Las reglas de Facebook dejan de responder.')) return;
+  try { await desconectarFacebook(); $('igFbRes').textContent = 'Desconectada.'; await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
+};
+window.igElegirPostFb = async function () {
+  $('igFbGrid').innerHTML = '<p class="text-muted text-sm">Cargando las publicaciones de la página…</p>';
+  try {
+    const { posts } = await getFacebookPosts();
+    $('igFbGrid').innerHTML = `<div class="ig-post" onclick="igUsarPostFb('','')"><div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">∞</div><div class="ig-sub">Todas</div></div>` +
+      posts.map(p => `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc((p.caption || 'Publicación').replace(/['\n]/g, ' ').slice(0, 60))}')">
+        <div class="ig-post-img">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}</div><div class="ig-sub">${esc(p.caption || 'Publicación')}</div></div>`).join('');
+  } catch (e) { $('igFbGrid').innerHTML = ''; aviso(e.message, true); }
+};
+window.igUsarPostFb = function (id, info) {
+  $('igFFbId').value = id; $('igFFbInfo').value = info;
+  $('igFFbTxt').textContent = id ? '📌 ' + info : '📌 Todas las publicaciones de la página';
+  $('igFbGrid').innerHTML = '';
 };
