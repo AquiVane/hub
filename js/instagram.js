@@ -452,6 +452,7 @@ window.igDesconectarFb = async function () {
   try { await desconectarFacebook(); $('igFbRes').textContent = 'Desconectada.'; await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
 };
 window.igElegirPostFb = async function () {
+  $('igFbNota').style.display = 'none';
   $('igFbGrid').innerHTML = '<p class="text-muted text-sm">Cargando las publicaciones de la página…</p>';
   try {
     const { posts, vistos, aviso } = await getFacebookPosts();
@@ -467,11 +468,11 @@ window.igElegirPostFb = async function () {
     const nota = !(posts || []).length
       ? (vistosHtml ? 'Facebook no deja leer las publicaciones de la página (falta el permiso en el token), así que te muestro las publicaciones <b>donde ya llegaron comentarios</b>: elegí la que corresponde mirando el último comentario.' : 'Todavía no llegó ningún comentario de Facebook para mostrar acá. Cuando alguien comente en la publicación, va a aparecer en esta lista.')
       : '';
-    if (nota) $('igFbGrid').insertAdjacentHTML('beforebegin', `<p class="ig-sub" style="margin:8px 0;grid-column:1/-1;">${nota}</p>`);
+    const n = $('igFbNota'); n.innerHTML = nota; n.style.display = nota ? '' : 'none';   // un solo cartel, se reemplaza en cada clic
   } catch (e) { $('igFbGrid').innerHTML = ''; aviso(e.message, true); }
 };
 window.igUsarPostFb = function (id, info) {
   $('igFFbId').value = id; $('igFFbInfo').value = info;
   $('igFFbTxt').textContent = id ? '📌 ' + info : '📌 Todas las publicaciones de la página';
-  $('igFbGrid').innerHTML = '';
+  $('igFbGrid').innerHTML = ''; $('igFbNota').style.display = 'none';
 };
