@@ -450,10 +450,20 @@ window.igDesconectarFb = async function () {
 window.igElegirPostFb = async function () {
   $('igFbGrid').innerHTML = '<p class="text-muted text-sm">Cargando las publicaciones de la página…</p>';
   try {
-    const { posts } = await getFacebookPosts();
-    $('igFbGrid').innerHTML = `<div class="ig-post" onclick="igUsarPostFb('','')"><div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">∞</div><div class="ig-sub">Todas</div></div>` +
-      posts.map(p => `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc((p.caption || 'Publicación').replace(/['\n]/g, ' ').slice(0, 60))}')">
+    const { posts, vistos, aviso } = await getFacebookPosts();
+    const todas = `<div class="ig-post" onclick="igUsarPostFb('','')"><div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">∞</div><div class="ig-sub">Todas</div></div>`;
+    const conImg = (posts || []).map(p => `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc((p.caption || 'Publicación').replace(/['\n]/g, ' ').slice(0, 60))}')">
         <div class="ig-post-img">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}</div><div class="ig-sub">${esc(p.caption || 'Publicación')}</div></div>`).join('');
+    const vistosHtml = (vistos || []).map(p => {
+      const info = `Publicación con ${p.n} comentario${p.n === 1 ? '' : 's'} · último: ${p.ult || '—'}`;
+      return `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc(info.replace(/['\n]/g, ' ').slice(0, 130))}')">
+        <div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:22px;">💬 ${p.n}</div><div class="ig-sub">Último: “${esc(p.ult || '—')}”<br>${esc(new Date(p.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}</div></div>`;
+    }).join('');
+    $('igFbGrid').innerHTML = todas + conImg + vistosHtml;
+    const nota = !(posts || []).length
+      ? (vistosHtml ? 'Facebook no deja leer las publicaciones de la página (falta el permiso en el token), así que te muestro las publicaciones <b>donde ya llegaron comentarios</b>: elegí la que corresponde mirando el último comentario.' : 'Todavía no llegó ningún comentario de Facebook para mostrar acá. Cuando alguien comente en la publicación, va a aparecer en esta lista.')
+      : '';
+    if (nota) $('igFbGrid').insertAdjacentHTML('beforebegin', `<p class="ig-sub" style="margin:8px 0;grid-column:1/-1;">${nota}</p>`);
   } catch (e) { $('igFbGrid').innerHTML = ''; aviso(e.message, true); }
 };
 window.igUsarPostFb = function (id, info) {
