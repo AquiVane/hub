@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts } from './data.js?v=27';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts, getFacebookOAuth } from './data.js?v=30';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -84,7 +84,7 @@ function pintarReglas() {
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igDuplicar('${esc(r.id)}')">Duplicar</button>
-        ${r.mediaId ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
+        ${r.mediaId || r.canal === 'facebook' ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="igEliminar('${esc(r.id)}')">Eliminar</button>
       </div>
       <div id="igRec-${esc(r.id)}" style="display:${recAbiertos.has(r.id) ? '' : 'none'};margin-top:12px;border-top:1px solid #1A4DAA;padding-top:12px;"></div>
@@ -156,7 +156,7 @@ window.igCambiarModo = function () {
   $('igFPostWrap').style.display = hist || canal === 'facebook' ? 'none' : '';
   $('igFFbWrap').style.display = !hist && canal !== 'instagram' ? '' : 'none';
   $('igFCanalAviso').style.display = canal !== 'instagram' ? '' : 'none';
-  if (canal !== 'instagram' && $('igFModo').value === 'dos-pasos') { $('igFModo').value = 'directo'; }
+  if (canal === 'facebook' && $('igFModo').value === 'dos-pasos') { $('igFModo').value = 'directo'; }
   $('igFPostLabel').textContent = canal === 'ambos' ? '¿En qué publicación de Instagram?' : '¿En qué publicación?';
   $('igFPubWrap').style.display = hist ? 'none' : '';
   $('igFPalLabel').textContent = hist ? 'Palabra que tienen que escribir al responder la historia (separadas por coma; vacío = cualquier respuesta)' : 'Palabras clave (separadas por coma; vacío = responde a cualquier comentario)';
@@ -227,7 +227,7 @@ function pintarRec(id) {
   const pct = st.total ? Math.round(hechos * 100 / st.total) : 100;
   const nombres = { listo: 'Listo para empezar', corriendo: 'Enviando…', pausada: 'En pausa', terminada: 'Terminado' };
   el.innerHTML = msgHtml + `
-    <div class="ig-sub" style="margin:0 0 6px;color:#fff;font-size:13px;">Encontré <b>${r.conPalabra || 0}</b> comentarios con la palabra en esta publicación: <b>${r.yaRespondidos || 0}</b> ya tenían respuesta tuya, <b>${r.yaAtendidos || 0}</b> ya los atendió el sistema y <b>${r.fueraDeVentana || 0}</b> son de hace más de 7 días (Instagram no permite mandarles mensaje privado). Quedan <b>${st.total || 0}</b> para enviar.</div>
+    <div class="ig-sub" style="margin:0 0 6px;color:#fff;font-size:13px;">Encontré <b>${r.conPalabra || 0}</b> comentarios con la palabra en esta publicación: <b>${r.yaRespondidos || 0}</b> ya tenían respuesta tuya, <b>${r.yaAtendidos || 0}</b> ya los atendió el sistema y <b>${r.fueraDeVentana || 0}</b> son de hace más de 7 días (no se les puede mandar mensaje privado). Quedan <b>${st.total || 0}</b> para enviar.</div>
     <div class="ig-sub" style="margin:0 0 4px;color:#fff;"><b>${nombres[st.estado] || st.estado}</b> · enviados ${st.enviados || 0} de ${st.total || 0}${st.fallos ? ' · fallos ' + st.fallos : ''}${st.saltados ? ' · saltados ' + st.saltados : ''}${st.vencidos ? ' · vencidos ' + st.vencidos : ''}</div>
     <div style="background:#060F22;border-radius:999px;height:10px;overflow:hidden;margin-bottom:8px;"><div style="width:${pct}%;height:100%;background:#22c55e;"></div></div>
     ${st.motivo ? `<div class="ig-sub" style="color:#fca5a5;">${esc(st.motivo)}</div>` : ''}
@@ -422,8 +422,14 @@ window.igReparar = async function () {
     const f = a => (a && a.length ? a.join(', ') : 'ninguno');
     const ap = r.app || {};
     const appHtml = ap.ok ? `<br><b>Avisos de la app (Meta):</b> estaban <b>${esc(f(ap.camposAntes))}</b>` + (ap.faltaban && ap.faltaban.length ? ` · faltaban <b>${esc(ap.faltaban.join(', '))}</b> → ${ap.reparado ? '<b style="color:#86efac;">agregados</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(ap.error) + '</b>'}` : ' · <b style="color:#86efac;">completos</b>') : `<br><b style="color:#fca5a5;">Avisos de la app: ${esc(ap.error || 'sin dato')}</b>`;
+    const fb = r.facebook || {};
+    const fbHtml = fb.conectada ? `<br><b>Facebook (página ${esc(fb.pageId)}):</b> ` + (fb.consultaOk ? `suscripta a <b>${esc(f(fb.campos))}</b>` + (['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).length ? ` · faltan <b>${esc(['feed', 'messages', 'messaging_postbacks'].filter(c => !(fb.campos || []).includes(c)).join(', '))}</b> (activalos con "Añadir suscripciones" en Meta)` : ' · <b style="color:#86efac;">completos</b>') : `<b style="color:#fca5a5;">no pude consultar: ${esc(fb.error)}</b>`) + (fb.ultimoAviso ? ` · último aviso recibido: <b>${esc(new Date(fb.ultimoAviso.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' }))}</b>` : ' · <b style="color:#fca5a5;">todavía no llegó ningún aviso de Facebook</b>') : '<br><b>Facebook:</b> sin página conectada.';
+    const tk = fb.token;
+    const tkHtml = !fb.conectada ? '' : !tk ? '' : tk.ok
+      ? `<br><b>Token de la página (lo informa Facebook):</b> ${tk.valido ? 'válido' : '<b style="color:#fca5a5;">INVÁLIDO</b>'} · tipo <b>${esc(tk.tipo || '?')}</b> · vence: <b>${tk.expira ? esc(new Date(tk.expira * 1000).toLocaleString('es-AR')) : 'no vence'}</b><br>Permisos que trae: <b>${esc(f(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>')
+      : `<br><b style="color:#fca5a5;">Token de la página: ${esc(tk.error)}</b>`;
     el.innerHTML = `${r.consultaOk ? '' : '<b style="color:#fca5a5;">No pude consultar: ' + esc(r.errorConsulta) + '</b><br>'}Estaba suscripta a: <b>${esc(f(r.camposAntes))}</b><br>` +
-      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml;
+      (r.faltaban && r.faltaban.length ? `Faltaban: <b>${esc(r.faltaban.join(', '))}</b> → ${r.reparoOk ? '<b style="color:#86efac;">reparado</b>' : '<b style="color:#fca5a5;">no se pudo: ' + esc(r.errorReparo) + '</b>'}<br>Ahora: <b>${esc(f(r.camposDespues))}</b>` : '<b style="color:#86efac;">No faltaba ninguno.</b>') + appHtml + fbHtml + tkHtml;
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
 
@@ -432,14 +438,23 @@ window.igReparar = async function () {
 function pintarFb() {
   const f = (estado && estado.facebook) || {};
   const el = $('igFbEstado'); if (!el) return;
-  el.innerHTML = f.conectada ? `<b style="color:#86efac;">Conectada:</b> ${esc(f.pageName || f.pageId)}` : 'Todavía no está conectada la página de Facebook.';
+  const ua = f.ultimoAviso;
+  const avisoHtml = ua ? `<br>Último aviso de Facebook recibido: <b>${esc(new Date(ua.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' }))}</b> (${esc((ua.campos || []).join(', '))})${ua.reconocida ? '' : ' · <i>de prueba o de otra página</i>'}` : '<br><b style="color:#fca5a5;">Todavía no llegó ningún aviso de Facebook.</b> Si ya activaste feed en Meta, comentá o usá el botón Test y recargá esta pantalla.';
+  el.innerHTML = (f.conectada ? `<b style="color:#86efac;">Conectada:</b> ${esc(f.pageName || f.pageId)}` : 'Todavía no está conectada la página de Facebook.') + avisoHtml;
   $('igFbBtnDesconectar').style.display = f.conectada ? '' : 'none';
 }
 window.igConectarFb = async function () {
   const el = $('igFbRes'); el.textContent = 'Conectando con Facebook…';
   try {
-    const r = await conectarFacebook($('igFbPageId').value.trim());
-    el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>'}. Falta el paso de Webhooks en Meta (abajo).`;
+    const r = await conectarFacebook($('igFbPageId').value.trim(), $('igFbPageToken').value.trim(), $('igFbAppId').value.trim()); $('igFbPageToken').value = '';
+    const tk = r.token;
+    const f2 = a => (a && a.length ? a.join(', ') : 'ninguno');
+    const susHtml = r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta desde acá</b>' : (String(r.suscripcion).startsWith('pendiente') ? 'se suscribió desde Meta (con "Añadir suscripciones"); desde acá no se puede porque el token no trae <b>pages_manage_metadata</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>');
+    const tkHtml = !tk ? '' : tk.ok
+      ? `<br>Permisos que trae el token (lo informa Facebook): <b>${esc(f2(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>') + `<br>Prueba real de lectura de publicaciones: ` + (tk.lecturaOk === true ? '<b style="color:#86efac;">funciona</b>' : tk.lecturaOk === false ? `<b style="color:#fca5a5;">falla</b> (${esc(tk.lecturaError)})` : 'sin datos') + `<br>Prueba real de lectura de comentarios: ` + (tk.comentariosOk === true ? '<b style="color:#86efac;">funciona</b>' : tk.comentariosOk === false ? `<b style="color:#fca5a5;">falla</b> (${esc(tk.comentariosError)})` : 'sin datos')
+      : `<br><span style="color:#fca5a5;">${esc(tk.error)}</span>`;
+    const avisoHtml = r.ultimoAviso ? ' · Los avisos de Facebook ya llegan al sistema.' : ' · Todavía no llegó ningún aviso de Facebook (probá el botón Test de Meta).';
+    el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${susHtml}.${avisoHtml}${tkHtml}`;
     await window.cargarInstagram();
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
@@ -448,16 +463,38 @@ window.igDesconectarFb = async function () {
   try { await desconectarFacebook(); $('igFbRes').textContent = 'Desconectada.'; await window.cargarInstagram(); } catch (e) { aviso(e.message, true); }
 };
 window.igElegirPostFb = async function () {
+  $('igFbNota').style.display = 'none';
   $('igFbGrid').innerHTML = '<p class="text-muted text-sm">Cargando las publicaciones de la página…</p>';
   try {
-    const { posts } = await getFacebookPosts();
-    $('igFbGrid').innerHTML = `<div class="ig-post" onclick="igUsarPostFb('','')"><div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">∞</div><div class="ig-sub">Todas</div></div>` +
-      posts.map(p => `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc((p.caption || 'Publicación').replace(/['\n]/g, ' ').slice(0, 60))}')">
+    const { posts, vistos, aviso } = await getFacebookPosts();
+    const todas = `<div class="ig-post" onclick="igUsarPostFb('','')"><div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">∞</div><div class="ig-sub">Todas</div></div>`;
+    const conImg = (posts || []).map(p => `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc((p.caption || 'Publicación').replace(/['\n]/g, ' ').slice(0, 60))}')">
         <div class="ig-post-img">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}</div><div class="ig-sub">${esc(p.caption || 'Publicación')}</div></div>`).join('');
+    const vistosHtml = (vistos || []).map(p => {
+      const info = `Publicación con ${p.n} comentario${p.n === 1 ? '' : 's'} · último: ${p.ult || '—'}`;
+      return `<div class="ig-post" onclick="igUsarPostFb('${esc(p.id)}','${esc(info.replace(/['\n]/g, ' ').slice(0, 130))}')">
+        <div class="ig-post-img" style="display:flex;align-items:center;justify-content:center;font-size:22px;">💬 ${p.n}</div><div class="ig-sub">Último: “${esc(p.ult || '—')}”<br>${esc(new Date(p.t).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}</div></div>`;
+    }).join('');
+    $('igFbGrid').innerHTML = todas + conImg + vistosHtml;
+    const sinLista = !(posts || []).length;
+    const causa = sinLista ? `<b style="color:#fca5a5;">Facebook no deja leer las publicaciones de la página con el token que está cargado.</b>${aviso ? ' (' + esc(aviso) + ')' : ''} Falta el permiso <b>pages_read_engagement</b> en el <b>token de la página</b> (agregarlo a la app no alcanza: el token tiene que generarse de nuevo aceptándolo). Mientras tanto la regla funciona con <b>"Todas las publicaciones"</b> y la palabra clave.` : '';
+    const sugeridas = sinLista && vistosHtml ? ' Debajo podés elegir una publicación donde ya llegaron comentarios.' : '';
+    const nota = causa + sugeridas;
+    const n = $('igFbNota'); n.innerHTML = nota; n.style.display = nota ? '' : 'none';   // un solo cartel, se reemplaza en cada clic
   } catch (e) { $('igFbGrid').innerHTML = ''; aviso(e.message, true); }
 };
 window.igUsarPostFb = function (id, info) {
   $('igFFbId').value = id; $('igFFbInfo').value = info;
   $('igFFbTxt').textContent = id ? '📌 ' + info : '📌 Todas las publicaciones de la página';
-  $('igFbGrid').innerHTML = '';
+  $('igFbGrid').innerHTML = ''; $('igFbNota').style.display = 'none';
+};
+
+window.igConectarFbOAuth = async function () {
+  const el = $('igFbOAuthRes'); el.textContent = 'Preparando la conexión…';
+  try {
+    const appId = ($('igFbAppId2').value || $('igFbAppId').value || '').trim();
+    const r = await getFacebookOAuth(appId);
+    el.innerHTML = 'App verificada: <b>' + esc(r.appNombre || r.appId) + '</b> (' + esc(r.appId) + '). Te llevo a Facebook. Elegí la página <b>Aquí Vaneh</b> y aceptá todos los permisos. Si Facebook dice que la dirección de retorno no es válida, pegá esta en Meta → Inicio de sesión con Facebook → <i>URI de redireccionamiento de OAuth válidos</i>: <b style="word-break:break-all;">' + esc(r.redirect) + '</b>';
+    setTimeout(() => { window.location.href = r.url; }, 1800);
+  } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };

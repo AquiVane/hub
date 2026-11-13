@@ -884,6 +884,12 @@ export async function setVentasPanelConfig(vertical, mes, parcial) {
   return api('PUT', `/admin/ventas-panel/config?vertical=${encodeURIComponent(vertical)}&mes=${encodeURIComponent(mes)}`, parcial);
 }
 
+// ── Visitas de todos los sitios (12/11) ──
+export async function getVisitas(dias) {
+  if (DEMO_MODE) return { ok: true, periodo_dias: dias, total: { visitas: 0, unicos: 0 }, sitios: [] };
+  return api('GET', `/admin/visitas?dias=${encodeURIComponent(dias)}`);
+}
+
 export async function saveLead(lead) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/leads', lead);
@@ -965,9 +971,13 @@ export async function repararSuscripcionInstagram() {
   return api('POST', '/admin/instagram/suscripcion', {});
 }
 
-export async function conectarFacebook(pageId = '') {
+export async function conectarFacebook(pageId = '', pageToken = '', appId = '') {
   if (DEMO_MODE) return { ok: true, pageName: 'Página demo', suscripcion: 'ok' };
-  return api('POST', '/admin/instagram/facebook', { pageId });
+  return api('POST', '/admin/instagram/facebook', { pageId, pageToken, appId });
+}
+export async function getFacebookOAuth(appId = '') {
+  if (DEMO_MODE) return { url: '#', redirect: '' };
+  return api('GET', '/admin/instagram/facebook/oauth' + (appId ? '?appId=' + encodeURIComponent(appId) : ''));
 }
 export async function desconectarFacebook() {
   if (DEMO_MODE) return { ok: true };
