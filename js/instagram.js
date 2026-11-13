@@ -84,7 +84,7 @@ function pintarReglas() {
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igDuplicar('${esc(r.id)}')">Duplicar</button>
-        ${r.mediaId && r.canal !== 'facebook' ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
+        ${r.mediaId || r.canal === 'facebook' ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="igEliminar('${esc(r.id)}')">Eliminar</button>
       </div>
       <div id="igRec-${esc(r.id)}" style="display:${recAbiertos.has(r.id) ? '' : 'none'};margin-top:12px;border-top:1px solid #1A4DAA;padding-top:12px;"></div>
@@ -227,7 +227,7 @@ function pintarRec(id) {
   const pct = st.total ? Math.round(hechos * 100 / st.total) : 100;
   const nombres = { listo: 'Listo para empezar', corriendo: 'Enviando…', pausada: 'En pausa', terminada: 'Terminado' };
   el.innerHTML = msgHtml + `
-    <div class="ig-sub" style="margin:0 0 6px;color:#fff;font-size:13px;">Encontré <b>${r.conPalabra || 0}</b> comentarios con la palabra en esta publicación: <b>${r.yaRespondidos || 0}</b> ya tenían respuesta tuya, <b>${r.yaAtendidos || 0}</b> ya los atendió el sistema y <b>${r.fueraDeVentana || 0}</b> son de hace más de 7 días (Instagram no permite mandarles mensaje privado). Quedan <b>${st.total || 0}</b> para enviar.</div>
+    <div class="ig-sub" style="margin:0 0 6px;color:#fff;font-size:13px;">Encontré <b>${r.conPalabra || 0}</b> comentarios con la palabra en esta publicación: <b>${r.yaRespondidos || 0}</b> ya tenían respuesta tuya, <b>${r.yaAtendidos || 0}</b> ya los atendió el sistema y <b>${r.fueraDeVentana || 0}</b> son de hace más de 7 días (no se les puede mandar mensaje privado). Quedan <b>${st.total || 0}</b> para enviar.</div>
     <div class="ig-sub" style="margin:0 0 4px;color:#fff;"><b>${nombres[st.estado] || st.estado}</b> · enviados ${st.enviados || 0} de ${st.total || 0}${st.fallos ? ' · fallos ' + st.fallos : ''}${st.saltados ? ' · saltados ' + st.saltados : ''}${st.vencidos ? ' · vencidos ' + st.vencidos : ''}</div>
     <div style="background:#060F22;border-radius:999px;height:10px;overflow:hidden;margin-bottom:8px;"><div style="width:${pct}%;height:100%;background:#22c55e;"></div></div>
     ${st.motivo ? `<div class="ig-sub" style="color:#fca5a5;">${esc(st.motivo)}</div>` : ''}
