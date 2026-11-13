@@ -451,7 +451,7 @@ window.igConectarFb = async function () {
     const f2 = a => (a && a.length ? a.join(', ') : 'ninguno');
     const susHtml = r.suscripcion === 'ok' ? '<b style="color:#86efac;">suscripta desde acá</b>' : (String(r.suscripcion).startsWith('pendiente') ? 'se suscribió desde Meta (con "Añadir suscripciones"); desde acá no se puede porque el token no trae <b>pages_manage_metadata</b>' : '<b style="color:#fca5a5;">' + esc(r.suscripcion) + '</b>');
     const tkHtml = !tk ? '' : tk.ok
-      ? `<br>Permisos que trae el token (lo informa Facebook): <b>${esc(f2(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>')
+      ? `<br>Permisos que trae el token (lo informa Facebook): <b>${esc(f2(tk.scopes))}</b><br>` + (tk.faltan && tk.faltan.length ? `<b style="color:#fca5a5;">Le faltan: ${esc(tk.faltan.join(', '))}</b>` : '<b style="color:#86efac;">Trae todos los permisos necesarios.</b>') + `<br>Prueba real de lectura de publicaciones: ` + (tk.lecturaOk === true ? '<b style="color:#86efac;">funciona</b>' : tk.lecturaOk === false ? `<b style="color:#fca5a5;">falla</b> (${esc(tk.lecturaError)})` : 'sin datos')
       : `<br><span style="color:#fca5a5;">${esc(tk.error)}</span>`;
     const avisoHtml = r.ultimoAviso ? ' · Los avisos de Facebook ya llegan al sistema.' : ' · Todavía no llegó ningún aviso de Facebook (probá el botón Test de Meta).';
     el.innerHTML = `<b style="color:#86efac;">Página conectada: ${esc(r.pageName || r.pageId)}.</b> Avisos de la página: ${susHtml}.${avisoHtml}${tkHtml}`;
