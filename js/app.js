@@ -1930,6 +1930,9 @@ let pautaFiltroSel = 'organico';
 // Vaneh (21/09): "necesito poder filtrar por plataforma... y también por
 // fecha".
 let _bancoFiltroPlataforma = 'todas';
+// Orden de la base de contenidos por fecha de publicación: 'asc' = del más antiguo al más nuevo, 'desc' = del más nuevo al más antiguo.
+// Los contenidos sin fecha van siempre al final. Se recuerda en este dispositivo.
+let _bancoOrden = (() => { try { return localStorage.getItem('hub_banco_orden') === 'desc' ? 'desc' : 'asc'; } catch (e) { return 'asc'; } })();
 let _bancoFiltroFechaDesde = '';
 let _bancoFiltroFechaHasta = '';
 const BANCO_PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn', 'Twitter / X', 'TikTok', 'YouTube', 'Sitio Web', 'Blog'];
@@ -2243,7 +2246,13 @@ function renderBancoContenidos(container) {
   const activos = STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter)
     .filter(matchFiltrosCont);
   const archivados = STATE.contenidos.filter(c => c.archivado);
-  const all = [...activos].sort((a, b) => (a.fechaPub || 'zzz') > (b.fechaPub || 'zzz') ? 1 : -1);
+  const dir = _bancoOrden === 'desc' ? -1 : 1;
+  const all = [...activos].sort((a, b) => {
+    if (!a.fechaPub && !b.fechaPub) return 0;
+    if (!a.fechaPub) return 1;   // sin fecha siempre al final
+    if (!b.fechaPub) return -1;
+    return a.fechaPub === b.fechaPub ? 0 : (a.fechaPub > b.fechaPub ? dir : -dir);
+  });
 
   const hoy = new Date();
   const anioActual = String(hoy.getFullYear());
@@ -2255,7 +2264,7 @@ function renderBancoContenidos(container) {
     if (!grupos.has(clave)) grupos.set(clave, []);
     grupos.get(clave).push(c);
   });
-  const clavesConFecha = [...grupos.keys()].filter(c => c !== 'sin-fecha').sort((a, b) => a.localeCompare(b));
+  const clavesConFecha = [...grupos.keys()].filter(c => c !== 'sin-fecha').sort((a, b) => dir * a.localeCompare(b));
   const anios = [...new Set(clavesConFecha.map(c => c.slice(0, 4)))];
 
   const sinFechaHtml = grupos.has('sin-fecha')
@@ -2281,12 +2290,18 @@ function renderBancoContenidos(container) {
   const filtrosHtml = `
     <div class="banco-resumen">
       <span>${all.length} contenido${all.length !== 1 ? 's' : ''}</span>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">Orden
+        <select class="form-control" style="width:auto;padding:4px 8px;font-size:12px;" onchange="cambiarBancoOrden(this.value)">
+          <option value="asc" ${_bancoOrden === 'asc' ? 'selected' : ''}>Más antiguos primero</option>
+          <option value="desc" ${_bancoOrden === 'desc' ? 'selected' : ''}>Más nuevos primero</option>
+        </select>
+      </label>
       ${hayFiltroActivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="limpiarBancoFiltros()">✕ Limpiar filtros</button>` : ''}
     </div>`;
 
   container.innerHTML = `
     ${filtrosHtml}
-    ${all.length ? sinFechaHtml + aniosHtml : `<div class="empty-state"><p>${hayAlgunContenido?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
+    ${all.length ? aniosHtml + sinFechaHtml : `<div class="empty-state"><p>${hayAlgunContenido?'Sin contenidos con este filtro.':'Sin contenidos aún.'}</p></div>`}
     ${archivados.length ? `
       <div style="margin-top:24px;">
         <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivados':'▼ Ver archivados (${archivados.length})'">▼ Ver archivados (${archivados.length})</button>
@@ -2306,6 +2321,12 @@ function renderBancoContenidos(container) {
     ` : ''}
   `;
 }
+
+window.cambiarBancoOrden = function(val) {
+  _bancoOrden = val === 'desc' ? 'desc' : 'asc';
+  try { localStorage.setItem('hub_banco_orden', _bancoOrden); } catch (e) {}
+  renderContTab('banco');
+};
 
 window.cambiarBancoFiltroPlataforma = function(val) {
   _bancoFiltroPlataforma = val;

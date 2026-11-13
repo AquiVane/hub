@@ -5,6 +5,10 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 13/11 — Base de contenidos: sin fecha al final y orden elegible
+- La base (`renderBancoContenidos`) ahora deja "📌 Sin fecha" al final y tiene un selector "Orden: Más antiguos primero / Más nuevos primero" (se recuerda en el dispositivo, `hub_banco_orden`). Cambia años, meses y filas. `app.js?v=90`, `hv=36`, `data.js?v=30`, `offline.js?v=16` (la lectura con cambio pendiente ya no espera sin límite).
+- Pendiente abierto: el cartel "1 cambio sin sincronizar" en Contenidos propios (`_cosmart/contenidos`) de Vaneh sigue; no se encontró la causa en el servidor (lista chica: 94 KB, 99 ítems). Falta el diagnóstico del cartel.
+
 ## 10/11 (2) — Editar cliente: campo "Email principal" (solo admin)
 - En el modal Editar cliente (`ecl-email`) se puede agregar o cambiar el mail principal; confirma antes de guardar. El backend (`handleUpdateClient`, ver HANDOFF de cosmart-workers) mueve la cuenta conservando la contraseña. Pendiente de desplegar el worker.
 
