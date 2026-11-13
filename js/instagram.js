@@ -84,7 +84,7 @@ function pintarReglas() {
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" onclick="igEditar('${esc(r.id)}')">Editar</button>
         <button class="btn btn-sm btn-secondary" onclick="igDuplicar('${esc(r.id)}')">Duplicar</button>
-        ${r.mediaId ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
+        ${r.mediaId && r.canal !== 'facebook' ? `<button class="btn btn-sm btn-secondary" onclick="igRecToggle('${esc(r.id)}')">Recuperar comentarios</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="igEliminar('${esc(r.id)}')">Eliminar</button>
       </div>
       <div id="igRec-${esc(r.id)}" style="display:${recAbiertos.has(r.id) ? '' : 'none'};margin-top:12px;border-top:1px solid #1A4DAA;padding-top:12px;"></div>
