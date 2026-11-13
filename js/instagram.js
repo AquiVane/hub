@@ -494,7 +494,7 @@ window.igConectarFbOAuth = async function () {
   try {
     const appId = ($('igFbAppId2').value || $('igFbAppId').value || '').trim();
     const r = await getFacebookOAuth(appId);
-    el.innerHTML = 'Te llevo a Facebook. Elegí la página <b>Aquí Vaneh</b> y aceptá todos los permisos. Si Facebook dice que la dirección de retorno no es válida, pegá esta en Meta → Inicio de sesión con Facebook → <i>URI de redireccionamiento de OAuth válidos</i>: <b style="word-break:break-all;">' + esc(r.redirect) + '</b>';
+    el.innerHTML = 'App verificada: <b>' + esc(r.appNombre || r.appId) + '</b> (' + esc(r.appId) + '). Te llevo a Facebook. Elegí la página <b>Aquí Vaneh</b> y aceptá todos los permisos. Si Facebook dice que la dirección de retorno no es válida, pegá esta en Meta → Inicio de sesión con Facebook → <i>URI de redireccionamiento de OAuth válidos</i>: <b style="word-break:break-all;">' + esc(r.redirect) + '</b>';
     setTimeout(() => { window.location.href = r.url; }, 1800);
   } catch (e) { el.innerHTML = '<b style="color:#fca5a5;">' + esc(e.message) + '</b>'; }
 };
