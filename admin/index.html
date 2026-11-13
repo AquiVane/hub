@@ -747,6 +747,14 @@
         </div>
           <div class="ig-box"><h3 style="font-size:15px;font-weight:700;margin:0 0 8px;">Facebook (página)</h3>
             <div id="igFbEstado" class="ig-sub" style="margin-bottom:8px;font-size:13px;"></div>
+            <div style="margin:0 0 12px;padding:12px;border-radius:10px;background:#0D2B6B;">
+              <div style="font-weight:700;margin-bottom:6px;">Conectar con Facebook (recomendado)</div>
+              <div class="ig-sub" style="margin-bottom:8px;">Facebook te pide los permisos directamente y el Hub guarda el acceso solo: no hace falta generar ni pegar ningún token.</div>
+              <label>ID de la app de Meta (público)</label>
+              <input id="igFbAppId2" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 29535270636098656">
+              <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="igConectarFbOAuth()">Conectar con Facebook</button>
+              <div id="igFbOAuthRes" class="ig-sub" style="margin-top:8px;font-size:13px;"></div>
+            </div>
             <label>ID de la página de Facebook (opcional: si lo dejás vacío se busca la página vinculada a tu Instagram)</label>
             <input id="igFbPageId" class="form-control" inputmode="numeric" autocomplete="off" placeholder="Ej: 1234567890123456">
             <label>ID de la app de Meta (público; sirve para ver qué permisos trae el token. Está en la barra de dirección de developers.facebook.com/apps/<número>)</label>
@@ -2592,7 +2600,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=28';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=29';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -9744,6 +9752,6 @@
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=30"></script>
+<script type="module" src="../js/instagram.js?v=31"></script>
 </body>
 </html>

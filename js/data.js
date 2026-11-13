@@ -975,6 +975,10 @@ export async function conectarFacebook(pageId = '', pageToken = '', appId = '') 
   if (DEMO_MODE) return { ok: true, pageName: 'Página demo', suscripcion: 'ok' };
   return api('POST', '/admin/instagram/facebook', { pageId, pageToken, appId });
 }
+export async function getFacebookOAuth(appId = '') {
+  if (DEMO_MODE) return { url: '#', redirect: '' };
+  return api('GET', '/admin/instagram/facebook/oauth' + (appId ? '?appId=' + encodeURIComponent(appId) : ''));
+}
 export async function desconectarFacebook() {
   if (DEMO_MODE) return { ok: true };
   return api('DELETE', '/admin/instagram/facebook');
