@@ -946,3 +946,6 @@ Fix real (en los archivos binarios, no en HTML):
 
 ## 13/11/2026 (noche) — Toques de botón con límite de Meta (#4)
 Backend: si Meta devuelve #4 al entregar tras el toque de "Sí, enviámela", la persona queda pendiente y se reintenta sola a los 10 min (antes se perdía). Detalle en HANDOFF de `cosmart-workers`.
+
+## 14/11/2026 — Respuestas en hilos
+Las respuestas de otras personas dentro de un hilo de comentarios ahora disparan las automatizaciones (detalle en HANDOFF de `cosmart-workers`).
