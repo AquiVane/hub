@@ -3019,7 +3019,39 @@
     return `${d}/${m}/${y}`;
   }
 
-  function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  // Sanitiza el HTML del editor de notas (lista blanca de etiquetas y atributos).
+  // Evita XSS almacenado: <script>, onerror=, javascript:, iframes, etc. se descartan.
+  const _HTML_OK = new Set(['B','I','U','S','STRONG','EM','BR','P','DIV','SPAN','UL','OL','LI','A','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','CODE','PRE','HR','FONT','SUB','SUP']);
+  const _CSS_OK = /^(color|background-color|font-weight|font-style|text-decoration|text-align)$/i;
+  function sanitizarHtml(html) {
+    if (html == null || html === '') return '';
+    const doc = new DOMParser().parseFromString('<body>' + String(html), 'text/html');
+    (function limpiar(nodo) {
+      [...nodo.childNodes].forEach(n => {
+        if (n.nodeType === 3) return;
+        if (n.nodeType !== 1) { n.remove(); return; }
+        if (!_HTML_OK.has(n.tagName)) { // etiqueta no permitida: se conserva solo su texto (scripts/estilos se descartan enteros)
+          if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|LINK|META|SVG|MATH|TEMPLATE|FORM|INPUT|TEXTAREA|BUTTON)$/.test(n.tagName)) { n.remove(); return; }
+          limpiar(n); n.replaceWith(...n.childNodes); return;
+        }
+        [...n.attributes].forEach(a => {
+          const nom = a.name.toLowerCase();
+          if (nom === 'href' && n.tagName === 'A' && /^(https?:|mailto:|tel:)/i.test(a.value.trim())) return;
+          if (nom === 'color' && n.tagName === 'FONT' && /^[#\w(),.\s%-]{1,40}$/.test(a.value)) return;
+          if (nom === 'style') {
+            const ok = a.value.split(';').map(x => x.trim()).filter(x => { const [k, v] = x.split(':'); return k && v && _CSS_OK.test(k.trim()) && !/url\(|expression|javascript|[<>]/i.test(v); });
+            if (ok.length) { a.value = ok.join(';'); return; }
+          }
+          n.removeAttribute(a.name);
+        });
+        if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); }
+        limpiar(n);
+      });
+    })(doc.body);
+    return doc.body.innerHTML;
+  }
+
 
   // ══════════════════════════════════════════════════════════════
   // PERMISOS POR TAREA + HISTORIAL DE CAMBIOS -- pedido de Vaneh (27/09):
@@ -3153,7 +3185,7 @@
     const equipo = (await getEquipoCache()).filter(c => c.email !== CLAUDE_IA_EMAIL);
     const emails = (seleccionados || []).map(e => (e || '').toLowerCase());
     cont.innerHTML = equipo.length
-      ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="${prefix}-restr-chk" value="${c.email.toLowerCase()}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${c.nombre}</label>`).join('')
+      ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="${prefix}-restr-chk" value="${escapeHtml(c.email.toLowerCase())}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${escapeHtml(c.nombre)}</label>`).join('')
       : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores todavía.</p>';
   }
   function setRestrUI(prefix, restringidaA) {
@@ -3628,7 +3660,7 @@
           ${segmentos.map(s => `
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px;">
               <span style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0;"></span>
-              <span style="flex:1;color:var(--text);">${s.nombre}</span>
+              <span style="flex:1;color:var(--text);">${escapeHtml(s.nombre)}</span>
               <span style="color:var(--text-muted);font-weight:600;">${s.val} (${Math.round(s.frac * 100)}%)</span>
             </div>
           `).join('')}
@@ -3668,7 +3700,7 @@
       const listaHtml = ordenados.length ? ordenados.map(c => `
         <a href="../app/index.html?client=${c.id}" target="_blank" style="display:flex;align-items:center;gap:7px;">
           <span style="width:6px;height:6px;border-radius:50%;background:${c.activo !== false ? '#10b981' : '#94a3b8'};flex-shrink:0;"></span>
-          ${c.nombre || c.name || c.id}
+          ${escapeHtml(c.nombre || c.name || c.id)}
         </a>
       `).join('') : '<div style="padding:10px;font-size:12px;color:var(--text-muted);">Sin clientes todavía.</div>';
       dd.innerHTML = colabHtml + listaHtml;
@@ -3696,12 +3728,12 @@
     const sel = document.getElementById('internasVerDe');
     if (!sel || (sel.dataset.poblado && !forzar)) return;
     const miEmail = (user.email || '').toLowerCase();
-    let opciones = [`<option value="_todos" hidden>Equipo</option>`, `<option value="_todos">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    let opciones = [`<option value="_todos" hidden>Equipo</option>`, `<option value="_todos">Todos</option>`, `<option value="${miEmail}">Yo (${escapeHtml(user.name || user.email)})</option>`];
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
         if (c.email.toLowerCase() === miEmail) return;
-        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+        opciones.push(`<option value="${escapeHtml(c.email.toLowerCase())}">${escapeHtml(c.nombre)}</option>`);
       });
     } catch (e) {}
     sel.innerHTML = opciones.join('');
@@ -3827,7 +3859,7 @@
     return items.map(t => `
       <div class="card" style="padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;${t.estado === 'Listo' ? 'opacity:.55;' : ''}">
         <div style="flex:1;min-width:150px;cursor:pointer;" onclick="openInternaModal('${t.id}')">
-          <div style="font-size:13px;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;' : ''}">${t.esProyecto ? '🔷 ' : ''}${t.titulo}</div>
+          <div style="font-size:13px;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;' : ''}">${t.esProyecto ? '🔷 ' : ''}${escapeHtml(t.titulo)}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${[t.vertical, t.vencimiento ? '📅 ' + t.vencimiento : '', t.asignado ? '👤 ' + t.asignado.nombre : ''].filter(Boolean).join(' · ')}</div>
         </div>
         ${etiquetaEstado(t.estado)}
@@ -3900,7 +3932,7 @@
               <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openInternaModal('${t.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (t.recurrencia ? 'background:#c3b1d1;border-color:#af9dbd;' : '')}">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <button onclick="event.stopPropagation();toggleInternaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${t.titulo}</div>
+                  <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeInterna(t)}</span> ` : ''}${escapeHtml(t.titulo)}</div>
                 </div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
                   ${t.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[t.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[t.vertical] || '#64748b'};font-weight:700;">${t.vertical}</span>` : ''}
@@ -3909,7 +3941,7 @@
                 </div>
                 <div style="margin-top:5px;">${etiquetaEstado(t.estado)}</div>
                 ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${muted};">📅 ${t.vencimiento}</div>` : ''}
-                ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:${esProy ? '#93c5fd' : 'var(--primary)'};">👤 ${t.asignado.nombre}</div>` : ''}
+                ${t.asignado ? `<div style="font-size:11px;margin-top:4px;color:${esProy ? '#93c5fd' : 'var(--primary)'};">👤 ${escapeHtml(t.asignado.nombre)}</div>` : ''}
                 ${t.colaboracionCon?.length ? `<div style="font-size:11px;margin-top:2px;color:${esProy ? '#93c5fd' : 'var(--text-muted)'};">🤝 ${t.colaboracionCon.map(c => c.nombre).join(', ')}</div>` : ''}
                 ${t.subtareas?.length ? (() => {
                   const done = t.subtareas.filter(s => s.done).length;
@@ -3936,7 +3968,7 @@
         <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
           ${archivadas.map(t => `
             <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${escapeHtml(t.titulo)}</div>
               <div style="display:flex;gap:4px;margin-top:6px;">
                 <button class="btn btn-secondary btn-sm" onclick="desarchivarInterna('${t.id}')">Restaurar</button>
                 <button class="btn btn-danger btn-sm" onclick="eliminarInternaDirecto('${t.id}')">🗑</button>
@@ -4075,7 +4107,7 @@
       try { _procClientesCache = await getAllClients(); } catch (e) { _procClientesCache = []; }
     }
     sel.innerHTML = `<option value="_cosmart">🏢 COSMART (interno)</option>` +
-      _procClientesCache.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('');
+      _procClientesCache.map(c => `<option value="${c.id}">${escapeHtml(c.nombre || c.name || c.id)}</option>`).join('');
     if (!_procClienteId) _procClienteId = '_cosmart';
     sel.value = _procClienteId;
     await cambiarProcesoCliente();
@@ -4134,7 +4166,7 @@
         <div id="presOtras" style="margin-top:10px;">
           ${(p.otras || []).map((o, i) => `
             <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
-              <input type="text" class="form-control" style="flex:1;" value="${o.nombre || ''}" placeholder="Otra plataforma" onchange="cambiarPresupuestoOtra(${i},'nombre',this.value)">
+              <input type="text" class="form-control" style="flex:1;" value="${escapeHtml(o.nombre || '')}" placeholder="Otra plataforma" onchange="cambiarPresupuestoOtra(${i},'nombre',this.value)">
               <input type="number" class="form-control" style="width:120px;" value="${o.monto || ''}" placeholder="0" onchange="cambiarPresupuestoOtra(${i},'monto',this.value)">
               <button class="btn btn-danger btn-sm" onclick="eliminarPresupuestoOtra(${i})">×</button>
             </div>
@@ -4223,11 +4255,11 @@
     el.innerHTML = lista.map(p => `
       <div class="procesos-item">
         <button class="procesos-item-btn ${_procSeleccion?.procesoId === p.id && !_procSeleccion?.subprocesoId ? 'active' : ''}" onclick="seleccionarProceso('${p.id}')">
-          ${p.nombre || 'Sin nombre'}
+          ${escapeHtml(p.nombre || 'Sin nombre')}
         </button>
         ${(p.subprocesos || []).map(s => `
           <button class="procesos-subitem-btn ${_procSeleccion?.procesoId === p.id && _procSeleccion?.subprocesoId === s.id ? 'active' : ''}" onclick="seleccionarSubproceso('${p.id}','${s.id}')">
-            ${s.nombre || 'Sin nombre'}
+            ${escapeHtml(s.nombre || 'Sin nombre')}
           </button>
         `).join('')}
       </div>
@@ -4475,7 +4507,7 @@
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleInSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
         <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarInSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
-        <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '')}</select>
+        <select onchange="reasignarInSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${escapeHtml(await opcionesYoYColaboradoresHtml(s.asignado?.email || ''))}</select>
         <button type="button" onclick="eliminarInSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -4583,7 +4615,7 @@
     list.innerHTML = _colaboradoresCache.length
       ? _colaboradoresCache.map(c => `
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
-          <input type="checkbox" class="${checkClass}" value="${c.email}" data-nombre="${c.nombre}" ${emails.includes(c.email.toLowerCase()) ? 'checked' : ''}> ${c.nombre}
+          <input type="checkbox" class="${checkClass}" value="${escapeHtml(c.email)}" data-nombre="${escapeHtml(c.nombre)}" ${emails.includes(c.email.toLowerCase()) ? 'checked' : ''}> ${escapeHtml(c.nombre)}
         </label>`).join('')
       : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores todavía.</p>';
   }
@@ -5205,13 +5237,13 @@
   async function opcionesYoYColaboradoresHtml(currentEmail, clientId) {
     const miEmail = (user.email || '').toLowerCase();
     const cur = (currentEmail || '').toLowerCase();
-    let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${user.name || 'Vaneh'}"${cur === miEmail ? ' selected' : ''}>Yo (${user.name || user.email})</option>`;
+    let html = `<option value="">Sin asignar</option><option value="${miEmail}" data-nombre="${escapeHtml(user.name || 'Vaneh')}"${cur === miEmail ? ' selected' : ''}>Yo (${escapeHtml(user.name || user.email)})</option>`;
     const equipo = await getEquipoCache();
     const esClienteReal = clientId && !['_cosmart', '_personal'].includes(clientId);
     equipo.forEach(c => {
       if (c.email.toLowerCase() === miEmail) return;
       if (esClienteReal && c.role !== 'admin' && !(c.clientIds || []).includes(clientId)) return;
-      html += `<option value="${c.email}" data-nombre="${c.nombre}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${c.nombre} — ${c.email}</option>`;
+      html += `<option value="${escapeHtml(c.email)}" data-nombre="${escapeHtml(c.nombre)}"${cur === c.email.toLowerCase() ? ' selected' : ''}>${escapeHtml(c.nombre)} — ${escapeHtml(c.email)}</option>`;
     });
     if (clientId && !['_cosmart', '_personal'].includes(clientId)) {
       if (!_nmtClientsCache.length) { try { _nmtClientsCache = await getAllClients(); } catch (e) { _nmtClientsCache = []; } }
@@ -5221,12 +5253,12 @@
       // poder asignarle una tarea al cliente mismo, no solo a gente de su
       // equipo agregada aparte.
       if (cliente?.email) {
-        html += `<option value="${cliente.email}" data-nombre="${cliente.nombre || cliente.name || 'Cliente'}"${cur === cliente.email.toLowerCase() ? ' selected' : ''}>${cliente.nombre || cliente.name || 'Cliente'} (contacto principal)</option>`;
+        html += `<option value="${escapeHtml(cliente.email)}" data-nombre="${escapeHtml(cliente.nombre || cliente.name || 'Cliente')}"${cur === cliente.email.toLowerCase() ? ' selected' : ''}>${escapeHtml(cliente.nombre || cliente.name || 'Cliente')} (contacto principal)</option>`;
       }
       (cliente?.usuarios || []).forEach(u => {
         if (!u.email || u.email.toLowerCase() === miEmail) return;
         if (cliente?.email && u.email.toLowerCase() === cliente.email.toLowerCase()) return;
-        html += `<option value="${u.email}" data-nombre="${u.nombre}"${cur === u.email.toLowerCase() ? ' selected' : ''}>${u.nombre} (equipo del cliente)</option>`;
+        html += `<option value="${escapeHtml(u.email)}" data-nombre="${escapeHtml(u.nombre)}"${cur === u.email.toLowerCase() ? ' selected' : ''}>${escapeHtml(u.nombre)} (equipo del cliente)</option>`;
       });
     }
     html += `<option value="${CLAUDE_IA_EMAIL}" data-nombre="Claude IA"${cur === CLAUDE_IA_EMAIL ? ' selected' : ''}>🤖 Claude IA (la ejecuta sola)</option>`;
@@ -5240,7 +5272,7 @@
   async function poblarNmtAsignado(selectedClientId) {
     const asignadoSel = document.getElementById('nmt-asignado');
     const prevValue = asignadoSel.value;
-    asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${user.name || user.email}">Yo (${user.name || user.email})</option>`;
+    asignadoSel.innerHTML = `<option value="${user.email}" data-nombre="${escapeHtml(user.name || user.email)}">Yo (${escapeHtml(user.name || user.email)})</option>`;
     const miEmailNmt = (user.email || '').toLowerCase();
     const equipoNmt = await getEquipoCache();
     // Mismo filtro que opcionesYoYColaboradoresHtml: con un cliente real
@@ -5303,18 +5335,18 @@
         <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px;">
           <div style="flex:1;min-width:200px;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
-              <span style="font-weight:700;font-size:14px;">${col.nombre}</span>
+              <span style="font-weight:700;font-size:14px;">${escapeHtml(col.nombre)}</span>
               ${col.puesto ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#e2e8f0;color:#334155;font-weight:600;">${col.puesto.replace(/</g,'&lt;')}</span>` : ''}
               ${col.activo === false ? '<span style="font-size:10px;color:#dc2626;font-weight:700;">(INACTIVO)</span>' : ''}
             </div>
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${col.email}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${escapeHtml(col.email)}</div>
             <div style="display:flex;flex-wrap:wrap;gap:4px;">
               ${col.clientIds.length ? col.clientIds.map(id => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">${nombreCliente(id)}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted);font-style:italic;">Sin clientes asignados</span>'}
             </div>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
-            <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${col.email}')">✏️ Editar</button>
-            <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${col.email}')">📋 Ver tareas</button>
+            <button class="btn btn-secondary btn-sm" onclick="openEditColaboradorModal('${escapeHtml(col.email)}')">✏️ Editar</button>
+            <button class="btn btn-secondary btn-sm" onclick="verTareasDeColaborador('${escapeHtml(col.email)}')">📋 Ver tareas</button>
             <button class="btn btn-secondary btn-sm" style="color:#E02020;" onclick="eliminarColaborador('${col.email}','${(col.nombre || '').replace(/'/g,"\\'")}')">🗑 Eliminar</button>
           </div>
         </div>
@@ -5370,7 +5402,7 @@
     list.innerHTML = _clientsCacheForColab.length
       ? _clientsCacheForColab.map(c => `
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
-          <input type="checkbox" class="ec-client-check" value="${c.id}" ${col.clientIds.includes(c.id) ? 'checked' : ''}> ${c.nombre || c.name || c.id}
+          <input type="checkbox" class="ec-client-check" value="${c.id}" ${col.clientIds.includes(c.id) ? 'checked' : ''}> ${escapeHtml(c.nombre || c.name || c.id)}
         </label>`).join('')
       : '<p style="font-size:12px;color:var(--text-muted);">No hay clientes creados todavía.</p>';
     document.getElementById('editColaboradorModal').dataset.email = email;
@@ -5526,12 +5558,12 @@
     // a sí mismo) -- pedido explícito de Vaneh: "si quiere ver las tareas
     // de otro colaborador lo tiene que poder hacer". Ahora cualquiera
     // puede elegir "Todo el equipo" o a otro colaborador puntual.
-    let opciones = [`<option value="_todos" hidden>Equipo</option>`, `<option value="_todos">Todos</option>`, `<option value="${miEmail}">Yo (${user.name || user.email})</option>`];
+    let opciones = [`<option value="_todos" hidden>Equipo</option>`, `<option value="_todos">Todos</option>`, `<option value="${miEmail}">Yo (${escapeHtml(user.name || user.email)})</option>`];
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
         if (c.email.toLowerCase() === miEmail) return;
-        opciones.push(`<option value="${c.email.toLowerCase()}">${c.nombre}</option>`);
+        opciones.push(`<option value="${escapeHtml(c.email.toLowerCase())}">${escapeHtml(c.nombre)}</option>`);
       });
     } catch (e) {}
     sel.innerHTML = opciones.join('');
@@ -5720,8 +5752,8 @@
     <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${bg}">
       <button onclick="toggleMiSubtareaPendiente('${i.clientId}','${i.tarea.id}',${i.subIndex})" title="Marcar como hecha" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid #10b981;background:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;"></button>
       <div style="flex:1;min-width:160px;${clickPadre ? 'cursor:pointer;' : ''}"${clickPadre}>
-        <div style="font-size:13px;font-weight:600;color:${textoOscuro};">${i.sub.titulo}</div>
-        <div style="font-size:11px;color:${mutedOscuro};margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
+        <div style="font-size:13px;font-weight:600;color:${textoOscuro};">${escapeHtml(i.sub.titulo)}</div>
+        <div style="font-size:11px;color:${mutedOscuro};margin-top:2px;">${i.personal ? '🏠 Personal' : i.clientNombre} · de "${escapeHtml(i.tarea.titulo)}"${fecha ? ' · 📅 ' + fecha : ''}${atraso > 0 ? ` · <span style="color:#db2777;font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${i.tarea.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[i.tarea.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${i.tarea.prioridad}</span>` : ''}
       ${cuadranteBadge(i.tarea.cuadrante)}
@@ -5736,8 +5768,8 @@
     const bg = atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : 'background:#F0FDF4;border-color:#bbf7d0;';
     return `
     <div class="kanban-card" ${idxPadre > -1 ? `onclick="openMisTareaModal(${idxPadre})" style="cursor:pointer;${bg}"` : `style="${bg}"`}>
-      <div class="kanban-card-title" style="color:#1f1230;">${i.personal ? '🏠 ' : ''}${i.sub.titulo}</div>
-      <div style="font-size:11px;color:#5b4a66;margin-top:4px;">${i.clientNombre} · de "${i.tarea.titulo}"${fecha ? ' · 📅 ' + fecha : ''}</div>
+      <div class="kanban-card-title" style="color:#1f1230;">${i.personal ? '🏠 ' : ''}${escapeHtml(i.sub.titulo)}</div>
+      <div style="font-size:11px;color:#5b4a66;margin-top:4px;">${i.clientNombre} · de "${escapeHtml(i.tarea.titulo)}"${fecha ? ' · 📅 ' + fecha : ''}</div>
       ${atraso > 0 ? `<div style="font-size:10px;color:#db2777;font-weight:700;margin-top:4px;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</div>` : ''}
       <div style="margin-top:6px;"><span style="font-size:10px;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">SUBTAREA</span></div>
     </div>`;
@@ -5801,7 +5833,7 @@
         ? `<button onclick="toggleMiTareaListo('${clientId}','${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${listo ? '#10b981' : '#cbd5e1'};background:${listo ? '#10b981' : 'transparent'};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${listo ? '✓' : ''}</button>`
         : `<span style="flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:700;">CONT.</span>`}
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : tituloColor}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+        <div style="font-size:13px;font-weight:600;${listo ? `text-decoration:line-through;color:${muted};` : tituloColor}cursor:pointer;" onclick="openMisTareaModal(${idx})">${esProy ? '🔷 ' : ''}${tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${escapeHtml(t.titulo)}</div>
         <div style="font-size:11px;color:${muted};margin-top:2px;">${clientNombre}${fecha ? ' · 📅 ' + fecha : ''}${t.hora ? ' ' + t.hora : ''}${asignadoPor ? ' · asignada por ' + asignadoPor : ''}${atraso > 0 ? ` · <span style="color:${esProy ? '#fecdd3' : '#db2777'};font-weight:700;">${atraso} día${atraso !== 1 ? 's' : ''} de atraso</span>` : ''}</div>
       </div>
       ${etiquetaEstado(t.estado)}
@@ -5892,7 +5924,7 @@
             return `
             <div class="kanban-card" ${arrastrable ? `draggable="true" data-idx="${idx}" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)"` : ''} onclick="${arrastrable ? 'if(!this._dragged)' : ''}openMisTareaModal(${idx})" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (atraso > 0 ? 'background:#fdf2f8;border-color:#fbcfe8;' : (item.tipo === 'tarea' && t.recurrencia ? 'background:#c3b1d1;border-color:#af9dbd;' : ''))}">
               <div style="display:flex;align-items:flex-start;gap:6px;">
-                <div class="kanban-card-title" style="flex:1;${tituloColor}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${t.titulo}</div>
+                <div class="kanban-card-title" style="flex:1;${tituloColor}">${item.personal ? '🏠 ' : ''}${esProy ? '🔷 ' : ''}${item.tipo === 'tarea' && t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoDeItem(item)}</span> ` : ''}${escapeHtml(t.titulo)}</div>
                 ${puedeVisibilidad ? `<button onclick="event.stopPropagation();toggleMiTareaVisibleCliente(${idx})" title="${t.visibleParaCliente === true ? 'Visible para el cliente — click para ocultarla (tarea interna)' : 'Tarea interna — el cliente no la ve. Click para mostrársela.'}" style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:0;font-size:13px;">${t.visibleParaCliente === true ? '👁' : '🔒'}</button>` : ''}
               </div>
               <div style="margin-top:5px;">${etiquetaEstado(t.estado)}</div>
@@ -5963,7 +5995,7 @@
           const color = item.personal ? '#f59e0b' : '#3b82f6';
           const tituloCorto = item.tarea.titulo.length > 16 ? item.tarea.titulo.slice(0, 15) + '…' : item.tarea.titulo;
           const estiloBg = esProyecto ? 'background:var(--primary-dark);color:#fff;font-weight:600;' : `background:${color}22;color:${color};`;
-          return `<div class="cal-event" style="${estiloBg}${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.personal ? '🏠 Personal' : '💼 ' + item.clientNombre}: ${item.tarea.titulo}${item.tarea.hora ? ' (' + item.tarea.hora + ')' : ''}">${esProyecto ? '🔷 ' : ''}${tituloCorto}</div>`;
+          return `<div class="cal-event" style="${estiloBg}${listo ? 'text-decoration:line-through;opacity:.6;' : ''}" onclick="openMisTareaModal(${idx})" title="${item.personal ? '🏠 Personal' : '💼 ' + item.clientNombre}: ${escapeHtml(item.tarea.titulo)}${item.tarea.hora ? ' (' + item.tarea.hora + ')' : ''}">${esProyecto ? '🔷 ' : ''}${tituloCorto}</div>`;
         }).join('')}
       </div>`;
     }
@@ -6188,7 +6220,7 @@
     wrap.innerHTML = _misTareasArchivadasCache.length
       ? _misTareasArchivadasCache.map((w, idx) => `
         <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${w.tarea.titulo}</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${escapeHtml(w.tarea.titulo)}</div>
           <div style="font-size:11px;color:var(--text-muted);">${w.clientNombre}</div>
           <div style="display:flex;gap:4px;margin-top:6px;">
             <button class="btn btn-secondary btn-sm" onclick="desarchivarMiTareaDirecto(${idx})">Restaurar</button>
@@ -6222,7 +6254,7 @@
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleMiSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
         <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarMiSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
-        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual)}</select>
+        <select onchange="reasignarMiSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${escapeHtml(await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual))}</select>
         <button type="button" onclick="eliminarMiSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -6397,8 +6429,8 @@
     _nmtClientsCache = clients || [];
     clienteSel.innerHTML = `
       <option value="_cosmart">COSMART (interno)</option>
-      <option value="_personal">🏠 Personal (${user.name || user.email})</option>
-      ${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
+      <option value="_personal">🏠 Personal (${escapeHtml(user.name || user.email)})</option>
+      ${clients.map(c => `<option value="${c.id}">${escapeHtml(c.nombre || c.name || c.id)}</option>`).join('')}`;
     // Por defecto queda en "COSMART (interno)" (antes era "Personal") para
     // que el desplegable de Verticales se vea de una al abrir el modal, sin
     // tener que elegir manualmente COSMART primero -- pedido varias veces
@@ -6429,7 +6461,7 @@
       <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:${s.done ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${s.done ? '#bbf7d0' : 'var(--border)'};">
         <input type="checkbox" ${s.done ? 'checked' : ''} onchange="toggleNmtSubtarea(${i})" style="flex-shrink:0;margin-top:3px;">
         <textarea rows="1" class="subtarea-titulo-ta" oninput="autoGrowTextarea(this)" onchange="renombrarNmtSubtarea(${i}, this.value)" style="flex:1;min-width:0;font-size:13px;word-break:break-word;border:none;background:transparent;padding:2px 0;font-family:inherit;resize:none;overflow:hidden;line-height:1.4;${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(s.titulo)}</textarea>
-        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual)}</select>
+        <select onchange="reasignarNmtSubtarea(${i}, this)" style="font-size:10px;color:var(--primary);font-weight:600;max-width:120px;border:none;background:transparent;cursor:pointer;flex-shrink:0;">${escapeHtml(await opcionesYoYColaboradoresHtml(s.asignado?.email || '', clientIdActual))}</select>
         <button type="button" onclick="eliminarNmtSubtarea(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;" title="Eliminar">×</button>
       </div>
     `));
@@ -6553,8 +6585,8 @@
   }
 
   function opcionesDestinoImport(seleccionado) {
-    const opts = [`<option value="">— Elegí destino —</option>`, `<option value="_personal">🏠 Personal (${user.name || user.email})</option>`, `<option value="_cosmart">COSMART (interno)</option>`];
-    _importarTareasClientesReales.forEach(c => opts.push(`<option value="${c.id}">${c.nombre || c.name || c.id}</option>`));
+    const opts = [`<option value="">— Elegí destino —</option>`, `<option value="_personal">🏠 Personal (${escapeHtml(user.name || user.email)})</option>`, `<option value="_cosmart">COSMART (interno)</option>`];
+    _importarTareasClientesReales.forEach(c => opts.push(`<option value="${c.id}">${escapeHtml(c.nombre || c.name || c.id)}</option>`));
     return opts.join('').replace(`value="${seleccionado}"`, `value="${seleccionado}" selected`);
   }
 
@@ -6642,7 +6674,7 @@
         ${filas.map((f, i) => `
           <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
             <td style="font-size:11px;">${f.tipo === 'contenido' ? '📣 Contenido' : '✅ Tarea'}</td>
-            <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}${f.subtareas && f.subtareas.length ? `<div style="font-size:11px;color:var(--text-muted);">☑ ${f.subtareas.length} subtarea${f.subtareas.length !== 1 ? 's' : ''}</div>` : ''}</td>
+            <td style="max-width:220px;">${f.duplicadoId ? '⚠️ ' : ''}${escapeHtml(f.titulo)}${f.subtareas && f.subtareas.length ? `<div style="font-size:11px;color:var(--text-muted);">☑ ${f.subtareas.length} subtarea${f.subtareas.length !== 1 ? 's' : ''}</div>` : ''}</td>
             <td>${f.prioridad}</td>
             <td>${f.vencimiento || '—'}</td>
             <td style="font-size:11px;color:var(--text-muted);">${f.categoriaOriginal} ${f.areaOriginal ? '· ' + f.areaOriginal : ''}</td>
@@ -6867,12 +6899,12 @@
       <tbody>
         ${filas.map((f, i) => `
           <tr style="${f.duplicadoId ? 'background:#fffbeb;' : ''}">
-            <td style="max-width:200px;">${f.duplicadoId ? '⚠️ ' : ''}${f.titulo}</td>
+            <td style="max-width:200px;">${f.duplicadoId ? '⚠️ ' : ''}${escapeHtml(f.titulo)}</td>
             <td>${f.vertical || '<span style="color:var(--text-muted);">General</span>'}</td>
             <td>${f.estado}</td>
             <td>${f.prioridad}</td>
             <td>${f.vencimiento || '—'}</td>
-            <td>${f.asignado ? f.asignado.nombre : '<span style="color:var(--text-muted);">Sin asignar</span>'}</td>
+            <td>${escapeHtml(f.asignado ? f.asignado.nombre : '<span style="color:var(--text-muted);">Sin asignar</span>')}</td>
             <td>${f.duplicadoId ? `
               <select class="form-control" style="font-size:12px;padding:4px 6px;" onchange="cambiarAccionDuplicadoInternas(${i}, this.value)">
                 <option value="omitir" ${f.accionDuplicado === 'omitir' ? 'selected' : ''}>Omitir (ya existe)</option>
@@ -7075,7 +7107,7 @@
       el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">` + agencias.map(a => `
         <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
-            <div style="font-weight:700;font-size:14px;">${a.nombre}</div>
+            <div style="font-weight:700;font-size:14px;">${escapeHtml(a.nombre)}</div>
             <div style="font-size:12px;color:var(--text-muted);">${a.emailAdmin} · alta ${a.createdAt ? new Date(a.createdAt).toLocaleDateString('es-AR') : ''}</div>
             ${a.precio ? `<div style="font-size:12px;color:var(--text-muted);">${METODO[a.moneda] || ''} · ${a.plan === 'anual' ? 'Anual' : 'Mensual'} · ${a.moneda === 'ARS' ? '$' : 'US$'}${a.precio}${a.proximaFacturacion ? ' · próximo cobro ' + a.proximaFacturacion : ''}</div>` : ''}
           </div>
@@ -7152,14 +7184,14 @@
           <span class="client-row-dot" style="background:${c.activo !== false ? '#10b981' : '#94a3b8'};" title="${c.activo !== false ? 'Activo' : 'Inactivo'}"></span>
           <span class="client-row-name" title="${nombre}">${nombre}</span>
         </div>
-        ${c.responsable?.nombre ? `<span class="client-row-responsable" style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${c.responsable.nombre}</span>` : ''}
+        ${c.responsable?.nombre ? `<span class="client-row-responsable" style="font-size:11px;color:var(--text-muted);flex-shrink:0;" title="Responsable de proyecto">👤 ${escapeHtml(c.responsable.nombre)}</span>` : ''}
         <a href="../app/index.html?client=${c.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;flex-shrink:0;">Ver panel</a>
         <div class="client-row-menu-wrap">
           <button class="client-row-menu-btn" onclick="toggleClientRowMenu('${c.id}', event)" title="Más opciones">⋮</button>
           <div class="client-row-menu hidden" id="crmenu-${c.id}">
-            ${c.responsable?.nombre ? `<div style="padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);">👤 Responsable: ${c.responsable.nombre}</div>` : ''}
+            ${c.responsable?.nombre ? `<div style="padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);">👤 Responsable: ${escapeHtml(c.responsable.nombre)}</div>` : ''}
             <button onclick="openClienteTareasModal('${c.id}','${nombre.replace(/'/g,"\\'")}')">📋 Tareas</button>
-            <button onclick="copyLogin('${c.email || ''}')">🔑 Copiar acceso</button>
+            <button onclick="copyLogin('${escapeHtml(c.email || '')}')">🔑 Copiar acceso</button>
             <button onclick="openEditClientModal('${c.id}')">✏️ Editar</button>
             <button onclick="openEquipoClienteModal('${c.id}')">👥 Equipo</button>
             <button onclick="openFacturacionModal('${c.id}')">🧾 Facturación</button>
@@ -7316,7 +7348,7 @@
     renderNcUsuarios();
     cargarEquipoAgenciaNuevo();
     const respSel = document.getElementById('nc-responsable');
-    respSel.innerHTML = `<option value="">Sin asignar todavía</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
+    respSel.innerHTML = `<option value="">Sin asignar todavía</option><option value="${user.email}">${escapeHtml(user.name || user.email)} (vos)</option>`;
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -7339,7 +7371,7 @@
     list.innerHTML = clients.length
       ? clients.map(c => `
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;">
-          <input type="checkbox" class="col-client-check" value="${c.id}"> ${c.nombre || c.name || c.id}
+          <input type="checkbox" class="col-client-check" value="${c.id}"> ${escapeHtml(c.nombre || c.name || c.id)}
         </label>`).join('')
       : '<p style="font-size:12px;color:var(--text-muted);">No hay clientes creados todavía.</p>';
   };
@@ -7381,8 +7413,8 @@
     if (!list) return;
     list.innerHTML = _ncUsuarios.length ? _ncUsuarios.map((u,i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f1f5f9;border-radius:6px;font-size:12px;">
-        <span style="flex:1;font-weight:600;">${u.nombre}</span>
-        <span style="color:var(--text-muted);">${u.email}</span>
+        <span style="flex:1;font-weight:600;">${escapeHtml(u.nombre)}</span>
+        <span style="color:var(--text-muted);">${escapeHtml(u.email)}</span>
         <button onclick="_ncUsuarios.splice(${i},1);renderNcUsuarios();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:0 4px;">×</button>
       </div>`).join('') : '';
   }
@@ -7443,7 +7475,7 @@
     document.getElementById('ecl-email-ayuda').style.display = user.role === 'admin' ? '' : 'none';
 
     const respSel = document.getElementById('ecl-responsable');
-    respSel.innerHTML = `<option value="">Sin asignar</option><option value="${user.email}">${user.name || user.email} (vos)</option>`;
+    respSel.innerHTML = `<option value="">Sin asignar</option><option value="${user.email}">${escapeHtml(user.name || user.email)} (vos)</option>`;
     try {
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
       colaboradores.forEach(c => {
@@ -7683,9 +7715,9 @@
     }
     list.innerHTML = _equipoUsuarios.map((u, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;font-size:12px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
-        <span style="flex:1;font-weight:600;">${u.nombre}</span>
-        <span style="color:var(--text-muted);">${u.email}</span>
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((u.nombre||'?')[0].toUpperCase())}</div>
+        <span style="flex:1;font-weight:600;">${escapeHtml(u.nombre)}</span>
+        <span style="color:var(--text-muted);">${escapeHtml(u.email)}</span>
         <span style="font-size:10px;background:#e2e8f0;padding:2px 7px;border-radius:99px;color:var(--text-muted);">${u.rol||'Usuario'}</span>
         <button onclick="_equipoUsuarios.splice(${i},1);renderEquipoClienteList();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;padding:0 4px;line-height:1;">×</button>
       </div>`).join('');
@@ -7798,7 +7830,7 @@
     const valorActual = sel.value;
     const clients = await getClientsCacheadoTareas();
     sel.innerHTML = `<option value="">Todos los clientes</option>` +
-      clients.filter(c => c.activo).map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('');
+      clients.filter(c => c.activo).map(c => `<option value="${c.id}">${escapeHtml(c.nombre || c.name || c.id)}</option>`).join('');
     sel.value = valorActual;
   }
 
@@ -7864,7 +7896,7 @@
                 ${inf.items.map(it => `
                   <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
                     <span>${it.icon}</span>
-                    <span style="flex:1;">${it.titulo}</span>
+                    <span style="flex:1;">${escapeHtml(it.titulo)}</span>
                     <span style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : ''}</span>
                   </div>
                 `).join('')}
@@ -8031,14 +8063,14 @@
     _actividadClientsCache = clients;
     const clienteSel = document.getElementById('act-cliente');
     if (!clienteSel.dataset.poblado) {
-      clienteSel.innerHTML = `<option value="">Todos los clientes</option><option value="_cosmart">COSMART (interno)</option><option value="_personal">Personal</option>${clients.map(c => `<option value="${c.id}">${c.nombre || c.name || c.id}</option>`).join('')}`;
+      clienteSel.innerHTML = `<option value="">Todos los clientes</option><option value="_cosmart">COSMART (interno)</option><option value="_personal">Personal</option>${clients.map(c => `<option value="${c.id}">${escapeHtml(c.nombre || c.name || c.id)}</option>`).join('')}`;
       clienteSel.dataset.poblado = '1';
     }
     const colabSel = document.getElementById('act-colaborador');
     if (!colabSel.dataset.poblado) {
       const miEmail = (user.email || '').toLowerCase();
       const colaboradores = _colaboradoresCache.length ? _colaboradoresCache : await getColaboradores();
-      colabSel.innerHTML = `<option value="">Todos</option><option value="${miEmail}">Yo (${user.name || user.email})</option>${colaboradores.filter(c => c.email.toLowerCase() !== miEmail).map(c => `<option value="${c.email.toLowerCase()}">${c.nombre}</option>`).join('')}`;
+      colabSel.innerHTML = `<option value="">Todos</option><option value="${miEmail}">Yo (${escapeHtml(user.name || user.email)})</option>${colaboradores.filter(c => c.email.toLowerCase() !== miEmail).map(c => `<option value="${escapeHtml(c.email.toLowerCase())}">${escapeHtml(c.nombre)}</option>`).join('')}`;
       colabSel.dataset.poblado = '1';
     }
     const desdeEl = document.getElementById('act-desde');
@@ -8119,14 +8151,14 @@
       ${colaboradoresOrdenados.length ? `
         <table class="data-table" style="margin-bottom:20px;">
           <thead><tr><th>Colaborador</th><th>Tareas completadas</th><th>Contenidos publicados</th><th>Campañas</th></tr></thead>
-          <tbody>${colaboradoresOrdenados.map(([, v]) => `<tr><td>${v.nombre}</td><td>${v.tareas}</td><td>${v.contenidos}</td><td>${v.campanas}</td></tr>`).join('')}</tbody>
+          <tbody>${colaboradoresOrdenados.map(([, v]) => `<tr><td>${escapeHtml(v.nombre)}</td><td>${v.tareas}</td><td>${v.contenidos}</td><td>${v.campanas}</td></tr>`).join('')}</tbody>
         </table>
       ` : '<p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Sin actividad en el rango.</p>'}
       <h4 style="font-size:14px;margin:0 0 8px;">Por cliente — detalle cualitativo</h4>
       ${clientesOrdenados.length ? clientesOrdenados.map(([, v]) => `
         <details class="card" style="padding:14px;margin-bottom:10px;">
           <summary style="cursor:pointer;font-weight:700;list-style:none;">
-            ${v.nombre}
+            ${escapeHtml(v.nombre)}
             <span style="font-weight:400;font-size:12px;color:var(--text-muted);">
               — ${v.tareasCompletadas.length} tarea${v.tareasCompletadas.length !== 1 ? 's' : ''} ·
               ${v.contenidosPublicados.length} contenido${v.contenidosPublicados.length !== 1 ? 's' : ''} ·
@@ -8145,24 +8177,24 @@
     const filaTarea = (t) => `
       <div style="padding:6px 0;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
-          <span>✅</span><span style="flex:1;">${t.titulo}</span>
-          <span style="font-size:11px;color:var(--text-muted);">${t.asignado?.nombre || 'Sin asignar'} · ${fmtDateAct(t.completadoEn)}</span>
+          <span>✅</span><span style="flex:1;">${escapeHtml(t.titulo)}</span>
+          <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(t.asignado?.nombre || 'Sin asignar')} · ${fmtDateAct(t.completadoEn)}</span>
         </div>
         ${(t.subtareas || []).length ? `
           <div style="margin-left:22px;margin-top:4px;">
-            ${t.subtareas.map(s => `<div style="font-size:12px;color:${s.done ? 'var(--text-muted)' : 'var(--text)'};${s.done ? 'text-decoration:line-through;' : ''}">${s.done ? '☑' : '☐'} ${s.titulo}${s.asignado?.nombre ? ` — ${s.asignado.nombre}` : ''}</div>`).join('')}
+            ${t.subtareas.map(s => `<div style="font-size:12px;color:${s.done ? 'var(--text-muted)' : 'var(--text)'};${s.done ? 'text-decoration:line-through;' : ''}">${s.done ? '☑' : '☐'} ${escapeHtml(s.titulo)}${s.asignado?.nombre ? ` — ${escapeHtml(s.asignado.nombre)}` : ''}</div>`).join('')}
           </div>
         ` : ''}
       </div>`;
     const filaContenido = (ct) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
-        <span>📣</span><span style="flex:1;">${ct.titulo}</span>
-        <span style="font-size:11px;color:var(--text-muted);">${ct.asignado?.nombre || 'Sin asignar'} · ${fmtDateAct(ct.fechaPub)}</span>
+        <span>📣</span><span style="flex:1;">${escapeHtml(ct.titulo)}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(ct.asignado?.nombre || 'Sin asignar')} · ${fmtDateAct(ct.fechaPub)}</span>
       </div>`;
     const filaCampana = (cm) => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
-        <span>📈</span><span style="flex:1;">${cm.nombre}</span>
-        <span style="font-size:11px;color:var(--text-muted);">${cm.asignado?.nombre || 'Sin asignar'} · ${fmtDateAct(cm.fechaInicio)}</span>
+        <span>📈</span><span style="flex:1;">${escapeHtml(cm.nombre)}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(cm.asignado?.nombre || 'Sin asignar')} · ${fmtDateAct(cm.fechaInicio)}</span>
       </div>`;
     const partes = [
       ...v.tareasCompletadas.map(filaTarea),
@@ -8234,7 +8266,7 @@
       card.style.cssText = `position:fixed;top:${top}px;left:${left}px;width:280px;background:#fff;border-radius:10px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.3);`;
       card.innerHTML = `
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${i+1} de ${steps.length}</div>
-        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${step.titulo}</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${escapeHtml(step.titulo)}</div>
         <div style="font-size:13px;color:#475569;margin-bottom:14px;line-height:1.4;">${step.texto}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <button id="tour-skip" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;">Saltar recorrido</button>
@@ -8656,7 +8688,7 @@
     const filtrados = _leadsCache.filter(l =>
       (!_leadsVerticalFiltro || l.vertical === _leadsVerticalFiltro) &&
       (!_leadsEtiquetaFiltro || etiquetasDeLead(l).includes(_leadsEtiquetaFiltro)) &&
-      (!_leadsBusqueda || `${l.nombre} ${l.apellido} ${l.email} ${l.empresa}`.toLowerCase().includes(_leadsBusqueda))
+      (!_leadsBusqueda || `${escapeHtml(l.nombre)} ${l.apellido} ${escapeHtml(l.email)} ${l.empresa}`.toLowerCase().includes(_leadsBusqueda))
     );
     board.innerHTML = LEADS_COLS.map(col => {
       const items = filtrados.filter(l => l.columna === col.key).sort((a,b) => (b.actualizadoEn||'').localeCompare(a.actualizadoEn||''));
@@ -8677,7 +8709,7 @@
                   ${l.vertical ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${VERTICAL_COLOR[l.vertical] || '#64748b'}22;color:${VERTICAL_COLOR[l.vertical] || '#64748b'};font-weight:700;">${l.vertical}</span>` : ''}
                   ${l.empresa ? `<span style="font-size:10px;color:var(--text-muted);">🏢 ${l.empresa}</span>` : ''}
                 </div>
-                ${l.email ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">✉️ ${l.email}</div>` : ''}
+                ${l.email ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">✉️ ${escapeHtml(l.email)}</div>` : ''}
                 ${l.telefono ? `<div style="font-size:11px;margin-top:2px;color:var(--text-muted);">📱 ${l.telefono}</div>` : ''}
                 ${l.origen ? `<div style="font-size:10.5px;margin-top:4px;color:var(--text-muted);font-style:italic;">${l.origen}</div>` : ''}
               </div>
@@ -9128,9 +9160,9 @@
       const users = getMentionUsersInterno(clientIdDelHiloActivo(inputId)).filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
       if (!users.length) { dropdown.classList.add('hidden'); return; }
       dropdown.innerHTML = users.map(u => `
-        <div class="mention-item" data-nombre="${u.nombre}">
-          <div class="mention-avatar">${u.nombre[0].toUpperCase()}</div>
-          <div><div style="font-weight:600;font-size:12px;">${u.nombre}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
+        <div class="mention-item" data-nombre="${escapeHtml(u.nombre)}">
+          <div class="mention-avatar">${escapeHtml(u.nombre[0].toUpperCase())}</div>
+          <div><div style="font-weight:600;font-size:12px;">${escapeHtml(u.nombre)}</div><div style="font-size:11px;color:var(--text-muted);">${escapeHtml(u.email)}</div></div>
         </div>`).join('');
       dropdown.classList.remove('hidden');
       dropdown.querySelectorAll('.mention-item').forEach(item => {

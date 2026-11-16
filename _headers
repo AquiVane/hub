@@ -19,3 +19,13 @@
 /.well-known/assetlinks.json
   Cache-Control: no-cache, must-revalidate
   Content-Type: application/json
+
+# ── Seguridad (auditoría 16/11/2026) ─────────────────────────────
+# Se aplican a todas las páginas. No incluye CSP de scripts a propósito:
+# rompería el SDK de Mercado Pago, PayPal y los widgets embebidos.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://www.mercadopago.com.ar" "https://www.paypal.com")
+  Content-Security-Policy: frame-ancestors 'self' https://cosmart.com.ar https://*.cosmart.com.ar https://*.vamatienda.com.ar https://*.wixsite.com https://*.wix.com; base-uri 'self'; object-src 'none'

@@ -949,3 +949,7 @@ Backend: si Meta devuelve #4 al entregar tras el toque de "Sí, enviámela", la 
 
 ## 14/11/2026 — Respuestas en hilos
 Las respuestas de otras personas dentro de un hilo de comentarios ahora disparan las automatizaciones (detalle en HANDOFF de `cosmart-workers`).
+
+
+## Auditoría de seguridad (16/11/2026) — rama `claude/apps-software-audit-dzjgp7`
+- `_headers` de seguridad agregado. `escapeHtml` ahora escapa comillas. ~60 puntos de `app.js` y ~94 de `admin/index.html` con títulos/nombres/notas de usuarios pasan por `escapeHtml`; las **notas de tareas** (HTML del editor) pasan por `sanitizarHtml` (lista blanca, probado en Chromium). Quedan sin escapar interpolaciones compuestas (`.map/.join`/ternarios): revisar a mano. Detalle y pendientes en el HANDOFF de `cosmart-workers`.

@@ -28,7 +28,38 @@ const NAV_SCOPE = HOSTED ? document.createDocumentFragment() : document; // en m
 
 // ── Helpers de texto ────────────────────────────────────
 function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+// Sanitiza el HTML del editor de notas (lista blanca de etiquetas y atributos).
+// Evita XSS almacenado: <script>, onerror=, javascript:, iframes, etc. se descartan.
+const _HTML_OK = new Set(['B','I','U','S','STRONG','EM','BR','P','DIV','SPAN','UL','OL','LI','A','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','CODE','PRE','HR','FONT','SUB','SUP']);
+const _CSS_OK = /^(color|background-color|font-weight|font-style|text-decoration|text-align)$/i;
+function sanitizarHtml(html) {
+  if (html == null || html === '') return '';
+  const doc = new DOMParser().parseFromString('<body>' + String(html), 'text/html');
+  (function limpiar(nodo) {
+    [...nodo.childNodes].forEach(n => {
+      if (n.nodeType === 3) return;
+      if (n.nodeType !== 1) { n.remove(); return; }
+      if (!_HTML_OK.has(n.tagName)) { // etiqueta no permitida: se conserva solo su texto (scripts/estilos se descartan enteros)
+        if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|LINK|META|SVG|MATH|TEMPLATE|FORM|INPUT|TEXTAREA|BUTTON)$/.test(n.tagName)) { n.remove(); return; }
+        limpiar(n); n.replaceWith(...n.childNodes); return;
+      }
+      [...n.attributes].forEach(a => {
+        const nom = a.name.toLowerCase();
+        if (nom === 'href' && n.tagName === 'A' && /^(https?:|mailto:|tel:)/i.test(a.value.trim())) return;
+        if (nom === 'color' && n.tagName === 'FONT' && /^[#\w(),.\s%-]{1,40}$/.test(a.value)) return;
+        if (nom === 'style') {
+          const ok = a.value.split(';').map(x => x.trim()).filter(x => { const [k, v] = x.split(':'); return k && v && _CSS_OK.test(k.trim()) && !/url\(|expression|javascript|[<>]/i.test(v); });
+          if (ok.length) { a.value = ok.join(';'); return; }
+        }
+        n.removeAttribute(a.name);
+      });
+      if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); }
+      limpiar(n);
+    });
+  })(doc.body);
+  return doc.body.innerHTML;
 }
 // Convierte URLs sueltas en <a> clickeables. Funciona tanto sobre texto
 // plano ya escapado como sobre HTML del editor de notas -- no vuelve a
@@ -680,7 +711,7 @@ async function setupClientSwitcher() {
           return `
             <div class="client-switcher-item ${activo ? 'active' : ''}" data-client-id="${c.id}">
               <div class="client-switcher-avatar" style="background:${colorDesdeTexto(c.id)};">${codigo}</div>
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre || c.name || c.id}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.nombre || c.name || c.id)}</span>
             </div>`;
         }).join('')
       : `<div style="padding:10px;font-size:12px;color:var(--text-muted);">No hay otros clientes.</div>`;
@@ -853,7 +884,7 @@ function poblarTfRestrEspecificos(seleccionados) {
   const seen = new Set();
   const equipo = _equipoDelCliente.filter(c => { if (!c.email || seen.has(c.email.toLowerCase())) return false; seen.add(c.email.toLowerCase()); return true; });
   cont.innerHTML = equipo.length
-    ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="tf-restr-chk" value="${c.email.toLowerCase()}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${c.nombre}</label>`).join('')
+    ? equipo.map(c => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;"><input type="checkbox" class="tf-restr-chk" value="${escapeHtml(c.email.toLowerCase())}"${emails.includes(c.email.toLowerCase()) ? ' checked' : ''}> ${escapeHtml(c.nombre)}</label>`).join('')
     : '<p style="font-size:12px;color:var(--text-muted);margin:0;">No hay otros colaboradores con acceso a este cliente.</p>';
 }
 function setTfRestrUI(restringidaA) {
@@ -1480,7 +1511,7 @@ function renderDashboard(container) {
     <div class="dash-header">
       <div>
         <div class="dash-title">Dashboard Calendario Editorial</div>
-        <div class="dash-meta">Cliente: <strong>${STATE.client.nombre || STATE.client.name || clientId}</strong></div>
+        <div class="dash-meta">Cliente: <strong>${escapeHtml(STATE.client.nombre || STATE.client.name || clientId)}</strong></div>
       </div>
       <div class="dash-header-right">
       <span id="dash-play-slot"></span>
@@ -1626,7 +1657,7 @@ function renderTrabajoRealizado() {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
       <span style="font-size:15px;flex-shrink:0;">${it.icon}</span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.titulo || ''}</div>
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(it.titulo || '')}</div>
         <div style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : (it.fecha ? ' · ' + fmtDate(it.fecha) : '')}</div>
       </div>
     </div>`;
@@ -1662,7 +1693,7 @@ window.verTodoTrabajoRealizado = function() {
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
             <span style="font-size:15px;flex-shrink:0;">${it.icon}</span>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;">${it.titulo || ''}</div>
+              <div style="font-size:13px;font-weight:600;">${escapeHtml(it.titulo || '')}</div>
               <div style="font-size:11px;color:var(--text-muted);">${it.tipo}${it.rango ? ' · ' + it.rango : (it.fecha ? ' · ' + fmtDate(it.fecha) : '')}</div>
             </div>
           </div>
@@ -1762,13 +1793,13 @@ function renderHome(container) {
                   <div class="todo-item" style="border-left:3px solid #3b82f6;padding-left:8px;">
                     <button onclick="event.stopPropagation();toggleTareaListo('${item.id}')" title="Marcar como hecha" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid #cbd5e1;background:transparent;cursor:pointer;padding:0;margin-right:2px;"></button>
                     <span style="font-size:10px;color:#3b82f6;font-weight:700;margin-right:4px;">TAREA</span>
-                    <label style="flex:1;cursor:pointer;" onclick="openTareaModal('${item.id}')">${item.text}</label>
+                    <label style="flex:1;cursor:pointer;" onclick="openTareaModal('${item.id}')">${escapeHtml(item.text)}</label>
                     ${item.tarea.vencimiento ? `<span style="font-size:10px;color:${new Date(item.tarea.vencimiento+'T00:00:00')<new Date()?'#dc2626':'var(--text-muted)'};">📅${item.tarea.vencimiento}</span>` : ''}
                   </div>`;
                 return `
                   <div class="todo-item ${item.done ? 'done' : ''}" data-id="${item.id}">
                     <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTodo(${item.id})">
-                    <label onclick="toggleTodo(${item.id})">${item.text}</label>
+                    <label onclick="toggleTodo(${item.id})">${escapeHtml(item.text)}</label>
                     <button onclick="removeTodo(${item.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:16px;padding:0 4px;" title="Eliminar">×</button>
                   </div>`;
               }).join('');
@@ -1797,7 +1828,7 @@ function renderHome(container) {
             <tbody>${proximos.map(c => `
               <tr>
                 <td data-label="Fecha">${fmtDate(c.fechaPub)}</td>
-                <td data-label="Título" style="font-weight:500;">${c.titulo}</td>
+                <td data-label="Título" style="font-weight:500;">${escapeHtml(c.titulo)}</td>
                 <td data-label="Plataforma">${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
                 <td data-label="Estado">${statusBadge(c.estado)}</td>
                 <td><button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button></td>
@@ -1846,7 +1877,7 @@ function renderHome(container) {
               <thead><tr><th>Tarea</th><th>Categoría</th><th>Estado</th><th>Vence</th><th></th></tr></thead>
               <tbody>${pend.slice(0,5).map(t => `
                 <tr>
-                  <td data-label="Tarea" style="font-weight:500;">${t.titulo}</td>
+                  <td data-label="Tarea" style="font-weight:500;">${escapeHtml(t.titulo)}</td>
                   <td data-label="Categoría"><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);">${t.categoria||'Otro'}</span></td>
                   <td data-label="Estado">${t.estado}</td>
                   <td data-label="Vence" style="font-size:12px;color:var(--text-muted);">${t.vencimiento ? fmtDate(t.vencimiento) : '—'}</td>
@@ -2153,7 +2184,7 @@ function bancoCardHtml(c) {
         <span class="content-card-fecha">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</span>
         ${statusBadge(c.estado)}
       </div>
-      <div class="content-card-titulo">${c.titulo}</div>
+      <div class="content-card-titulo">${escapeHtml(c.titulo)}</div>
       <div class="content-card-meta">
         ${pautaBadge(c)}
         ${(c.plataformas || []).map(p => platBadge(p)).join('')}
@@ -2194,7 +2225,7 @@ function bancoRowHtml(c) {
   return `
     <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
       <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
-      <td style="font-weight:500;min-width:160px;">${c.titulo}</td>
+      <td style="font-weight:500;min-width:160px;">${escapeHtml(c.titulo)}</td>
       <td>${pautaBadge(c)}</td>
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
@@ -2205,7 +2236,7 @@ function bancoRowHtml(c) {
       <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
       <td style="font-size:12px;">${c.eje||''}</td>
       <td>${firstLink(c.linkDrive) ? `<a class="drive-link" href="${firstLink(c.linkDrive)}" target="_blank" onclick="event.stopPropagation()" title="${firstLink(c.linkDrive)}">↗</a>` : ''}</td>
-      <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notas||''}</td>
+      <td class="text-sm text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.notas||'')}</td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap;">
         ${c.estado === 'En revisión' ? `
           <button class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;" onclick="aprobarContenido('${c.id}')">✓</button>
@@ -2308,7 +2339,7 @@ function renderBancoContenidos(container) {
         <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
           ${archivados.map(c => `
             <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${c.titulo}</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${escapeHtml(c.titulo)}</div>
               <div style="font-size:11px;color:var(--text-muted);">${c.fechaPub ? fmtDate(c.fechaPub) : 'Sin fecha'}</div>
               <div style="display:flex;gap:4px;margin-top:6px;">
                 <button class="btn btn-secondary btn-sm" onclick="desarchivarContenido('${c.id}')">Restaurar</button>
@@ -2402,8 +2433,8 @@ function renderCalendario(container) {
         </div>
         ${dayConts.map(c => `
           <div class="cal-event" style="background:${statusColor(c.estado)}22;color:${statusColor(c.estado)};"
-               onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
-            ${(c.plataformas||[]).map(p=>platIcon(p)).join('')} ${c.titulo}
+               onclick="openContenidoModalById('${c.id}')" title="${escapeHtml(c.titulo)}">
+            ${(c.plataformas||[]).map(p=>platIcon(p)).join('')} ${escapeHtml(c.titulo)}
           </div>
         `).join('')}
       </div>`;
@@ -2455,7 +2486,7 @@ function renderKanbanContenidos(container) {
         <div class="kanban-cards" data-col="${col.key}">
           ${items.map(c => `
             <div class="kanban-card" draggable="true" data-id="${c.id}">
-              <div class="kanban-card-title">${c.titulo}</div>
+              <div class="kanban-card-title">${escapeHtml(c.titulo)}</div>
               <div class="kanban-card-meta">${(c.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
               ${c.fechaPub ? `<div class="kanban-card-date">${fmtDate(c.fechaPub)}</div>` : ''}
               <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
@@ -2538,11 +2569,11 @@ function renderFeedIGReal(container) {
         const thumb = firstLink(c.linkDrive) ? driveThumb(firstLink(c.linkDrive)) : '';
         const imgTag = thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : '';
         return `
-        <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${c.titulo}">
+        <div class="feed-cell" onclick="openContenidoModalById('${c.id}')" title="${escapeHtml(c.titulo)}">
           ${imgTag}
           <div class="feed-cell-empty" style="${thumb?'display:none':''};">${platIcon('Instagram')}</div>
           <div class="feed-cell-overlay">
-            <div style="font-size:9px;font-weight:600;line-height:1.2;">${c.titulo}</div>
+            <div style="font-size:9px;font-weight:600;line-height:1.2;">${escapeHtml(c.titulo)}</div>
             <div style="margin-top:3px;">${statusDot(c.estado)}</div>
           </div>
         </div>`;
@@ -2569,7 +2600,7 @@ function renderFeedIGReal(container) {
           <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
             ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">${platIcon('Instagram')}</div>`}
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.titulo)}</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
@@ -2810,18 +2841,18 @@ function renderMuroFB(container) {
       ${phoneFrame(`
           <div style="background:#f0f2f5;height:100%;overflow-y:auto;">
           <div style="padding:8px;background:#1877f2;color:white;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">
-            📘 ${STATE.client.facebook || STATE.client.nombre || 'Página'}
+            📘 ${escapeHtml(STATE.client.facebook || STATE.client.nombre || 'Página')}
           </div>
           ${fbItems.slice(0,3).map(c => `
             <div class="fb-preview" style="margin-bottom:4px;">
               <div class="fb-header">
-                <div class="fb-avatar">${(STATE.client.nombre||'C')[0]}</div>
+                <div class="fb-avatar">${escapeHtml((STATE.client.nombre||'C')[0])}</div>
                 <div>
-                  <div class="fb-name">${STATE.client.facebook || STATE.client.nombre || 'Página'}</div>
+                  <div class="fb-name">${escapeHtml(STATE.client.facebook || STATE.client.nombre || 'Página')}</div>
                   <div class="fb-time">${fmtDate(c.fechaPub)} · 🌐</div>
                 </div>
               </div>
-              <div class="fb-text">${(c.copy||c.titulo||'').slice(0,80)}${(c.copy||'').length>80?'...':''}</div>
+              <div class="fb-text">${escapeHtml((c.copy||c.titulo||'').slice(0,80))}${(c.copy||'').length>80?'...':''}</div>
               <div class="fb-image">${firstLink(c.linkDrive)?`<img src="${driveThumb(firstLink(c.linkDrive))}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'📘'}</div>
             </div>
           `).join('')}
@@ -2836,7 +2867,7 @@ function renderMuroFB(container) {
           <div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
             ${thumb ? `<img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:6px;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;">📘</div>`}
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titulo}</div>
+              <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.titulo)}</div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDate(c.fechaPub)||'Sin fecha'} · ${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</div>
             </div>
             ${statusBadge(c.estado)}
@@ -2878,10 +2909,10 @@ function renderStories(container) {
               ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display='none'">` : '<div class="story-preview-empty">▯</div>'}
               <div class="story-bar"><div class="story-bar-seg active"></div><div class="story-bar-seg"></div><div class="story-bar-seg"></div></div>
               <div class="story-user"><div class="story-avatar"></div><span class="story-uname">${STATE.client.instagram||'@cuenta'}</span></div>
-              <div class="story-caption">${(c.copy||c.titulo||'').slice(0,60)}</div>
+              <div class="story-caption">${escapeHtml((c.copy||c.titulo||'').slice(0,60))}</div>
             </div>
           `, { width: 170 })}
-          <div class="phone-label" style="margin-top:6px;">${c.titulo.slice(0,22)}</div>
+          <div class="phone-label" style="margin-top:6px;">${escapeHtml(c.titulo.slice(0,22))}</div>
           <div style="text-align:center;margin-top:4px;">${statusBadge(c.estado)}</div>
           <div style="text-align:center;margin-top:6px;">
             <button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">✏️ Editar</button>
@@ -2914,10 +2945,10 @@ function renderIdeas(container) {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
         ${ideasVisibles.map(i => `
           <div class="card" style="padding:14px;">
-            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${i.titulo}</div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${escapeHtml(i.titulo)}</div>
             <div style="margin-bottom:6px;">${(i.plataformas||[]).map(p=>platBadge(p)).join(' ')}</div>
             ${i.formato ? `<div style="font-size:12px;color:var(--text-muted);">Formato: ${i.formato}</div>` : ''}
-            ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${i.notas}</div>` : ''}
+            ${i.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${escapeHtml(i.notas)}</div>` : ''}
             ${firstLink(i.linkDriveRef) ? `<a class="btn btn-secondary btn-sm" href="${firstLink(i.linkDriveRef)}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;">🔗 Ver referencia</a>` : ''}
             <div style="display:flex;gap:6px;margin-top:10px;">
               <button class="btn btn-primary btn-sm" onclick="promoverIdea('${i.id}')">→ Contenido</button>
@@ -3010,11 +3041,11 @@ function renderEnProceso(container) {
           <thead><tr><th>Título</th><th>Plataforma</th><th>Estado</th><th>Fecha pub.</th><th>Notas</th><th></th></tr></thead>
           <tbody>${items.map(c => `
             <tr>
-              <td style="font-weight:500;">${c.titulo}</td>
+              <td style="font-weight:500;">${escapeHtml(c.titulo)}</td>
               <td>${(c.plataformas||[]).map(p=>platBadge(p)).join(' ')}</td>
               <td>${statusBadge(c.estado)}</td>
               <td>${fmtDate(c.fechaPub)}</td>
-              <td class="text-sm text-muted">${c.notas||''}</td>
+              <td class="text-sm text-muted">${escapeHtml(c.notas||'')}</td>
               <td><button class="btn btn-secondary btn-sm" onclick="openContenidoModalById('${c.id}')">Editar</button></td>
             </tr>
           `).join('')}</tbody>
@@ -3407,7 +3438,7 @@ function populateCuentaSelect(selected, esNuevo) {
   sel.innerHTML = '<option value="">Seleccionar cuenta...</option>';
   const accounts = [];
   if (STATE.client.instagram) accounts.push({ label: `Instagram: @${STATE.client.instagram}`, val: STATE.client.instagram });
-  if (STATE.client.facebook) accounts.push({ label: `Facebook: ${STATE.client.facebook}`, val: STATE.client.facebook });
+  if (STATE.client.facebook) accounts.push({ label: `Facebook: ${escapeHtml(STATE.client.facebook)}`, val: STATE.client.facebook });
   if (STATE.client.youtube) accounts.push({ label: `YouTube: ${STATE.client.youtube}`, val: STATE.client.youtube });
   if (STATE.client.tiktok) accounts.push({ label: `TikTok: @${STATE.client.tiktok}`, val: STATE.client.tiktok });
   const usos = new Map();
@@ -4818,7 +4849,7 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
   const sinAsignar = _importRows.filter(r => r.row.asignadoOriginal && !r.row.asignado);
   statusEl.textContent = `${nuevos.length} nuevo(s) · ${cambios.length} ya existen con cambios · ${iguales.length} sin cambios${duplicadosEnArchivo ? ` · ${duplicadosEnArchivo} duplicado(s) dentro del mismo archivo (se usó la última fila de cada uno)` : ''}${errores.length ? ` · ${errores.length} fila(s) con error` : ''}.`;
 
-  const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${c.titulo}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${c.cuenta}</td></tr>`;
+  const filaHtml = (c) => `<tr><td>${c.fechaPub || '—'}</td><td>${escapeHtml(c.titulo)}</td><td>${c.plataformas.join(', ')}</td><td>${c.estado}</td><td>${escapeHtml(c.cuenta)}</td></tr>`;
 
   previewEl.innerHTML = `
     ${nuevos.length ? `
@@ -4834,7 +4865,7 @@ function renderImportPreview(errores, duplicadosEnArchivo) {
         ${cambios.map(r => `
           <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:10px 12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-              <div style="font-size:13px;font-weight:600;">${r.row.titulo}</div>
+              <div style="font-size:13px;font-weight:600;">${escapeHtml(r.row.titulo)}</div>
               <select onchange="cambiarAccionImport(${_importRows.indexOf(r)}, this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);">
                 <option value="reemplazar" ${r.accion === 'reemplazar' ? 'selected' : ''}>Reemplazar</option>
                 <option value="omitir" ${r.accion === 'omitir' ? 'selected' : ''}>Omitir (dejar como está)</option>
@@ -5124,11 +5155,11 @@ function renderTareas(container) {
             <div class="kanban-card" draggable="true" data-id="${t.id}" onclick="if(!this._dragged)openTareaModal('${t.id}')" ondragstart="this._dragged=true" ondragend="setTimeout(()=>{this._dragged=false},200)" style="${esProy ? 'background:var(--primary-dark);border-color:var(--primary-dark);' : (t.recurrencia ? 'background:#c3b1d1;border-color:#af9dbd;' : '')}">
               <div style="display:flex;align-items:flex-start;gap:8px;">
                 <button onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#10b981' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#10b981' : 'transparent'};color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
-                <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
+                <div class="kanban-card-title" style="${t.estado === 'Listo' ? `text-decoration:line-through;color:${muted};` : (esProy ? 'color:#fff;' : '')}">${esProy ? '🔷 ' : ''}${t.numero ? `<span style="color:${muted};font-weight:400;">#${codigoTarea(t)}</span> ` : ''}${escapeHtml(t.titulo)}</div>
               </div>
               ${t.prioridad || t.cuadrante ? `<div style="margin-top:4px;">${t.prioridad ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${t.prioridad==='Alta'?'#fee2e2':t.prioridad==='Media'?'#fff7ed':'#f1f5f9'};color:${t.prioridad==='Alta'?'#dc2626':t.prioridad==='Media'?'#b45309':'#64748b'};font-weight:700;">${t.prioridad}</span>` : ''} ${cuadranteBadge(t.cuadrante)}</div>` : ''}
               ${t.vencimiento ? `<div style="font-size:11px;margin-top:4px;color:${vencColor};">📅 Vence: ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</div>` : ''}
-              ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:${muted};margin-top:4px;">${t.notas}</div>` : ''}
+              ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:${muted};margin-top:4px;">${sanitizarHtml(t.notas)}</div>` : ''}
               ${t.recurrencia ? `<div style="font-size:10px;margin-top:4px;"><span style="padding:2px 7px;background:#fef9c3;color:#a16207;border-radius:10px;font-weight:600;">↻ ${t.recurrencia}</span></div>` : ''}
               ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" onclick="event.stopPropagation();" style="font-size:10px;color:${esProy ? '#93c5fd' : 'var(--accent)'};display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">🔗 ${t.url || t.linkRef}</a>` : ''}
               ${t.subtareas?.length ? (() => {
@@ -5158,7 +5189,7 @@ function renderTareas(container) {
       <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
         ${archivadas.map(t => `
           <div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
-            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${escapeHtml(t.titulo)}</div>
             <div style="display:flex;gap:4px;margin-top:6px;">
               <button class="btn btn-secondary btn-sm" onclick="desarchivarTarea('${t.id}')">Restaurar</button>
               <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')">🗑</button>
@@ -5198,11 +5229,11 @@ function renderTareasLista(container) {
     <div class="tl-fila${listo ? ' tl-listo' : ''}" onclick="openTareaModal('${t.id}')">
       <button type="button" class="tl-check${listo ? ' on' : ''}" onclick="event.stopPropagation();toggleTareaListo('${t.id}')" title="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}" aria-label="${listo ? 'Marcar como no hecha' : 'Marcar como hecha'}">${listo ? '✓' : ''}</button>
       <div class="tl-main">
-        <div class="tl-titulo">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span class="tl-cod">#${codigoTarea(t)}</span> ` : ''}${t.titulo}</div>
+        <div class="tl-titulo">${t.esProyecto ? '🔷 ' : ''}${t.numero ? `<span class="tl-cod">#${codigoTarea(t)}</span> ` : ''}${escapeHtml(t.titulo)}</div>
         <div class="tl-meta">
           ${prio}
           ${t.vencimiento ? `<span style="${vencido ? 'color:#dc2626;font-weight:600;' : ''}">📅 ${fmtDate(t.vencimiento)}${t.hora ? ` · ${t.hora}` : ''}</span>` : ''}
-          ${t.asignado?.nombre ? `<span>👤 ${t.asignado.nombre}</span>` : ''}
+          ${t.asignado?.nombre ? `<span>👤 ${escapeHtml(t.asignado.nombre)}</span>` : ''}
           ${t.recurrencia ? `<span>↻ ${t.recurrencia}</span>` : ''}
           ${subs}
           ${(t.url || t.linkRef) ? `<a href="${t.url || t.linkRef}" target="_blank" rel="noopener" onclick="event.stopPropagation();">🔗 Link</a>` : ''}
@@ -5228,7 +5259,7 @@ function renderTareasLista(container) {
       <button class="btn btn-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('hidden');this.textContent=this.textContent.includes('Ver')?'▲ Ocultar archivadas':'▼ Ver archivadas (${archivadas.length})'">▼ Ver archivadas (${archivadas.length})</button>
       <div class="hidden" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
         ${archivadas.map(t => `<div class="card" style="padding:10px 14px;opacity:0.7;min-width:200px;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${t.titulo}</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📦 ${escapeHtml(t.titulo)}</div>
           <div style="display:flex;gap:4px;margin-top:6px;">
             <button class="btn btn-secondary btn-sm" onclick="desarchivarTarea('${t.id}')">Restaurar</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarTareaDirecta('${t.id}')">🗑</button>
@@ -5277,14 +5308,14 @@ function renderTareasCalendario(container) {
         </div>
         ${dayProyectos.map(t => `
           <div class="cal-event" style="background:var(--primary-dark);color:#fff;font-weight:600;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
-               onclick="openTareaModal('${t.id}')" title="${t.titulo}">
-            🔷 ${t.numero ? `#${codigoTarea(t)} ` : ''}${t.titulo}
+               onclick="openTareaModal('${t.id}')" title="${escapeHtml(t.titulo)}">
+            🔷 ${t.numero ? `#${codigoTarea(t)} ` : ''}${escapeHtml(t.titulo)}
           </div>
         `).join('')}
         ${dayTareas.map(t => `
           <div class="cal-event" style="background:#3b82f622;color:#3b82f6;${t.estado === 'Listo' ? 'text-decoration:line-through;opacity:.6;' : ''}"
-               onclick="openTareaModal('${t.id}')" title="${t.titulo}">
-            ✅ ${t.numero ? `#${codigoTarea(t)} ` : ''}${t.titulo}
+               onclick="openTareaModal('${t.id}')" title="${escapeHtml(t.titulo)}">
+            ✅ ${t.numero ? `#${codigoTarea(t)} ` : ''}${escapeHtml(t.titulo)}
           </div>
         `).join('')}
       </div>`;
@@ -5782,7 +5813,7 @@ function renderTareaArchivosChips() {
     return `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;">
       <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;stroke-width:1.75;"></i>
-      <span style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="${abrir}">${a.titulo}</span>
+      <span style="flex:1;font-size:12.5px;cursor:pointer;color:var(--primary);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="${abrir}">${escapeHtml(a.titulo)}</span>
       <button type="button" onclick="quitarTareaArchivo(${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px;padding:0 2px;flex-shrink:0;" title="Quitar de esta tarea (el archivo sigue en Links y Archivos)">\u00d7</button>
     </div>`;
   }).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin archivos adjuntos.</p>';
@@ -5887,7 +5918,7 @@ window.openTareaModal = function(id, defaultEstado) {
   document.getElementById('tf-cuadrante').value = t.cuadrante || '';
   document.getElementById('tf-vencimiento').value = t.vencimiento || '';
   document.getElementById('tf-hora').value = t.hora || '';
-  document.getElementById('tf-notas').innerHTML = linkify(t.notas || '');
+  document.getElementById('tf-notas').innerHTML = linkify(sanitizarHtml(t.notas || ''));
   const tfVisibleCliente = document.getElementById('tf-visible-cliente');
   if (tfVisibleCliente) {
     tfVisibleCliente.checked = t.visibleParaCliente === true;
@@ -6029,7 +6060,7 @@ function restaurarBorradorTarea(id) {
   const comentEl = document.getElementById('tarea-comment-input');
   let cambios = false;
   if (draft.titulo && draft.titulo !== tituloEl.value) { tituloEl.value = draft.titulo; cambios = true; }
-  if (draft.notas && draft.notas !== notasEl.innerHTML) { notasEl.innerHTML = draft.notas; cambios = true; }
+  if (draft.notas && draft.notas !== notasEl.innerHTML) { notasEl.innerHTML = sanitizarHtml(draft.notas); cambios = true; }
   if (comentEl && draft.comentario) { comentEl.value = draft.comentario; cambios = true; }
   // Solo para una tarea NUEVA -- en una existente las subtareas ya viven
   // guardadas en el servidor (autoguardado), restaurar acá un borrador
@@ -6329,7 +6360,7 @@ function renderPauta(container) {
       return `
         <div class="campaign-card">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-            <div class="campaign-name" style="flex:1;">${c.nombre}</div>
+            <div class="campaign-name" style="flex:1;">${escapeHtml(c.nombre)}</div>
             <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${statusCol}22;color:${statusCol};">${c.estado}</span>
             <span style="font-size:12px;color:var(--text-muted);">${c.plataforma||''}</span>
             <button class="btn btn-secondary btn-sm" onclick="openCampanaModal('${c.id}')">Editar</button>
@@ -6416,7 +6447,7 @@ function renderLinks(container) {
               <i data-lucide="link" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
             </div>
             <div style="flex:1;min-width:0;">
-              <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.titulo}</div>
+              <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(l.titulo)}</div>
               ${l.categoria ? `<div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${l.categoria}</div>` : ''}
               ${l.desc ? `<div class="link-card-desc">${l.desc}</div>` : ''}
               <div style="font-size:10px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.url}</div>
@@ -6679,7 +6710,7 @@ function archivoCardHtml(a) {
         <i data-lucide="${ARCHIVO_ICONS[a.tipo] || 'file'}" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
       </div>
       <div style="flex:1;min-width:0;">
-        <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.titulo}</div>
+        <div class="link-card-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.titulo)}</div>
         <div style="font-size:10px;color:var(--primary);font-weight:600;margin-top:1px;">${a.tipo || 'Otro'}${a.subido ? ' · Subido' : ''}${_archivoBusqueda && a.carpeta ? ` · 📁 ${a.carpeta}` : ''}</div>
         ${a.desc ? `<div class="link-card-desc">${a.desc}</div>` : ''}
       </div>
@@ -6792,7 +6823,7 @@ window.moverArchivoModal = function(id) {
   const a = (STATE.home.archivos || []).find(x => String(x.id) === String(id));
   if (!a) return;
   const opciones = ['(Raíz)', ...carpetasDisponibles()];
-  const eleccion = prompt(`¿A qué carpeta mover "${a.titulo}"?\n\nOpciones existentes: ${opciones.join(', ')}\n\nEscribí el nombre exacto (podés escribir uno nuevo), o "(Raíz)" para sacarlo de cualquier carpeta.`, a.carpeta || '(Raíz)');
+  const eleccion = prompt(`¿A qué carpeta mover "${escapeHtml(a.titulo)}"?\n\nOpciones existentes: ${opciones.join(', ')}\n\nEscribí el nombre exacto (podés escribir uno nuevo), o "(Raíz)" para sacarlo de cualquier carpeta.`, a.carpeta || '(Raíz)');
   if (eleccion === null) return;
   const destino = eleccion.trim();
   moverArchivoA(id, destino === '(Raíz)' || !destino ? '' : destino);
@@ -7044,8 +7075,8 @@ function renderWeb(container) {
                   <button onclick="event.stopPropagation();toggleWebTareaListo('${t.id}')" title="${t.estado === 'Listo' ? 'Marcar como no hecha' : 'Marcar como hecha'}" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid ${t.estado === 'Listo' ? '#22c55e' : '#cbd5e1'};background:${t.estado === 'Listo' ? '#22c55e' : 'transparent'};color:#fff;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">${t.estado === 'Listo' ? '✓' : ''}</button>
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:var(--text-muted);font-weight:600;flex-shrink:0;">${t.categoria||'Otro'}</span>
                 </div>
-                <div class="kanban-card-title" style="margin-top:6px;${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${t.titulo}</div>
-                ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:var(--text-muted);margin-top:4px;">${t.notas}</div>` : ''}
+                <div class="kanban-card-title" style="margin-top:6px;${t.estado === 'Listo' ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${escapeHtml(t.titulo)}</div>
+                ${t.notas ? `<div class="kanban-card-notas" style="font-size:11px;color:var(--text-muted);margin-top:4px;">${sanitizarHtml(t.notas)}</div>` : ''}
                 ${t.url ? `<a href="${t.url}" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:var(--accent);display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↗ ${t.url}</a>` : ''}
                 ${t.vencimiento ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📅 ${fmtDate(t.vencimiento)}</div>` : ''}
                 ${t.asignado ? `<div style="font-size:10px;color:var(--primary);margin-top:4px;font-weight:600;">👤 ${escapeHtml(t.asignado.nombre || t.asignado.email)}</div>` : ''}
@@ -7415,7 +7446,7 @@ window.openReporteModal = function() {
           <thead><tr style="background:#f8fafc;">${['Título','Fecha','Plataformas','Formato','Estado'].map(h=>`<th style="text-align:left;padding:6px 8px;font-weight:600;border-bottom:1px solid var(--border);">${h}</th>`).join('')}</tr></thead>
           <tbody>${conts.map(c=>`
             <tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:6px 8px;font-weight:500;">${c.titulo}</td>
+              <td style="padding:6px 8px;font-weight:500;">${escapeHtml(c.titulo)}</td>
               <td style="padding:6px 8px;color:var(--text-muted);">${fmtDate(c.fechaPub)||'—'}</td>
               <td style="padding:6px 8px;">${(c.plataformas||[]).join(', ')||'—'}</td>
               <td style="padding:6px 8px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'—')}</td>
@@ -7456,7 +7487,7 @@ window.openReporteModal = function() {
           <tbody>${campanas.map(c=>{
             const roas = c.gastado ? (c.ingresos/c.gastado).toFixed(2) : '—';
             return `<tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:6px 8px;font-weight:500;">${c.nombre}</td>
+              <td style="padding:6px 8px;font-weight:500;">${escapeHtml(c.nombre)}</td>
               <td style="padding:6px 8px;color:var(--text-muted);">${c.plataforma||'—'}</td>
               <td style="padding:6px 8px;"><span style="padding:2px 8px;border-radius:10px;background:${c.estado==='Activa'?'#dcfce7':'#f1f5f9'};color:${c.estado==='Activa'?'#16a34a':'#64748b'};font-size:11px;font-weight:600;">${c.estado||'—'}</span></td>
               <td style="padding:6px 8px;">$${fmtNum(c.presupuesto)}</td>
@@ -7707,7 +7738,7 @@ document.getElementById('import-campana-file-input').addEventListener('change', 
       ${valid.length ? `<div class="table-wrapper table-scroll-wrap"><table class="data-table">
         <thead><tr><th>Nombre</th><th>Plataforma</th><th>Estado</th><th>Presup.</th><th>Inicio</th><th>Fin</th></tr></thead>
         <tbody>
-          ${valid.map(c => `<tr><td>${c.nombre}</td><td>${c.plataforma}</td><td>${c.estado}</td><td>$${c.presupuesto}</td><td>${c.fechaInicio || '—'}</td><td>${c.fechaFin || '—'}</td></tr>`).join('')}
+          ${valid.map(c => `<tr><td>${escapeHtml(c.nombre)}</td><td>${c.plataforma}</td><td>${c.estado}</td><td>$${c.presupuesto}</td><td>${c.fechaInicio || '—'}</td><td>${c.fechaFin || '—'}</td></tr>`).join('')}
         </tbody>
       </table></div>` : ''}
       ${errores.length ? `<div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#991b1b;">${errores.join('<br>')}</div>` : ''}
@@ -8188,7 +8219,7 @@ function getAsignarOptions(currentEmail) {
     return true;
   });
   return '<option value="">Sin asignar</option>' + unique.map(u =>
-    `<option value="${u.email}" data-nombre="${u.nombre}" ${currentEmail === u.email ? 'selected' : ''}>${u.nombre} — ${u.email}</option>`
+    `<option value="${u.email}" data-nombre="${escapeHtml(u.nombre)}" ${currentEmail === u.email ? 'selected' : ''}>${escapeHtml(u.nombre)} — ${u.email}</option>`
   ).join('');
 }
 
@@ -8207,7 +8238,7 @@ function opcionesFiltroAsignadoTareas() {
     seen.add(u.email.toLowerCase());
     return true;
   });
-  return unique.map(u => `<option value="${u.email}">${u.nombre}</option>`).join('');
+  return unique.map(u => `<option value="${u.email}">${escapeHtml(u.nombre)}</option>`).join('');
 }
 
 function getMentionUsers() {
@@ -8278,9 +8309,9 @@ function setupMentionAutocomplete(inputId, dropdownId) {
     const users = getMentionUsers().filter(u => u.nombre.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
     if (!users.length) { dropdown.classList.add('hidden'); return; }
     dropdown.innerHTML = users.map(u => `
-      <div class="mention-item" data-nombre="${u.nombre}">
-        <div class="mention-avatar">${u.nombre[0].toUpperCase()}</div>
-        <div><div style="font-weight:600;font-size:12px;">${u.nombre}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
+      <div class="mention-item" data-nombre="${escapeHtml(u.nombre)}">
+        <div class="mention-avatar">${escapeHtml(u.nombre[0].toUpperCase())}</div>
+        <div><div style="font-weight:600;font-size:12px;">${escapeHtml(u.nombre)}</div><div style="font-size:11px;color:var(--text-muted);">${u.email}</div></div>
       </div>`).join('');
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.mention-item').forEach(item => {
@@ -8414,9 +8445,9 @@ function renderEquipoList() {
   ].filter(Boolean).join(' · ');
   list.innerHTML = usuarios.map((u, i) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-strong);border-radius:8px;">
-      <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(u.nombre||'?')[0].toUpperCase()}</div>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${escapeHtml((u.nombre||'?')[0].toUpperCase())}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${u.nombre}${u.apellido ? ' ' + u.apellido : ''}</div>
+        <div style="font-weight:600;font-size:13px;">${escapeHtml(u.nombre)}${u.apellido ? ' ' + u.apellido : ''}</div>
         <div style="font-size:11px;color:var(--text-muted);">${u.email}${u.telefono ? ' · ' + u.telefono : ''} · <span style="color:var(--accent);">${u.rol||'Usuario'}</span>${u.cargo ? ' · ' + u.cargo : ''}</div>
         ${redes(u) ? `<div style="font-size:11px;margin-top:2px;">${redes(u)}</div>` : ''}
       </div>
