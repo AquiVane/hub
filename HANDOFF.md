@@ -5,6 +5,12 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 17/11 — Una persona del lado del cliente con cuenta de OTRO cliente veía todo vacío; y las tareas asignadas a ella no se veían
+- Causa (caso Miguel, cliente `ph`): su cuenta (rol client) guarda un solo `clientId` (`mc`); al sumarlo al equipo de `ph` el sistema vio que ya tenía cuenta y no le dio acceso → el backend respondía 403, `loadAllData` lo tragaba y todo salía vacío; el link del mail caía en Inicio porque `STATE.tareas` quedaba vacío.
+- Backend (`marketing-hub`, ver su HANDOFF): el acceso de una cuenta client a otro cliente se decide por el equipo (`usuarios`) de ese cliente (`esEquipoDelCliente`). Sin migrar datos.
+- Front (`app.js?v=91`, `hv=37`): `tareasVisibles` deja ver a una persona del cliente las tareas visibles Y las que le asignaron a ella (`tareaAsignadaAMi`); `openTareaModal` igual. Las internas de otros siguen ocultas.
+- Pendiente: desplegar `marketing-hub` (con aviso a Vaneh).
+
 ## 13/11 — Base de contenidos: sin fecha al final y orden elegible
 - La base (`renderBancoContenidos`) ahora deja "📌 Sin fecha" al final y tiene un selector "Orden: Más antiguos primero / Más nuevos primero" (se recuerda en el dispositivo, `hub_banco_orden`). Cambia años, meses y filas. `app.js?v=90`, `hv=36`, `data.js?v=30`, `offline.js?v=16` (la lectura con cambio pendiente ya no espera sin límite).
 - Pendiente abierto: el cartel "1 cambio sin sincronizar" en Contenidos propios (`_cosmart/contenidos`) de Vaneh sigue; no se encontró la causa en el servidor (lista chica: 94 KB, 99 ítems). Falta el diagnóstico del cartel.

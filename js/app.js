@@ -759,9 +759,15 @@ function cuadranteBadge(c) {
   return `<span title="${c}" style="font-size:11px;">${CUADRANTE_EMOJI[c]}</span>`;
 }
 
+// Una persona del lado del cliente ve las tareas marcadas como visibles Y las que le asignaron a ella
+// (17/11, Vaneh: a un responsable nuevo le asignó una tarea y le aparecía todo vacío).
+function tareaAsignadaAMi(t) {
+  const yo = (user.email || '').trim().toLowerCase();
+  return !!yo && (((t.asignado && t.asignado.email) || '').trim().toLowerCase() === yo);
+}
 function tareasVisibles(lista) {
   if (user.role !== 'client') return lista;
-  return lista.filter(t => t.visibleParaCliente === true);
+  return lista.filter(t => t.visibleParaCliente === true || tareaAsignadaAMi(t));
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5897,7 +5903,7 @@ document.getElementById('tarea-archivo-folder-input')?.addEventListener('change'
 window.openTareaModal = function(id, defaultEstado) {
   if (id && user.role === 'client') {
     const tCheck = STATE.tareas.find(t => t.id === id);
-    if (tCheck && tCheck.visibleParaCliente !== true) return; // tarea interna (default), el cliente no puede abrirla
+    if (tCheck && tCheck.visibleParaCliente !== true && !tareaAsignadaAMi(tCheck)) return; // tarea interna (default), el cliente no puede abrirla salvo que sea suya
   }
   editingTarea = id ? STATE.tareas.find(t => t.id === id) : null;
   const t = editingTarea || {};
