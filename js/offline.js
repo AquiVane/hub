@@ -175,6 +175,11 @@ export async function wrap(method, path, body, raw) {
   }
 
   if (method === 'POST' && isData) {
+    // Recién guardado: durante el primer intento de sincronización (hasta ~12 s) el cartel es neutro ("sincronizando…"),
+    // no rojo (18/11, Vaneh: "me pone un cartel en rojo… y después se desaparece, pero queda guardado"). Si el servidor
+    // contesta un error que no es pasajero, más abajo se pone fondoHasta = 0 y ahí sí se pinta rojo.
+    fondoHasta = Math.max(fondoHasta, Date.now() + 12000);
+    setTimeout(render, 12200); // si a los 12 s sigue pendiente, ahí sí corresponde el cartel de error
     body = await stampAutor(path, body);
     raw = () => rawFn('POST', path, body); // manda el cuerpo ya sellado con autor
     if (/^\/data\/(?!_personal\/)[^/]+\/contenidos$/.test(path)) {

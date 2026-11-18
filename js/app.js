@@ -17,7 +17,7 @@ import {
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
   optimizarCargaCliente
-} from './data.js?v=30';
+} from './data.js?v=31';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -1409,6 +1409,14 @@ function buildPieChart(tipos, COLORS, sideExtraHtml) {
     + '</div></div>';
 }
 
+// Estados de un remix (18/11): Idea / En proceso / Publicado (como las columnas del Kanban). Lo viejo ("Pendiente") cuenta como Idea.
+// Los colores salen de las variables de estado del tema, así se leen igual en modo claro y oscuro.
+function remixEstadoDe(r) { return r && (r.estado === 'En proceso' || r.estado === 'Publicado') ? r.estado : 'Idea'; }
+function remixColor(estado) {
+  const k = estado === 'Publicado' ? 'publicado' : estado === 'En proceso' ? 'proceso' : 'idea';
+  return { fg: `var(--status-${k})`, bg: `var(--status-${k}-bg)` };
+}
+
 function renderDashboard(container) {
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DIAS = ['L','M','Mi','J','V','S','D'];
@@ -1426,8 +1434,9 @@ function renderDashboard(container) {
     c.remixes.forEach((r, i) => { if (r && r.fecha && r.fecha.startsWith(prefix)) remixDelMes.push({ c, r, n: i + 1 }); });
   });
   remixDelMes.sort((a, b) => a.r.fecha < b.r.fecha ? -1 : a.r.fecha > b.r.fecha ? 1 : 0);
-  const remixPublicados = remixDelMes.filter(x => x.r.estado === 'Publicado').length;
-  const remixPendientes = remixDelMes.length - remixPublicados;
+  const remixPublicados = remixDelMes.filter(x => remixEstadoDe(x.r) === 'Publicado').length;
+  const remixEnProceso = remixDelMes.filter(x => remixEstadoDe(x.r) === 'En proceso').length;
+  const remixIdea = remixDelMes.length - remixPublicados - remixEnProceso;
 
   // ── STAT PILLS ──
   const total = conts.length;
@@ -1515,7 +1524,7 @@ function renderDashboard(container) {
     return `<td><span class="${cls}">${n}</span></td>`;
   }
 
-  const remixMark = (k) => k > 0 ? `<span class="freq-remix" title="${k} remix" style="display:block;font-size:9px;font-weight:700;color:#7c3aed;line-height:1.1;">🔁${k}</span>` : '';
+  const remixMark = (k) => k > 0 ? `<span class="freq-remix" title="${k} remix" style="display:block;font-size:9px;font-weight:700;color:var(--primary);line-height:1.1;">🔁${k}</span>` : '';
   const freqRows = weeks.map((week, wi) => {
     const weekTotal = week.reduce((s,v) => s+v, 0);
     const weekRemix = weeksRemix[wi].reduce((s,v) => s+v, 0);
@@ -1550,9 +1559,10 @@ function renderDashboard(container) {
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3b82f6">${programados}</div><div class="dash-stat-pill-label">Programados</div></div>
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
       ${remixDelMes.length ? `
-      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#7c3aed">${remixDelMes.length}</div><div class="dash-stat-pill-label">🔁 Remix del mes</div></div>
-      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#16a34a">${remixPublicados}</div><div class="dash-stat-pill-label">🔁 Remix publicados</div></div>
-      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#b45309">${remixPendientes}</div><div class="dash-stat-pill-label">🔁 Remix pendientes</div></div>` : ''}
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:var(--primary)">${remixDelMes.length}</div><div class="dash-stat-pill-label">🔁 Remix del mes</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:var(--status-publicado)">${remixPublicados}</div><div class="dash-stat-pill-label">🔁 Remix publicados</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:var(--status-proceso)">${remixEnProceso}</div><div class="dash-stat-pill-label">🔁 Remix en proceso</div></div>
+      <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:var(--status-idea)">${remixIdea}</div><div class="dash-stat-pill-label">🔁 Remix en idea</div></div>` : ''}
     </div>
 
     <div class="dash-layout">
@@ -1588,7 +1598,7 @@ function renderDashboard(container) {
             <span class="freq-cell-3" style="padding:1px 6px;">3</span>
             <span class="freq-cell-many" style="padding:1px 6px;">4+</span>
             <span>Más contenido</span>
-            ${remixDelMes.length ? '<span style="margin-left:10px;color:#7c3aed;font-weight:700;">🔁 = remix</span>' : ''}
+            ${remixDelMes.length ? '<span style="margin-left:10px;color:var(--primary);font-weight:700;">🔁 = remix</span>' : ''}
           </div>
         </div>
         ${remixDelMes.length ? `
@@ -1596,12 +1606,12 @@ function renderDashboard(container) {
           <div class="dash-card-title">🔁 Remix del mes</div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             ${remixDelMes.map(({ c, r, n }) => {
-              const pub = r.estado === 'Publicado';
-              return `<div onclick="openContenidoModalById('${c.id}')" title="Abrir el contenido" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:6px;cursor:pointer;background:${pub ? '#f0fdf4' : '#f5f3ff'};border:1px solid ${pub ? '#bbf7d0' : '#ddd6fe'};border-left:3px solid ${pub ? '#16a34a' : '#7c3aed'};">
-                <span style="font-size:11px;font-weight:700;color:#7c3aed;white-space:nowrap;">🔁 Remix ${n}</span>
-                <span style="font-size:12px;flex:1;min-width:120px;word-break:break-word;">${escapeHtml(c.titulo)}</span>
+              const est = remixEstadoDe(r), col = remixColor(est);
+              return `<div onclick="openContenidoModalById('${c.id}')" title="Abrir el contenido" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:6px;cursor:pointer;background:var(--surface-sunken);border:1px solid var(--border);border-left:3px solid ${col.fg};">
+                <span style="font-size:11px;font-weight:700;color:var(--primary);white-space:nowrap;">🔁 Remix ${n}</span>
+                <span style="font-size:12px;flex:1;min-width:120px;word-break:break-word;color:var(--text);">${escapeHtml(c.titulo)}</span>
                 <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${fmtDate(r.fecha)}</span>
-                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;background:${pub ? '#dcfce7' : '#fef9c3'};color:${pub ? '#166534' : '#854d0e'};">${pub ? 'Publicado' : 'Pendiente'}</span>
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;background:${col.bg};color:${col.fg};">${est}</span>
               </div>`;
             }).join('')}
           </div>
@@ -2486,12 +2496,11 @@ function renderCalendario(container) {
           </div>
         `).join('')}
         ${dayRemix.map(({ c, r, n }) => {
-          const pub = r.estado === 'Publicado';
-          const col = pub ? '#16a34a' : '#b45309';
+          const est = remixEstadoDe(r), col = remixColor(est);
           return `
-          <div class="cal-event" style="background:${col}22;color:${col};border-left:3px solid ${col};${pub ? 'opacity:.8;' : ''}"
-               onclick="openContenidoModalById('${c.id}')" title="Remix ${n} (${pub ? 'Publicado' : 'Pendiente'}) · ${escapeHtml(c.titulo)}">
-            🔁 Remix ${n} · ${escapeHtml(c.titulo)}${pub ? ' ✓' : ''}
+          <div class="cal-event" style="background:${col.bg};color:${col.fg};border-left:3px solid ${col.fg};${est === 'Publicado' ? 'opacity:.85;' : ''}"
+               onclick="openContenidoModalById('${c.id}')" title="Remix ${n} (${est}) · ${escapeHtml(c.titulo)}">
+            🔁 Remix ${n} · ${escapeHtml(c.titulo)}${est === 'Publicado' ? ' ✓' : ''}
           </div>`;
         }).join('')}
       </div>`;
@@ -2519,6 +2528,23 @@ function renderCalendario(container) {
 }
 
 // ─ Kanban Estados ─
+// Remix en el Kanban (18/11): aparecen en la columna de su estado (Idea / En proceso / Publicado), diferenciados y sin arrastre
+// (se cambian de estado desde el contenido).
+function remixKanbanHtml(colKey) {
+  const out = [];
+  STATE.contenidos.forEach(c => {
+    if (c.archivado || !Array.isArray(c.remixes) || !matchFiltrosCont(c)) return;
+    c.remixes.forEach((r, i) => { if (remixEstadoDe(r) === colKey) out.push({ c, r, n: i + 1 }); });
+  });
+  return out.map(({ c, r, n }) => {
+    const col = remixColor(colKey);
+    return `<div class="kanban-card kanban-card-remix" onclick="openContenidoModalById('${c.id}')" title="Abrir el contenido" style="cursor:pointer;border-left:3px solid ${col.fg};">
+      <div class="kanban-card-title"><span style="color:var(--primary);font-weight:700;">🔁 Remix ${n}</span> · ${escapeHtml(c.titulo)}</div>
+      ${r.fecha ? `<div class="kanban-card-date">${fmtDate(r.fecha)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
 function renderKanbanContenidos(container) {
   const cols = [
     { key: 'Idea', label: 'Idea', cls: 's-idea' },
@@ -2556,6 +2582,7 @@ function renderKanbanContenidos(container) {
               </div>
             </div>
           `).join('')}
+          ${remixKanbanHtml(col.key)}
         </div>
         <button class="kanban-add-btn" onclick="openContenidoModal({estado:'${col.key}'})">+ Agregar</button>
       </div>
@@ -3382,10 +3409,10 @@ window.removeDriveLink = function(type, idx) {
 
 // ── Remix (18/11, pedido de Vaneh) ──
 // Un contenido puede tener varios remix (Remix 1, 2, 3…). Cada uno lleva SU fecha, su link y su estado
-// (Pendiente / Publicado); la fecha del contenido en sí no se toca. Se guardan en contenido.remixes
+// (Idea / En proceso / Publicado); la fecha del contenido en sí no se toca. Se guardan en contenido.remixes
 // = [{ id, fecha, link, estado }]; el nombre "Remix N" sale del orden, no se guarda.
 let _remixes = [];
-const REMIX_ESTADOS = ['Pendiente', 'Publicado'];
+const REMIX_ESTADOS = ['Idea', 'En proceso', 'Publicado'];
 const _remixEsc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function _remixUrlSegura(u) { return /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : ''; }
 
@@ -3393,24 +3420,24 @@ function renderRemixes() {
   const cont = document.getElementById('remix-list');
   if (!cont) return;
   cont.innerHTML = _remixes.map((r, i) => {
-    const pub = r.estado === 'Publicado';
+    const est = remixEstadoDe(r), col = remixColor(est);
     const url = _remixUrlSegura(r.link);
     return `
-    <div class="remix-fila" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:${pub ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${pub ? '#bbf7d0' : 'var(--border)'};">
+    <div class="remix-fila" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:var(--surface-sunken);border-radius:6px;border:1px solid var(--border);border-left:3px solid ${col.fg};">
       <strong style="font-size:12px;color:var(--primary);flex:0 0 64px;">Remix ${i + 1}</strong>
       <input type="date" class="form-control" value="${_remixEsc(r.fecha || '')}" onchange="updateRemix(${i},'fecha',this.value)" style="flex:0 1 150px;min-width:130px;">
       <input type="url" class="form-control" value="${_remixEsc(r.link || '')}" placeholder="https://… link del remix" oninput="updateRemix(${i},'link',this.value)" onchange="renderRemixes()" style="flex:1 1 180px;min-width:0;">
       ${url ? `<a href="${_remixEsc(url)}" target="_blank" rel="noopener" title="Abrir el link del remix" style="font-size:16px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;flex-shrink:0;">🔗</a>` : ''}
-      <select onchange="updateRemix(${i},'estado',this.value);renderRemixes()" style="font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:1px solid ${pub ? '#86efac' : '#fde68a'};background:${pub ? '#dcfce7' : '#fef9c3'};color:${pub ? '#166534' : '#854d0e'};flex-shrink:0;">
-        ${REMIX_ESTADOS.map(e => `<option value="${e}" ${r.estado === e ? 'selected' : ''}>${e}</option>`).join('')}
+      <select onchange="updateRemix(${i},'estado',this.value);renderRemixes()" style="font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:1px solid ${col.fg};background:${col.bg};color:${col.fg};flex-shrink:0;">
+        ${REMIX_ESTADOS.map(e => `<option value="${e}" ${est === e ? 'selected' : ''}>${e}</option>`).join('')}
       </select>
-      <button type="button" onclick="removeRemix(${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;" title="Quitar este remix">×</button>
+      <button type="button" onclick="removeRemix(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;" title="Quitar este remix">×</button>
     </div>`;
   }).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin remix. Agregá uno.</p>';
 }
 window.renderRemixes = renderRemixes;
 window.addRemix = function() {
-  _remixes.push({ id: 'rx' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), fecha: '', link: '', estado: 'Pendiente' });
+  _remixes.push({ id: 'rx' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), fecha: '', link: '', estado: 'Idea' });
   renderRemixes();
 };
 window.updateRemix = function(i, campo, val) { if (_remixes[i]) _remixes[i][campo] = val; };
@@ -3629,7 +3656,7 @@ window.openContenidoModal = function(defaults = {}) {
   renderDriveLinks('ref');
 
   // Remix
-  _remixes = Array.isArray(c.remixes) ? c.remixes.map(r => ({ ...r })) : [];
+  _remixes = Array.isArray(c.remixes) ? c.remixes.map(r => ({ ...r, estado: remixEstadoDe(r) })) : [];
   renderRemixes();
 
   // Images
@@ -4571,7 +4598,7 @@ function contenidoAFilaExport(c) {
     (c.linkDriveRef || []).join(', '),
     c.notas || '',
     c.asignado ? (c.asignado.nombre || c.asignado.email) : '',
-    (c.remixes || []).map((r, i) => `Remix ${i + 1}: ${r.fecha || 'sin fecha'} · ${r.estado || 'Pendiente'}${r.link ? ' · ' + r.link : ''}`).join('\n'),
+    (c.remixes || []).map((r, i) => `Remix ${i + 1}: ${r.fecha || 'sin fecha'} · ${remixEstadoDe(r)}${r.link ? ' · ' + r.link : ''}`).join('\n'),
   ];
 }
 

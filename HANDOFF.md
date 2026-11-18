@@ -5,6 +5,12 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 18/11 (2) — Remix: estados Idea / En proceso / Publicado, modo oscuro, Kanban; y el cartel ya no se pone rojo mientras sincroniza
+- Estados del remix: **Idea / En proceso / Publicado** (antes Pendiente/Publicado; "Pendiente" viejo se lee como Idea, `remixEstadoDe`). Colores con las variables `--status-*` del tema (`remixColor`), así se leen en modo claro y oscuro (antes la fila usaba colores claros fijos y en oscuro no se veía). Aplica al formulario, calendario, Dashboard (pills: del mes / publicados / en proceso / en idea) y Excel.
+- Kanban de contenidos (vista "Kanban" del desplegable Vistas): los remix aparecen en la columna de su estado (Idea / En proceso / Publicado) como tarjetas "🔁 Remix N · título" sin arrastre (`remixKanbanHtml`).
+- Cartel "N cambio(s) sin sincronizar": en `offline.js` (v17) al guardar se fija `fondoHasta = ahora + 12 s` → durante el primer intento el cartel es neutro ("Guardado en tu teléfono · sincronizando…"); si a los 12 s sigue pendiente, o el servidor devuelve un error NO pasajero (ej. 403), se pinta rojo. Probado con servidor lento (6 s, nunca rojo) y con 403 (rojo enseguida).
+- Pendiente: sigue sin saberse por qué el guardado de contenidos de "Contenidos propios" tarda (botón en "Guardando…" hasta ~14 s). Falta el diagnóstico del cartel (tocar "Reintentar" y mandar captura).
+
 ## 18/11 — Contenidos: sección "Remix" en el formulario de contenido
 - En el modal de contenido (`app/index.html` `#remix-section`, `app.js` `renderRemixes/addRemix/updateRemix/removeRemix`) se pueden sumar Remix 1, 2, 3… Cada uno con SU fecha, su link (🔗 abre en otra pestaña, igual que las referencias) y estado Pendiente/Publicado. Se guardan en `contenido.remixes = [{id, fecha, link, estado}]`; el nombre "Remix N" sale del orden. La fecha del contenido no se toca; los contenidos que nunca tuvieron remix no reciben el campo.
 - Un solo formulario sirve a todos los módulos de contenido (panel del cliente y "Contenidos propios" del admin vía HOSTED). `app.js?v=92`, `hv=38`.
