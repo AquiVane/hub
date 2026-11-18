@@ -2219,21 +2219,6 @@ function pautaBadge(c) {
   return `<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;">Orgánico</span>`;
 }
 
-// Remix de un contenido, en chips diferenciados (violeta = pendiente, verde = publicado); el link, si hay, abre en otra pestaña.
-function remixChipsHtml(c) {
-  if (!Array.isArray(c.remixes) || !c.remixes.length) return '';
-  const chips = c.remixes.map((r, i) => {
-    const pub = r && r.estado === 'Publicado';
-    const url = _remixUrlSegura(r && r.link);
-    const txt = `🔁 Remix ${i + 1}${r && r.fecha ? ' · ' + fmtDate(r.fecha) : ''}${pub ? ' ✓' : ''}`;
-    const est = `font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;text-decoration:none;white-space:nowrap;background:${pub ? '#dcfce7' : '#f5f3ff'};color:${pub ? '#166534' : '#6d28d9'};border:1px solid ${pub ? '#bbf7d0' : '#ddd6fe'};`;
-    return url
-      ? `<a href="${_remixEsc(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el link del remix (${pub ? 'Publicado' : 'Pendiente'})" style="${est}">${txt} ↗</a>`
-      : `<span title="${pub ? 'Publicado' : 'Pendiente'}" style="${est}">${txt}</span>`;
-  }).join('');
-  return `<div class="remix-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${chips}</div>`;
-}
-
 function bancoCardHtml(c) {
   return `
     <div class="content-card" onclick="openContenidoModalById('${c.id}')">
@@ -2242,7 +2227,6 @@ function bancoCardHtml(c) {
         ${statusBadge(c.estado)}
       </div>
       <div class="content-card-titulo">${escapeHtml(c.titulo)}</div>
-      ${remixChipsHtml(c)}
       <div class="content-card-meta">
         ${pautaBadge(c)}
         ${(c.plataformas || []).map(p => platBadge(p)).join('')}
@@ -2283,7 +2267,7 @@ function bancoRowHtml(c) {
   return `
     <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
       <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
-      <td style="font-weight:500;min-width:160px;">${escapeHtml(c.titulo)}${remixChipsHtml(c)}</td>
+      <td style="font-weight:500;min-width:160px;">${escapeHtml(c.titulo)}</td>
       <td>${pautaBadge(c)}</td>
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">

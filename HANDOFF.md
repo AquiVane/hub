@@ -10,7 +10,7 @@
 - Un solo formulario sirve a todos los módulos de contenido (panel del cliente y "Contenidos propios" del admin vía HOSTED). `app.js?v=92`, `hv=38`.
 - Calendario de contenidos (`renderCalendario`, `app.js?v=93`, `hv=39`): cada remix con fecha aparece ese día como "🔁 Remix N · título" (ámbar = Pendiente, verde con ✓ = Publicado), respeta filtros y archivados, y al tocarlo abre su contenido. El remix sin fecha no aparece.
 - Dashboard (`renderDashboard`, `app.js?v=94`, `hv=40`): los remix se muestran DIFERENCIADOS del contenido: 3 pills extra (🔁 Remix del mes / publicados / pendientes), marca violeta 🔁N dentro de la grilla de frecuencia (por día, semana y total) y tarjeta "🔁 Remix del mes" con cada remix (fecha, estado, click abre el contenido). Los números de contenido (Total/Publicados/…) NO suman remix. Cada remix cuenta en SU fecha (aunque el contenido sea de otro mes); archivados y remix sin fecha no cuentan. (Dato previo, no tocado: el "Total del mes" ya contaba contenidos archivados.)
-- Banco de contenidos: chips 🔁 Remix N · fecha (violeta pendiente / verde ✓ publicado; con link abre en otra pestaña) en la tabla y en las tarjetas del celular.
+- Banco de contenidos: NO muestra los remix en la previsualización (decisión de Vaneh, 18/11: confunde más que aclara; ella renombra el contenido, ej. "Remix semanal – Semana 1", y adentro están los remix con su fecha). `app.js?v=95`, `hv=41`.
 - Excel: la exportación suma al final la columna "Remix (solo lectura)" (texto); al importar se ignora (columna desconocida), así que no pisa los remix.
 - Sigue sin mostrarse en Kanban de estados (el estado de un remix es Pendiente/Publicado, no las columnas del Kanban).
 
