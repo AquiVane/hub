@@ -5,6 +5,11 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 18/11 — Contenidos: sección "Remix" en el formulario de contenido
+- En el modal de contenido (`app/index.html` `#remix-section`, `app.js` `renderRemixes/addRemix/updateRemix/removeRemix`) se pueden sumar Remix 1, 2, 3… Cada uno con SU fecha, su link (🔗 abre en otra pestaña, igual que las referencias) y estado Pendiente/Publicado. Se guardan en `contenido.remixes = [{id, fecha, link, estado}]`; el nombre "Remix N" sale del orden. La fecha del contenido no se toca; los contenidos que nunca tuvieron remix no reciben el campo.
+- Un solo formulario sirve a todos los módulos de contenido (panel del cliente y "Contenidos propios" del admin vía HOSTED). `app.js?v=92`, `hv=38`.
+- No incluido (no pedido): los remix no se muestran todavía en la tabla/calendario/Kanban ni se exportan al Excel; el Excel importa/actualiza sin pisarlos.
+
 ## 17/11 — Una persona del lado del cliente con cuenta de OTRO cliente veía todo vacío; y las tareas asignadas a ella no se veían
 - Causa (caso Miguel, cliente `ph`): su cuenta (rol client) guarda un solo `clientId` (`mc`); al sumarlo al equipo de `ph` el sistema vio que ya tenía cuenta y no le dio acceso → el backend respondía 403, `loadAllData` lo tragaba y todo salía vacío; el link del mail caía en Inicio porque `STATE.tareas` quedaba vacío.
 - Backend (`marketing-hub`, ver su HANDOFF): el acceso de una cuenta client a otro cliente se decide por el equipo (`usuarios`) de ese cliente (`esEquipoDelCliente`). Sin migrar datos.

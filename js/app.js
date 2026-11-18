@@ -3329,6 +3329,42 @@ window.removeDriveLink = function(type, idx) {
   renderDriveLinks(type);
 };
 
+// ── Remix (18/11, pedido de Vaneh) ──
+// Un contenido puede tener varios remix (Remix 1, 2, 3…). Cada uno lleva SU fecha, su link y su estado
+// (Pendiente / Publicado); la fecha del contenido en sí no se toca. Se guardan en contenido.remixes
+// = [{ id, fecha, link, estado }]; el nombre "Remix N" sale del orden, no se guarda.
+let _remixes = [];
+const REMIX_ESTADOS = ['Pendiente', 'Publicado'];
+const _remixEsc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function _remixUrlSegura(u) { return /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : ''; }
+
+function renderRemixes() {
+  const cont = document.getElementById('remix-list');
+  if (!cont) return;
+  cont.innerHTML = _remixes.map((r, i) => {
+    const pub = r.estado === 'Publicado';
+    const url = _remixUrlSegura(r.link);
+    return `
+    <div class="remix-fila" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:${pub ? '#f0fdf4' : '#f8fafc'};border-radius:6px;border:1px solid ${pub ? '#bbf7d0' : 'var(--border)'};">
+      <strong style="font-size:12px;color:var(--primary);flex:0 0 64px;">Remix ${i + 1}</strong>
+      <input type="date" class="form-control" value="${_remixEsc(r.fecha || '')}" onchange="updateRemix(${i},'fecha',this.value)" style="flex:0 1 150px;min-width:130px;">
+      <input type="url" class="form-control" value="${_remixEsc(r.link || '')}" placeholder="https://… link del remix" oninput="updateRemix(${i},'link',this.value)" onchange="renderRemixes()" style="flex:1 1 180px;min-width:0;">
+      ${url ? `<a href="${_remixEsc(url)}" target="_blank" rel="noopener" title="Abrir el link del remix" style="font-size:16px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;flex-shrink:0;">🔗</a>` : ''}
+      <select onchange="updateRemix(${i},'estado',this.value);renderRemixes()" style="font-size:12px;font-weight:600;padding:6px 8px;border-radius:6px;border:1px solid ${pub ? '#86efac' : '#fde68a'};background:${pub ? '#dcfce7' : '#fef9c3'};color:${pub ? '#166534' : '#854d0e'};flex-shrink:0;">
+        ${REMIX_ESTADOS.map(e => `<option value="${e}" ${r.estado === e ? 'selected' : ''}>${e}</option>`).join('')}
+      </select>
+      <button type="button" onclick="removeRemix(${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;" title="Quitar este remix">×</button>
+    </div>`;
+  }).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin remix. Agregá uno.</p>';
+}
+window.renderRemixes = renderRemixes;
+window.addRemix = function() {
+  _remixes.push({ id: 'rx' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), fecha: '', link: '', estado: 'Pendiente' });
+  renderRemixes();
+};
+window.updateRemix = function(i, campo, val) { if (_remixes[i]) _remixes[i][campo] = val; };
+window.removeRemix = function(i) { _remixes.splice(i, 1); renderRemixes(); };
+
 // Image paste/upload
 // Igual que las imágenes de Tareas (ver comentario en
 // renderTareaImgThumbs): se suben a R2 al toque en vez de embeberse como
@@ -3541,6 +3577,10 @@ window.openContenidoModal = function(defaults = {}) {
   renderDriveLinks('drive');
   renderDriveLinks('ref');
 
+  // Remix
+  _remixes = Array.isArray(c.remixes) ? c.remixes.map(r => ({ ...r })) : [];
+  renderRemixes();
+
   // Images
   _imgList = Array.isArray(c.imagenes) ? [...c.imagenes] : [];
   renderImgThumbs();
@@ -3683,6 +3723,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
+    remixes: _remixes.map(r => ({ ...r, link: (r.link || '').trim() })),
     imagenes: serializarImagenesCont(_imgList),
     notas: document.getElementById('cf-notas').value,
     comentarios: editingContenido?.comentarios || [],
@@ -3690,6 +3731,8 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
       ? { ...editingContenido.asignado, email: contAsignadoEmail, nombre: contAsignadoNombre }
       : { email: contAsignadoEmail, nombre: contAsignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } }) : null,
   };
+
+  if (!obj.remixes.length && !(editingContenido && Array.isArray(editingContenido.remixes))) delete obj.remixes; // no ensuciar contenidos que nunca tuvieron remix
 
   try {
     let saved;
