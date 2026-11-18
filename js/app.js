@@ -1418,6 +1418,17 @@ function renderDashboard(container) {
 
   const conts = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(prefix));
 
+  // Remix del mes (18/11, pedido de Vaneh): cada remix cuenta en su PROPIA fecha y se muestra aparte, diferenciado del contenido.
+  // No suman a los números de contenido (Total/Publicados/...), que siguen contando solo contenidos.
+  const remixDelMes = [];
+  STATE.contenidos.forEach(c => {
+    if (c.archivado || !Array.isArray(c.remixes)) return;
+    c.remixes.forEach((r, i) => { if (r && r.fecha && r.fecha.startsWith(prefix)) remixDelMes.push({ c, r, n: i + 1 }); });
+  });
+  remixDelMes.sort((a, b) => a.r.fecha < b.r.fecha ? -1 : a.r.fecha > b.r.fecha ? 1 : 0);
+  const remixPublicados = remixDelMes.filter(x => x.r.estado === 'Publicado').length;
+  const remixPendientes = remixDelMes.length - remixPublicados;
+
   // ── STAT PILLS ──
   const total = conts.length;
   const publicados = conts.filter(c => c.estado === 'Publicado').length;
@@ -1474,6 +1485,7 @@ function renderDashboard(container) {
   // For each week (S1-S4), collect Mon-Sun buckets
   const weeks = [[], [], [], []]; // each: [L,M,Mi,J,V,S,D] count
   for (let w = 0; w < 4; w++) weeks[w] = [0,0,0,0,0,0,0];
+  const weeksRemix = [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]; // remix por semana/día, aparte de los contenidos
   // day 1..daysInMonth
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(dashYear, dashMonth, d);
@@ -1482,6 +1494,7 @@ function renderDashboard(container) {
     const dateStr = `${yearStr}-${monthStr}-${String(d).padStart(2,'0')}`;
     const count = conts.filter(c => c.fechaPub === dateStr).length;
     weeks[weekIdx][dow] += count;
+    weeksRemix[weekIdx][dow] += remixDelMes.filter(x => x.r.fecha === dateStr).length;
   }
 
   // ── BAR CHART helper ──
@@ -1502,14 +1515,16 @@ function renderDashboard(container) {
     return `<td><span class="${cls}">${n}</span></td>`;
   }
 
+  const remixMark = (k) => k > 0 ? `<span class="freq-remix" title="${k} remix" style="display:block;font-size:9px;font-weight:700;color:#7c3aed;line-height:1.1;">🔁${k}</span>` : '';
   const freqRows = weeks.map((week, wi) => {
     const weekTotal = week.reduce((s,v) => s+v, 0);
-    if (wi > 0 && weeks.slice(0,wi).every(w => w.reduce((s,v)=>s+v,0) === 0) && weekTotal === 0) return '';
+    const weekRemix = weeksRemix[wi].reduce((s,v) => s+v, 0);
+    if (wi > 0 && weeks.slice(0,wi).every((w, j) => w.reduce((s,v)=>s+v,0) === 0 && weeksRemix[j].reduce((s,v)=>s+v,0) === 0) && weekTotal === 0 && weekRemix === 0) return '';
     return `
       <tr>
         <td class="cat-label week-sep" style="color:var(--primary);font-weight:700;">S${wi+1}</td>
-        ${week.map(n => `<td class="week-sep">${n > 0 ? `<span class="${n===1?'freq-cell-1':n===2?'freq-cell-2':n===3?'freq-cell-3':'freq-cell-many'}">${n}</span>` : '<span class="freq-cell-0">·</span>'}</td>`).join('')}
-        <td class="week-sep" style="font-weight:700;color:var(--primary);font-size:11px;">${weekTotal}</td>
+        ${week.map((n, di) => `<td class="week-sep">${n > 0 ? `<span class="${n===1?'freq-cell-1':n===2?'freq-cell-2':n===3?'freq-cell-3':'freq-cell-many'}">${n}</span>` : '<span class="freq-cell-0">·</span>'}${remixMark(weeksRemix[wi][di])}</td>`).join('')}
+        <td class="week-sep" style="font-weight:700;color:var(--primary);font-size:11px;">${weekTotal}${remixMark(weekRemix)}</td>
       </tr>`;
   }).join('');
 
@@ -1534,6 +1549,10 @@ function renderDashboard(container) {
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#22c55e">${publicados}</div><div class="dash-stat-pill-label">Publicados</div></div>
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#3b82f6">${programados}</div><div class="dash-stat-pill-label">Programados</div></div>
       <div class="dash-stat-pill"><div class="dash-stat-pill-val" style="color:#f59e0b">${enProceso}</div><div class="dash-stat-pill-label">En proceso</div></div>
+      ${remixDelMes.length ? `
+      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#7c3aed">${remixDelMes.length}</div><div class="dash-stat-pill-label">🔁 Remix del mes</div></div>
+      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#16a34a">${remixPublicados}</div><div class="dash-stat-pill-label">🔁 Remix publicados</div></div>
+      <div class="dash-stat-pill" style="border-color:#ddd6fe;"><div class="dash-stat-pill-val" style="color:#b45309">${remixPendientes}</div><div class="dash-stat-pill-label">🔁 Remix pendientes</div></div>` : ''}
     </div>
 
     <div class="dash-layout">
@@ -1554,9 +1573,10 @@ function renderDashboard(container) {
                 <td class="cat-label" style="font-weight:700;color:var(--text-muted);">Total</td>
                 ${[0,1,2,3,4,5,6].map(d => {
                   const tot = weeks.reduce((s,w) => s+w[d], 0);
-                  return `<td style="font-weight:${tot?'700':'400'};color:${tot?'var(--primary)':'#cbd5e1'};font-size:11px;">${tot||'·'}</td>`;
+                  const totR = weeksRemix.reduce((s,w) => s+w[d], 0);
+                  return `<td style="font-weight:${tot?'700':'400'};color:${tot?'var(--primary)':'#cbd5e1'};font-size:11px;">${tot||'·'}${remixMark(totR)}</td>`;
                 }).join('')}
-                <td style="font-weight:700;color:var(--primary);font-size:12px;">${total}</td>
+                <td style="font-weight:700;color:var(--primary);font-size:12px;">${total}${remixMark(remixDelMes.length)}</td>
               </tr>
             </tbody>
           </table>
@@ -1568,8 +1588,24 @@ function renderDashboard(container) {
             <span class="freq-cell-3" style="padding:1px 6px;">3</span>
             <span class="freq-cell-many" style="padding:1px 6px;">4+</span>
             <span>Más contenido</span>
+            ${remixDelMes.length ? '<span style="margin-left:10px;color:#7c3aed;font-weight:700;">🔁 = remix</span>' : ''}
           </div>
         </div>
+        ${remixDelMes.length ? `
+        <div class="dash-card">
+          <div class="dash-card-title">🔁 Remix del mes</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${remixDelMes.map(({ c, r, n }) => {
+              const pub = r.estado === 'Publicado';
+              return `<div onclick="openContenidoModalById('${c.id}')" title="Abrir el contenido" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:6px;cursor:pointer;background:${pub ? '#f0fdf4' : '#f5f3ff'};border:1px solid ${pub ? '#bbf7d0' : '#ddd6fe'};border-left:3px solid ${pub ? '#16a34a' : '#7c3aed'};">
+                <span style="font-size:11px;font-weight:700;color:#7c3aed;white-space:nowrap;">🔁 Remix ${n}</span>
+                <span style="font-size:12px;flex:1;min-width:120px;word-break:break-word;">${escapeHtml(c.titulo)}</span>
+                <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${fmtDate(r.fecha)}</span>
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;background:${pub ? '#dcfce7' : '#fef9c3'};color:${pub ? '#166534' : '#854d0e'};">${pub ? 'Publicado' : 'Pendiente'}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
         <!-- Gráfico de torta por tipo -->
         ${buildPieChart(tipos, COLORS, tareasResumenHtml)}
         ${renderTrabajoRealizado()}
@@ -2183,6 +2219,21 @@ function pautaBadge(c) {
   return `<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;">Orgánico</span>`;
 }
 
+// Remix de un contenido, en chips diferenciados (violeta = pendiente, verde = publicado); el link, si hay, abre en otra pestaña.
+function remixChipsHtml(c) {
+  if (!Array.isArray(c.remixes) || !c.remixes.length) return '';
+  const chips = c.remixes.map((r, i) => {
+    const pub = r && r.estado === 'Publicado';
+    const url = _remixUrlSegura(r && r.link);
+    const txt = `🔁 Remix ${i + 1}${r && r.fecha ? ' · ' + fmtDate(r.fecha) : ''}${pub ? ' ✓' : ''}`;
+    const est = `font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;text-decoration:none;white-space:nowrap;background:${pub ? '#dcfce7' : '#f5f3ff'};color:${pub ? '#166534' : '#6d28d9'};border:1px solid ${pub ? '#bbf7d0' : '#ddd6fe'};`;
+    return url
+      ? `<a href="${_remixEsc(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el link del remix (${pub ? 'Publicado' : 'Pendiente'})" style="${est}">${txt} ↗</a>`
+      : `<span title="${pub ? 'Publicado' : 'Pendiente'}" style="${est}">${txt}</span>`;
+  }).join('');
+  return `<div class="remix-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${chips}</div>`;
+}
+
 function bancoCardHtml(c) {
   return `
     <div class="content-card" onclick="openContenidoModalById('${c.id}')">
@@ -2191,6 +2242,7 @@ function bancoCardHtml(c) {
         ${statusBadge(c.estado)}
       </div>
       <div class="content-card-titulo">${escapeHtml(c.titulo)}</div>
+      ${remixChipsHtml(c)}
       <div class="content-card-meta">
         ${pautaBadge(c)}
         ${(c.plataformas || []).map(p => platBadge(p)).join('')}
@@ -2231,7 +2283,7 @@ function bancoRowHtml(c) {
   return `
     <tr data-id="${c.id}" onclick="openContenidoModalById('${c.id}')" style="cursor:pointer;" class="banco-row">
       <td><input type="date" value="${c.fechaPub||''}" class="banco-date-input" onclick="event.stopPropagation()" onchange="bancoUpdateFecha('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;width:120px;"></td>
-      <td style="font-weight:500;min-width:160px;">${escapeHtml(c.titulo)}</td>
+      <td style="font-weight:500;min-width:160px;">${escapeHtml(c.titulo)}${remixChipsHtml(c)}</td>
       <td>${pautaBadge(c)}</td>
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
@@ -4510,7 +4562,7 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a', 'Remix (solo lectura)'];
 
 function contenidoAFilaExport(c) {
   return [
@@ -4535,6 +4587,7 @@ function contenidoAFilaExport(c) {
     (c.linkDriveRef || []).join(', '),
     c.notas || '',
     c.asignado ? (c.asignado.nombre || c.asignado.email) : '',
+    (c.remixes || []).map((r, i) => `Remix ${i + 1}: ${r.fecha || 'sin fecha'} · ${r.estado || 'Pendiente'}${r.link ? ' · ' + r.link : ''}`).join('\n'),
   ];
 }
 
@@ -4614,7 +4667,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20, 40][i] || 16 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
