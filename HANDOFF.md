@@ -5,6 +5,11 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 18/11 (3) — Carga rápida aunque haya un cambio trabado (offline.js v18)
+- Vaneh: el panel (Contenidos propios) quedaba en esqueleto mucho rato. El servidor estaba sano (4.198 pedidos/24 h sin errores, mediana 15 ms; KV muy por debajo del tope); la demora era del cliente: cada lectura de una lista con un cambio pendiente esperaba su sincronización (hasta 30 s antes, 5 s en v16-17) antes de mostrar nada.
+- Ahora: con un cambio pendiente la lectura devuelve AL INSTANTE la copia del dispositivo (que ya incluye lo pendiente) y la sincronización sigue por detrás; con copia local, la lectura espera como máximo 2 s al servidor (antes 6 s). Prueba: servidor lento (8 s) + cambio trabado → Contenidos abre en ~0,6 s. `offline.js?v=18`, `data.js?v=32`.
+- Regla de oro de Vaneh (repetida): NINGUNA pantalla puede esperar a la red si hay copia local.
+
 ## 18/11 (2) — Remix: estados Idea / En proceso / Publicado, modo oscuro, Kanban; y el cartel ya no se pone rojo mientras sincroniza
 - Estados del remix: **Idea / En proceso / Publicado** (antes Pendiente/Publicado; "Pendiente" viejo se lee como Idea, `remixEstadoDe`). Colores con las variables `--status-*` del tema (`remixColor`), así se leen en modo claro y oscuro (antes la fila usaba colores claros fijos y en oscuro no se veía). Aplica al formulario, calendario, Dashboard (pills: del mes / publicados / en proceso / en idea) y Excel.
 - Kanban de contenidos (vista "Kanban" del desplegable Vistas): los remix aparecen en la columna de su estado (Idea / En proceso / Publicado) como tarjetas "🔁 Remix N · título" sin arrastre (`remixKanbanHtml`).

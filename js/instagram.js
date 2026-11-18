@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts, getFacebookOAuth } from './data.js?v=31';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts, getFacebookOAuth } from './data.js?v=32';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

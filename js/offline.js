@@ -132,8 +132,9 @@ export async function wrap(method, path, body, raw) {
       // Con un cambio pendiente de antes, leer NO puede quedar esperando su sincronización (07/11-12/11, Vaneh: "siempre
       // me da error al guardar"; cada guardado nuevo leía primero y esperaba aquí sin límite). Se intenta hasta 5 s y,
       // si no termina, se sigue con la copia del dispositivo mientras la sincronización continúa en segundo plano.
-      const sp = syncPath(path).catch(() => { /* queda pendiente */ });
-      await conLimite(sp, 5000);
+      // 18/11 (Vaneh: "tarda en cargar, te lo dije un millón de veces"): NO se espera. Se muestra al instante la copia del
+      // dispositivo (que ya incluye lo pendiente) y la sincronización sigue sola por detrás.
+      syncPath(path).catch(() => { /* queda pendiente */ });
     }
     if (await kGet('pending', path)) {
       const c = await kGet('cache', path);
@@ -169,8 +170,8 @@ export async function wrap(method, path, body, raw) {
       throw e;
     }
     };
-    // Con copia local, la lectura no puede hacer esperar más de 6 s: se muestra la copia y la lectura sigue (y actualiza la copia).
-    if (copia0) { const r = await conLimite(leer(), 6000); return r === LIMITE ? clone(copia0.local) : r; }
+    // Con copia local, la lectura no puede hacer esperar más de 2 s: se muestra la copia y la lectura sigue (y actualiza la copia).
+    if (copia0) { const r = await conLimite(leer(), 2000); return r === LIMITE ? clone(copia0.local) : r; }
     return leer();
   }
 
