@@ -2431,6 +2431,12 @@ function renderCalendario(container) {
       const dateStr = cellDate.toISOString().split('T')[0];
       const isToday = dateStr === hoy.toISOString().split('T')[0];
       const dayConts = STATE.contenidos.filter(c => c.fechaPub === dateStr && !c.archivado && matchFiltrosCont(c));
+      // Remix con fecha propia ese día (18/11, pedido de Vaneh): aparecen en el calendario aunque el contenido tenga otra fecha.
+      const dayRemix = [];
+      STATE.contenidos.forEach(c => {
+        if (c.archivado || !Array.isArray(c.remixes) || !matchFiltrosCont(c)) return;
+        c.remixes.forEach((r, i) => { if (r && r.fecha === dateStr) dayRemix.push({ c, r, n: i + 1 }); });
+      });
 
       cells += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -2443,6 +2449,15 @@ function renderCalendario(container) {
             ${(c.plataformas||[]).map(p=>platIcon(p)).join('')} ${escapeHtml(c.titulo)}
           </div>
         `).join('')}
+        ${dayRemix.map(({ c, r, n }) => {
+          const pub = r.estado === 'Publicado';
+          const col = pub ? '#16a34a' : '#b45309';
+          return `
+          <div class="cal-event" style="background:${col}22;color:${col};border-left:3px solid ${col};${pub ? 'opacity:.8;' : ''}"
+               onclick="openContenidoModalById('${c.id}')" title="Remix ${n} (${pub ? 'Publicado' : 'Pendiente'}) · ${escapeHtml(c.titulo)}">
+            🔁 Remix ${n} · ${escapeHtml(c.titulo)}${pub ? ' ✓' : ''}
+          </div>`;
+        }).join('')}
       </div>`;
     }
 
