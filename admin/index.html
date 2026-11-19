@@ -63,7 +63,7 @@
       <button class="nav-item" id="navInternasBtn" onclick="showSection('internas')">
         <i data-lucide="building-2" class="nav-icon"></i><span id="navGestionInternaLabel">Gestión COSMART</span>
       </button>
-      <button class="nav-item" onclick="showSection('contenidospropios');cargarContenidosPropios();">
+      <button class="nav-item" onclick="showSection('contenidospropios');abrirContenidosPropiosAdmin();">
         <i data-lucide="clapperboard" class="nav-icon"></i><span>Contenidos propios</span>
       </button>
       <button class="nav-item" onclick="showSection('instagram')">
@@ -2898,6 +2898,12 @@
       mostrarContenidosPropiosListo();
     });
     return _cpPromise;
+  };
+  // "Contenidos propios" del menú siempre vuelve a la solapa Contenidos (19/11, Vaneh: estando en otra solapa, p. ej. Links y
+  // Archivos, tocar "Contenidos propios" no volvía a Contenidos y había que actualizar la página).
+  window.abrirContenidosPropiosAdmin = async function() {
+    await window.cargarContenidosPropios();
+    document.querySelector('#embed-tabs [data-embed-sec="contenidos"]')?.click();
   };
   // "Links y Archivos" del admin = la solapa del mismo nombre del módulo de Contenidos propios (cliente interno _cosmart).
   window.abrirLinksArchivosAdmin = async function() {
