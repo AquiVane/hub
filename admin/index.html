@@ -520,6 +520,12 @@
       <div id="sec-instagram" class="hidden">
         <style>
           #sec-instagram .ig-card{background:#0D2B6B;border:1px solid #1A4DAA;border-radius:12px;padding:14px;margin-bottom:10px;color:#fff;}
+          #sec-instagram .ig-card-fb{background:#0D2B6B;border-color:#1A4DAA;border-top-left-radius:0;}
+          #sec-instagram .ig-card-ig{background:#B3206B;border-color:#E1306C;border-top-left-radius:0;}
+          #sec-instagram .ig-card-ig .ig-sub{color:#ffe3f0;}
+          #sec-instagram .ig-canal{display:inline-block;font-size:11px;font-weight:700;color:#fff;padding:4px 12px;border-radius:8px 8px 0 0;margin-top:6px;letter-spacing:.2px;}
+          #sec-instagram .ig-canal-fb{background:#1A4DAA;}
+          #sec-instagram .ig-canal-ig{background:#E1306C;}
           #sec-instagram .ig-sub{font-size:12px;color:#cbd5e1;margin-top:4px;word-break:break-word;}
           #sec-instagram .ig-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#1A4DAA;color:#fff;}
           #sec-instagram .ig-log{background:#091C47;border:1px solid #1A4DAA;border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;color:#fff;}
@@ -2600,7 +2606,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=32';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=33';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
 
   const user = requireAuth(['admin', 'colaborador']);
@@ -9790,6 +9796,6 @@
 <script src="../js/theme.js?v=3"></script>
 <script type="module" src="../js/kanban-movil.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/instagram.js?v=32"></script>
+<script type="module" src="../js/instagram.js?v=33"></script>
 </body>
 </html>

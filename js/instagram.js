@@ -1,5 +1,5 @@
 // Sección "Instagram" del admin: automatizaciones, panel de control, actividad y configuración.
-import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts, getFacebookOAuth } from './data.js?v=32';
+import { getInstagram, setInstagramConfig, desconectarInstagram, getInstagramPosts, saveInstagramRegla, deleteInstagramRegla, repararSuscripcionInstagram, recuperarInstagram, getContactosInstagram, descargarContactosInstagram, conectarFacebook, desconectarFacebook, getFacebookPosts, getFacebookOAuth } from './data.js?v=33';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -71,11 +71,13 @@ function pintarReglas() {
     && (!q || (r.nombre || '').toLowerCase().includes(q) || (r.palabras || []).join(' ').toLowerCase().includes(q)));
   $('igReglasLista').innerHTML = !todas.length ? '<p class="text-muted text-sm">Todavía no creaste ninguna regla. Tocá “+ Nueva regla”.</p>'
     : !l.length ? '<p class="text-muted text-sm">Ninguna regla coincide con el filtro.</p>'
-    : l.map(r => `
-    <div class="ig-card">
-      <div style="display:flex;gap:10px;align-items:center;">
-        <strong style="flex:1;min-width:0;font-size:16px;word-break:break-word;">${esc(r.nombre)}</strong>
-        <span style="font-size:12px;color:#cbd5e1;">${r.activa ? 'Activa' : 'Pausada'}</span>
+    : l.map(r => { const fb = r.canal === 'facebook', amb = r.canal === 'ambos'; const kw = r.palabras?.length ? esc(r.palabras.join(', ')) : (r.disparador === 'historia' ? 'cualquier respuesta' : 'cualquier comentario'); return `
+    <div class="ig-canal ${fb ? 'ig-canal-fb' : 'ig-canal-ig'}">${fb ? '📘 Facebook' : amb ? '📸 Instagram + 📘 Facebook' : r.disparador === 'historia' ? '📸 Instagram · Historias' : '📸 Instagram'}</div>
+    <div class="ig-card ${fb ? 'ig-card-fb' : 'ig-card-ig'}">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <strong style="flex:1 1 160px;min-width:0;font-size:16px;word-break:break-word;">${esc(r.nombre)}</strong>
+        <span style="font-size:12px;color:#fff;background:#00000040;padding:3px 9px;border-radius:999px;word-break:break-word;">Palabra clave: <b>${kw}</b></span>
+        <span style="font-size:12px;color:#fff;">${r.activa ? 'Activa' : 'Pausada'}</span>
         <label class="ig-sw" title="Prender / apagar"><input type="checkbox" ${r.activa ? 'checked' : ''} onchange="igAlternar('${esc(r.id)}', this)"><span></span></label>
       </div>
       <div class="ig-sub">${r.canal === 'facebook' ? '📘 Facebook · ' + (r.fbPostId ? esc(r.fbPostInfo || r.fbPostId) : 'todas las publicaciones') : r.disparador === 'historia' ? '📲 Respuesta a historias' : (r.canal === 'ambos' ? '📘 Facebook + ' : '') + '📌 ' + (r.mediaId ? esc(r.mediaInfo || r.mediaId) : 'Todos los posts y reels')} · ${r.palabras?.length ? 'Palabras: ' + esc(r.palabras.join(', ')) : (r.disparador === 'historia' ? 'Cualquier respuesta' : 'Cualquier comentario')}</div>
@@ -88,7 +90,7 @@ function pintarReglas() {
         <button class="btn btn-sm btn-secondary" onclick="igEliminar('${esc(r.id)}')">Eliminar</button>
       </div>
       <div id="igRec-${esc(r.id)}" style="display:${recAbiertos.has(r.id) ? '' : 'none'};margin-top:12px;border-top:1px solid #1A4DAA;padding-top:12px;"></div>
-    </div>`).join('');
+    </div>`; }).join('');
   l.forEach(r => { if (recAbiertos.has(r.id)) pintarRec(r.id); });
   clearTimeout(recTimer);
   const _rec = Object.values(estado.recuperaciones || {});
