@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 20/11 — Pauta Digital: solapa "📋 Planes de campaña" (planes en HTML que se cargan y editan en el Hub)
+- Pedido de Vaneh: poder cargar y editar dentro de Pauta un plan armado como artifact, y que Claude también lo cargue/edite. Nueva solapa **📋 Planes de campaña** al lado de las plataformas (`renderPautaPlanes` en `js/app.js`; helpers `getPlanesPauta`/`savePlanesPauta`/`getPlanPautaHtml`/`savePlanPautaHtml` en `js/data.js`).
+- Datos SIN backend nuevo (tipos libres de `/data/:clientId/:type`): índice `planesPauta` = `[{id,titulo,creado,actualizado}]` y el HTML de cada plan aparte en `planpauta-<id>` = `{html}` (mismo patrón que Reportes). Claude lo crea/edita por el conector: `hub_escribir POST /data/<cliente>/planpauta-<id> {html}` y actualizar el índice. El HTML tiene que ser autocontenido (imágenes como data URI): relativas no cargan.
+- UI: iframe sandbox + `montarMarcoAutoalto` como Plan/Reportes. Equipo: "+ Nuevo plan", "✏️ Editar" (textarea con el HTML + archivo), "🗑 Eliminar"; todos: "⬇️ Descargar". El cliente lo ve de solo lectura: ojo con qué se carga (puede ver presupuestos y notas internas).
+- Probado con Playwright (rutas simuladas): vacío, cargar, ver en iframe, editar, volver a la solapa Todas.
+- Pendiente: nada cargado todavía en Ando (`ar`); falta merge a `main` (auto-deploy Pages).
+
 ## 12/11 — Sección "Visitas" (todos los sitios)
 - Pedido de Vaneh: ver en el Hub cuánta gente entra a TODOS sus sitios. Nueva sección **Visitas** en el admin (solo admin COSMART): 7/30/90 días, pestaña por sitio + "Todos", visitantes únicos, visitas, visitas al checkout, agregados al carrito, compras, gráfico por día, embudo y páginas más vistas. `getVisitas` en `data.js` (v=27) → `GET /admin/visitas` de `marketing-hub` → core.
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
