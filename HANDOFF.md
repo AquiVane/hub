@@ -1,5 +1,8 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 20/11 (2) — Archivos estáticos de la campaña de Instagram de Ando
+- `campanas/ando-instagram-2026-12/`: 8 piezas (feed 4:5 e historia 9:16) y el video 9:16 de la campaña de diciembre. Se sirven en `https://hub.cosmart.com.ar/campanas/ando-instagram-2026-12/<archivo>` y el plan de campaña cargado en Pauta Digital de Ando los referencia con esa URL absoluta. **No pasan por "Links y Archivos" (R2)**: subir ahí requiere el login de una persona (`/archivo-upload`, multipart) y el conector de Claude solo maneja JSON. Son públicos (son piezas de anuncio). El mismo contenido está en `AquiVane/cosmart-workers` → `clientes/ando-reciclaje/campana-instagram-2026-12/`.
+
 ## 20/11 — Pauta Digital: solapa "📋 Planes de campaña" (planes en HTML que se cargan y editan en el Hub)
 - Pedido de Vaneh: poder cargar y editar dentro de Pauta un plan armado como artifact, y que Claude también lo cargue/edite. Nueva solapa **📋 Planes de campaña** al lado de las plataformas (`renderPautaPlanes` en `js/app.js`; helpers `getPlanesPauta`/`savePlanesPauta`/`getPlanPautaHtml`/`savePlanPautaHtml` en `js/data.js`).
 - Datos SIN backend nuevo (tipos libres de `/data/:clientId/:type`): índice `planesPauta` = `[{id,titulo,creado,actualizado}]` y el HTML de cada plan aparte en `planpauta-<id>` = `{html}` (mismo patrón que Reportes). Claude lo crea/edita por el conector: `hub_escribir POST /data/<cliente>/planpauta-<id> {html}` y actualizar el índice. El HTML tiene que ser autocontenido (imágenes como data URI): relativas no cargan.
