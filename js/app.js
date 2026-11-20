@@ -10,6 +10,7 @@ import {
   getMetricas, saveMetricasData, getHomeData, saveHomeData,
   getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias,
   getPlan, savePlan,
+  getPlanesPauta, savePlanesPauta, getPlanPautaHtml, savePlanPautaHtml,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
   uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
@@ -6434,7 +6435,140 @@ window.desarchivarTarea = async function(id) {
 // ──────────────────────────────────────────────────────
 let activePautaTab = 'todas';
 
+// ── Planes de campaña (dentro de Pauta Digital) ──────────────────────
+// Documentos HTML (ej. un plan armado como artifact) que el equipo carga o edita
+// acá, y que Claude también puede crear/editar por el conector del Hub
+// (GET/POST /data/<cliente>/planesPauta y /data/<cliente>/planpauta-<id>).
+let _planPautaSel = null;
+function pautaTabsHtml(activa) {
+  const plats = ['Todas', 'Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
+  return `<div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
+    ${plats.map(p => { const k = p === 'Todas' ? 'todas' : p; return `<button class="tab-btn ${activa === k ? 'active' : ''}" data-tab="${k}">${p}</button>`; }).join('')}
+    <button class="tab-btn ${activa === 'planes' ? 'active' : ''}" data-tab="planes">📋 Planes de campaña</button>
+  </div>`;
+}
+function bindPautaTabs() {
+  document.querySelectorAll('#pauta-tabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePautaTab = btn.dataset.tab;
+      renderPauta(document.getElementById('main-content'));
+      setTimeout(refreshIcons, 50);
+    });
+  });
+}
+async function renderPautaPlanes(container) {
+  const esEquipo = user.role !== 'client';
+  if (!STATE.planesPauta) {
+    container.innerHTML = pautaTabsHtml('planes') + `<div class="empty-state"><p>Cargando planes...</p></div>`;
+    bindPautaTabs();
+    try { STATE.planesPauta = await getPlanesPauta(clientId); } catch (e) { STATE.planesPauta = []; }
+    if (activePautaTab !== 'planes') return;
+  }
+  const planes = STATE.planesPauta;
+  if (!planes.length) {
+    container.innerHTML = pautaTabsHtml('planes') + `<div class="empty-state"><div class="empty-state-icon">📋</div><h3>Sin planes de campaña</h3><p>${esEquipo ? 'Cargá un plan en HTML para verlo y editarlo acá. Claude también puede cargarlo y modificarlo por el conector del Hub.' : 'Todavía no hay planes de campaña cargados para este cliente.'}</p>${esEquipo ? '<button class="btn btn-primary" onclick="abrirPlanPautaModal(null)">+ Cargar plan de campaña</button>' : ''}</div>`;
+    bindPautaTabs();
+    return;
+  }
+  if (!_planPautaSel || !planes.some(p => p.id === _planPautaSel)) _planPautaSel = planes[0].id;
+  const actual = planes.find(p => p.id === _planPautaSel);
+  container.innerHTML = pautaTabsHtml('planes') + `
+    <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:14px;justify-content:space-between;">
+      <div class="tabs">${planes.map(p => `<button class="tab-btn ${p.id === _planPautaSel ? 'active' : ''}" onclick="verPlanPauta('${p.id}')">${escapeHtml(p.titulo || 'Plan')}</button>`).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${esEquipo ? `<button class="btn btn-secondary btn-sm" onclick="abrirPlanPautaModal('${actual.id}')">✏️ Editar</button><button class="btn btn-secondary btn-sm" onclick="abrirPlanPautaModal(null)">+ Nuevo plan</button><button class="btn btn-secondary btn-sm" onclick="eliminarPlanPauta('${actual.id}')">🗑 Eliminar</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="descargarPlanPauta('${actual.id}')">⬇️ Descargar</button>
+      </div>
+    </div>
+    <div id="plan-pauta-wrap"></div>`;
+  bindPautaTabs();
+  const wrap = document.getElementById('plan-pauta-wrap');
+  if (actual.html == null) {
+    wrap.innerHTML = `<div class="empty-state"><p>Cargando plan...</p></div>`;
+    let html = '';
+    try { html = await getPlanPautaHtml(clientId, actual.id); } catch (e) { wrap.innerHTML = `<div class="empty-state"><p>No se pudo cargar el plan.</p></div>`; return; }
+    if (_planPautaSel !== actual.id || activePautaTab !== 'planes') return;
+    if (!html) { wrap.innerHTML = `<div class="empty-state"><p>Este plan todavía no tiene contenido. Probá volver a entrar en unos segundos.</p></div>`; return; }
+    actual.html = html;
+  }
+  wrap.innerHTML = `<iframe id="plan-pauta-frame" style="width:100%;min-height:calc(100vh - 260px);border:none;border-radius:12px;background:#0b0b0f;display:block;" scrolling="no" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>`;
+  const frame = document.getElementById('plan-pauta-frame');
+  frame.srcdoc = PREAMBULO_MARCO + actual.html;
+  montarMarcoAutoalto(frame);
+}
+window.verPlanPauta = function(id) { _planPautaSel = id; renderPauta(document.getElementById('main-content')); };
+window.descargarPlanPauta = function(id) {
+  const p = (STATE.planesPauta || []).find(x => x.id === id);
+  if (!p || !p.html) { alert('Todavía se está cargando el plan, esperá un segundo y probá de nuevo.'); return; }
+  const url = URL.createObjectURL(new Blob([p.html], { type: 'text/html' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `Plan_${(p.titulo || 'campana').replace(/[^a-z0-9]+/gi, '_')}.html`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+window.eliminarPlanPauta = async function(id) {
+  if (!confirm('¿Eliminar este plan de campaña? No se puede deshacer.')) return;
+  try {
+    await savePlanesPauta(clientId, STATE.planesPauta.filter(p => p.id !== id));
+    await savePlanPautaHtml(clientId, id, '');
+    STATE.planesPauta = STATE.planesPauta.filter(p => p.id !== id);
+    _planPautaSel = null;
+    renderPauta(document.getElementById('main-content'));
+  } catch (e) { alert('No se pudo eliminar: ' + e.message); }
+};
+window.abrirPlanPautaModal = async function(id) {
+  const plan = id ? (STATE.planesPauta || []).find(p => p.id === id) : null;
+  if (plan && plan.html == null) { try { plan.html = await getPlanPautaHtml(clientId, plan.id); } catch (e) { alert('No se pudo cargar el plan para editarlo.'); return; } }
+  document.getElementById('ppm-overlay')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'ppm-overlay'; ov.className = 'modal-overlay';
+  ov.innerHTML = `<div class="modal" style="max-width:720px;width:calc(100% - 24px);">
+    <div class="modal-header"><h3>${plan ? 'Editar plan de campaña' : 'Cargar plan de campaña'}</h3><button class="modal-close" id="ppm-x">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Título *</label><input id="ppm-titulo" class="form-control" maxlength="80" placeholder="Ej: Growth Instagram diciembre"></div>
+      <div class="form-group"><label>Archivo HTML</label><input type="file" id="ppm-file" class="form-control" accept=".html,text/html"></div>
+      <div class="form-group"><label>HTML del plan *</label><textarea id="ppm-html" class="form-control" rows="12" style="font-family:monospace;font-size:12px;width:100%;" placeholder="Pegá el HTML o elegí un archivo arriba"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" id="ppm-cancel">Cancelar</button><button class="btn btn-primary" id="ppm-save">Guardar</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('ppm-titulo').value = plan ? (plan.titulo || '') : '';
+  document.getElementById('ppm-html').value = plan ? (plan.html || '') : '';
+  const cerrar = () => ov.remove();
+  document.getElementById('ppm-x').onclick = cerrar;
+  document.getElementById('ppm-cancel').onclick = cerrar;
+  document.getElementById('ppm-file').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { document.getElementById('ppm-html').value = r.result; const t = document.getElementById('ppm-titulo'); if (!t.value) t.value = f.name.replace(/\.html?$/i, ''); };
+    r.onerror = () => alert('No se pudo leer el archivo.');
+    r.readAsText(f);
+  };
+  document.getElementById('ppm-save').onclick = async () => {
+    const titulo = document.getElementById('ppm-titulo').value.trim();
+    const html = document.getElementById('ppm-html').value;
+    if (!titulo) { alert('Poné un título.'); return; }
+    if (html.trim().length < 20) { alert('Falta el HTML del plan.'); return; }
+    const btn = document.getElementById('ppm-save');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const ahora = new Date().toISOString();
+      const pid = plan ? plan.id : 'p' + Date.now().toString(36);
+      await savePlanPautaHtml(clientId, pid, html);
+      const lista = STATE.planesPauta || [];
+      const idx = lista.findIndex(p => p.id === pid);
+      const meta = { id: pid, titulo, creado: plan ? (plan.creado || ahora) : ahora, actualizado: ahora };
+      const nueva = idx >= 0 ? lista.map(p => p.id === pid ? meta : p) : [meta, ...lista];
+      await savePlanesPauta(clientId, nueva);
+      STATE.planesPauta = nueva.map(p => p.id === pid ? { ...p, html } : p);
+      _planPautaSel = pid;
+      cerrar();
+      renderPauta(document.getElementById('main-content'));
+    } catch (e) { alert('Error al guardar el plan: ' + e.message); btn.disabled = false; btn.textContent = 'Guardar'; }
+  };
+};
+
 function renderPauta(container) {
+  if (activePautaTab === 'planes') { renderPautaPlanes(container); return; }
   const plats = ['Todas', 'Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
   const filtered = activePautaTab === 'todas' ? STATE.campanas
     : STATE.campanas.filter(c => c.plataforma === activePautaTab);
@@ -6465,9 +6599,7 @@ function renderPauta(container) {
       </div>
     </div>` : ''}
 
-    <div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
-      ${plats.map(p => `<button class="tab-btn ${activePautaTab===(p==='Todas'?'todas':p)?'active':''}" data-tab="${p==='Todas'?'todas':p}">${p}</button>`).join('')}
-    </div>
+    ${pautaTabsHtml(activePautaTab)}
 
     ${excedeAsignado ? `<div class="card" style="padding:12px 16px;margin-bottom:16px;background:#fef2f2;border-color:#fecaca;">
       <p style="font-size:13px;color:#dc2626;font-weight:600;margin:0;">⚠️ Las campañas ${activePautaTab === 'todas' ? '' : `de ${activePautaTab} `}suman $${fmtNum(total)} de presupuesto, pero el presupuesto asignado es de $${fmtNum(asignado)}.</p>

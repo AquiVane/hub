@@ -414,6 +414,29 @@ export async function savePlan(clientId, html) {
   return api('POST', `/data/${clientId}/plan`, { html });
 }
 
+// ── Planes de campaña dentro de Pauta Digital ──────────────────
+// Índice (id, título, fechas; SIN el html) en `planesPauta`; el html de cada plan
+// aparte en `planpauta-<id>` para que la lista cargue rápido. Claude también los
+// puede crear/editar por el conector del Hub con esas mismas rutas.
+export async function getPlanesPauta(clientId) {
+  if (DEMO_MODE) return [];
+  const r = await api('GET', `/data/${clientId}/planesPauta`);
+  return Array.isArray(r) ? r : [];
+}
+export async function savePlanesPauta(clientId, lista) {
+  if (DEMO_MODE) { alert('En modo demo no se pueden guardar planes reales.'); return; }
+  return api('POST', `/data/${clientId}/planesPauta`, lista);
+}
+export async function getPlanPautaHtml(clientId, id) {
+  if (DEMO_MODE) return '';
+  const r = await api('GET', `/data/${clientId}/planpauta-${id}`);
+  return (r && r.html) || '';
+}
+export async function savePlanPautaHtml(clientId, id, html) {
+  if (DEMO_MODE) return;
+  return api('POST', `/data/${clientId}/planpauta-${id}`, { html });
+}
+
 // ── Reportes mensuales (uno por mes, el cliente navega entre meses) ──
 // El índice (mes + fecha de subida, SIN el html) se carga siempre al
 // entrar al Hub, para saber si mostrar el nav y qué meses hay. El html de
