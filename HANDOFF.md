@@ -5,6 +5,12 @@
 - Los sitios mandan `page_view` con `sitio` vía `https://training.cosmart.com.ar/js/ct-track.js` (`data-sitio`). Nombres de sitio en `VIS_NOMBRES` (admin/index.html). Único = navegador (`ct_session_id` en localStorage), no persona.
 - Pendiente: BienSmart y apps de calendario no tienen el contador. Quedó 1 evento de prueba con sitio `zz-check` (se ve como un sitio más; borrable en D1).
 
+## 20/11 — CAUSA REAL de "guardé y no se guardó": carrera entre guardar y sincronizar (offline.js v19)
+- Síntoma (Vaneh, remix): cambió estados, guardó, y al día siguiente seguían en Idea. El servidor (KV `_cosmart:contenidos`) confirmó que el ítem tenía su última edición el 18/11, aunque la lista tuvo ediciones el 19/11: los saves de OTROS ítems llegaban, los del ítem "Remixes" no.
+- Causa: `syncPathInterno` leía la cola al empezar y, al terminar, hacía `kSet(cache = merged)` + `kDel(pending)` SIN volver a mirar la cola. Si la persona guardaba otro cambio mientras la sincronización estaba en vuelo (el servidor tarda segundos; el formulario cierra a los ~8 s y se puede volver a editar), ese cambio nuevo se borraba de la cola y de la copia local (el dispositivo lo mostraba hasta el próximo refresco y después volvía al valor viejo). Afecta a TODAS las listas sincronizadas (tareas, ideas, guiones, contenidos…).
+- Arreglo: al terminar, se vuelve a leer la cola y se conserva todo lo que no estaba en la foto sincronizada (rebase: la base pasa a ser lo que quedó en el servidor; la copia local incluye lo pendiente). Además `leer()` ya no pisa la copia local si apareció un pendiente mientras se leía. Reproducido con servidor lento (13 s): antes el 2.º cambio se perdía; ahora llegan los dos. `offline.js?v=19`, `data.js?v=33`.
+- Lo que Vaneh cambió el 19/11 y se perdió NO está en el servidor: hay que volver a cargarlo.
+
 ## 19/11 — Admin: "Contenidos propios" del menú siempre vuelve a la solapa Contenidos
 - Estando en otra solapa del módulo (ej. Links y Archivos), tocar "Contenidos propios" no volvía a Contenidos (había que actualizar la página). Ahora el botón llama `abrirContenidosPropiosAdmin()` (admin/index.html): muestra la sección, espera la carga y activa la solapa Contenidos. El menú "Links y Archivos" sigue llevando a la solapa Links (`abrirLinksArchivosAdmin`). Solo admin/index.html (sin cambio de versiones).
 

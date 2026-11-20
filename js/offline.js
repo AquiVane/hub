@@ -151,6 +151,8 @@ export async function wrap(method, path, body, raw) {
         data = await raw();
       }
       markOnline();
+      // Si mientras se leía se guardó un cambio (quedó pendiente), la copia local ya lo incluye: no se pisa con lo leído.
+      if (await kGet('pending', path)) { const cc = await kGet('cache', path); if (cc) { await kSet('cache', path, { ...cc, server: data, at: Date.now() }); return clone(cc.local); } }
       await kSet('cache', path, { server: data, local: data, at: Date.now() });
       return data;
     } catch (e) {
@@ -414,8 +416,38 @@ async function syncPathInterno(path) {
 
   if (!eq(merged, fresh)) await rawFn('POST', path, merged, fresh);
   const remoteChanged = !eq(merged, c.local);
-  await kSet('cache', path, { server: merged, local: merged, at: Date.now() });
-  await kDel('pending', path);
+  // 20/11 (Vaneh: "guardé el cambio de estado de los remix y no se guardó"): mientras esta sincronización estaba en vuelo
+  // (el servidor tarda segundos) la persona pudo guardar OTRO cambio, que quedó en la cola. Antes, al terminar, se borraba
+  // TODA la cola y se pisaba la copia local con `merged`, y ese cambio nuevo se perdía (del dispositivo y del servidor).
+  // Ahora se vuelve a leer la cola y se conserva todo lo que no estaba en la foto que se sincronizó.
+  const ahora = await kGet('pending', path);
+  let resto = null;
+  if (ahora && p.mode === 'items' && ahora.mode === 'items') {
+    const ops = {};
+    for (const [id, op] of Object.entries(ahora.ops || {})) {
+      const antes = p.ops[id];
+      if (antes && eq(antes.next, op.next)) continue; // ya estaba en lo sincronizado
+      const enSrv = merged.find(x => x && String(x.id) === String(id));
+      if (eq(enSrv, op.next)) continue; // el servidor ya lo tiene igual
+      ops[id] = { base: clone(enSrv), next: clone(op.next) }; // lo que quedó en el servidor pasa a ser la base
+    }
+    if (Object.keys(ops).length) resto = { mode: 'items', ops };
+  } else if (ahora && p.mode !== 'items' && ahora.mode !== 'items' && !eq(ahora.next, p.next) && !eq(ahora.next, merged)) {
+    resto = { mode: 'whole', base: clone(merged), next: clone(ahora.next) };
+  }
+  let localNuevo = merged;
+  if (resto) {
+    if (resto.mode === 'items') {
+      localNuevo = clone(merged);
+      for (const [id, op] of Object.entries(resto.ops)) {
+        const i = localNuevo.findIndex(x => x && String(x.id) === String(id));
+        if (op.next === undefined) { if (i >= 0) localNuevo.splice(i, 1); }
+        else if (i >= 0) localNuevo[i] = clone(op.next); else localNuevo.push(clone(op.next));
+      }
+    } else localNuevo = clone(resto.next);
+  }
+  await kSet('cache', path, { server: merged, local: localNuevo, at: Date.now() });
+  if (resto) await kSet('pending', path, resto); else await kDel('pending', path);
   markOnline(); // se pudo hablar con el servidor: ya no corresponde el cartel "Sin conexión"
   lastSynced = { ...(lastSynced || {}), remoteChanged: (lastSynced && lastSynced.remoteChanged) || remoteChanged };
 }
