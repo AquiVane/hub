@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 24/11 (4) — Cartel de sincronización: "Guardado · sincronizando…" (offline.js v20)
+- Pedido de Vaneh: el cartel decía "Guardado en tu teléfono" aunque estuviera en la compu. Ahora dice solo **"Guardado · sincronizando…"**. `offline.js?v=20`, `data.js?v=35`.
+- Recuperación de las tareas perdidas de Ando del viernes 20/11 y red de seguridad (papelera + copia del día) en el servidor: ver `HANDOFF.md` de `cosmart-workers`, entrada 24/11 (2). Pendiente: deploy de `marketing-hub` con OK de Vaneh.
+- Hub para emprendedores (conversación 24/11, sin código todavía): perfil "un solo proyecto con varios usuarios" (más parecido al panel admin/agencia que al de cliente: con Panel de ventas, Inventario, tienda física/online), mantener marca COSMART, arranque guiado, soporte/ayuda propios, idioma y moneda por país. NO multi-marca. Ver detalle en el chat de esa sesión / próxima entrada.
+
 ## 24/11 (3) — El panel ya no queda en blanco tras una actualización + columna de Excel "Remix o contenido original"
 - **Problema (Vaneh, caso Barbi de Ando):** después de actualizar la app, a los clientes les quedaba el Hub sin logo ni contenidos y solo se arreglaba cerrando sesión y volviendo a entrar. No se pudo atribuir a una causa única (el servidor estaba sano), así que se blindó el arranque con 3 defensas (todas probadas con Playwright):
   1. `js/heal.js` (se carga antes que `app.js`, en `app/index.html` y `admin/index.html`): si en 30 s la app no avisa que arrancó (`window.__hubListo`) o un script `/js/` no se puede cargar, borra la caché del service worker, lo desregistra y recarga UNA vez (máx. 2 por pestaña, 60 s entre intentos; sin bucle). No toca lo sin sincronizar (IndexedDB). `app.js` marca `__hubListo` tras el primer pintado; el admin, al evaluarse su módulo.
