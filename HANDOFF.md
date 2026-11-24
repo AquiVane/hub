@@ -1,5 +1,12 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 24/11 — Contenidos: desplegables, filtro Remix y campo obligatorio "¿Remix o contenido original?"
+- Los 4 bloques (Banco de contenidos / Calendario de contenidos / Banco de ideas / Métricas) pasaron a UN desplegable (`#cont-bloque-sel`) y Orgánico/Pauta a otro (`#cont-pauta-sel`), lado a lado con el tamaño de los botones de antes (en celular 1.45fr/1fr para que entre "Calendario de contenidos"). Kanban sigue siendo una vista del banco (el desplegable queda en "Banco de contenidos"). Helpers: `CONT_BLOQUES`, `syncBloqueSel`. CSS `.cont-selectores/.cont-sel-grande` (style.css?v=45).
+- Campo nuevo en el formulario de contenido, debajo del título: `#cf-clase` ("¿Remix o contenido original?", desplegable, SIN valor por defecto, obligatorio: al guardar sin elegir avisa, marca el campo en rojo (`.campo-error`) y no guarda). Se guarda en `contenido.clase` = 'Remix' | 'Contenido original'.
+- Filtro nuevo en Filtros: "Remix / contenido original" (Todos / Contenido original / Remix / Sin definir). `_filtroClase`, cuenta en el botón Filtros, se limpia con "Limpiar filtros".
+- Los contenidos viejos y los que se crean por otros caminos (importar Excel, convertir una idea) quedan "Sin definir" hasta que se abren y se elige; al guardarlos desde el formulario también hay que elegir. NO se tocó el Excel (ni export ni import) por esto.
+- `app.js?v=97`, `hv=43`, `style.css?v=45`.
+
 ## 20/11 (2) — Archivos estáticos de la campaña de Instagram de Ando
 - `campanas/ando-instagram-2026-12/`: 8 piezas (feed 4:5 e historia 9:16) y el video 9:16 de la campaña de diciembre. Se sirven en `https://hub.cosmart.com.ar/campanas/ando-instagram-2026-12/<archivo>` y el plan de campaña cargado en Pauta Digital de Ando los referencia con esa URL absoluta. **No pasan por "Links y Archivos" (R2)**: subir ahí requiere el login de una persona (`/archivo-upload`, multipart) y el conector de Claude solo maneja JSON. Son públicos (son piezas de anuncio). El mismo contenido está en `AquiVane/cosmart-workers` → `clientes/ando-reciclaje/campana-instagram-2026-12/`.
 

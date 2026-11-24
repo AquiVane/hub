@@ -1678,3 +1678,25 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   #crm-cuerpo .kb-tabs { flex-wrap: wrap; }
   #crm-cuerpo .kb-tab { flex: 1 1 calc(33.333% - 6px); }
 }
+
+/* ── Contenidos: los 4 bloques y Orgánico/Pauta son desplegables, con el tamaño de los botones de antes (19/11) ── */
+.cont-selectores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; box-sizing: border-box; }
+.cont-sel-grande {
+  -webkit-appearance: none; appearance: none; width: 100%; min-width: 0; min-height: 40px; box-sizing: border-box;
+  padding: 8px 32px 8px 12px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2;
+  text-align: center; text-align-last: center; cursor: pointer; text-overflow: ellipsis;
+  background-repeat: no-repeat; background-position: right 11px center; background-size: 12px;
+}
+#cont-bloque-sel { background-color: #1A4DAA; color: #fff; border: 2px solid transparent;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>"); }
+#cont-bloque-sel:hover { background-color: #1557c0; }
+#cont-pauta-sel { background-color: var(--primary-light); color: var(--primary); border: 2px solid var(--primary);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%235B96E0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>"); }
+.cont-sel-grande option { background: var(--surface); color: var(--text); font-weight: 600; }
+.cont-sel-grande:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* Campo obligatorio sin completar (Remix / contenido original) */
+.campo-error { border-color: var(--danger, #e02020) !important; box-shadow: 0 0 0 2px rgba(224, 32, 32, .25); }
+@media (max-width: 480px) {
+  .cont-selectores { grid-template-columns: 1.45fr 1fr; }
+  .cont-sel-grande { font-size: 11.5px; padding: 8px 22px 8px 6px; background-position: right 7px center; background-size: 10px; letter-spacing: -.1px; }
+}

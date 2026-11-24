@@ -2040,6 +2040,7 @@ const CONT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En 
 const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
+let _filtroClase = 'todas'; // 'todas' | 'Contenido original' | 'Remix' | 'sin' (todavía sin definir)
 
 let _contBusqueda = '';
 const _normBusq = t => String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -2056,12 +2057,13 @@ function matchFiltrosCont(c) {
   if (_bancoFiltroPlataforma !== 'todas' && !(c.plataformas || []).includes(_bancoFiltroPlataforma)) return false;
   if (_filtroEstado !== 'todos' && c.estado !== _filtroEstado) return false;
   if (_filtroUbicacion !== 'todas' && !_ubicDe(c).some(u => u.toLowerCase() === _filtroUbicacion.toLowerCase())) return false;
+  if (_filtroClase === 'sin' ? !!c.clase : (_filtroClase !== 'todas' && c.clase !== _filtroClase)) return false;
   if (_bancoFiltroFechaDesde && !(c.fechaPub && c.fechaPub >= _bancoFiltroFechaDesde)) return false;
   if (_bancoFiltroFechaHasta && !(c.fechaPub && c.fechaPub <= _bancoFiltroFechaHasta)) return false;
   return true;
 }
 function contFiltrosActivos() {
-  return [_bancoFiltroPlataforma !== 'todas', _filtroEstado !== 'todos', _filtroUbicacion !== 'todas', !!_bancoFiltroFechaDesde, !!_bancoFiltroFechaHasta].filter(Boolean).length;
+  return [_bancoFiltroPlataforma !== 'todas', _filtroEstado !== 'todos', _filtroUbicacion !== 'todas', _filtroClase !== 'todas', !!_bancoFiltroFechaDesde, !!_bancoFiltroFechaHasta].filter(Boolean).length;
 }
 function contResultados() {
   return STATE.contenidos.filter(c => !c.archivado).filter(matchPautaFilter).filter(matchFiltrosCont).length;
@@ -2072,19 +2074,27 @@ function ubicacionesDisponibles() {
   return [...vistas.values()];
 }
 
+// Los 4 bloques de Contenidos ahora son un desplegable (antes eran 4 botones); "Kanban" es una vista del banco.
+const CONT_BLOQUES = [['banco', 'Banco de contenidos'], ['calendario', 'Calendario de contenidos'], ['ideas', 'Banco de ideas'], ['metricas', 'Métricas']];
+function syncBloqueSel() {
+  const sel = document.getElementById('cont-bloque-sel');
+  if (sel) sel.value = CONT_BLOQUES.some(b => b[0] === activeContTab) ? activeContTab : 'banco';
+}
+
 function renderContenidos(container) {
   if (CONT_VISTAS_OCULTAS.includes(activeContTab)) activeContTab = 'banco';
   const nFil = contFiltrosActivos();
   const enKanban = activeContTab === 'estados';
-  const bloque = (k, l) => `<button class="tab-btn ${activeContTab===k?'active':''}" data-tab="${k}">${l}</button>`;
   container.innerHTML = `
     <div class="cont-bar">
-      <div class="tabs" id="cont-tabs">
-        ${bloque('banco', 'Banco de contenidos')}${bloque('calendario', 'Calendario de contenidos')}${bloque('ideas', 'Banco de ideas')}${bloque('metricas', 'Métricas')}
-      </div>
-      <div class="tabs" id="cont-pauta-filtros">
-        <button class="tab-btn ${pautaFiltroSel==='organico'?'active':''}" data-pauta-filtro="organico">Orgánico</button>
-        <button class="tab-btn ${pautaFiltroSel==='pauta'?'active':''}" data-pauta-filtro="pauta">Pauta</button>
+      <div class="cont-selectores" id="cont-selectores">
+        <select id="cont-bloque-sel" class="cont-sel-grande" aria-label="Sección de contenidos">
+          ${CONT_BLOQUES.map(([k, l]) => `<option value="${k}" ${(CONT_BLOQUES.some(x => x[0] === activeContTab) ? activeContTab : 'banco') === k ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+        <select id="cont-pauta-sel" class="cont-sel-grande" aria-label="Orgánico o pauta">
+          <option value="organico" ${pautaFiltroSel === 'organico' ? 'selected' : ''}>Orgánico</option>
+          <option value="pauta" ${pautaFiltroSel === 'pauta' ? 'selected' : ''}>Pauta</option>
+        </select>
       </div>
       <div class="cont-bar-acciones">
         <input type="search" id="cont-buscar" class="form-control cont-buscar" placeholder="🔎 Buscar contenido..." aria-label="Buscar contenido" autocomplete="off" value="${_contBusqueda.replace(/"/g, '&quot;')}">
@@ -2099,30 +2109,24 @@ function renderContenidos(container) {
     <div id="cont-tab-body"></div>
   `;
 
-  document.querySelectorAll('#cont-tabs .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-      activeContTab = btn.dataset.tab;
-      const sel = document.getElementById('cont-vistas-sel');
-      if (sel) { sel.value = 'lista'; sel.classList.remove('activa'); }
-      renderContTab(activeContTab);
-    });
+  document.getElementById('cont-bloque-sel').addEventListener('change', e => {
+    activeContTab = e.target.value;
+    const sel = document.getElementById('cont-vistas-sel');
+    if (sel) { sel.value = 'lista'; sel.classList.remove('activa'); }
+    renderContTab(activeContTab);
   });
 
   document.getElementById('cont-vistas-sel').addEventListener('change', e => {
     const kanban = e.target.value === 'estados';
     activeContTab = kanban ? 'estados' : 'banco';
     e.target.classList.toggle('activa', kanban);
-    document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', !kanban && b.dataset.tab === 'banco'));
+    syncBloqueSel();
     renderContTab(activeContTab);
   });
 
-  document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pautaFiltroSel = btn.dataset.pautaFiltro;
-      document.querySelectorAll('#cont-pauta-filtros .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-      renderContTab(activeContTab);
-    });
+  document.getElementById('cont-pauta-sel').addEventListener('change', e => {
+    pautaFiltroSel = e.target.value;
+    renderContTab(activeContTab);
   });
 
   document.getElementById('cont-filtros-btn').addEventListener('click', abrirFiltrosCont);
@@ -2166,6 +2170,8 @@ function abrirFiltrosCont() {
           <select id="f-plat" class="form-control">${opt('todas', 'Todas las plataformas', _bancoFiltroPlataforma === 'todas')}${BANCO_PLATAFORMAS.map(p => opt(p, p, _bancoFiltroPlataforma === p)).join('')}</select></div>
         <div class="filtros-campo"><label for="f-estado">Estado</label>
           <select id="f-estado" class="form-control">${opt('todos', 'Todos los estados', _filtroEstado === 'todos')}${CONT_ESTADOS.map(s => opt(s, s, _filtroEstado === s)).join('')}</select></div>
+        <div class="filtros-campo"><label for="f-clase">Remix / contenido original</label>
+          <select id="f-clase" class="form-control">${opt('todas', 'Todos', _filtroClase === 'todas')}${opt('Contenido original', 'Contenido original', _filtroClase === 'Contenido original')}${opt('Remix', 'Remix', _filtroClase === 'Remix')}${opt('sin', 'Sin definir', _filtroClase === 'sin')}</select></div>
         <div class="filtros-campo"><label for="f-ubic">Ubicación</label>
           <select id="f-ubic" class="form-control">${opt('todas', 'Todas las ubicaciones', _filtroUbicacion === 'todas')}${ubicacionesDisponibles().map(u => opt(u, u, _filtroUbicacion.toLowerCase() === u.toLowerCase())).join('')}<optgroup label="Vistas en desarrollo">${CONT_VISTAS_PROXIMAMENTE.map(v => `<option value="" disabled>${v} · Próximamente</option>`).join('')}</optgroup></select></div>
         <div class="filtros-campo"><label>Fecha de publicación</label>
@@ -2190,11 +2196,12 @@ function abrirFiltrosCont() {
   document.getElementById('f-plat').onchange = e => { _bancoFiltroPlataforma = e.target.value; refrescar(); };
   document.getElementById('f-estado').onchange = e => { _filtroEstado = e.target.value; refrescar(); };
   document.getElementById('f-ubic').onchange = e => { _filtroUbicacion = e.target.value; refrescar(); };
+  document.getElementById('f-clase').onchange = e => { _filtroClase = e.target.value; refrescar(); };
   document.getElementById('f-desde').onchange = e => { _bancoFiltroFechaDesde = e.target.value; refrescar(); };
   document.getElementById('f-hasta').onchange = e => { _bancoFiltroFechaHasta = e.target.value; refrescar(); };
   document.getElementById('f-limpiar').onclick = () => {
-    _bancoFiltroPlataforma = 'todas'; _filtroEstado = 'todos'; _filtroUbicacion = 'todas'; _bancoFiltroFechaDesde = ''; _bancoFiltroFechaHasta = '';
-    document.getElementById('f-plat').value = 'todas'; document.getElementById('f-estado').value = 'todos'; document.getElementById('f-ubic').value = 'todas';
+    _bancoFiltroPlataforma = 'todas'; _filtroEstado = 'todos'; _filtroUbicacion = 'todas'; _filtroClase = 'todas'; _bancoFiltroFechaDesde = ''; _bancoFiltroFechaHasta = '';
+    document.getElementById('f-clase').value = 'todas'; document.getElementById('f-plat').value = 'todas'; document.getElementById('f-estado').value = 'todos'; document.getElementById('f-ubic').value = 'todas';
     document.getElementById('f-desde').value = ''; document.getElementById('f-hasta').value = '';
     refrescar();
   };
@@ -2424,7 +2431,7 @@ window.cambiarBancoFiltroFecha = function(cual, val) {
 };
 
 window.limpiarBancoFiltros = function() {
-  _filtroEstado = 'todos'; _filtroUbicacion = 'todas';
+  _filtroEstado = 'todos'; _filtroUbicacion = 'todas'; _filtroClase = 'todas';
   _bancoFiltroPlataforma = 'todas';
   _bancoFiltroFechaDesde = '';
   _bancoFiltroFechaHasta = '';
@@ -3112,7 +3119,7 @@ window.promoverIdea = async function(id) {
   await deleteIdea(clientId, id, null, IDEAS_TIPO).catch(() => {});
   renderContTab('banco');
   activeContTab = 'banco';
-  document.querySelectorAll('#cont-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab==='banco'));
+  syncBloqueSel();
 };
 
 // ─ En proceso y revisión ─
@@ -3604,6 +3611,7 @@ window.openContenidoModal = function(defaults = {}) {
 
   document.getElementById('modal-cont-title').textContent = editingContenido ? 'Editar contenido' : 'Nuevo contenido';
   document.getElementById('cf-titulo').value = c.titulo || '';
+  { const cl = document.getElementById('cf-clase'); if (cl) { cl.value = c.clase || ''; cl.classList.remove('campo-error'); } } // sin valor por defecto: hay que elegir
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
   document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
@@ -3749,6 +3757,8 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   if (btn.disabled) return;
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
+  const claseSel = document.getElementById('cf-clase');
+  if (!claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
   if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');
@@ -3802,6 +3812,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
     pauta,
     linkDrive: _driveLinks.filter(Boolean),
     linkDriveRef: _refLinks.filter(Boolean),
+    clase: claseSel.value,
     remixes: _remixes.map(r => ({ ...r, link: (r.link || '').trim() })),
     imagenes: serializarImagenesCont(_imgList),
     notas: document.getElementById('cf-notas').value,
