@@ -1029,3 +1029,11 @@ Las respuestas de otras personas dentro de un hilo de comentarios ahora disparan
 ## 20/11/2026 — Automatizaciones: color por canal, etiqueta y palabra clave
 Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en azul de siempre (`.ig-card-fb`), con etiqueta pegada arriba (`.ig-canal`: Instagram / Facebook / Instagram + Facebook / Instagram · Historias) y la píldora "Palabra clave: …" a la izquierda del interruptor Activa/Pausada. `instagram.js?v=33`. Nota: "recuperar" no pasa de 7 días a propósito (Meta no permite mensaje privado después); un comentario de "1 sem" en Facebook ya tiene 7 días o más.
 - 20/11 (tarde): plantillas "Sistema IA · Instagram" (dos pasos, exige seguir, seguimiento a 60 min con botón a `/hace-que-la-ia-escriba-como-tu-marca`) y "Sistema IA · Facebook" (directo, sin seguir) en "Empezar desde una plantilla". El link de la guía gratuita queda VACÍO a propósito (Vaneh lo pega; el guardado lo exige). Nuevo: botón opcional en el mensaje de seguimiento (`seguimiento1BotonTexto/Url`). `instagram.js?v=34`. Texto aprobado por Vaneh el 20/11 ("dale").
+
+---
+
+## 24/11/2026 — Endurecimiento tras la auditoría (front)
+
+- Contraseña mínima **8** cuando la persona la elige (`signup.html`, `reset.html`, cambio de clave en `js/app.js` y `admin/index.html`); la del backend ya exige lo mismo. Las contraseñas que un admin crea para clientes/colaboradores siguen en 6.
+- Nuevo CI `.github/workflows/validar.yml` (`node --check` de `js/*.js`, `sw.js` y del script module inline de `admin/index.html`).
+- Informe completo y pendientes en `AUDITORIA.md`. Falta: Términos y Condiciones / Privacidad general + aceptación en el alta (texto a aprobar por Vaneh).

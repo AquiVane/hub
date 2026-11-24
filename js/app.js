@@ -8913,7 +8913,7 @@ function showMustChangePasswordModal() {
     const nueva = document.getElementById('mcp-nueva').value;
     const confirmar = document.getElementById('mcp-confirmar').value;
     if (!actual || !nueva) { err.textContent = 'Completá los dos campos.'; err.style.display = ''; return; }
-    if (nueva.length < 6) { err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; err.style.display = ''; return; }
+    if (nueva.length < 8) { err.textContent = 'La contraseña nueva debe tener al menos 8 caracteres.'; err.style.display = ''; return; }
     if (nueva !== confirmar) { err.textContent = 'Las contraseñas nuevas no coinciden.'; err.style.display = ''; return; }
     btn.disabled = true; btn.textContent = 'Guardando…';
     try {
