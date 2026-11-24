@@ -30,6 +30,12 @@ async function rawApi(method, path, body = null, base = undefined) {
   let res;
   try {
     res = await fetch(WORKER_URL + path, opts);
+    // Un 401 puede ser pasajero (la sesión recién creada todavía no llegó a todos los servidores): se reintenta una vez
+    // antes de darla por vencida.
+    if (res.status === 401 && !/^\/auth\//.test(path)) {
+      await new Promise(r => setTimeout(r, 1200));
+      res = await fetch(WORKER_URL + path, opts);
+    }
   } catch (e) {
     // isNet: falló la red (no una respuesta de error del servidor) -- lo usa
     // offline.js para decidir si muestra lo guardado / deja el cambio en cola.
@@ -40,8 +46,28 @@ async function rawApi(method, path, body = null, base = undefined) {
     clearTimeout(timeoutId);
   }
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && !/^\/auth\//.test(path)) avisarSesionVencida();
   if (!res.ok) { const error = new Error(res.status === 409 ? 'Los contenidos cambiaron. Tus cambios quedan pendientes; revisá el conflicto antes de guardar.' : data.error || 'Error del servidor'); error.status=res.status; error.code=data.code; throw error; }
   return data;
+}
+
+// Sesión vencida (30 días) o invalidada: en vez de dejar el panel en blanco, se avisa y se lleva a ingresar de nuevo.
+// Los cambios sin sincronizar NO se pierden: quedan en este dispositivo y se envían al volver a ingresar.
+let _sesionAvisada = false;
+function avisarSesionVencida() {
+  if (_sesionAvisada || DEMO_MODE) return;
+  _sesionAvisada = true;
+  const irAlLogin = () => { try { localStorage.removeItem('mh_session_token'); localStorage.removeItem('mh_user'); } catch (e) {} window.location.href = '/login.html'; };
+  const o = document.createElement('div');
+  o.setAttribute('role', 'alertdialog');
+  o.style.cssText = 'position:fixed;inset:0;z-index:100000;background:var(--overlay-bg,rgba(0,0,0,.6));display:flex;align-items:center;justify-content:center;padding:16px;';
+  o.innerHTML = '<div style="background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border,#ddd);border-radius:12px;padding:22px 20px;max-width:360px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4);">'
+    + '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">Tu sesión venció</div>'
+    + '<div style="font-size:13px;color:var(--text-muted,#555);line-height:1.5;margin-bottom:16px;">Volvé a ingresar para seguir. Lo que tenías sin sincronizar queda guardado en este dispositivo.</div>'
+    + '<button type="button" id="hubSesionIr" style="background:#1A4DAA;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;">Ingresar</button></div>';
+  document.body.appendChild(o);
+  document.getElementById('hubSesionIr').onclick = irAlLogin;
+  setTimeout(irAlLogin, 4000);
 }
 
 // Modo sin conexión (ver js/offline.js): lecturas desde lo último guardado y

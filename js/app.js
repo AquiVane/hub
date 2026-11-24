@@ -18,7 +18,7 @@ import {
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
   optimizarCargaCliente
-} from './data.js?v=33';
+} from './data.js?v=34';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -293,7 +293,7 @@ async function init() {
       e.target.value = '';
     });
 
-    await loadAllData(); // trae client, equipo y todo lo demás en una sola tanda -- ver el comentario ahí
+    await cargarDatosConReintentos(); // trae client, equipo y todo lo demás en una sola tanda -- ver el comentario de loadAllData
     window.STATE = STATE; // necesario para inline handlers en módulos ES
     const _sbName = document.getElementById('sb-client-name'), _sbIg = document.getElementById('sb-client-ig');
     if (_sbName) _sbName.textContent = esPropioAgencia ? 'Contenidos propios' : (STATE.client.nombre || STATE.client.name || clientId);
@@ -342,6 +342,7 @@ async function init() {
     // retraso sin feedback ni el "panel adentro de otro panel"; esto
     // resuelve lo primero, el chrome oculto desde el principio -- ver
     // comentario de embedMode más arriba -- resuelve lo segundo).
+    window.__hubListo = true; // arrancó bien (ver js/heal.js)
     if (HOSTED) window.dispatchEvent(new CustomEvent('hub-cp-ready'));
     else if (embedMode) window.parent.postMessage({ type: 'contenidos-propios-ready' }, window.location.origin);
     // Solo para el cliente en su propia cuenta -- si un admin/colaborador
@@ -527,6 +528,44 @@ async function optimizarCargaEnSegundoPlano() {
   _optimizando = false;
 }
 
+// Cartel arriba del panel mientras se reintenta o si no se pudo cargar (en vez de dejar la pantalla en blanco).
+function hubCartelCarga(html, conBotones) {
+  let el = document.getElementById('hubCartelCarga');
+  if (!html) { el?.remove(); return; }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'hubCartelCarga';
+    el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9000;max-width:min(94vw,420px);background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border,#ddd);border-left:4px solid #E02020;border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13px;line-height:1.45;text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = html + (conBotones ? '<div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;"><button type="button" id="hubCargaReintentar" class="btn btn-primary btn-sm">Reintentar</button><button type="button" id="hubCargaReiniciar" class="btn btn-secondary btn-sm">Reiniciar la app</button></div>' : '');
+  if (conBotones) {
+    document.getElementById('hubCargaReintentar').onclick = async () => {
+      hubCartelCarga('Cargando tu panel…');
+      await loadAllData();
+      if (STATE._cargaFallida) hubCartelCarga(`No pudimos cargar tu panel${STATE._cargaMotivo ? ' (' + escapeHtml(STATE._cargaMotivo) + ')' : ''}.`, true);
+      else { hubCartelCarga(null); renderSection(currentSection); }
+    };
+    document.getElementById('hubCargaReiniciar').onclick = () => { if (window.hubActualizar) window.hubActualizar(); else location.reload(); };
+  }
+}
+
+// Carga inicial con reintentos automáticos (24/11): si el panel no puede cargar (red lenta, un error pasajero del servidor, una
+// copia vieja después de actualizar), reintenta solo 3 veces y, si sigue sin poder, muestra qué pasó y los botones
+// Reintentar / Reiniciar la app. Nunca queda en blanco sin explicación. Sin conexión no pierde tiempo en reintentos.
+async function cargarDatosConReintentos() {
+  await loadAllData();
+  if (!STATE._cargaFallida) return;
+  if (navigator.onLine !== false) {
+    for (const espera of [1500, 4000, 9000]) {
+      hubCartelCarga('Estamos cargando tu panel… un momento.');
+      await new Promise(r => setTimeout(r, espera));
+      await loadAllData();
+      if (!STATE._cargaFallida) { hubCartelCarga(null); return; }
+    }
+  }
+  hubCartelCarga(`No pudimos cargar tu panel${STATE._cargaMotivo ? ' (' + escapeHtml(STATE._cargaMotivo) + ')' : ''}.`, true);
+}
+
 async function loadAllData() {
   // Pedido de Vaneh (11/09, y de nuevo 13/09: "no puede tardar más de 1
   // segundo, las páginas con esta carga sufren abandono instantánea").
@@ -544,11 +583,16 @@ async function loadAllData() {
   const criticalKeys = Object.keys(criticalCalls);
   const criticalSettled = await Promise.allSettled(criticalKeys.map(k => criticalCalls[k]));
   const r = {};
+  let primerFallo = null;
   criticalSettled.forEach((res, i) => {
     if (res.status === 'fulfilled') r[criticalKeys[i]] = res.value;
-    else console.error(`[loadAllData] Falló "${criticalKeys[i]}":`, res.reason);
+    else { console.error(`[loadAllData] Falló "${criticalKeys[i]}":`, res.reason); if (!primerFallo) primerFallo = res.reason; }
   });
   const { client, cont, tareas, home } = r;
+  // Si no llegó ni los datos del cliente ni su inicio, el panel quedaría en blanco (sin logo ni contenidos): se marca para
+  // reintentar solo y avisar con un cartel claro (ver cargarDatosConReintentos).
+  STATE._cargaFallida = !client && !home;
+  STATE._cargaMotivo = primerFallo ? String(primerFallo.message || primerFallo).slice(0, 140) : '';
   STATE.client = client || { id: clientId, nombre: clientId };
   STATE.contenidos = cont || [];
   STATE.tareas = tareas || [];
@@ -4215,6 +4259,9 @@ const EXPORT_PAUTA_LABEL = { organico: 'Solo orgánico', dark: 'Sí – Dark pos
 // header normalizado (sin acentos, minúscula) -> campo del contenido
 const IMPORT_HEADER_MAP = {
   'titulo del contenido': 'titulo',
+  'remix o contenido original': 'clase',
+  'remix / original': 'clase',
+  clase: 'clase',
   titulo: 'titulo',
   'fecha de publicacion': 'fechaPub',
   fecha: 'fechaPub',
@@ -4329,6 +4376,7 @@ function importResolverAsignado(val) {
 // entre cuentas distintas, y la fecha puede cambiar sin que sea "otro"
 // contenido (reprogramar no debería crear un duplicado).
 const IMPORT_DIFF_FIELDS = [
+  { key: 'clase', label: 'Remix / contenido original' },
   { key: 'cuenta', label: 'Cuenta' },
   { key: 'fechaPub', label: 'Fecha de publicación' },
   { key: 'estado', label: 'Estado' },
@@ -4351,6 +4399,14 @@ const IMPORT_DIFF_FIELDS = [
   { key: 'asignado', label: 'Asignado a', esAsignado: true },
 ];
 
+// "Remix o contenido original" del Excel: Remix / Contenido original (acepta "Original"); vacío o cualquier otra cosa = sin definir.
+function importParseClase(v) {
+  const t = String(v == null ? '' : v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (t === 'remix') return 'Remix';
+  if (t === 'original' || t === 'contenido original') return 'Contenido original';
+  return '';
+}
+
 function normImportTexto(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
 function importValoresIguales(a, b, esArray) {
@@ -4364,6 +4420,7 @@ function importValoresIguales(a, b, esArray) {
 
 function importDiffContenido(existente, entrante) {
   return IMPORT_DIFF_FIELDS.filter(f => {
+    if (f.key === 'clase' && !entrante.clase) return false; // celda vacía en el Excel: no pisa lo que ya está cargado
     if (f.esAsignado) {
       return (existente.asignado?.email || '').toLowerCase() !== (entrante.asignado?.email || '').toLowerCase();
     }
@@ -4585,11 +4642,12 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a', 'Remix (solo lectura)'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Remix o contenido original', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a', 'Detalle de los remix (solo lectura)'];
 
 function contenidoAFilaExport(c) {
   return [
     c.titulo || '',
+    c.clase || '',
     c.fechaPub || '',
     c.estado || '',
     c.cuenta || '',
@@ -4690,7 +4748,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20, 40][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 22, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20, 40][i] || 16 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
@@ -4909,6 +4967,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 
       valid.push({
         titulo,
+        clase: importParseClase(obj.clase),
         fechaPub: importParseFecha(obj.fechaPub),
         estado,
         cuenta,
@@ -5097,7 +5156,7 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
       // son parte de la plantilla.
       const actualizaciones = aActualizar.map(r => {
         const u = { id: r.match.id };
-        IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = r.row[f.key]; });
+        IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = (f.key === 'clase' && !r.row.clase) ? r.match.clase : r.row[f.key]; });
         return u;
       });
       const actualizados = await updateContenidosBulk(clientId, actualizaciones);
