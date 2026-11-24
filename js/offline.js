@@ -202,7 +202,7 @@ export async function wrap(method, path, body, raw) {
           const r = await conLimite(pr, 8000);
           if (r === LIMITE) {
             programarReintentosFondo();
-            const tarda = new Error('La sincronización está tardando: el cambio quedó guardado en el teléfono.');
+            const tarda = new Error('La sincronización está tardando: el cambio quedó guardado.');
             tarda.queued = true; tarda.tarda = true;
             throw tarda;
           }
@@ -634,10 +634,10 @@ async function render() {
   const b = ensureBar();
   const plural = n === 1 ? '' : 's';
   let cls = '', html = '';
-  if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado en tu teléfono · sincronizando…'; } // corte pasajero: se reintenta solo
+  if (n && off && navigator.onLine !== false && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado · sincronizando…'; } // corte pasajero: se reintenta solo
   else if (off) { cls = 'off'; html = (n ? `Sin conexión · ${n} cambio${plural} pendiente${plural}` : 'Sin conexión · mostrando lo último guardado') + (ultimoDetalle && navigator.onLine !== false ? ` (${detalleCorto()})` : (navigator.onLine === false ? ' (el navegador marca sin red)' : '')); }
   else if (syncing) { cls = 'sync'; html = 'Sincronizando…'; }
-  else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = `Guardado en tu teléfono · sincronizando…`; }
+  else if (n && Date.now() < fondoHasta) { cls = 'sync'; html = 'Guardado · sincronizando…'; }
   else if (n) { cls = 'err'; html = `${n} cambio${plural} sin sincronizar` + (ultimoError && (ultimoError.status || ultimoError.code) ? ` (error ${[ultimoError.status, ultimoError.code].filter(Boolean).join(' · ')})` : ''); }
   else if (lastSynced && lastSynced.parked) { cls = 'off'; html = 'Algunos cambios tuyos chocaron con los de otra persona. La administración va a elegir la versión.'; }
   else if (lastSynced) { cls = 'ok'; html = lastSynced.remoteChanged ? '✓ Sincronizado · hay novedades del equipo' : '✓ Todo sincronizado'; }
