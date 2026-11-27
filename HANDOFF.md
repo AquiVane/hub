@@ -1098,3 +1098,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: fila "Remix u original · Fecha de publicación · Asignar a" bajo el título; la lista de Remix va arriba de Objetivo/Eje/Tipo (tras el Guion).
 
 - 28/11: cada remix tiene su propio "Copy del remix" (desplegable, contraído por defecto; campo `copy` dentro de `remixes[]`) y en celular "+ Agregar remix" va arriba de la lista.
+
+- 28/11: "Transcriptor" también es pestaña del grupo Contenidos (solo admin COSMART); el ítem de menú y el botón dentro de Nuevo contenido siguen.

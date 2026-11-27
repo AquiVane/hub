@@ -2961,7 +2961,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=60');
+      const res = await fetch('../app/index.html?hv=61');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3327,7 +3327,8 @@
     { id: 'contenidos', tabs: [
       { id: 'contenidos', label: 'Contenidos', sec: 'contenidospropios', embed: 'contenidos' },
       { id: 'guiones', label: 'Guiones', sec: 'contenidospropios', embed: 'guiones' },
-      { id: 'dashboard', label: 'Dashboard', sec: 'contenidospropios', embed: 'dashboard' } ] },
+      { id: 'dashboard', label: 'Dashboard', sec: 'contenidospropios', embed: 'dashboard' },
+      { id: 'transcribir', label: 'Transcriptor', sec: 'transcribir', si: esCosmart && esAdminRol } ] },
     { id: 'pauta', tabs: [ { id: 'pauta', label: 'Pauta publicitaria', sec: 'contenidospropios', embed: 'pauta' } ] },
     { id: 'instagram', tabs: [ { id: 'instagram', label: 'Automatizaciones', sec: 'instagram' } ] },
     { id: 'inventario', tabs: [
