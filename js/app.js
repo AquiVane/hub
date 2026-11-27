@@ -3441,6 +3441,7 @@ function syncVideoPorReel() {
 }
 // Habilita/deshabilita los estados del modal según plataforma, ubicación y formato.
 function syncEstadosModal() {
+  actualizarDimResumen();
   const f = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
   const u = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
   aplicarEstadosSelect(document.getElementById('cf-estado'), tipoPieza(f, u));
@@ -3678,12 +3679,11 @@ const _CM_SOLO_REMIX = ['cf-titulo', 'cf-clase', 'remix-section', 'cf-objetivo',
 function aplicarModoClase() {
   const modal = document.getElementById('contenidoModal'); if (!modal) return;
   const clase = document.getElementById('cf-clase')?.value || '';
-  const esRemix = !esPropioAgencia && clase === 'Remix';
+  const esRemix = clase === 'Remix';
   modal.querySelectorAll('.form-grid .form-group').forEach(g => {
     const mantiene = _CM_SOLO_REMIX.some(id => g.id === id || g.querySelector('#' + id));
     let oculto = esRemix && !mantiene;
-    if (g.id === 'remix-section') oculto = !esRemix;
-    if (g.id === 'cf-clase-group') oculto = esPropioAgencia;
+    if (g.id === 'remix-section') oculto = !esRemix || esPropioAgencia; // la lista de remix no existe en Contenidos propios
     g.classList.toggle('cm-oculto', oculto);
   });
 }
@@ -3691,11 +3691,13 @@ document.getElementById('cf-clase')?.addEventListener('change', aplicarModoClase
 
 // Dimensión: desplegable de selección múltiple (muestra lo elegido) + campos largos (copy, texto, guion, prompt, sugerencia) contraídos por defecto.
 function actualizarDimResumen() {
-  const el = document.getElementById('cf-dim-resumen'); if (!el) return;
-  const v = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
-  el.textContent = v.length ? v.join(' · ') : 'Elegir…';
+  [['cf-dim-resumen', '.dim-check'], ['res-plat', '.plat-check'], ['res-ubic', '.ubic-check'], ['res-fmt', '.fmt-check']].forEach(([id, sel]) => {
+    const el = document.getElementById(id); if (!el) return;
+    const v = Array.from(document.querySelectorAll(sel + ':checked')).map(cb => cb.value);
+    el.textContent = v.length ? v.join(' · ') : (id === 'res-plat' ? 'Elegir…' : (document.querySelector(sel) ? 'Elegir…' : 'Primero elegí plataforma'));
+  });
 }
-document.addEventListener('change', e => { if (e.target.classList?.contains('dim-check')) actualizarDimResumen(); });
+document.addEventListener('change', e => { if (e.target.matches?.('.dim-check, .plat-check, .ubic-check, .fmt-check')) actualizarDimResumen(); });
 document.addEventListener('click', e => document.querySelectorAll('.cm-multi[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
 function marcarCamposLargos() {
   document.querySelectorAll('#contenidoModal .cm-det').forEach(d => {
@@ -3882,8 +3884,8 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
   const claseSel = document.getElementById('cf-clase');
-  const _esRemix = !esPropioAgencia && claseSel.value === 'Remix'; // en Contenidos propios no hay Remix; un Remix solo lleva título, objetivo, copy, texto en pantalla, asignado y notas
-  if (!esPropioAgencia && !claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
+  const _esRemix = claseSel.value === 'Remix'; // en Contenidos propios no hay Remix; un Remix solo lleva título, objetivo, copy, texto en pantalla, asignado y notas
+  if (!claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
   if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');

@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=52">
+  <link rel="stylesheet" href="../css/style.css?v=54">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -231,9 +231,28 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
 
-        <div class="form-group" style="grid-column:span 3;">
-          <label>Título del contenido <span class="req-star">*</span></label>
-          <input type="text" id="cf-titulo" class="form-control" placeholder="Ej: Story 1 – Show La Rosalía">
+        <div class="cm-row cm-row-titulo">
+          <div class="form-group" style="flex:3 1 260px;">
+            <label>Título del contenido <span class="req-star">*</span></label>
+            <input type="text" id="cf-titulo" class="form-control" placeholder="Ej: Story 1 – Show La Rosalía">
+          </div>
+          <div class="form-group" style="flex:1 1 180px;">
+            <label>Estado <span class="req-star">*</span></label>
+            <select id="cf-estado" class="form-control">
+            <option value="Sin empezar">Sin empezar</option>
+            <option value="Guión en revisión">Guión en revisión</option>
+            <option value="Guión aprobado">Guión aprobado</option>
+            <option value="Grabado">Grabado</option>
+            <option value="Editado">Editado</option>
+            <option value="Copy en revisión">Copy en revisión</option>
+            <option value="Textos aprobados">Textos aprobados</option>
+            <option value="En proceso">En proceso</option>
+            <option value="En revisión">En revisión</option>
+            <option value="Aprobado">Aprobado</option>
+            <option value="Programado">Programado</option>
+            <option value="Publicado">Publicado</option>
+          </select>
+          </div>
         </div>
 
         <div class="form-group" id="cf-clase-group" style="grid-column:span 3;">
@@ -253,13 +272,13 @@
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Fotos originales, material bruto o referencias de diseño</span>
         </div>
 
-        <div class="form-group" style="grid-column:span 3;">
-          <details class="cm-det" id="det-cf-guion">
-            <summary><span class="cm-lbl">🎬 Guion</span><span class="cm-dot" id="dot-cf-guion"></span></summary>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+        <div class="form-group cm-det-wrap" style="grid-column:span 3;">
+          <div class="cm-det-acciones">
               <button type="button" id="cf-abrir-guion" class="btn btn-secondary btn-sm" onclick="abrirGuionDesdeModalContenido()" style="font-size:11px;display:none;">↗ Abrir en Guiones</button>
               <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
-            </div>
+          </div>
+          <details class="cm-det" id="det-cf-guion">
+            <summary><span class="cm-lbl">🎬 Guion</span><span class="cm-dot" id="dot-cf-guion"></span></summary>
             <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
           </details>
         </div>
@@ -303,7 +322,8 @@
         <div class="cm-row">
           <div class="form-group">
           <label>Plataformas <span class="req-star">*</span></label>
-          <div class="check-group" id="plat-checks">
+          <details class="cm-multi" id="dd-plat"><summary class="form-control" id="res-plat">Elegir…</summary>
+            <div class="cm-multi-panel check-group" id="plat-checks">
             <label class="check-label"><input type="checkbox" value="Instagram" class="plat-check"> Instagram</label>
             <label class="check-label"><input type="checkbox" value="Facebook" class="plat-check"> Facebook</label>
             <label class="check-label"><input type="checkbox" value="LinkedIn" class="plat-check"> LinkedIn</label>
@@ -312,36 +332,22 @@
             <label class="check-label"><input type="checkbox" value="YouTube" class="plat-check"> YouTube</label>
             <label class="check-label"><input type="checkbox" value="Sitio Web" class="plat-check"> Sitio Web</label>
             <label class="check-label"><input type="checkbox" value="Blog" class="plat-check"> Blog</label>
-          </div>
+          </div></details>
         </div>
           <div class="form-group">
           <label>Ubicación</label>
-          <div class="check-group" id="ubic-dynamic">
+          <details class="cm-multi" id="dd-ubic"><summary class="form-control" id="res-ubic">Elegir…</summary>
+            <div class="cm-multi-panel check-group" id="ubic-dynamic">
             <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
-          </div>
+          </div></details>
         </div>
           <div class="form-group">
           <label>Formato <span class="req-star">*</span></label>
-          <div class="check-group" id="formato-dynamic">
+          <details class="cm-multi" id="dd-fmt"><summary class="form-control" id="res-fmt">Elegir…</summary>
+            <div class="cm-multi-panel check-group" id="formato-dynamic">
             <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
-          </div>
+          </div></details>
         </div>
-          <div class="form-group"><label>Estado <span class="req-star">*</span></label>
-          <select id="cf-estado" class="form-control">
-            <option value="Sin empezar">Sin empezar</option>
-            <option value="Guión en revisión">Guión en revisión</option>
-            <option value="Guión aprobado">Guión aprobado</option>
-            <option value="Grabado">Grabado</option>
-            <option value="Editado">Editado</option>
-            <option value="Copy en revisión">Copy en revisión</option>
-            <option value="Textos aprobados">Textos aprobados</option>
-            <option value="En proceso">En proceso</option>
-            <option value="En revisión">En revisión</option>
-            <option value="Aprobado">Aprobado</option>
-            <option value="Programado">Programado</option>
-            <option value="Publicado">Publicado</option>
-          </select>
-          </div>
         </div>
 
       </div><!-- /form-grid essential -->
@@ -1422,7 +1428,7 @@
 
 <script src="../js/heal.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/app.js?v=108"></script>
+<script type="module" src="../js/app.js?v=109"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
