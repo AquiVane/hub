@@ -1,5 +1,9 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 27/11 — Visor de archivos con botón Descargar (data.js v36, app.js v100)
+- Vaneh: al abrir un archivo adjunto (ej. una pieza de Ando) se veía la imagen suelta en una ventana sin ningún botón. Ahora `abrirArchivo()` (data.js) abre el archivo en un **visor dentro de la misma pantalla** (`mostrarVisorArchivo`): imagen / video / audio / PDF, con **Descargar** (baja el archivo con su nombre, sin la carpeta) y **Cerrar** (también Esc o tocar afuera); tipos que no se pueden ver (Word, zip…) ofrecen solo Descargar. `ampliarImagen()` (miniaturas de contenidos/tareas) usa el mismo visor, así que también tiene Descargar. Ya no se abre ninguna ventana nueva (en la app instalada no había cómo volver).
+- Cubre todos los lugares que usan `abrirArchivo`/`ampliarImagen`: Links y Archivos, adjuntos de tareas, adjuntos de contenidos, Contenidos propios del admin. La app Calendario no tiene subida de archivos (no aplica).
+
 ## 24/11 (4) — Cartel de sincronización: "Guardado · sincronizando…" (offline.js v20)
 - Pedido de Vaneh: el cartel decía "Guardado en tu teléfono" aunque estuviera en la compu. Ahora dice solo **"Guardado · sincronizando…"**. `offline.js?v=20`, `data.js?v=35`.
 - Recuperación de las tareas perdidas de Ando del viernes 20/11 y red de seguridad (papelera + copia del día) en el servidor: ver `HANDOFF.md` de `cosmart-workers`, entrada 24/11 (2). Pendiente: deploy de `marketing-hub` con OK de Vaneh.

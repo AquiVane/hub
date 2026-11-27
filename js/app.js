@@ -13,12 +13,12 @@ import {
   getPlanesPauta, savePlanesPauta, getPlanPautaHtml, savePlanPautaHtml,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
-  uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
+  uploadArchivo, abrirArchivo, mostrarVisorArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
   optimizarCargaCliente
-} from './data.js?v=35';
+} from './data.js?v=36';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -5625,13 +5625,9 @@ document.getElementById('tarea-img-thumbs')?.addEventListener('click', (e) => {
 
 // Lightbox simple: pedido de Vaneh -- "necesito tocar la imagen y que se
 // amplie asi se entiende si se cargo o no".
-window.ampliarImagen = function(src) {
+window.ampliarImagen = function(src, nombre) {
   if (!src) return;
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;';
-  overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);">`;
-  overlay.onclick = () => overlay.remove();
-  document.body.appendChild(overlay);
+  mostrarVisorArchivo({ url: src, nombre: nombre || 'imagen.jpg', mime: /^data:(image\/[a-z+.-]+)/i.exec(src)?.[1] || 'image/jpeg' }); // con botón de descarga
 };
 
 // ── Teleprompter (guion de Contenidos, pedido de Vaneh para grabar) ──
