@@ -27,7 +27,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=47">
+  <link rel="stylesheet" href="../css/style.css?v=48">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -2958,7 +2958,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=50');
+      const res = await fetch('../app/index.html?hv=51');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3248,7 +3248,8 @@
     { id: 'pauta', tabs: [ { id: 'pauta', label: 'Pauta publicitaria', sec: 'contenidospropios', embed: 'pauta' } ] },
     { id: 'instagram', tabs: [ { id: 'instagram', label: 'Automatizaciones', sec: 'instagram' } ] },
     { id: 'inventario', tabs: [
-      { id: 'inventario', label: 'Inventario', sec: esCosmart ? 'inventario' : 'productos' },
+      { id: 'productos', label: 'Inventario', sec: 'productos' },
+      { id: 'inventario', label: 'Inventario COSMART', sec: 'inventario', si: esCosmart },
       { id: 'mapa', label: 'Mapa de productos', sec: 'mapa', si: esCosmart } ] },
     { id: 'ideas', tabs: [ { id: 'ideas', label: 'Ideas', sec: 'ideas' } ] },
     { id: 'crm', tabs: [ { id: 'crm', label: 'CRM Leads', sec: 'crm' } ] },

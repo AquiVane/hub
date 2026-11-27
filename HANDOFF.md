@@ -1066,3 +1066,5 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 - **Recursos útiles** → Links · Archivos · Recursos. En el módulo de contenidos embebido, la barra propia queda oculta (la maneja el menú: `window.__hubEmbedTab`) y existe la sección `archivos` (solo archivos) además de `links` (solo links) cuando va dentro del admin (HOSTED).
 - **Módulo Agencias** sacado del menú (pedido). Ojo: ahí vivía la config de precios de Mercado Pago (`guardarPrecioMP`); el código sigue pero sin acceso desde el menú — si hay que cambiar precios, moverlo a Configuración.
 - `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.
+
+- 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
