@@ -1090,3 +1090,5 @@ Orden: Cuenta · Fecha · Duración (solo video) · Dimensión (desplegable mult
 Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegables multiselección con resumen (`actualizarDimResumen`); "Abrir teleprompter"/"Abrir en Guiones" quedan a la derecha del título Guion, visibles sin desplegar. El desplegable ¿Remix u original? vuelve a estar SIEMPRE (también en Contenidos propios y es obligatorio); en Contenidos propios solo se oculta la LISTA de remix.
 
 - 28/11: Objetivo · Eje · Tipo ahora van justo debajo del Guion (antes de Cuenta/Fecha). Ojo: un script mío rompió `calendario/app.html` (se pisó un bloque) en el commit a5f7634 de apps-cosmart; se restauró desde abe9320 y se reaplicó bien.
+
+- 28/11 (corrección): la lista de Remix (agregar de a uno, con fecha, link y estado por remix) aparece siempre que se elige "Remix", también en Contenidos propios y abre sola las opciones avanzadas en celular.
