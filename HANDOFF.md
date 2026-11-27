@@ -1067,6 +1067,8 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 - **Módulo Agencias** sacado del menú (pedido). Ojo: ahí vivía la config de precios de Mercado Pago (`guardarPrecioMP`); el código sigue pero sin acceso desde el menú — si hay que cambiar precios, moverlo a Configuración.
 - `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.
 
+- 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).

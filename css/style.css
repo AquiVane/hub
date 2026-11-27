@@ -1428,7 +1428,8 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 .cp-title { font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
 .cp-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 .cp-actions { flex-wrap: wrap; }
-.cp-host #embed-tabs { display: flex !important; margin: 0 0 12px !important; width: auto !important; box-sizing: border-box; }
+/* en el admin el menú maneja las pestañas (Contenidos / Pauta / Recursos útiles): la barra propia del módulo no se ve */
+.cp-host #embed-tabs { display: none !important; }
 .cp-host #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center; padding: 8px 4px; }
 
 /* ── Clientes en celular: UNA sola línea, fina y delicada (nombre · Ver panel · ⋮ · ▲▼) ──
