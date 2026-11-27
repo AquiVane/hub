@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 27/11 (2) — Transcriptor de reels en el admin (pedido de Vaneh, estilo SocialBoost)
+- Nueva sección **Transcriptor** (solo admin de COSMART, menú lateral): pegás uno o varios links de Instagram (uno por línea) → **Transcribir** → texto; botones **Copiar transcripción**, **Traducir** (al español), **Volver a transcribir**, **Limpiar resultados**. `admin/index.html` (`sec-transcribir`), `transcribirReel`/`traducirTexto` en `js/data.js`.
+- Backend (`cosmart-workers/marketing-hub`): `POST /admin/transcribir` y `/admin/traducir`. **Requiere deploy manual con OK de Vaneh + configurar el proveedor que baja el reel** (Instagram no entrega el video a IPs de servidor; probado). Ver HANDOFF del worker.
+- No hecho: botón "Generar guion" que tiene SocialBoost (no se pidió). Sin SEO nuevo: es una sección interna del admin.
+
 ## 27/11 — Visor de archivos con botón Descargar (data.js v36, app.js v100)
 - Vaneh: al abrir un archivo adjunto (ej. una pieza de Ando) se veía la imagen suelta en una ventana sin ningún botón. Ahora `abrirArchivo()` (data.js) abre el archivo en un **visor dentro de la misma pantalla** (`mostrarVisorArchivo`): imagen / video / audio / PDF, con **Descargar** (baja el archivo con su nombre, sin la carpeta) y **Cerrar** (también Esc o tocar afuera); tipos que no se pueden ver (Word, zip…) ofrecen solo Descargar. `ampliarImagen()` (miniaturas de contenidos/tareas) usa el mismo visor, así que también tiene Descargar. Ya no se abre ninguna ventana nueva (en la app instalada no había cómo volver).
 - Cubre todos los lugares que usan `abrirArchivo`/`ampliarImagen`: Links y Archivos, adjuntos de tareas, adjuntos de contenidos, Contenidos propios del admin. La app Calendario no tiene subida de archivos (no aplica).
