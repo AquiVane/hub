@@ -1092,3 +1092,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: Objetivo · Eje · Tipo ahora van justo debajo del Guion (antes de Cuenta/Fecha). Ojo: un script mío rompió `calendario/app.html` (se pisó un bloque) en el commit a5f7634 de apps-cosmart; se restauró desde abe9320 y se reaplicó bien.
 
 - 28/11 (corrección): la lista de Remix (agregar de a uno, con fecha, link y estado por remix) aparece siempre que se elige "Remix", también en Contenidos propios y abre sola las opciones avanzadas en celular.
+
+- 28/11: la lista de remix también se ve al abrir un contenido que YA tiene remix cargados (aunque no esté marcado como Remix).
