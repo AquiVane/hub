@@ -3736,6 +3736,7 @@ window.transcribirReferencia = async function() {
 
 window.openContenidoModal = function(defaults = {}) {
   defaults = defaults || {};
+  { const bt = document.getElementById('cf-transcribir'); if (bt) bt.style.display = (user.agencyId && user.agencyId !== 'cosmart') ? 'none' : ''; } // el transcriptor es solo de COSMART por ahora
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
   const c = editingContenido || {};
 

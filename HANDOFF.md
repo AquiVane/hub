@@ -1102,3 +1102,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: "Transcriptor" también es pestaña del grupo Contenidos (solo admin COSMART); el ítem de menú y el botón dentro de Nuevo contenido siguen.
 
 - 28/11: "Métricas" sube debajo de Pauta publicitaria y "Newsletter" pasa a ser pestaña de Métricas (ya no tiene ítem propio en el menú).
+
+- 28/11: agencias y emprendedores ven el mismo menú SIN lo exclusivo de COSMART (Transcriptor —también el botón dentro de Nuevo contenido—, Newsletter, Panel de ventas, Visitas, Inventario COSMART, Mapa de productos).
