@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=45">
+  <link rel="stylesheet" href="../css/style.css?v=48">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -259,14 +259,18 @@
         <div class="form-group">
           <label>Estado <span class="req-star">*</span></label>
           <select id="cf-estado" class="form-control">
-            <option value="Idea">💡 Idea</option>
-            <option value="Sin grabar">⏺ Sin grabar</option>
-            <option value="Guión grabado">🎬 Guión grabado</option>
-            <option value="En proceso">✏️ En proceso</option>
-            <option value="En revisión">👁 En revisión</option>
-            <option value="Aprobado">✅ Aprobado</option>
-            <option value="Programado">📅 Programado</option>
-            <option value="Publicado">🚀 Publicado</option>
+            <option value="Sin empezar">Sin empezar</option>
+            <option value="Guión en revisión">Guión en revisión</option>
+            <option value="Guión aprobado">Guión aprobado</option>
+            <option value="Grabado">Grabado</option>
+            <option value="Editado">Editado</option>
+            <option value="Copy en revisión">Copy en revisión</option>
+            <option value="Textos aprobados">Textos aprobados</option>
+            <option value="En proceso">En proceso</option>
+            <option value="En revisión">En revisión</option>
+            <option value="Aprobado">Aprobado</option>
+            <option value="Programado">Programado</option>
+            <option value="Publicado">Publicado</option>
           </select>
         </div>
         <div class="form-group">
@@ -1059,9 +1063,8 @@
           <select id="if-formato" class="form-control">
             <option>Imagen</option>
             <option>Video</option>
-            <option>Reel</option>
             <option>Carrusel</option>
-            <option>Story</option>
+            <option>GIF</option>
           </select>
         </div>
         <div class="form-group">
@@ -1419,7 +1422,7 @@
 
 <script src="../js/heal.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/app.js?v=100"></script>
+<script type="module" src="../js/app.js?v=102"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

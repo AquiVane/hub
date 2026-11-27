@@ -1,5 +1,10 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+## 27/11 (2) — Transcriptor de reels en el admin (pedido de Vaneh, estilo SocialBoost)
+- Nueva sección **Transcriptor** (solo admin de COSMART, menú lateral): pegás uno o varios links de Instagram (uno por línea) → **Transcribir** → texto; botones **Copiar transcripción**, **Traducir** (al español), **Volver a transcribir**, **Limpiar resultados**. `admin/index.html` (`sec-transcribir`), `transcribirReel`/`traducirTexto` en `js/data.js`.
+- Backend (`cosmart-workers/marketing-hub`): `POST /admin/transcribir` y `/admin/traducir`. **Requiere deploy manual con OK de Vaneh + configurar el proveedor que baja el reel** (Instagram no entrega el video a IPs de servidor; probado). Ver HANDOFF del worker.
+- No hecho: botón "Generar guion" que tiene SocialBoost (no se pidió). Sin SEO nuevo: es una sección interna del admin.
+
 ## 27/11 — Visor de archivos con botón Descargar (data.js v36, app.js v100)
 - Vaneh: al abrir un archivo adjunto (ej. una pieza de Ando) se veía la imagen suelta en una ventana sin ningún botón. Ahora `abrirArchivo()` (data.js) abre el archivo en un **visor dentro de la misma pantalla** (`mostrarVisorArchivo`): imagen / video / audio / PDF, con **Descargar** (baja el archivo con su nombre, sin la carpeta) y **Cerrar** (también Esc o tocar afuera); tipos que no se pueden ver (Word, zip…) ofrecen solo Descargar. `ampliarImagen()` (miniaturas de contenidos/tareas) usa el mismo visor, así que también tiene Descargar. Ya no se abre ninguna ventana nueva (en la app instalada no había cómo volver).
 - Cubre todos los lugares que usan `abrirArchivo`/`ampliarImagen`: Links y Archivos, adjuntos de tareas, adjuntos de contenidos, Contenidos propios del admin. La app Calendario no tiene subida de archivos (no aplica).
@@ -1045,3 +1050,29 @@ Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en
 ## 27/11 — Modo emprendedor v1
 - Signup acepta `perfil` (`emprendedor`|`agencia`, default agencia) y lo guarda en la agencia; el login devuelve `agenciaPerfil`; `auth.js` lo guarda. El emprendedor no recibe cliente demo y su admin arranca en "Contenidos propios".
 - `emprendedores.html` (landing, SEO + sitemap + llms.txt) y `signup.html?perfil=emprendedor`. Se replica el panel admin completo; falta decidir qué sobra, proveedores, idioma/moneda por país, soporte propio y arranque guiado (pendiente). Requiere deploy manual de `marketing-hub` (junto con papelera/copias).
+
+## 27/11 — Demo de emprendedor
+Botón "Probar la demo sin registrarme" en `emprendedores.html` (llama a `POST /agencia/demo`, guarda sesión y abre el admin); barra fija de demo en `admin/index.html` para mails `@demo.hub.local`.
+
+## 27/11 — Estados de contenido nuevos (pedido de Vaneh)
+Un solo módulo: `js/estados.js` (copia en `apps-cosmart/calendario/js/estados.js`). Dos recorridos:
+- **Reels y videos:** Sin empezar · Guión en revisión · Guión aprobado · Grabado · Editado · En revisión · Aprobado · Programado · Publicado.
+- **Flyers / imágenes / carruseles:** Sin empezar · Copy en revisión · Textos aprobados · En proceso · En revisión · Aprobado · Programado · Publicado.
+- El selector de estado del modal (y el de cada fila del banco / "Mis tareas") habilita/deshabilita opciones según plataforma, ubicación y formato (`tipoPieza`). Sin formato elegido: están los 12 habilitados. Al cambiar de tipo, el estado se traduce (Textos aprobados ⇄ Guión aprobado, etc.).
+- **Reel, Story y Carrusel:** Reel y Story son solo UBICACIÓN; Carrusel es solo FORMATO. Tildar Reel (o Shorts) tilda solo el formato Video. Datos viejos se acomodan al abrir/importar (`acomodarUbicFormato`).
+- **Estados viejos** (Idea, Sin grabar, Guión grabado, Revisión) se traducen en memoria al leer (`normContenidos`) y quedan grabados al guardar; el servidor no se migró. "En proceso" de un video viejo pasa a Grabado.
+- Kanban = 12 columnas (unión). Guiones: el vínculo "grabado" ahora es Sin empezar ⇄ Grabado (solo para piezas que no son imagen).
+- Excel (plantillas de Hub y Calendario) actualizadas; el import acepta los nombres viejos.
+- Pendiente: desplegar `marketing-hub` (seeds de demo + conteo del informe mensual con los estados nuevos). Los remix mantienen Idea / En proceso / Publicado.
+
+## 28/11 — Menú del admin simplificado (grupos con pestañas)
+Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRUPO (`GRUPOS` en `admin/index.html`) cuyas pestañas abren las MISMAS secciones de siempre; `sincronizarMenu()` (MutationObserver sobre las `sec-*`) mantiene menú y pestañas alineados sin importar quién abrió la sección.
+- **Clientes** → Clientes · Colaboradores · Procesos. **Tareas** → Mis tareas · Tareas COSMART (agencias: "Tareas internas") · Proyectos.
+- **Contenidos COSMART** (agencias: "Contenidos Agencia"; emprendedor: "Contenidos") → Contenidos · Guiones · Dashboard. **Pauta publicitaria** abre la pestaña Pauta del mismo módulo. Automatizaciones, Ideas, CRM Leads, Instrucciones y Configuración siguen.
+- **Inventario** → COSMART: Inventario (iframe de siempre) · Mapa de productos. Resto de cuentas: inventario NATIVO (`sec-productos`, datos en `/data/_cosmart/productos`): uno a uno, Excel (`plantillas/Plantilla_Inventario_Hub.xlsx`, mezcla por SKU/nombre, nunca borra) y "Cargar con IA" (usa `/ai/preguntar`, requiere la API key propia de Claude en Configuración).
+- **Métricas** → Actividad · Informes clientes · Métricas de mails · Panel de ventas · Visitas (las dos últimas solo COSMART admin).
+- **Recursos útiles** → Links · Archivos · Recursos. En el módulo de contenidos embebido, la barra propia queda oculta (la maneja el menú: `window.__hubEmbedTab`) y existe la sección `archivos` (solo archivos) además de `links` (solo links) cuando va dentro del admin (HOSTED).
+- **Módulo Agencias** sacado del menú (pedido). Ojo: ahí vivía la config de precios de Mercado Pago (`guardarPrecioMP`); el código sigue pero sin acceso desde el menú — si hay que cambiar precios, moverlo a Configuración.
+- `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.
+
+- 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).

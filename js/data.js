@@ -663,6 +663,17 @@ export async function saveIdea(clientId, idea, knownList, tipo = 'ideas') {
   return idea;
 }
 
+// Lista genérica por tipo (ej. 'productos' del Inventario): se lee y se guarda COMPLETA en un solo pedido.
+export async function getListaTipo(clientId, tipo) {
+  if (DEMO_MODE) return [];
+  const r = await api('GET', `/data/${clientId}/${tipo}`);
+  return Array.isArray(r) ? r : [];
+}
+export async function saveListaTipo(clientId, tipo, lista) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', `/data/${clientId}/${tipo}`, lista);
+}
+
 export async function deleteIdea(clientId, id, knownList, tipo = 'ideas') {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
@@ -979,6 +990,16 @@ export async function setVentasPanelConfig(vertical, mes, parcial) {
 export async function getVisitas(dias) {
   if (DEMO_MODE) return { ok: true, periodo_dias: dias, total: { visitas: 0, unicos: 0 }, sitios: [] };
   return api('GET', `/admin/visitas?dias=${encodeURIComponent(dias)}`);
+}
+
+// ── Transcriptor de reels (27/11) ──
+export async function transcribirReel(url) {
+  if (DEMO_MODE) return { ok: true, texto: 'Texto de ejemplo', idioma: 'en' };
+  return api('POST', '/admin/transcribir', { url });
+}
+export async function traducirTexto(texto, de) {
+  if (DEMO_MODE) return { ok: true, texto: 'Texto de ejemplo' };
+  return api('POST', '/admin/traducir', { texto, de });
 }
 
 export async function saveLead(lead) {
