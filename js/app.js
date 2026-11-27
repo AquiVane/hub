@@ -1059,6 +1059,7 @@ function renderSection(sec) {
     actions.appendChild(importBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
+    btn.style.cssText = 'background:#E02020;border-color:#E02020;color:#fff;';
     btn.textContent = '+ Nueva campaña';
     btn.onclick = () => openCampanaModal(null);
     actions.appendChild(btn);
@@ -3760,6 +3761,7 @@ window.openContenidoModal = function(defaults = {}) {
   _copyLinkContBtn.classList.toggle('hidden', !editingContenido);
   _copyLinkContBtn.onclick = () => copiarLinkItem('contenido', c.id);
   document.getElementById('contenidoModal').classList.remove('hidden');
+  { const mb = document.querySelector('#contenidoModal .modal-body'); if (mb) mb.scrollTop = 0; document.getElementById('contenidoModal').scrollTop = 0; } // siempre abre ARRIBA (no donde se dejó)
 };
 
 window.openContenidoModalById = function(id) { openContenidoModal({ id }); };
@@ -6537,7 +6539,7 @@ function pautaTabsHtml(activa) {
   const plats = ['Todas', 'Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
   return `<div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
     ${plats.map(p => { const k = p === 'Todas' ? 'todas' : p; return `<button class="tab-btn ${activa === k ? 'active' : ''}" data-tab="${k}">${p}</button>`; }).join('')}
-    <button class="tab-btn ${activa === 'planes' ? 'active' : ''}" data-tab="planes">📋 Planes de campaña</button>
+    <button class="tab-btn tab-btn-planes ${activa === 'planes' ? 'active' : ''}" data-tab="planes">📋 Planes de campaña</button>
   </div>`;
 }
 function bindPautaTabs() {
@@ -8934,7 +8936,7 @@ function showMustChangePasswordModal() {
     const nueva = document.getElementById('mcp-nueva').value;
     const confirmar = document.getElementById('mcp-confirmar').value;
     if (!actual || !nueva) { err.textContent = 'Completá los dos campos.'; err.style.display = ''; return; }
-    if (nueva.length < 6) { err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; err.style.display = ''; return; }
+    if (nueva.length < 8) { err.textContent = 'La contraseña nueva debe tener al menos 8 caracteres.'; err.style.display = ''; return; }
     if (nueva !== confirmar) { err.textContent = 'Las contraseñas nuevas no coinciden.'; err.style.display = ''; return; }
     btn.disabled = true; btn.textContent = 'Guardando…';
     try {

@@ -1039,6 +1039,14 @@ Las respuestas de otras personas dentro de un hilo de comentarios ahora disparan
 Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en azul de siempre (`.ig-card-fb`), con etiqueta pegada arriba (`.ig-canal`: Instagram / Facebook / Instagram + Facebook / Instagram · Historias) y la píldora "Palabra clave: …" a la izquierda del interruptor Activa/Pausada. `instagram.js?v=33`. Nota: "recuperar" no pasa de 7 días a propósito (Meta no permite mensaje privado después); un comentario de "1 sem" en Facebook ya tiene 7 días o más.
 - 20/11 (tarde): plantillas "Sistema IA · Instagram" (dos pasos, exige seguir, seguimiento a 60 min con botón a `/hace-que-la-ia-escriba-como-tu-marca`) y "Sistema IA · Facebook" (directo, sin seguir) en "Empezar desde una plantilla". El link de la guía gratuita queda VACÍO a propósito (Vaneh lo pega; el guardado lo exige). Nuevo: botón opcional en el mensaje de seguimiento (`seguimiento1BotonTexto/Url`). `instagram.js?v=34`. Texto aprobado por Vaneh el 20/11 ("dale").
 
+---
+
+## 24/11/2026 — Endurecimiento tras la auditoría (front)
+
+- Contraseña mínima **8** cuando la persona la elige (`signup.html`, `reset.html`, cambio de clave en `js/app.js` y `admin/index.html`); la del backend ya exige lo mismo. Las contraseñas que un admin crea para clientes/colaboradores siguen en 6.
+- Nuevo CI `.github/workflows/validar.yml` (`node --check` de `js/*.js`, `sw.js` y del script module inline de `admin/index.html`).
+- Informe completo y pendientes en `docs/AUDITORIA.md` del repo privado `cosmart-workers` (NO se guarda acá: este repo se publica entero en la web y los `.md` de la raíz quedan públicos). Falta: Términos y Condiciones / Privacidad general + aceptación en el alta (texto a aprobar por Vaneh).
+
 ## 27/11 — Modo emprendedor v1
 - Signup acepta `perfil` (`emprendedor`|`agencia`, default agencia) y lo guarda en la agencia; el login devuelve `agenciaPerfil`; `auth.js` lo guarda. El emprendedor no recibe cliente demo y su admin arranca en "Contenidos propios".
 - `emprendedores.html` (landing, SEO + sitemap + llms.txt) y `signup.html?perfil=emprendedor`. Se replica el panel admin completo; falta decidir qué sobra, proveedores, idioma/moneda por país, soporte propio y arranque guiado (pendiente). Requiere deploy manual de `marketing-hub` (junto con papelera/copias).
@@ -1069,11 +1077,14 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 
 - 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
 
+## 28/11 — Gestión, Proveedores y Administración
+Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).
 - **"Métricas" → "Reportes y métricas"**, con 4 pestañas: **Métricas** (el Dashboard del panel de cliente, principal) · **Inicio** · **Reportes** · **Actividad** (la sección de siempre). Las tres primeras son pestañas `embed` (`dashboard`, `home`, `reportes`) del mismo módulo de Contenidos propios (`window.__hubEmbedTab` → `renderSection`). En el grupo Contenidos el emprendedor ve solo Contenidos y Guiones (el Dashboard pasó a Métricas).
 - **Productos**: el emprendedor usa el **Inventario propio** (sec `productos`; uno a uno, Excel o "Cargar con IA") — es lo que pidió como "mapa de productos propio". No hay un módulo aparte (se había armado `js/mapa-productos.js` sobre la misma clave `/data/_cosmart/productos` y se sacó al unificar con el inventario nativo, para no tener dos pantallas sobre los mismos datos).
 - Recorrido de bienvenida propio (sin clientes ni "Cliente Demo"). En el Dashboard de Contenidos propios se sacó el "Cliente: _cosmart".
-- Versiones: `app.js?v=105`. Probado en simulación local (servidor falso), desktop y mobile 390 px, sin scroll horizontal. **Falta probarlo con una cuenta emprendedor real** (la demo de `emprendedores.html` sirve).
+- Versiones: `app.js?v=106`. Probado en simulación local (servidor falso), desktop y mobile 390 px, sin scroll horizontal. **Falta probarlo con una cuenta emprendedor real** (la demo de `emprendedores.html` sirve).
 - Pendiente (no pedido): el "Inicio" del emprendedor muestra contadores de contenidos; si querés prioridades/links propios hay que definirlo. "Pauta publicitaria" sigue en su menú.
