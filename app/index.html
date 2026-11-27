@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=55">
+  <link rel="stylesheet" href="../css/style.css?v=56">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -255,13 +255,25 @@
           </div>
         </div>
 
-        <div class="form-group" id="cf-clase-group" style="grid-column:span 3;">
+        <div class="cm-row">
+          <div class="form-group" id="cf-clase-group">
           <label>¿Remix o contenido original? <span class="req-star">*</span></label>
           <select id="cf-clase" class="form-control" onchange="this.classList.remove('campo-error')">
             <option value="">Elegí una opción…</option>
             <option value="Contenido original">Contenido original</option>
             <option value="Remix">Remix</option>
           </select>
+        </div>
+          <div class="form-group">
+          <label>Fecha de publicación</label>
+          <input type="date" id="cf-fecha" class="form-control">
+        </div>
+          <div class="form-group" style="grid-column:span 3;">
+          <label>Asignar a</label>
+          <select id="cont-asignado" class="form-control">
+            <option value="">Sin asignar</option>
+          </select>
+        </div>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
@@ -281,6 +293,13 @@
             <summary><span class="cm-lbl">🎬 Guion</span><span class="cm-dot" id="dot-cf-guion"></span></summary>
             <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
           </details>
+        </div>
+
+        <div class="form-group" style="grid-column:span 3;" id="remix-section">
+          <label>🔁 Remix</label>
+          <div id="remix-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="addRemix()">+ Agregar remix</button>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Cada remix tiene su propia fecha y su link, y se marca como Idea, En proceso o Publicado</span>
         </div>
 
         <div class="cm-row">
@@ -319,10 +338,7 @@
           </select>
           <input type="text" id="cf-cuenta-custom" class="form-control" style="margin-top:5px;display:none;" placeholder="@cuenta">
         </div>
-          <div class="form-group">
-          <label>Fecha de publicación</label>
-          <input type="date" id="cf-fecha" class="form-control">
-        </div>
+          
           <div class="form-group" id="cf-duracion-group" style="display:none;">
           <label>Duración del video</label>
           <input type="text" id="cf-duracion" class="form-control" placeholder="Ej: 30s, 1:15, 90s">
@@ -424,12 +440,6 @@
         </div>
 
 
-        <div class="form-group" style="grid-column:span 3;" id="remix-section">
-          <label>🔁 Remix</label>
-          <div id="remix-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="addRemix()">+ Agregar remix</button>
-          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Cada remix tiene su propia fecha y su link, y se marca como Idea, En proceso o Publicado</span>
-        </div>
 
         <div class="form-group" style="grid-column:span 3;">
           <label>📎 Archivos adjuntos</label>
@@ -447,12 +457,6 @@
           </div>
         </div>
 
-        <div class="form-group" style="grid-column:span 3;">
-          <label>Asignar a</label>
-          <select id="cont-asignado" class="form-control">
-            <option value="">Sin asignar</option>
-          </select>
-        </div>
 
         <div class="form-group" style="grid-column:span 3;">
           <label>Notas internas</label>

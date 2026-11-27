@@ -1094,3 +1094,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11 (corrección): la lista de Remix (agregar de a uno, con fecha, link y estado por remix) aparece siempre que se elige "Remix", también en Contenidos propios y abre sola las opciones avanzadas en celular.
 
 - 28/11: la lista de remix también se ve al abrir un contenido que YA tiene remix cargados (aunque no esté marcado como Remix).
+
+- 28/11: fila "Remix u original · Fecha de publicación · Asignar a" bajo el título; la lista de Remix va arriba de Objetivo/Eje/Tipo (tras el Guion).
