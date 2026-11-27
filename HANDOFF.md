@@ -1079,3 +1079,6 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 
 ## 28/11 — Gestión, Proveedores y Administración
 Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).
+
+## 28/11 — Modal de contenido según Remix / Original
+Objetivo: solo Notoriedad · Interacción · Acción (los viejos se traducen al abrir). `aplicarModoClase()`: **Remix** → solo título, objetivo, copy, texto en pantalla, asignar a, notas, comentarios y la lista de remix (cuenta/plataforma/formato ya no son obligatorios); **Contenido original** → todo, sin lista de remix; **Contenidos propios** → no existe la parte de Remix. Aplicado también en Calendario.

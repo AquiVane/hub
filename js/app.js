@@ -3669,6 +3669,26 @@ function populateCuentaSelect(selected, esNuevo) {
   customInput.style.display = sel.value === '__custom__' ? '' : 'none';
 }
 
+
+// Modo según "¿Remix o contenido original?" (28/11, pedido de Vaneh):
+//  · Remix → solo título, objetivo, copy, texto en pantalla, asignar a, notas y comentarios + la lista de remix. Sin formato, ubicación, plataforma, etc.
+//  · Contenido original → todo lo de siempre, SIN la lista de remix.
+//  · Contenidos propios → no existe la parte de Remix (ni el desplegable ni la lista).
+const _CM_SOLO_REMIX = ['cf-titulo', 'cf-clase', 'remix-section', 'cf-objetivo', 'cf-copy', 'cf-texto-pantalla', 'cont-asignado', 'cf-notas'];
+function aplicarModoClase() {
+  const modal = document.getElementById('contenidoModal'); if (!modal) return;
+  const clase = document.getElementById('cf-clase')?.value || '';
+  const esRemix = !esPropioAgencia && clase === 'Remix';
+  modal.querySelectorAll('.form-grid > .form-group').forEach(g => {
+    const mantiene = _CM_SOLO_REMIX.some(id => g.id === id || g.querySelector('#' + id));
+    let oculto = esRemix && !mantiene;
+    if (g.id === 'remix-section') oculto = !esRemix;
+    if (g.id === 'cf-clase-group') oculto = esPropioAgencia;
+    g.classList.toggle('cm-oculto', oculto);
+  });
+}
+document.getElementById('cf-clase')?.addEventListener('change', aplicarModoClase);
+
 window.openContenidoModal = function(defaults = {}) {
   defaults = defaults || {};
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
@@ -3681,7 +3701,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-estado').value = normEstado({ ...c, estado: c.estado || defaults.estado || 'Sin empezar' });
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
-  document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
+  document.getElementById('cf-objetivo').value = ({ Engagement: 'Interacción', Alcance: 'Notoriedad', 'Conversión': 'Acción', 'Tráfico': 'Acción' })[c.objetivo] || c.objetivo || 'Notoriedad'; // objetivos viejos -> los 3 vigentes
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
   document.getElementById('cf-prompt-ia').value = c.promptIA || '';
@@ -3761,6 +3781,7 @@ window.openContenidoModal = function(defaults = {}) {
   _copyLinkContBtn.classList.toggle('hidden', !editingContenido);
   _copyLinkContBtn.onclick = () => copiarLinkItem('contenido', c.id);
   document.getElementById('contenidoModal').classList.remove('hidden');
+  aplicarModoClase();
   { const mb = document.querySelector('#contenidoModal .modal-body'); if (mb) mb.scrollTop = 0; document.getElementById('contenidoModal').scrollTop = 0; } // siempre abre ARRIBA (no donde se dejó)
 };
 
@@ -3828,19 +3849,20 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
   const claseSel = document.getElementById('cf-clase');
-  if (!claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
+  const _esRemix = !esPropioAgencia && claseSel.value === 'Remix'; // en Contenidos propios no hay Remix; un Remix solo lleva título, objetivo, copy, texto en pantalla, asignado y notas
+  if (!esPropioAgencia && !claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
   if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');
   const cuentaCustom = document.getElementById('cf-cuenta-custom');
   const cuenta = cuentaSel.value === '__custom__' ? cuentaCustom.value.trim() : cuentaSel.value;
-  if (!cuenta) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
+  if (!cuenta && !_esRemix) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
 
   const plats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
-  if (!plats.length) { alert('Seleccioná al menos una plataforma.'); return; }
+  if (!plats.length && !_esRemix) { alert('Seleccioná al menos una plataforma.'); return; }
 
   const formatos = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
-  if (!formatos.length) { alert('Seleccioná al menos un formato.'); return; }
+  if (!formatos.length && !_esRemix) { alert('Seleccioná al menos un formato.'); return; }
   btn.disabled = true; btn.textContent = 'Guardando…';
 
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
