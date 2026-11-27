@@ -1106,3 +1106,6 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: agencias y emprendedores ven el mismo menú SIN lo exclusivo de COSMART (Transcriptor —también el botón dentro de Nuevo contenido—, Newsletter, Panel de ventas, Visitas, Inventario COSMART, Mapa de productos).
 
 - 28/11: "Mis tareas" (Tareas) arranca en "Yo" también para admin y solo muestra lo ASIGNADO a esa persona (o creado por ella sin asignar): lo que creó y está asignado a otra persona/cliente ya no aparece (`matchVerDeMis`). "Todos"/"Equipo" siguen en el selector "Ver de". Tareas internas no cambió.
+
+## 28/11 — Plantilla/Excel de contenidos actualizada
+Misma lógica para contenido original y Remix. Columnas: Título · Remix o original · Fecha · Estado · Cuenta · Plataformas · Ubicación · Formato · Dimensiones · **Objetivo · Eje · Tipo** · Copy · Texto en pantalla · Prompt · Sugerencia · Guion · **Pauta (Orgánico/Pauta/Ambos)** · Links · Notas · Asignar a · **Remix 1/2/3 · Fecha/Link/Estado/Copy**. Listas desplegables en la plantilla. Un Remix solo exige Título (importer); remix del Excel solo pisan los existentes si la fila trae alguno. Valores viejos (Idea, Engagement, Institucional…) se traducen. Export con las mismas columnas. Hecho también en Calendario (sin "Asignar a").
