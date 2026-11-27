@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=50">
+  <link rel="stylesheet" href="../css/style.css?v=52">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -222,7 +222,7 @@
 
 <!-- Modal: Contenido (nuevo / editar) -->
 <div id="contenidoModal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:720px;">
+  <div class="modal" style="max-width:940px;">
     <div class="modal-header">
       <h3 id="modal-cont-title" style="flex:1;">Nuevo contenido</h3>
       <button class="btn btn-secondary btn-sm hidden" id="copyLinkContenidoBtn" title="Copiar link directo a este contenido">🔗 Copiar link</button>
@@ -249,26 +249,84 @@
           <label>📁 Material de referencia / bruto</label>
           <div id="ref-links-list"></div>
           <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="addDriveLink('ref')">+ Agregar link</button>
+          <button type="button" id="cf-transcribir" class="btn btn-secondary btn-sm" style="margin-top:6px;margin-left:6px;" onclick="transcribirReferencia()" title="Transcribe el video del primer link de referencia y lo pone en el Guion">🎙 Transcribir</button>
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Fotos originales, material bruto o referencias de diseño</span>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span>🎬 Guion</span>
-            <span style="display:flex;gap:6px;flex-wrap:wrap;">
+          <details class="cm-det" id="det-cf-guion">
+            <summary><span class="cm-lbl">🎬 Guion</span><span class="cm-dot" id="dot-cf-guion"></span></summary>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
               <button type="button" id="cf-abrir-guion" class="btn btn-secondary btn-sm" onclick="abrirGuionDesdeModalContenido()" style="font-size:11px;display:none;">↗ Abrir en Guiones</button>
               <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
-            </span>
-          </label>
-          <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
+            </div>
+            <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
+          </details>
         </div>
 
-        <div class="form-group">
+        <div class="cm-row">
+          <div class="form-group">
+          <label>Cuenta <span class="req-star">*</span></label>
+          <select id="cf-cuenta" class="form-control">
+            <option value="">Seleccionar cuenta...</option>
+          </select>
+          <input type="text" id="cf-cuenta-custom" class="form-control" style="margin-top:5px;display:none;" placeholder="@cuenta">
+        </div>
+          <div class="form-group">
           <label>Fecha de publicación</label>
           <input type="date" id="cf-fecha" class="form-control">
         </div>
-        <div class="form-group">
-          <label>Estado <span class="req-star">*</span></label>
+          <div class="form-group" id="cf-duracion-group" style="display:none;">
+          <label>Duración del video</label>
+          <input type="text" id="cf-duracion" class="form-control" placeholder="Ej: 30s, 1:15, 90s">
+          <span style="font-size:11px;color:var(--text-muted);">Reel/TikTok ≤ 90s · Story ≤ 60s · YouTube libre</span>
+        </div>
+          <div class="form-group">
+            <label>Dimensión</label>
+            <details class="cm-multi" id="cf-dim-dd"><summary class="form-control" id="cf-dim-resumen">Elegir…</summary>
+              <div class="cm-multi-panel">
+              <label class="check-label"><input type="checkbox" value="1:1" class="dim-check"> 1:1 – Cuadrado</label>
+              <label class="check-label"><input type="checkbox" value="4:5" class="dim-check"> 4:5 – Vertical</label>
+              <label class="check-label"><input type="checkbox" value="9:16" class="dim-check"> 9:16 – Stories / Reels</label>
+              <label class="check-label"><input type="checkbox" value="16:9" class="dim-check"> 16:9 – Horizontal / YouTube</label>
+              <label class="check-label"><input type="checkbox" value="1.91:1" class="dim-check"> 1.91:1 – Landscape Feed</label>
+              </div></details>
+          </div>
+          <div class="form-group">
+            <label>¿Orgánico o pauta?</label>
+            <select id="cf-pauta" class="form-control"><option value="organico">Orgánico</option><option value="dark">Pauta</option><option value="dark-organico">Ambos</option></select>
+          </div>
+        </div>
+        <div class="form-group" style="grid-column:span 3;margin:0;"><div id="pauta-hint" style="display:none;padding:8px 12px;background:#eff6ff;border-radius:6px;font-size:12px;color:var(--primary);margin-top:4px;">
+            💡 Este contenido va a pauta. <button type="button" onclick="document.getElementById('contenidoModal').classList.add('hidden');renderSection('pauta');" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:12px;">Ir a campañas →</button>
+          </div></div>
+        <div class="cm-row">
+          <div class="form-group">
+          <label>Plataformas <span class="req-star">*</span></label>
+          <div class="check-group" id="plat-checks">
+            <label class="check-label"><input type="checkbox" value="Instagram" class="plat-check"> Instagram</label>
+            <label class="check-label"><input type="checkbox" value="Facebook" class="plat-check"> Facebook</label>
+            <label class="check-label"><input type="checkbox" value="LinkedIn" class="plat-check"> LinkedIn</label>
+            <label class="check-label"><input type="checkbox" value="Twitter / X" class="plat-check"> Twitter / X</label>
+            <label class="check-label"><input type="checkbox" value="TikTok" class="plat-check"> TikTok</label>
+            <label class="check-label"><input type="checkbox" value="YouTube" class="plat-check"> YouTube</label>
+            <label class="check-label"><input type="checkbox" value="Sitio Web" class="plat-check"> Sitio Web</label>
+            <label class="check-label"><input type="checkbox" value="Blog" class="plat-check"> Blog</label>
+          </div>
+        </div>
+          <div class="form-group">
+          <label>Ubicación</label>
+          <div class="check-group" id="ubic-dynamic">
+            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
+          </div>
+        </div>
+          <div class="form-group">
+          <label>Formato <span class="req-star">*</span></label>
+          <div class="check-group" id="formato-dynamic">
+            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
+          </div>
+        </div>
+          <div class="form-group"><label>Estado <span class="req-star">*</span></label>
           <select id="cf-estado" class="form-control">
             <option value="Sin empezar">Sin empezar</option>
             <option value="Guión en revisión">Guión en revisión</option>
@@ -283,38 +341,6 @@
             <option value="Programado">Programado</option>
             <option value="Publicado">Publicado</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label>Cuenta <span class="req-star">*</span></label>
-          <select id="cf-cuenta" class="form-control">
-            <option value="">Seleccionar cuenta...</option>
-          </select>
-          <input type="text" id="cf-cuenta-custom" class="form-control" style="margin-top:5px;display:none;" placeholder="@cuenta">
-        </div>
-
-        <div class="form-group">
-          <label>Plataformas <span class="req-star">*</span></label>
-          <div class="check-group" id="plat-checks">
-            <label class="check-label"><input type="checkbox" value="Instagram" class="plat-check"> Instagram</label>
-            <label class="check-label"><input type="checkbox" value="Facebook" class="plat-check"> Facebook</label>
-            <label class="check-label"><input type="checkbox" value="LinkedIn" class="plat-check"> LinkedIn</label>
-            <label class="check-label"><input type="checkbox" value="Twitter / X" class="plat-check"> Twitter / X</label>
-            <label class="check-label"><input type="checkbox" value="TikTok" class="plat-check"> TikTok</label>
-            <label class="check-label"><input type="checkbox" value="YouTube" class="plat-check"> YouTube</label>
-            <label class="check-label"><input type="checkbox" value="Sitio Web" class="plat-check"> Sitio Web</label>
-            <label class="check-label"><input type="checkbox" value="Blog" class="plat-check"> Blog</label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Ubicación</label>
-          <div class="check-group" id="ubic-dynamic">
-            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Formato <span class="req-star">*</span></label>
-          <div class="check-group" id="formato-dynamic">
-            <span style="font-size:11px;color:var(--text-muted);">Seleccioná plataforma primero</span>
           </div>
         </div>
 
@@ -328,85 +354,60 @@
 
       <div id="cont-advanced" class="form-grid advanced-section" style="grid-template-columns:1fr 1fr 1fr;">
 
-        <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Dimensión / Relación de aspecto</label>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
-            <label class="check-label"><input type="checkbox" value="1:1" class="dim-check"> 1:1 – Cuadrado</label>
-            <label class="check-label"><input type="checkbox" value="4:5" class="dim-check"> 4:5 – Vertical</label>
-            <label class="check-label"><input type="checkbox" value="9:16" class="dim-check"> 9:16 – Stories / Reels</label>
-            <label class="check-label"><input type="checkbox" value="16:9" class="dim-check"> 16:9 – Horizontal / YouTube</label>
-            <label class="check-label"><input type="checkbox" value="1.91:1" class="dim-check"> 1.91:1 – Landscape Feed</label>
+        <div class="cm-row">
+          <div class="form-group">
+            <label>Objetivo</label>
+            <select id="cf-objetivo" class="form-control">
+              <option>Notoriedad</option>
+              <option>Interacción</option>
+              <option>Acción</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Eje de comunicación</label>
+            <select id="cf-eje" class="form-control">
+              <option>Entretener</option>
+              <option>Informar</option>
+              <option>Inspirar</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de contenido</label>
+            <select id="cf-tipo" class="form-control">
+              <option>Comunicacional</option>
+              <option>Interactivo</option>
+              <option>De venta</option>
+              <option>Viral</option>
+            </select>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Eje de comunicación</label>
-          <select id="cf-eje" class="form-control">
-            <option>Institucional</option>
-            <option>Entretenimiento</option>
-            <option>Comercial</option>
-            <option>Interacción</option>
-            <option>Educativo</option>
-            <option>Inspiracional</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Tipo de contenido</label>
-          <select id="cf-tipo" class="form-control">
-            <option>Informativo</option>
-            <option>Promocional</option>
-            <option>Sorteo</option>
-            <option>Viral</option>
-            <option>Evento</option>
-            <option>Celebración</option>
-            <option>Tutorial</option>
-          </select>
-        </div>
-        <div class="form-group" id="cf-duracion-group" style="display:none;">
-          <label>Duración del video</label>
-          <input type="text" id="cf-duracion" class="form-control" placeholder="Ej: 30s, 1:15, 90s">
-          <span style="font-size:11px;color:var(--text-muted);">Reel/TikTok ≤ 90s · Story ≤ 60s · YouTube libre</span>
-        </div>
-        <div class="form-group">
-          <label>Objetivo</label>
-          <select id="cf-objetivo" class="form-control">
-            <option>Notoriedad</option>
-            <option>Interacción</option>
-            <option>Acción</option>
-          </select>
+        <div class="form-group" style="grid-column:span 3;">
+          <details class="cm-det" id="det-cf-copy">
+            <summary><span class="cm-lbl">Copy (texto del posteo)</span><span class="cm-dot" id="dot-cf-copy"></span></summary>
+            <textarea id="cf-copy" class="form-control" rows="3" placeholder="El texto que va en la descripción/caption del posteo..."></textarea>
+          </details>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Copy (texto del posteo)</label>
-          <textarea id="cf-copy" class="form-control" rows="3" placeholder="El texto que va en la descripción/caption del posteo..."></textarea>
+          <details class="cm-det" id="det-cf-texto-pantalla">
+            <summary><span class="cm-lbl">Texto en pantalla</span><span class="cm-dot" id="dot-cf-texto-pantalla"></span></summary>
+            <textarea id="cf-texto-pantalla" class="form-control" rows="3" placeholder="El texto que aparece escrito DENTRO de la pieza (imagen/video), no el copy..."></textarea>
+          </details>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Texto en pantalla</label>
-          <textarea id="cf-texto-pantalla" class="form-control" rows="3" placeholder="El texto que aparece escrito DENTRO de la pieza (imagen/video), no el copy..."></textarea>
+          <details class="cm-det" id="det-cf-prompt-ia">
+            <summary><span class="cm-lbl">Prompt sugerido para IA</span><span class="cm-dot" id="dot-cf-prompt-ia"></span></summary>
+            <textarea id="cf-prompt-ia" class="form-control" rows="3" placeholder="Si esta pieza se va a generar con IA, el prompt sugerido para armarla..."></textarea>
+          </details>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Prompt sugerido para IA</label>
-          <textarea id="cf-prompt-ia" class="form-control" rows="3" placeholder="Si esta pieza se va a generar con IA, el prompt sugerido para armarla..."></textarea>
-        </div>
-
-        <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">Sugerencia de pieza creativa (visual / secuencia)</label>
-          <textarea id="cf-sugerencia-visual" class="form-control" rows="3" placeholder="Cómo se imagina la pieza: descripción de la imagen, o secuencia de escenas/planos si es video (ej: plano 1: producto sobre mesa, plano 2: primer plano de la mano abriendo el envase...)"></textarea>
-        </div>
-
-
-        <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">¿Es contenido para pauta?</label>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;padding:8px 0;">
-            <label class="check-label"><input type="radio" name="cf-pauta" value="organico" checked> Solo orgánico</label>
-            <label class="check-label"><input type="radio" name="cf-pauta" value="dark"> Sí – Dark post</label>
-            <label class="check-label"><input type="radio" name="cf-pauta" value="dark-organico"> Sí – Dark + orgánico</label>
-          </div>
-          <div id="pauta-hint" style="display:none;padding:8px 12px;background:#eff6ff;border-radius:6px;font-size:12px;color:var(--primary);margin-top:4px;">
-            💡 Este contenido va a pauta. <button type="button" onclick="document.getElementById('contenidoModal').classList.add('hidden');renderSection('pauta');" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:12px;">Ir a campañas →</button>
-          </div>
+          <details class="cm-det" id="det-cf-sugerencia-visual">
+            <summary><span class="cm-lbl">Sugerencia de pieza creativa (visual / secuencia)</span><span class="cm-dot" id="dot-cf-sugerencia-visual"></span></summary>
+            <textarea id="cf-sugerencia-visual" class="form-control" rows="3" placeholder="Cómo se imagina la pieza: descripción de la imagen, o secuencia de escenas/planos si es video (ej: plano 1: producto sobre mesa, plano 2: primer plano de la mano abriendo el envase...)"></textarea>
+          </details>
         </div>
 
         <div class="form-group" style="grid-column:span 3;">
@@ -1421,7 +1422,7 @@
 
 <script src="../js/heal.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/app.js?v=104"></script>
+<script type="module" src="../js/app.js?v=105"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">

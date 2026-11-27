@@ -1082,3 +1082,6 @@ Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Co
 
 ## 28/11 — Modal de contenido según Remix / Original
 Objetivo: solo Notoriedad · Interacción · Acción (los viejos se traducen al abrir). `aplicarModoClase()`: **Remix** → solo título, objetivo, copy, texto en pantalla, asignar a, notas, comentarios y la lista de remix (cuenta/plataforma/formato ya no son obligatorios); **Contenido original** → todo, sin lista de remix; **Contenidos propios** → no existe la parte de Remix. Aplicado también en Calendario.
+
+## 28/11 — Modal de contenido: filas, campos contraíbles, Transcribir
+Orden: Cuenta · Fecha · Duración (solo video) · Dimensión (desplegable multiselección) · Orgánico/Pauta/Ambos (select `cf-pauta`) en una línea; Plataformas · Ubicación · Formato · Estado; Objetivo · Eje · Tipo en una línea. Eje: Entretener/Informar/Inspirar; Tipo: Comunicacional/Interactivo/De venta/Viral (los viejos se traducen al abrir). Copy, texto en pantalla, guion, prompt y sugerencia son `<details>` contraídos por defecto. Botón "Transcribir" bajo el material de referencia (solo Hub): llama a `transcribirReel` (`/admin/transcribir`, solo admin) con el primer link y deja el texto en el Guion. En Calendario no existe esa función (otro backend).
