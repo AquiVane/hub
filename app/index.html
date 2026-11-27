@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=54">
+  <link rel="stylesheet" href="../css/style.css?v=55">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -285,6 +285,34 @@
 
         <div class="cm-row">
           <div class="form-group">
+            <label>Objetivo</label>
+            <select id="cf-objetivo" class="form-control">
+              <option>Notoriedad</option>
+              <option>Interacción</option>
+              <option>Acción</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Eje de comunicación</label>
+            <select id="cf-eje" class="form-control">
+              <option>Entretener</option>
+              <option>Informar</option>
+              <option>Inspirar</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de contenido</label>
+            <select id="cf-tipo" class="form-control">
+              <option>Comunicacional</option>
+              <option>Interactivo</option>
+              <option>De venta</option>
+              <option>Viral</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="cm-row">
+          <div class="form-group">
           <label>Cuenta <span class="req-star">*</span></label>
           <select id="cf-cuenta" class="form-control">
             <option value="">Seleccionar cuenta...</option>
@@ -359,34 +387,6 @@
       </button>
 
       <div id="cont-advanced" class="form-grid advanced-section" style="grid-template-columns:1fr 1fr 1fr;">
-
-        <div class="cm-row">
-          <div class="form-group">
-            <label>Objetivo</label>
-            <select id="cf-objetivo" class="form-control">
-              <option>Notoriedad</option>
-              <option>Interacción</option>
-              <option>Acción</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Eje de comunicación</label>
-            <select id="cf-eje" class="form-control">
-              <option>Entretener</option>
-              <option>Informar</option>
-              <option>Inspirar</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Tipo de contenido</label>
-            <select id="cf-tipo" class="form-control">
-              <option>Comunicacional</option>
-              <option>Interactivo</option>
-              <option>De venta</option>
-              <option>Viral</option>
-            </select>
-          </div>
-        </div>
 
         <div class="form-group" style="grid-column:span 3;">
           <details class="cm-det" id="det-cf-copy">
