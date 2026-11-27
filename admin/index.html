@@ -391,6 +391,24 @@
         <p class="text-muted text-sm" id="nlNota" style="margin-top:14px;"></p>
       </div>
 
+      <!-- Transcriptor de reels (27/11) -->
+      <div id="sec-transcribir" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Transcriptor de reels</h2>
+          <span class="text-muted text-sm">Pegá links de Instagram y obtené el audio en texto. Después podés traducirlo.</span>
+        </div>
+        <label class="text-sm" style="font-weight:600;display:block;margin-bottom:6px;" for="trLinks">Pegá el link del video a transcribir</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">
+          <textarea id="trLinks" rows="2" placeholder="https://www.instagram.com/reel/..." style="flex:1 1 280px;min-width:0;padding:10px 12px;border-radius:8px;border:1px solid var(--border,#2a3a5c);background:var(--surface,#0b1730);color:inherit;font:inherit;resize:vertical;"></textarea>
+          <button class="btn btn-primary" id="trBtn" onclick="transcribirLinks()" style="flex:0 0 auto;">Transcribir</button>
+        </div>
+        <p class="text-muted text-sm" id="trCuenta" style="margin:6px 0 16px;">0 links detectados · uno por línea</p>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="limpiarTranscripciones()">Limpiar resultados</button>
+        </div>
+        <div id="trResultados"></div>
+      </div>
+
       <!-- Visitas de todos los sitios (12/11) -->
       <div id="sec-visitas" class="hidden">
         <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
@@ -2625,7 +2643,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=36';
+  import { getAllClients, transcribirReel, traducirTexto, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=36';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
   import { ESTADOS_CONT, ESTADOS_EN_CURSO, tipoDe, estadosPara, normEstado, opcionesEstado, estadoColor } from '../js/estados.js?v=1';
 
@@ -2859,6 +2877,11 @@
     btnVisitas.innerHTML = '<i data-lucide="bar-chart-3" class="nav-icon"></i><span>Visitas</span>';
     btnVisitas.onclick = () => showSection('visitas');
     document.querySelector('.nav-section').appendChild(btnVisitas);
+    const btnTranscribir = document.createElement('button');
+    btnTranscribir.className = 'nav-item';
+    btnTranscribir.innerHTML = '<i data-lucide="captions" class="nav-icon"></i><span>Transcriptor</span>';
+    btnTranscribir.onclick = () => showSection('transcribir');
+    document.querySelector('.nav-section').appendChild(btnTranscribir);
     const btnNewsletter = document.createElement('button');
     btnNewsletter.className = 'nav-item';
     btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
@@ -3037,9 +3060,62 @@
   }
 
   window.__hubListo = true; // el módulo del admin se evaluó hasta acá: arrancó (ver js/heal.js)
+
+  // ── Transcriptor de reels (27/11) ──
+  const trItems = [];
+  const trEsc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const trLinks = () => [...new Set((document.getElementById('trLinks').value.match(/https?:\/\/[^\s]+/g) || []))];
+  document.getElementById('trLinks')?.addEventListener('input', () => {
+    const n = trLinks().length;
+    document.getElementById('trCuenta').textContent = `${n} link${n === 1 ? '' : 's'} detectado${n === 1 ? '' : 's'} · uno por línea`;
+  });
+  function trPintar() {
+    document.getElementById('trResultados').innerHTML = trItems.map((it, i) => `
+      <div style="border-top:1px solid var(--border,#2a3a5c);padding:16px 0;">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+          <a href="${trEsc(it.url)}" target="_blank" rel="noopener" style="word-break:break-all;font-weight:600;">${trEsc(it.url)}</a>
+          <span class="badge">${it.estado === 'ok' ? 'Listo' : it.estado === 'cargando' ? 'Transcribiendo…' : 'Error'}</span>
+        </div>
+        ${it.estado === 'error' ? `<p style="color:#ef6b6b;margin:8px 0;">${trEsc(it.error)}</p>` : ''}
+        ${it.texto ? `<p style="white-space:pre-wrap;line-height:1.5;margin:10px 0;">${trEsc(it.texto)}</p>` : ''}
+        ${it.traduccion ? `<p style="white-space:pre-wrap;line-height:1.5;margin:10px 0;padding:10px 12px;border-radius:8px;background:rgba(80,140,255,.12);"><strong>Traducción:</strong><br>${trEsc(it.traduccion)}</p>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${it.texto ? `<button class="btn btn-primary btn-sm" onclick="trCopiar(${i})">Copiar transcripción</button>
+          <button class="btn btn-ghost btn-sm" onclick="trTraducir(${i})" ${it.traduciendo ? 'disabled' : ''}>${it.traduciendo ? 'Traduciendo…' : 'Traducir'}</button>
+          ${it.traduccion ? `<button class="btn btn-ghost btn-sm" onclick="trCopiar(${i},true)">Copiar traducción</button>` : ''}` : ''}
+          ${it.estado !== 'cargando' ? `<button class="btn btn-ghost btn-sm" onclick="trReintentar(${i})">Volver a transcribir</button>` : ''}
+        </div>
+      </div>`).join('');
+  }
+  async function trCorrer(it) {
+    it.estado = 'cargando'; it.error = ''; trPintar();
+    try { const r = await transcribirReel(it.url); it.texto = r.texto; it.idioma = r.idioma; it.estado = 'ok'; }
+    catch (e) { it.estado = 'error'; it.error = e.message || 'No se pudo transcribir.'; }
+    trPintar();
+  }
+  window.transcribirLinks = async function() {
+    const links = trLinks();
+    if (!links.length) return alert('Pegá al menos un link de Instagram.');
+    const btn = document.getElementById('trBtn'); btn.disabled = true;
+    const nuevos = links.map(url => { const it = { url, estado: 'cargando' }; trItems.unshift(it); return it; });
+    for (const it of nuevos) await trCorrer(it);
+    btn.disabled = false;
+  };
+  window.trReintentar = i => trCorrer(trItems[i]);
+  window.trCopiar = async (i, trad) => {
+    try { await navigator.clipboard.writeText(trad ? trItems[i].traduccion : trItems[i].texto); } catch (e) { alert('No se pudo copiar.'); }
+  };
+  window.trTraducir = async i => {
+    const it = trItems[i]; it.traduciendo = true; trPintar();
+    try { const r = await traducirTexto(it.texto, it.idioma ? ({en:'english',es:'spanish',pt:'portuguese',fr:'french',it:'italian',de:'german'}[it.idioma] || 'english') : 'english'); it.traduccion = r.texto; }
+    catch (e) { alert(e.message || 'No se pudo traducir.'); }
+    it.traduciendo = false; trPintar();
+  };
+  window.limpiarTranscripciones = () => { trItems.length = 0; trPintar(); };
+
   window.showSection = function(sec) {
     try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','instagram','repmet'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','transcribir','newsletter','mapa','inventario','instagram','repmet'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
