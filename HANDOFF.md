@@ -1084,3 +1084,6 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 - **No** guardar informes, claves ni notas en la raíz de este repo esperando que sean privados: lo que no sea `.md`/`.claude`/`.github` sigue siendo público (los `.html`/`.js` del front lo son por necesidad). Los informes internos van a `cosmart-workers/docs/`.
 - Pendiente (Vaneh, en el panel): borrar los deployments viejos de Pages del proyecto `hub` (previews anteriores servían `AUDITORIA.md`/`HANDOFF.md`).
 - Contraseña mínima 8 en el front ya está en producción junto con el backend.
+
+## 28/11 — Gestión, Proveedores y Administración
+Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).

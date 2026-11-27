@@ -1707,3 +1707,6 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 .grupo-tabs { display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:14px; scrollbar-width:thin; }
 .grupo-tabs .tab-btn { flex:0 0 auto; white-space:nowrap; }
 .grupo-tabs.hidden { display:none; }
+/* "Planes de campaña" (Pauta Digital): botón azul bien visible */
+.tab-btn.tab-btn-planes { background:#1A4DAA; color:#fff; border-radius:8px; margin-left:8px; font-weight:700; }
+.tab-btn.tab-btn-planes.active { background:#0D2B6B; color:#fff; box-shadow:0 1px 4px rgba(0,0,0,.25); }
