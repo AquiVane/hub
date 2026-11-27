@@ -328,6 +328,11 @@ async function init() {
     } else if (openTipo === 'web' && openId && (STATE.home.webTareas || []).some(t => String(t.id) === String(openId))) {
       renderSection('web');
       openWebTaskModal(openId);
+    } else if ((openTipo === 'plan' || openTipo === 'reportes') && NAV_SCOPE.querySelector(`.nav-item[data-section="${openTipo}"]:not(.hidden)`)) {
+      renderSection(openTipo); // link directo a una sección (ej. el plan de marketing)
+    } else if (openTipo === 'planes' && NAV_SCOPE.querySelector('.nav-item[data-section="pauta"]:not(.hidden)')) {
+      activePautaTab = 'planes'; // link directo a Pauta Digital → Planes de campaña
+      renderSection('pauta');
     } else if (esPropioAgencia) {
       renderSection('contenidos');
     } else {

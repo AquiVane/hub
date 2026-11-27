@@ -94,6 +94,8 @@ export function requireAuth(requiredRole) {
   const user = getCurrentUser();
   if (!user) {
     if (window.location.pathname !== '/login.html') {
+      // Se recuerda a dónde iba (ej. un link directo al plan de marketing) para volver ahí después de iniciar sesión.
+      try { sessionStorage.setItem('mh_next', window.location.pathname + window.location.search); } catch (e) {}
       window.location.href = '/login.html';
     }
     return null;
