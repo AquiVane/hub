@@ -1093,6 +1093,8 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 
 - 28/11 (corrección): la lista de Remix (agregar de a uno, con fecha, link y estado por remix) aparece siempre que se elige "Remix", también en Contenidos propios y abre sola las opciones avanzadas en celular.
 
+- 28/11: la lista de remix también se ve al abrir un contenido que YA tiene remix cargados (aunque no esté marcado como Remix).
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).
