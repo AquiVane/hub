@@ -833,7 +833,23 @@
       <!-- Mapa de productos COSMART: el HTML vive en el worker (GET /admin/mapa,
       solo admin de COSMART con sesión), no en este repo público. También se ve
       en /mapa.html con usuario y contraseña. -->
+      <!-- Reportes y métricas (cuentas de emprendedor): Métricas (Dashboard) + Inicio + Reportes + Actividad
+      en un solo lugar, con solapas. Métricas/Inicio/Reportes son el mismo módulo del panel de cliente (el de
+      Contenidos propios): se mueve su contenedor (#cp-host) a esta sección y se le pide la solapa. -->
+      <div id="sec-repmet" class="hidden">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:10px;">Reportes y métricas</h2>
+        <div class="tabs" id="repmet-tabs" style="flex-wrap:wrap;">
+          <button type="button" class="tab-btn active" data-rm="dashboard">Métricas</button>
+          <button type="button" class="tab-btn" data-rm="home">Inicio</button>
+          <button type="button" class="tab-btn" data-rm="reportes">Reportes</button>
+          <button type="button" class="tab-btn" data-rm="actividad">Actividad</button>
+        </div>
+        <div id="repmet-cp-slot"></div>
+        <div id="repmet-act-slot" class="hidden"></div>
+      </div>
+
       <div id="sec-mapa" class="hidden">
+        <div id="mapa-productos-propios" class="hidden"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <h2 style="margin:0;flex:1 1 200px">Mapa de productos</h2>
           <button class="btn btn-secondary" type="button" onclick="cargarMapaAdmin()">Actualizar</button>
@@ -2906,7 +2922,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=101');
+      await import('../js/app.js?v=104');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -2952,15 +2968,85 @@
     (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).catch(() => { document.getElementById('inventario-estado').textContent = 'Tu navegador no permite pantalla completa acá.'; });
   };
 
+  // ── Cuenta de emprendedor (Vaneh, 27/11) ──────────────────────────────────────────────
+  // Menú propio: sin Clientes, Proyectos ni Informes de clientes; "Gestión interna" y "Mis tareas" pasan a ser
+  // un solo "Tareas"; Métricas + Reportes + Actividad viven juntos en "Reportes y métricas" (con solapas);
+  // el Mapa de productos es SU catálogo (a mano o con IA) en vez del mapa interno de COSMART.
+  if (user.agenciaPerfil === 'emprendedor') {
+    ['clientes', 'proyectos', 'actividad', 'informes'].forEach(s => document.querySelector(`button[onclick="showSection('${s}')"]`)?.remove());
+    document.getElementById('navMisTareasBtn')?.remove();
+    const navInt = document.getElementById('navInternasBtn');
+    if (navInt) {
+      const ic = navInt.querySelector('i, svg');
+      if (ic) { const n = document.createElement('i'); n.setAttribute('data-lucide', 'list-checks'); n.className = 'nav-icon'; ic.replaceWith(n); }
+    }
+    ['navGestionInternaLabel', 'secGestionInternaLabel'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 'Tareas'; });
+    document.getElementById('internasVerticalFiltro')?.style.setProperty('display', 'none'); // las verticales son de COSMART
+    const navMet = document.querySelector(`button[onclick="showSection('email-stats')"]`);
+    if (navMet) { navMet.setAttribute('onclick', "showSection('repmet')"); navMet.id = 'navRepMetBtn'; const sp = navMet.querySelector('span'); if (sp) sp.textContent = 'Reportes y métricas'; }
+    document.getElementById('sec-mapa')?.classList.add('mapa-propio');
+    const stMp = document.createElement('style');
+    stMp.textContent = '#sec-mapa.mapa-propio > :not(#mapa-productos-propios){display:none !important}';
+    document.head.appendChild(stMp);
+    window.cargarMapaAdmin = async function() {
+      const host = document.getElementById('mapa-productos-propios');
+      host.classList.remove('hidden');
+      const { montarMapaProductos } = await import('../js/mapa-productos.js?v=1');
+      montarMapaProductos(host, { preguntarClaude });
+    };
+
+    // Reportes y métricas: solapas Métricas (Dashboard) / Inicio / Reportes (módulo del panel de cliente) y Actividad.
+    let _rmTab = 'dashboard';
+    const GRUPO_CONTENIDOS = ['contenidos', 'guiones', 'pauta', 'links'];
+    function seleccionarRepMet(tab) {
+      _rmTab = tab;
+      document.querySelectorAll('#repmet-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.rm === tab));
+      const esAct = tab === 'actividad';
+      document.getElementById('repmet-cp-slot').classList.toggle('hidden', esAct);
+      const slotAct = document.getElementById('repmet-act-slot');
+      slotAct.classList.toggle('hidden', !esAct);
+      const act = document.getElementById('sec-actividad');
+      if (esAct) {
+        if (act && act.parentNode !== slotAct) slotAct.appendChild(act);
+        act?.classList.remove('hidden');
+        loadActividadFiltros();
+      } else {
+        act?.classList.add('hidden');
+        window.hubCpRenderSection?.(tab);
+      }
+    }
+    document.getElementById('repmet-tabs')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-rm]');
+      if (b) seleccionarRepMet(b.dataset.rm);
+    });
+    window.abrirRepMet = async function() {
+      const cp = document.getElementById('cp-host');
+      const slot = document.getElementById('repmet-cp-slot');
+      if (cp && cp.parentNode !== slot) slot.appendChild(cp);
+      await window.cargarContenidosPropios();
+      window.hubCpTabs?.([]); // la barra de solapas de este lugar es la de arriba
+      seleccionarRepMet(_rmTab);
+    };
+    window.restaurarCpEnContenidos = function() {
+      const cp = document.getElementById('cp-host');
+      const dest = document.getElementById('sec-contenidospropios');
+      if (cp && dest && cp.parentNode !== dest) dest.appendChild(cp);
+      window.hubCpTabs?.(GRUPO_CONTENIDOS);
+    };
+    window.lucide?.createIcons?.();
+  }
+
   window.__hubListo = true; // el módulo del admin se evaluó hasta acá: arrancó (ver js/heal.js)
   window.showSection = function(sec) {
     try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','instagram'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','instagram','repmet'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
     if (sec === 'mapa') cargarMapaAdmin();
+    if (sec === 'repmet') window.abrirRepMet?.();
+    if (sec === 'contenidospropios') window.restaurarCpEnContenidos?.();
     if (sec === 'inventario') cargarInventarioAdmin();
     if (sec === 'mistareas') loadMisTareas();
     if (sec === 'colaboradores') loadColaboradores();
@@ -8343,6 +8429,18 @@
     }
     steps.push({ selector: '.nav-item[onclick*="showSection(\'recursos\')"]', titulo: 'Recursos', texto: 'Plantillas y archivos de referencia para todo el equipo.' });
     steps.push({ selector: '.nav-item[onclick*="showSection(\'config\')"]', titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' });
+    // Cuenta de emprendedor: recorrido propio (sin clientes, proyectos ni informes, que no existen en su menú).
+    if (user.agenciaPerfil === 'emprendedor') {
+      return [
+        { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es el panel de tu emprendimiento: tareas, contenidos, productos y resultados en un solo lugar.' },
+        { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones y vencimientos.' },
+        { selector: '.nav-item[onclick*="showSection(\'internas\')"]', titulo: 'Tareas', texto: 'Todo lo que tenés que hacer, en tablero, lista o calendario.' },
+        { selector: '.nav-item[onclick*="abrirContenidosPropiosAdmin"]', titulo: 'Contenidos propios', texto: 'Planificá y organizá tus publicaciones: contenidos, guiones y pauta digital.' },
+        { selector: '.nav-item[onclick*="showSection(\'mapa\')"]', titulo: 'Mapa de productos', texto: 'Cargá tus productos o servicios a mano o pedile a la IA que los arme a partir de lo que contás de tu negocio.' },
+        { selector: '#navRepMetBtn', titulo: 'Reportes y métricas', texto: 'El dashboard de tus contenidos, el inicio, tus reportes y la actividad, en solapas.' },
+        { selector: '.nav-item[onclick*="showSection(\'config\')"]', titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' },
+      ];
+    }
     return steps;
   }
   const TOUR_STORAGE_KEY = 'hub_tour_admin_v1';

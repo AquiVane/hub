@@ -276,6 +276,22 @@ async function init() {
       });
       const _mc = document.getElementById('main-content');
       _mc.parentNode.insertBefore(tabBar, _mc);
+      if (HOSTED) {
+        // Cuenta de emprendedor: el Dashboard vive en "Reportes y métricas" (admin/index.html), no entre las solapas
+        // de Contenidos propios. El admin maneja qué solapas se ven (hubCpTabs) y pide secciones sueltas (hubCpRenderSection).
+        window.hubCpTabs = (visibles) => {
+          const hay = Array.isArray(visibles) && visibles.length;
+          // setProperty(...,'important'): el CSS de .tabs/.tab-btn fuerza display con !important.
+          const mostrar = (el, ver) => ver ? el.style.removeProperty('display') : el.style.setProperty('display', 'none', 'important');
+          mostrar(tabBar, hay);
+          tabBar.querySelectorAll('.tab-btn').forEach(b => mostrar(b, !hay || visibles.includes(b.dataset.embedSec)));
+        };
+        window.hubCpRenderSection = (sec) => {
+          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.embedSec === sec));
+          renderSection(sec);
+        };
+        if (user.agenciaPerfil === 'emprendedor') window.hubCpTabs(['contenidos', 'guiones', 'pauta', 'links']);
+      }
     }
 
     // Logo upload
@@ -1587,7 +1603,7 @@ function renderDashboard(container) {
     <div class="dash-header">
       <div>
         <div class="dash-title">Dashboard Calendario Editorial</div>
-        <div class="dash-meta">Cliente: <strong>${escapeHtml(STATE.client.nombre || STATE.client.name || clientId)}</strong></div>
+        ${esPropioAgencia ? '' : `<div class="dash-meta">Cliente: <strong>${escapeHtml(STATE.client.nombre || STATE.client.name || clientId)}</strong></div>`}
       </div>
       <div class="dash-header-right">
       <span id="dash-play-slot"></span>
