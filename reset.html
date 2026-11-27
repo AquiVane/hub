@@ -34,7 +34,7 @@
         <div class="form-group">
           <label for="newPassword">Nueva contraseña</label>
           <input type="password" id="newPassword" class="form-control"
-            placeholder="Mínimo 6 caracteres" required autofocus>
+            placeholder="Mínimo 8 caracteres" required autofocus>
         </div>
         <div class="form-group">
           <label for="confirmPassword">Confirmar contraseña</label>
@@ -91,8 +91,8 @@
 
     errEl.classList.add('hidden');
 
-    if (!pass || pass.length < 6) {
-      errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+    if (!pass || pass.length < 8) {
+      errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.';
       errEl.classList.remove('hidden');
       return;
     }

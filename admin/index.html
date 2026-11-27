@@ -8680,7 +8680,7 @@
       const nueva = document.getElementById('mcp-nueva').value;
       const confirmar = document.getElementById('mcp-confirmar').value;
       if (!actual || !nueva) { errEl.textContent = 'Completá los dos campos.'; errEl.style.display = ''; return; }
-      if (nueva.length < 6) { errEl.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; errEl.style.display = ''; return; }
+      if (nueva.length < 8) { errEl.textContent = 'La contraseña nueva debe tener al menos 8 caracteres.'; errEl.style.display = ''; return; }
       if (nueva !== confirmar) { errEl.textContent = 'Las contraseñas nuevas no coinciden.'; errEl.style.display = ''; return; }
       btn.disabled = true; btn.textContent = 'Guardando…';
       try {
