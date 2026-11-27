@@ -2915,12 +2915,6 @@
   // que ir a la PWA de ventas aparte. Mismo gate que la card de EMK
   // (solo admin de COSMART, es la única agencia con estos verticales).
   if (esCosmart && user.role === 'admin') {
-    const btnTranscribir = document.createElement('button');
-    btnTranscribir.className = 'nav-item';
-    btnTranscribir.dataset.grupo = 'transcribir';
-    btnTranscribir.innerHTML = '<i data-lucide="captions" class="nav-icon"></i><span>Transcriptor</span>';
-    btnTranscribir.onclick = () => showSection('transcribir');
-    document.querySelector('.nav-section').appendChild(btnTranscribir);
   }
 
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
@@ -2956,7 +2950,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=65');
+      const res = await fetch('../app/index.html?hv=66');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3343,7 +3337,6 @@
       { id: 'links', label: 'Links', sec: 'contenidospropios', embed: 'links' },
       { id: 'archivos', label: 'Archivos', sec: 'contenidospropios', embed: 'archivos' },
       { id: 'recursos', label: 'Recursos', sec: 'recursos' } ] },
-    { id: 'transcribir', tabs: [ { id: 'transcribir', label: 'Transcriptor', sec: 'transcribir', si: esCosmart && esAdminRol } ] },
     { id: 'instrucciones', tabs: [ { id: 'instrucciones', label: 'Instrucciones', sec: 'instrucciones' } ] },
     { id: 'config', tabs: [ { id: 'config', label: 'Configuración', sec: 'config' } ] },
   ];
