@@ -163,6 +163,7 @@ favicon de la pestaña -- ver comentario completo en admin/index.html. -->
   </div>
   <div class="hero-ctas">
     <a href="/signup.html?perfil=emprendedor" class="btn-cta">Probar 7 días gratis <i data-lucide="arrow-right" class="lucide" style="width:18px;height:18px;"></i></a>
+    <button type="button" class="btn-ghost js-demo" style="cursor:pointer;"><i data-lucide="play" class="lucide" style="width:16px;height:16px;"></i> Probar la demo sin registrarme</button>
     <a href="#como-funciona" class="btn-ghost">Ver cómo funciona <i data-lucide="chevron-down" class="lucide" style="width:16px;height:16px;"></i></a>
   </div>
   <div class="hero-note">No pedimos permanencia mínima — cancelás cuando quieras.</div>
@@ -349,6 +350,7 @@ favicon de la pestaña -- ver comentario completo en admin/index.html. -->
     <h2 class="h2">Dejá de manejar tu emprendimiento a los ponchazos.</h2>
     <p>Creá tu cuenta en menos de dos minutos y probá 7 días gratis el mismo Hub que usa COSMART todos los días.</p>
     <a href="/signup.html?perfil=emprendedor" class="btn-cta">Empezar gratis <i data-lucide="arrow-right" class="lucide" style="width:18px;height:18px;"></i></a>
+    <div style="margin-top:12px;"><button type="button" class="btn-ghost js-demo" style="cursor:pointer;">Probar la demo sin registrarme</button></div>
   </div>
 </div>
 
@@ -396,5 +398,25 @@ favicon de la pestaña -- ver comentario completo en admin/index.html. -->
   cargarPrecio();
 </script>
 <script defer src="https://cosmart.com.ar/cookie-banner.js"></script>
+<script>
+(function(){
+  var W='https://marketing-hub.conglomeradocosmart.workers.dev';
+  document.querySelectorAll('.js-demo').forEach(function(btn){
+    var txt=btn.innerHTML;
+    btn.addEventListener('click',async function(){
+      btn.disabled=true; btn.textContent='Armando tu demo…';
+      try{
+        var r=await fetch(W+'/agencia/demo',{method:'POST'});
+        var d=await r.json().catch(function(){return {};});
+        if(!r.ok||!d.token) throw new Error(d.error||'No se pudo armar la demo.');
+        localStorage.setItem('mh_session_token',d.token);
+        localStorage.setItem('mh_user',JSON.stringify({email:d.email,role:d.role,clientId:null,clientIds:null,name:d.name,mustChangePassword:false,agencyId:d.agencyId,agenciaNombre:d.agenciaNombre,agenciaLogoUrl:null,agenciaPerfil:'emprendedor'}));
+        try{localStorage.removeItem('mh_admin_sec');}catch(e){}
+        location.href='/admin/index.html';
+      }catch(e){ alert(e.message||'No se pudo armar la demo. Probá de nuevo.'); btn.disabled=false; btn.innerHTML=txt; if(window.lucide) lucide.createIcons(); }
+    });
+  });
+})();
+</script>
 </body>
 </html>

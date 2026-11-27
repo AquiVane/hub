@@ -2637,6 +2637,15 @@
     });
   })();
   document.getElementById('adminName').textContent = user.name || user.email;
+  // Cuenta de demo (sin registro): cartel fijo para crear la cuenta real.
+  if (/@demo\.hub\.local$/.test(user.email || '')) {
+    const bar = document.createElement('div');
+    bar.id = 'hubDemoBar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9000;background:#091C47;color:#fff;padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;font-size:13px;box-shadow:0 -2px 10px rgba(0,0,0,.3);';
+    bar.innerHTML = '<span>Estás en una <b>demo</b> con datos de ejemplo (se borra sola en 3 días).</span><a href="/signup.html?perfil=emprendedor" style="background:#E02020;color:#fff;padding:7px 14px;border-radius:8px;font-weight:700;text-decoration:none;">Crear mi cuenta</a>';
+    document.body.appendChild(bar);
+    document.body.style.paddingBottom = '56px';
+  }
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
     document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';

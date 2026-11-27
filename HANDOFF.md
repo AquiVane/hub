@@ -1037,3 +1037,6 @@ Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en
 ## 27/11 — Modo emprendedor v1
 - Signup acepta `perfil` (`emprendedor`|`agencia`, default agencia) y lo guarda en la agencia; el login devuelve `agenciaPerfil`; `auth.js` lo guarda. El emprendedor no recibe cliente demo y su admin arranca en "Contenidos propios".
 - `emprendedores.html` (landing, SEO + sitemap + llms.txt) y `signup.html?perfil=emprendedor`. Se replica el panel admin completo; falta decidir qué sobra, proveedores, idioma/moneda por país, soporte propio y arranque guiado (pendiente). Requiere deploy manual de `marketing-hub` (junto con papelera/copias).
+
+## 27/11 — Demo de emprendedor
+Botón "Probar la demo sin registrarme" en `emprendedores.html` (llama a `POST /agencia/demo`, guarda sesión y abre el admin); barra fija de demo en `admin/index.html` para mails `@demo.hub.local`.
