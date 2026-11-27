@@ -372,6 +372,13 @@
 
 <script type="module">
   import { loginUser, getCurrentUser } from './js/auth.js';
+  // Destino guardado por requireAuth (link directo): solo rutas internas del Hub.
+  function destinoGuardado() {
+    try {
+      const n = sessionStorage.getItem('mh_next'); sessionStorage.removeItem('mh_next');
+      return n && /^\/(app|admin)\/index\.html(\?[^#\s]*)?$/.test(n) ? n : null;
+    } catch (e) { return null; }
+  }
   import { WORKER_URL } from './js/firebase.js';
 
   // Pedido de Vaneh (07/09): si ya hay sesión activa (guardada en
@@ -382,6 +389,8 @@
   (() => {
     const existente = getCurrentUser();
     if (!existente) return;
+    const guardado = destinoGuardado();
+    if (guardado) { window.location.href = guardado; return; }
     if (existente.role === 'admin' || existente.role === 'colaborador') {
       window.location.href = '/admin/index.html';
     } else if (existente.clientId) {
@@ -433,7 +442,10 @@
     errEl.style.display = 'none';
     try {
       const result = await loginUser(email, password);
-      if (result.role === 'admin' || result.role === 'colaborador') {
+      const guardado = destinoGuardado();
+      if (guardado) {
+        window.location.href = guardado;
+      } else if (result.role === 'admin' || result.role === 'colaborador') {
         window.location.href = '/admin/index.html';
       } else {
         window.location.href = `/app/index.html?client=${result.clientId}`;

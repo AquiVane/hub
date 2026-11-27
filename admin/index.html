@@ -27,7 +27,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=56">
+  <link rel="stylesheet" href="../css/style.css?v=57">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -63,6 +63,10 @@
       <button class="nav-item" data-grupo="pauta" onclick="irGrupo('pauta')">
         <i data-lucide="megaphone" class="nav-icon"></i><span>Pauta publicitaria</span>
       </button>
+      <button class="nav-item" data-grupo="metricas" onclick="irGrupo('metricas')">
+        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
+        <span class="badge" id="informesBadge" style="display:none;"></span>
+      </button>
       <button class="nav-item" data-grupo="instagram" onclick="irGrupo('instagram')">
         <i data-lucide="message-circle" class="nav-icon"></i><span>Automatizaciones</span>
       </button>
@@ -74,10 +78,6 @@
       </button>
       <button class="nav-item" data-grupo="crm" id="navCrmBtn" onclick="irGrupo('crm')">
         <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
-      </button>
-      <button class="nav-item" data-grupo="metricas" onclick="irGrupo('metricas')">
-        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
-        <span class="badge" id="informesBadge" style="display:none;"></span>
       </button>
       <button class="nav-item" data-grupo="recursos" onclick="irGrupo('recursos')">
         <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos útiles</span>
@@ -2915,17 +2915,6 @@
   // que ir a la PWA de ventas aparte. Mismo gate que la card de EMK
   // (solo admin de COSMART, es la única agencia con estos verticales).
   if (esCosmart && user.role === 'admin') {
-    const btnTranscribir = document.createElement('button');
-    btnTranscribir.className = 'nav-item';
-    btnTranscribir.dataset.grupo = 'transcribir';
-    btnTranscribir.innerHTML = '<i data-lucide="captions" class="nav-icon"></i><span>Transcriptor</span>';
-    btnTranscribir.onclick = () => showSection('transcribir');
-    document.querySelector('.nav-section').appendChild(btnTranscribir);
-    const btnNewsletter = document.createElement('button');
-    btnNewsletter.className = 'nav-item';
-    btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
-    btnNewsletter.onclick = () => showSection('newsletter');
-    document.querySelector('.nav-section').appendChild(btnNewsletter);
   }
 
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
@@ -2961,7 +2950,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=59');
+      const res = await fetch('../app/index.html?hv=69');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -2977,7 +2966,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=108');
+      await import('../js/app.js?v=113');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -3321,13 +3310,15 @@
       { id: 'administracion', label: 'Administración', sec: 'administracion', si: esAdminRol },
       { id: 'procesos', label: 'Procesos', sec: 'procesos' } ] },
     { id: 'tareas', tabs: [
-      { id: 'mistareas', label: 'Mis tareas', sec: 'mistareas' },
+      { id: 'mistareas', label: 'Únicas', sec: 'mistareas', modo: 'unicas' },
+      { id: 'recurrentes', label: 'Recurrentes', sec: 'mistareas', modo: 'recurrentes' },
       { id: 'internas', label: esCosmart ? 'Tareas COSMART' : 'Tareas internas', sec: 'internas' },
       { id: 'proyectos', label: 'Proyectos', sec: 'proyectos' } ] },
     { id: 'contenidos', tabs: [
       { id: 'contenidos', label: 'Contenidos', sec: 'contenidospropios', embed: 'contenidos' },
       { id: 'guiones', label: 'Guiones', sec: 'contenidospropios', embed: 'guiones' },
-      { id: 'dashboard', label: 'Dashboard', sec: 'contenidospropios', embed: 'dashboard' } ] },
+      { id: 'dashboard', label: 'Dashboard', sec: 'contenidospropios', embed: 'dashboard' },
+      { id: 'transcribir', label: 'Transcriptor', sec: 'transcribir', si: esCosmart && esAdminRol } ] },
     { id: 'pauta', tabs: [ { id: 'pauta', label: 'Pauta publicitaria', sec: 'contenidospropios', embed: 'pauta' } ] },
     { id: 'instagram', tabs: [ { id: 'instagram', label: 'Automatizaciones', sec: 'instagram' } ] },
     { id: 'inventario', tabs: [
@@ -3341,12 +3332,12 @@
       { id: 'informes', label: 'Informes clientes', sec: 'informes', si: esAdminRol },
       { id: 'email-stats', label: 'Métricas de mails', sec: 'email-stats', si: esAdminRol },
       { id: 'ventas-panel', label: 'Panel de ventas', sec: 'ventas-panel', si: esCosmart && esAdminRol },
-      { id: 'visitas', label: 'Visitas', sec: 'visitas', si: esCosmart && esAdminRol } ] },
+      { id: 'visitas', label: 'Visitas', sec: 'visitas', si: esCosmart && esAdminRol },
+      { id: 'newsletter', label: 'Newsletter', sec: 'newsletter', si: esCosmart && esAdminRol } ] },
     { id: 'recursos', tabs: [
       { id: 'links', label: 'Links', sec: 'contenidospropios', embed: 'links' },
       { id: 'archivos', label: 'Archivos', sec: 'contenidospropios', embed: 'archivos' },
       { id: 'recursos', label: 'Recursos', sec: 'recursos' } ] },
-    { id: 'transcribir', tabs: [ { id: 'transcribir', label: 'Transcriptor', sec: 'transcribir', si: esCosmart && esAdminRol } ] },
     { id: 'instrucciones', tabs: [ { id: 'instrucciones', label: 'Instrucciones', sec: 'instrucciones' } ] },
     { id: 'config', tabs: [ { id: 'config', label: 'Configuración', sec: 'config' } ] },
   ];
@@ -3376,6 +3367,7 @@
   document.querySelectorAll('.nav-item[data-grupo]').forEach(b => { if (!grupoDe(b.dataset.grupo)?.tabs.length) b.remove(); });
 
   window.__embedActual = 'contenidos';
+  window.__misTareasModo = 'unicas'; // Tareas: 'unicas' (sin repetición) o 'recurrentes' (se repiten: diarias, semanales, mensuales, anuales…)
   window.abrirEmbedAdmin = async function(embed) {
     window.__embedActual = embed || 'contenidos';
     try { localStorage.setItem('mh_admin_embed', window.__embedActual); } catch (e) {}
@@ -3388,7 +3380,8 @@
     const t = grupoDe(gid)?.tabs.find(x => x.id === tid);
     if (!t) return;
     try { localStorage.setItem('mh_admin_tab_' + gid, tid); } catch (e) {}
-    if (t.embed) window.abrirEmbedAdmin(t.embed); else window.showSection(t.sec);
+    if (t.modo) { window.__misTareasModo = t.modo; try { renderMisTareas(); } catch (e) {} }
+    if (t.embed) window.abrirEmbedAdmin(t.embed); else { window.showSection(t.sec); if (t.modo) sincronizarMenu(); }
   };
   window.irGrupo = function(gid) {
     const g = grupoDe(gid); if (!g || !g.tabs.length) return;
@@ -3403,6 +3396,7 @@
     for (const g of GRUPOS) for (const t of g.tabs) {
       if (t.sec !== sec) continue;
       if (sec === 'contenidospropios') { if (t.embed === window.__embedActual) return { g, t }; continue; }
+      if (t.modo) { if (t.modo === window.__misTareasModo) return { g, t }; continue; }
       return { g, t };
     }
     return null;
@@ -3564,6 +3558,11 @@
   function matchVerDe(asignadoEmail, creadoPorEmail, verDeValue) {
     if (!verDeValue || verDeValue === '_todos') return true;
     return (asignadoEmail || '') === verDeValue || (creadoPorEmail || '') === verDeValue;
+  }
+  // Solo para "Mis tareas" (28/11, pedido de Vaneh): va lo ASIGNADO a esa persona (o creado por ella pero sin asignar). Lo que ella creó y está asignado a otra persona o a un cliente no es "suyo".
+  function matchVerDeMis(asignadoEmail, creadoPorEmail, verDeValue) {
+    if (!verDeValue || verDeValue === '_todos') return true;
+    return (asignadoEmail || '') === verDeValue || (!asignadoEmail && (creadoPorEmail || '') === verDeValue);
   }
 
   // Normaliza un título para comparar duplicados: minúsculas, sin acentos
@@ -5973,7 +5972,7 @@
     // default, un colaborador ve solo lo suyo -- pero ahora SÍ puede
     // cambiarlo (antes el select venía deshabilitado para ese rol). Ver
     // comentario de matchVerDe sobre por qué '_todos' y no ''.
-    if (!_misTareasVerDe) _misTareasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
+    if (!_misTareasVerDe) _misTareasVerDe = (user.email || '').toLowerCase(); // 28/11: "Mis tareas" arranca en "Yo" también para admin (puede elegir "Todos")
     const clients = await getAllClients();
     _misTareasClientsCache = clients;
     _nmtClientsCache = clients; // mismo dato -- evita que "+ Nueva tarea" arrastre una copia vieja
@@ -6088,7 +6087,7 @@
     // tareas de un colaborador puntual se quedaba trabado ahí para
     // siempre. Vuelve al default de cada rol: admin a "Todo el equipo",
     // colaborador a "Yo" (puede volver a cambiarlo, ya no está bloqueado).
-    _misTareasVerDe = user.role === 'admin' ? '_todos' : (user.email || '').toLowerCase();
+    _misTareasVerDe = (user.email || '').toLowerCase();
     const verDeSel = document.getElementById('misTareasVerDe');
     if (verDeSel) verDeSel.value = _misTareasVerDe;
     document.getElementById('misTareasBuscar').value = '';
@@ -6144,6 +6143,8 @@
     renderMisTareas();
   };
 
+  // Únicas vs Recurrentes (28/11): las tareas con repetición van en su propia pestaña; los contenidos asignados siempre van en Únicas.
+  const _modoOk = i => (i.tipo === 'tarea' ? !!i.tarea.recurrencia : false) === (window.__misTareasModo === 'recurrentes');
   function misTareasFiltradas(ignorarTab) {
     // OJO: "|| !i.asignadoEmail" se sacó a propósito -- con eso puesto,
     // CUALQUIER tarea sin asignar de un cliente le aparecía a TODOS los
@@ -6152,7 +6153,8 @@
     // que mostrar SOLO lo que está asignado a esa persona.
     return _misTareasCache.filter(i =>
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
-      matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) &&
+      matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) &&
+      _modoOk(i) &&
       (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user)) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
@@ -6169,6 +6171,7 @@
   function misSubtareasFiltradas() {
     return _misSubtareasCache.filter(i =>
       (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
+      (!!i.tarea.recurrencia) === (window.__misTareasModo === 'recurrentes') &&
       (_misTareasVerDe === '_todos' || !_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
       puedeVerTarea(i.tarea, user) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
@@ -6280,8 +6283,8 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    const totalLaboral = _misTareasCache.filter(i => !i.personal && matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
-    const totalPersonal = _misTareasCache.filter(i => i.personal && matchVerDe(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && _modoOk(i) && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && _modoOk(i) && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
@@ -6887,7 +6890,7 @@
     document.getElementById('nmt-visible-cliente').checked = false;
     document.getElementById('nmt-vencimiento').value = '';
     document.getElementById('nmt-hora').value = '';
-    document.getElementById('nmt-recurrencia').value = '';
+    document.getElementById('nmt-recurrencia').value = window.__misTareasModo === 'recurrentes' ? 'mensual' : ''; // desde "Recurrentes" ya viene con repetición (se puede cambiar)
     document.querySelectorAll('.nmt-dia-check').forEach(cb => { cb.checked = false; });
     toggleNmtRecurrencia();
     document.getElementById('nmt-es-proyecto').checked = false;

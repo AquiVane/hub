@@ -1097,6 +1097,23 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 
 - 28/11: fila "Remix u original · Fecha de publicación · Asignar a" bajo el título; la lista de Remix va arriba de Objetivo/Eje/Tipo (tras el Guion).
 
+- 28/11: cada remix tiene su propio "Copy del remix" (desplegable, contraído por defecto; campo `copy` dentro de `remixes[]`) y en celular "+ Agregar remix" va arriba de la lista.
+
+- 28/11: "Transcriptor" también es pestaña del grupo Contenidos (solo admin COSMART); el ítem de menú y el botón dentro de Nuevo contenido siguen.
+
+- 28/11: "Métricas" sube debajo de Pauta publicitaria y "Newsletter" pasa a ser pestaña de Métricas (ya no tiene ítem propio en el menú).
+
+- 28/11: agencias y emprendedores ven el mismo menú SIN lo exclusivo de COSMART (Transcriptor —también el botón dentro de Nuevo contenido—, Newsletter, Panel de ventas, Visitas, Inventario COSMART, Mapa de productos).
+
+- 28/11: "Mis tareas" (Tareas) arranca en "Yo" también para admin y solo muestra lo ASIGNADO a esa persona (o creado por ella sin asignar): lo que creó y está asignado a otra persona/cliente ya no aparece (`matchVerDeMis`). "Todos"/"Equipo" siguen en el selector "Ver de". Tareas internas no cambió.
+
+## 28/11 — Plantilla/Excel de contenidos actualizada
+Misma lógica para contenido original y Remix. Columnas: Título · Remix o original · Fecha · Estado · Cuenta · Plataformas · Ubicación · Formato · Dimensiones · **Objetivo · Eje · Tipo** · Copy · Texto en pantalla · Prompt · Sugerencia · Guion · **Pauta (Orgánico/Pauta/Ambos)** · Links · Notas · Asignar a · **Remix 1/2/3 · Fecha/Link/Estado/Copy**. Listas desplegables en la plantilla. Un Remix solo exige Título (importer); remix del Excel solo pisan los existentes si la fila trae alguno. Valores viejos (Idea, Engagement, Institucional…) se traducen. Export con las mismas columnas. Hecho también en Calendario (sin "Asignar a").
+
+- 28/11: Tareas → pestañas "Únicas" (sin repetición) y "Recurrentes" (diaria/semanal/mensual/anual…) sobre la misma sección Mis tareas (`window.__misTareasModo`); las tareas con `recurrencia` ya no se mezclan con las únicas. Desde Recurrentes, "+ Nueva tarea" arranca con repetición mensual. Contenidos asignados van siempre en Únicas. No se tocó ningún dato.
+
+- 28/11: links directos a una sección del panel del cliente: `app/index.html?client=<id>&open=plan` (Plan de ejecución), `&open=reportes`, `&open=planes` (Pauta Digital → Planes de campaña). Si no hay sesión, `requireAuth` guarda el destino (`sessionStorage.mh_next`) y `login.html` vuelve ahí tras iniciar sesión (solo rutas /app/ o /admin/index.html). Martín Cañeque = cliente `mc`.
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).
