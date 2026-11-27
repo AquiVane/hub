@@ -1068,3 +1068,6 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 - `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.
 
 - 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
+
+## 28/11 — Gestión, Proveedores y Administración
+Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).

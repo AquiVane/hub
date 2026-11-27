@@ -27,7 +27,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=48">
+  <link rel="stylesheet" href="../css/style.css?v=49">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -52,7 +52,7 @@
     <nav class="nav-section">
       <div class="nav-section-label">Menú</div>
       <button class="nav-item active" data-grupo="clientes" onclick="irGrupo('clientes')">
-        <i data-lucide="users" class="nav-icon"></i><span>Clientes y colaboradores</span>
+        <i data-lucide="users" class="nav-icon"></i><span>Gestión</span>
       </button>
       <button class="nav-item" data-grupo="tareas" id="navMisTareasBtn" onclick="irGrupo('tareas')">
         <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
@@ -815,6 +815,9 @@
           <p>Agregalos uno a uno, subí tu planilla de Excel (descargá la plantilla) o pegá tu lista y la IA la ordena por vos.</p>
         </div>
       </div>
+
+      <div id="sec-proveedores" class="hidden"></div>
+      <div id="sec-administracion" class="hidden"></div>
 
       <!-- Recursos -->
       <div id="sec-recursos" class="hidden">
@@ -2958,7 +2961,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=51');
+      const res = await fetch('../app/index.html?hv=52');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -2974,7 +2977,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=102');
+      await import('../js/app.js?v=103');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -3076,10 +3079,11 @@
 
   window.showSection = function(sec) {
     try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','transcribir','newsletter','mapa','inventario','productos','instagram'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','transcribir','newsletter','mapa','inventario','productos','proveedores','administracion','instagram'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
     if (sec === 'productos') window.cargarProductos?.();
+    if (sec === 'proveedores' || sec === 'administracion') window.cargarLista?.(sec);
     if (sec === 'mapa') cargarMapaAdmin();
     if (sec === 'inventario') cargarInventarioAdmin();
     if (sec === 'mistareas') loadMisTareas();
@@ -3227,6 +3231,83 @@
     catch (e) { alert('No se pudo guardar: ' + (e.message || 'probá de nuevo.')); }
   };
 
+
+  // ══ Proveedores y Administración (paneles nuevos de Gestión) ═════════════
+  // Mini-módulos de lista (alta/edición/baja), con sus datos en `/data/_cosmart/<tipo>`. No tocan nada existente.
+  const LISTAS = {
+    proveedores: { tipo: 'proveedores', titulo: 'Proveedores', uno: 'proveedor', nuevo: '+ Agregar proveedor', vacio: 'Todavía no cargaste proveedores. Sumá a quienes te venden insumos, productos o servicios, con su contacto y condiciones.',
+      campos: [ { k: 'nombre', l: 'Proveedor', req: 1, full: 1 }, { k: 'rubro', l: 'Rubro / qué te provee' }, { k: 'contacto', l: 'Persona de contacto' }, { k: 'telefono', l: 'Teléfono' }, { k: 'email', l: 'Email', t: 'email' }, { k: 'web', l: 'Web / Instagram' }, { k: 'pago', l: 'Condiciones de pago' }, { k: 'notas', l: 'Notas', t: 'textarea', full: 1 } ],
+      cols: [ ['nombre', 'Proveedor'], ['rubro', 'Rubro'], ['contacto', 'Contacto'], ['telefono', 'Teléfono'], ['email', 'Email'] ] },
+    administracion: { tipo: 'administracion', titulo: 'Administración', uno: 'movimiento', nuevo: '+ Agregar movimiento', vacio: 'Todavía no cargaste movimientos. Anotá ingresos, gastos y pagos pendientes para tener todo ordenado en un solo lugar.',
+      campos: [ { k: 'concepto', l: 'Concepto', req: 1, full: 1 }, { k: 'tipo', l: 'Tipo', t: 'select', o: ['Gasto', 'Ingreso'] }, { k: 'monto', l: 'Monto', t: 'number' }, { k: 'fecha', l: 'Fecha', t: 'date' }, { k: 'vence', l: 'Vencimiento', t: 'date' }, { k: 'estado', l: 'Estado', t: 'select', o: ['Pendiente', 'Pagado', 'Cobrado'] }, { k: 'categoria', l: 'Categoría' }, { k: 'contraparte', l: 'Cliente / proveedor' }, { k: 'link', l: 'Link al comprobante', full: 1 }, { k: 'notas', l: 'Notas', t: 'textarea', full: 1 } ],
+      cols: [ ['fecha', 'Fecha'], ['tipo', 'Tipo'], ['concepto', 'Concepto'], ['contraparte', 'Cliente / proveedor'], ['monto', 'Monto'], ['estado', 'Estado'] ] },
+  };
+  const _lst = { proveedores: [], administracion: [] };
+  let _lstEdit = null;
+  const _lEsc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  window.cargarLista = async function(key) {
+    const C = LISTAS[key], el = document.getElementById('sec-' + key);
+    if (!C || !el) return;
+    if (!el.dataset.listo) {
+      el.dataset.listo = '1';
+      el.innerHTML = `<div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;"><h2 style="font-size:18px;font-weight:700;">${C.titulo}</h2><span class="text-muted text-sm" id="lst-res-${key}"></span>
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="abrirItemLista('${key}', null)">${C.nuevo}</button></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><input type="search" id="lst-q-${key}" class="form-control" placeholder="Buscar…" style="max-width:320px;" oninput="renderLista('${key}')">
+        ${key === 'administracion' ? `<select id="lst-f-${key}" class="form-control" style="width:auto;" onchange="renderLista('${key}')"><option value="">Todos</option><option value="Ingreso">Ingresos</option><option value="Gasto">Gastos</option><option value="Pendiente">Pendientes</option></select>` : ''}</div>
+        <div class="card" style="padding:0;overflow-x:auto;"><table class="data-table" style="min-width:620px;"><thead><tr>${C.cols.map(c => `<th${c[0] === 'monto' ? ' style="text-align:right;"' : ''}>${c[1]}</th>`).join('')}</tr></thead><tbody id="lst-tb-${key}"></tbody></table></div>
+        <div id="lst-vacio-${key}" class="empty-state hidden"><h3>Sin ${C.titulo.toLowerCase()} todavía</h3><p>${C.vacio}</p></div>`;
+    }
+    try { _lst[key] = await getListaTipo('_cosmart', C.tipo); } catch (e) {}
+    renderLista(key);
+  };
+  window.renderLista = function(key) {
+    const C = LISTAS[key], tb = document.getElementById('lst-tb-' + key); if (!tb) return;
+    const q = (document.getElementById('lst-q-' + key)?.value || '').toLowerCase().trim();
+    const f = document.getElementById('lst-f-' + key)?.value || '';
+    const all = _lst[key];
+    let lista = all.filter(x => (!q || Object.values(x).join(' ').toLowerCase().includes(q)) && (!f || (f === 'Pendiente' ? x.estado === 'Pendiente' : x.tipo === f)));
+    if (key === 'administracion') lista = lista.slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+    document.getElementById('lst-vacio-' + key).classList.toggle('hidden', all.length > 0);
+    if (key === 'administracion') {
+      const sum = t => all.filter(x => x.tipo === t).reduce((a, x) => a + _pNum(x.monto), 0);
+      const pend = all.filter(x => x.estado === 'Pendiente').reduce((a, x) => a + (x.tipo === 'Ingreso' ? 1 : -1) * _pNum(x.monto), 0);
+      document.getElementById('lst-res-' + key).textContent = all.length ? `Ingresos ${_pMoney(sum('Ingreso'))} · Gastos ${_pMoney(sum('Gasto'))} · Balance ${'$' + (sum('Ingreso') - sum('Gasto')).toLocaleString('es-AR')} · Pendiente ${'$' + pend.toLocaleString('es-AR')}` : '';
+    } else document.getElementById('lst-res-' + key).textContent = all.length ? `${all.length} ${all.length === 1 ? C.uno : C.titulo.toLowerCase()}` : '';
+    tb.innerHTML = lista.map(x => `<tr onclick="abrirItemLista('${key}','${x.id}')" style="cursor:pointer;">${C.cols.map(([k]) => {
+      let v = x[k];
+      if (k === 'monto') return `<td style="text-align:right;font-weight:700;color:${x.tipo === 'Ingreso' ? '#16a34a' : '#ef4444'};">${v ? (x.tipo === 'Ingreso' ? '+' : '−') + '$' + Number(_pNum(v)).toLocaleString('es-AR') : '—'}</td>`;
+      if (k === 'estado') return `<td><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:${v === 'Pendiente' ? '#f59e0b22' : '#22c55e22'};color:${v === 'Pendiente' ? '#d97706' : '#16a34a'};">${_lEsc(v || '—')}</span></td>`;
+      return `<td${k === 'nombre' || k === 'concepto' ? ' style="font-weight:600;"' : ''}>${_lEsc(v || '')}</td>`;
+    }).join('')}</tr>`).join('');
+  };
+  window.abrirItemLista = function(key, id) {
+    const C = LISTAS[key]; _lstEdit = { key, id };
+    const x = _lst[key].find(i => i.id === id) || (key === 'administracion' ? { tipo: 'Gasto', estado: 'Pendiente', fecha: new Date().toISOString().slice(0, 10) } : {});
+    let m = document.getElementById('listaModal');
+    if (!m) { m = document.createElement('div'); m.id = 'listaModal'; m.className = 'modal-overlay hidden'; document.body.appendChild(m); }
+    m.innerHTML = `<div class="modal" style="max-width:520px;"><div class="modal-header"><h3>${id ? 'Editar' : 'Nuevo'} ${C.uno}</h3><button class="modal-close" onclick="document.getElementById('listaModal').classList.add('hidden')">×</button></div>
+      <div class="modal-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${C.campos.map(c => `<div class="form-group" style="${c.full ? 'grid-column:span 2;' : ''}"><label>${c.l}${c.req ? ' <span class="req-star">*</span>' : ''}</label>${
+        c.t === 'textarea' ? `<textarea id="li-${c.k}" class="form-control" rows="2">${_lEsc(x[c.k] || '')}</textarea>`
+        : c.t === 'select' ? `<select id="li-${c.k}" class="form-control">${c.o.map(o => `<option${x[c.k] === o ? ' selected' : ''}>${o}</option>`).join('')}</select>`
+        : `<input id="li-${c.k}" class="form-control" type="${c.t || 'text'}" ${c.t === 'number' ? 'step="any" min="0"' : ''} value="${_lEsc(x[c.k] ?? '')}">`}</div>`).join('')}</div></div>
+      <div class="modal-footer">${id ? '<button class="btn btn-danger" onclick="borrarItemLista()">Eliminar</button>' : ''}<button class="btn btn-secondary" onclick="document.getElementById('listaModal').classList.add('hidden')">Cancelar</button><button class="btn btn-primary" onclick="guardarItemLista()">Guardar</button></div></div>`;
+    m.classList.remove('hidden');
+  };
+  window.guardarItemLista = async function() {
+    const { key, id } = _lstEdit, C = LISTAS[key], o = { id: id || ('l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)) };
+    for (const c of C.campos) { const v = document.getElementById('li-' + c.k).value.trim(); o[c.k] = c.t === 'number' ? _pNum(v) : v; if (c.req && !v) { alert('Completá: ' + c.l); return; } }
+    const i = _lst[key].findIndex(x => x.id === o.id);
+    if (i >= 0) _lst[key][i] = { ..._lst[key][i], ...o }; else _lst[key].push(o);
+    try { await saveListaTipo('_cosmart', C.tipo, _lst[key]); document.getElementById('listaModal').classList.add('hidden'); renderLista(key); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'probá de nuevo.')); }
+  };
+  window.borrarItemLista = async function() {
+    const { key, id } = _lstEdit; if (!id || !confirm('¿Eliminar?')) return;
+    _lst[key] = _lst[key].filter(x => x.id !== id);
+    try { await saveListaTipo('_cosmart', LISTAS[key].tipo, _lst[key]); document.getElementById('listaModal').classList.add('hidden'); renderLista(key); }
+    catch (e) { alert('No se pudo eliminar: ' + (e.message || 'probá de nuevo.')); }
+  };
+
   // ══ Menú simplificado (28/11, pedido de Vaneh) ══════════════════════════
   // Cada ítem del menú es un GRUPO con pestañas. Las pestañas abren las mismas secciones de siempre (nada se mueve
   // ni se reemplaza: solo cambia desde dónde se llega a cada una).
@@ -3236,6 +3317,8 @@
     { id: 'clientes', tabs: [
       { id: 'clientes', label: 'Clientes', sec: 'clientes' },
       { id: 'colaboradores', label: 'Colaboradores', sec: 'colaboradores', si: esAdminRol },
+      { id: 'proveedores', label: 'Proveedores', sec: 'proveedores', si: esAdminRol },
+      { id: 'administracion', label: 'Administración', sec: 'administracion', si: esAdminRol },
       { id: 'procesos', label: 'Procesos', sec: 'procesos' } ] },
     { id: 'tareas', tabs: [
       { id: 'mistareas', label: 'Mis tareas', sec: 'mistareas' },
@@ -8671,7 +8754,7 @@
     const steps = [
       { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: esPerfilEmp ? 'Este es el panel de tu emprendimiento. Ya te dejamos datos de ejemplo para que explores sin miedo a romper nada.' : 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
       { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail. Además, todos los lunes a las 9am te llega un resumen de todo lo que sigue pendiente.' },
-      { selector: N('clientes'), titulo: 'Clientes y colaboradores', texto: 'Acá ves y creás tus clientes, y en las pestañas de arriba están Colaboradores (tu equipo) y Procesos (instructivos y checklists internos, solo para colaboradores y admin).' },
+      { selector: N('clientes'), titulo: 'Gestión', texto: 'Acá ves y creás tus clientes y en las pestañas de arriba están Colaboradores (tu equipo), Proveedores, Administración (ingresos, gastos y pagos pendientes) y Procesos (instructivos y checklists internos, solo para colaboradores y admin).' },
     ];
     if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
     steps.push({ selector: N('tareas'), titulo: 'Tareas', texto: `En una sola solapa: "Mis tareas" (las que te asignaron), las tareas internas de ${nombreInterno} y los Proyectos. Con Kanban, Lista y Calendario.` });

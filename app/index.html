@@ -20,7 +20,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=48">
+  <link rel="stylesheet" href="../css/style.css?v=49">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -252,6 +252,17 @@
           <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:3px;">Fotos originales, material bruto o referencias de diseño</span>
         </div>
 
+        <div class="form-group" style="grid-column:span 3;">
+          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span>🎬 Guion</span>
+            <span style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" id="cf-abrir-guion" class="btn btn-secondary btn-sm" onclick="abrirGuionDesdeModalContenido()" style="font-size:11px;display:none;">↗ Abrir en Guiones</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
+            </span>
+          </label>
+          <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
+        </div>
+
         <div class="form-group">
           <label>Fecha de publicación</label>
           <input type="date" id="cf-fecha" class="form-control">
@@ -387,16 +398,6 @@
           <textarea id="cf-sugerencia-visual" class="form-control" rows="3" placeholder="Cómo se imagina la pieza: descripción de la imagen, o secuencia de escenas/planos si es video (ej: plano 1: producto sobre mesa, plano 2: primer plano de la mano abriendo el envase...)"></textarea>
         </div>
 
-        <div class="form-group" style="grid-column:span 3;">
-          <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span>🎬 Guion</span>
-            <span style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button type="button" id="cf-abrir-guion" class="btn btn-secondary btn-sm" onclick="abrirGuionDesdeModalContenido()" style="font-size:11px;display:none;">↗ Abrir en Guiones</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirTeleprompter()" style="font-size:11px;">📺 Abrir teleprompter</button>
-            </span>
-          </label>
-          <textarea id="cf-guion" class="form-control" rows="6" placeholder="El guion completo de la pieza, para leer mientras se graba. Se puede abrir en modo teleprompter (pantalla completa, fondo negro, letras blancas)..."></textarea>
-        </div>
 
         <div class="form-group" style="grid-column:span 3;">
           <label style="font-family:'Playfair Display',serif;color:#1A4DAA;font-size:13px;font-weight:700;letter-spacing:.01em;">¿Es contenido para pauta?</label>
@@ -1422,7 +1423,7 @@
 
 <script src="../js/heal.js?v=1"></script>
 <script src="../js/refresh.js?v=1"></script>
-<script type="module" src="../js/app.js?v=102"></script>
+<script type="module" src="../js/app.js?v=103"></script>
 <script src="../js/theme.js?v=3"></script>
 <!-- Modal: Gestión de equipo -->
 <div id="equipoModal" class="modal-overlay hidden">
