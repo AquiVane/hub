@@ -1085,3 +1085,6 @@ Objetivo: solo Notoriedad · Interacción · Acción (los viejos se traducen al 
 
 ## 28/11 — Modal de contenido: filas, campos contraíbles, Transcribir
 Orden: Cuenta · Fecha · Duración (solo video) · Dimensión (desplegable multiselección) · Orgánico/Pauta/Ambos (select `cf-pauta`) en una línea; Plataformas · Ubicación · Formato · Estado; Objetivo · Eje · Tipo en una línea. Eje: Entretener/Informar/Inspirar; Tipo: Comunicacional/Interactivo/De venta/Viral (los viejos se traducen al abrir). Copy, texto en pantalla, guion, prompt y sugerencia son `<details>` contraídos por defecto. Botón "Transcribir" bajo el material de referencia (solo Hub): llama a `transcribirReel` (`/admin/transcribir`, solo admin) con el primer link y deja el texto en el Guion. En Calendario no existe esa función (otro backend).
+
+## 28/11 — Modal de contenido (ajustes)
+Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegables multiselección con resumen (`actualizarDimResumen`); "Abrir teleprompter"/"Abrir en Guiones" quedan a la derecha del título Guion, visibles sin desplegar. El desplegable ¿Remix u original? vuelve a estar SIEMPRE (también en Contenidos propios y es obligatorio); en Contenidos propios solo se oculta la LISTA de remix.
