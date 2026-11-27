@@ -3,6 +3,7 @@ Allow: /instalar.html
 Allow: /gestion-de-clientes-para-agencias.html
 Allow: /emprendedores.html
 Disallow: /admin/
+Disallow: /plan.html
 Disallow: /app/
 
 Sitemap: https://hub.cosmart.com.ar/sitemap.xml

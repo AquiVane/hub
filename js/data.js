@@ -1002,6 +1002,11 @@ export async function traducirTexto(texto, de) {
   return api('POST', '/admin/traducir', { texto, de });
 }
 
+// Link de lectura al Plan de ejecución (sin login): ver plan-link.js en marketing-hub.
+export async function getPlanLink(clientId) { return api('GET', `/plan-link/${clientId}`); }
+export async function crearPlanLink(clientId, permanente = false) { return api('POST', `/plan-link/${clientId}`, { permanente }); }
+export async function quitarPlanLink(clientId) { return api('DELETE', `/plan-link/${clientId}`); }
+
 export async function saveLead(lead) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/leads', lead);

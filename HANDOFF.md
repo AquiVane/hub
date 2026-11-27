@@ -1114,6 +1114,8 @@ Misma lógica para contenido original y Remix. Columnas: Título · Remix o orig
 
 - 28/11: links directos a una sección del panel del cliente: `app/index.html?client=<id>&open=plan` (Plan de ejecución), `&open=reportes`, `&open=planes` (Pauta Digital → Planes de campaña). Si no hay sesión, `requireAuth` guarda el destino (`sessionStorage.mh_next`) y `login.html` vuelve ahí tras iniciar sesión (solo rutas /app/ o /admin/index.html). Martín Cañeque = cliente `mc`.
 
+- 28/11: "Link de lectura" del Plan de ejecución (botón en la sección Plan + `plan.html` pública con iframe sandbox). Usa `/plan-link/:clientId` y `/publico/plan/:token` de marketing-hub (requiere ese deploy). data.js v38, app.js v114.
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).
