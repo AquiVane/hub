@@ -1113,3 +1113,5 @@ Misma lógica para contenido original y Remix. Columnas: Título · Remix o orig
 - 28/11: Tareas → pestañas "Únicas" (sin repetición) y "Recurrentes" (diaria/semanal/mensual/anual…) sobre la misma sección Mis tareas (`window.__misTareasModo`); las tareas con `recurrencia` ya no se mezclan con las únicas. Desde Recurrentes, "+ Nueva tarea" arranca con repetición mensual. Contenidos asignados van siempre en Únicas. No se tocó ningún dato.
 
 - 28/11: links directos a una sección del panel del cliente: `app/index.html?client=<id>&open=plan` (Plan de ejecución), `&open=reportes`, `&open=planes` (Pauta Digital → Planes de campaña). Si no hay sesión, `requireAuth` guarda el destino (`sessionStorage.mh_next`) y `login.html` vuelve ahí tras iniciar sesión (solo rutas /app/ o /admin/index.html). Martín Cañeque = cliente `mc`.
+
+- 28/11: "Link de lectura" del Plan de ejecución (botón en la sección Plan + `plan.html` pública con iframe sandbox). Usa `/plan-link/:clientId` y `/publico/plan/:token` de marketing-hub (requiere ese deploy). data.js v38, app.js v114.

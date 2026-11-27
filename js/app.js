@@ -17,9 +17,9 @@ import {
   uploadArchivo, abrirArchivo, mostrarVisorArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
-  getNotificaciones, actualizarNotificacion, transcribirReel,
+  getNotificaciones, actualizarNotificacion, transcribirReel, getPlanLink, crearPlanLink, quitarPlanLink,
   optimizarCargaCliente
-} from './data.js?v=37';
+} from './data.js?v=38';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -1128,6 +1128,14 @@ function renderSection(sec) {
       btn.textContent = STATE.plan?.html ? '↻ Actualizar plan' : '+ Cargar plan';
       btn.onclick = openPlanModal;
       actions.appendChild(btn);
+      if (STATE.plan?.html && !esPropioAgencia) {
+        const lk = document.createElement('button');
+        lk.className = 'btn btn-secondary';
+        lk.textContent = '🔗 Link de lectura';
+        lk.title = 'Un link para que el cliente vea el plan sin iniciar sesión (solo lectura)';
+        lk.onclick = () => abrirPlanLinkModal();
+        actions.appendChild(lk);
+      }
     }
     renderPlan(content);
   }
@@ -1150,6 +1158,40 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
 }
+
+// ── Link de lectura al Plan (sin login) ──
+window.abrirPlanLinkModal = async function() {
+  let m = document.getElementById('planLinkModal');
+  if (!m) { m = document.createElement('div'); m.id = 'planLinkModal'; m.className = 'modal-overlay'; document.body.appendChild(m); }
+  const cerrar = () => m.classList.add('hidden');
+  const pintar = (st, msg) => {
+    const url = st && st.activo ? `${location.origin}/plan.html?t=${st.token}` : '';
+    const vence = st && st.activo ? new Date(st.expiraEn).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    m.innerHTML = `<div class="modal" style="max-width:520px;"><div class="modal-header"><h3>🔗 Link de lectura del plan</h3><button class="modal-close" id="plk-x">×</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Es un link para que ${_remixEsc(STATE.client.nombre || 'el cliente')} vea el Plan de ejecución <strong>sin iniciar sesión</strong>. Es solo de lectura y muestra únicamente el plan: no se puede editar nada ni entrar a otras partes del Hub. Cualquiera que tenga el link puede verlo, así que compartilo solo con quien corresponda.</p>
+        ${url ? `<input id="plk-url" class="form-control" readonly value="${_remixEsc(url)}" onclick="this.select()">
+          <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0;">Vence el <strong>${vence}</strong> (30 días). Si lo desactivás o generás uno nuevo, el anterior deja de funcionar al instante.</p>`
+        : '<p style="font-size:13px;margin:0;">Todavía no hay un link activo.</p>'}
+        <p id="plk-msg" style="font-size:12px;margin:8px 0 0;min-height:16px;color:var(--text-muted);">${msg || ''}</p>
+      </div>
+      <div class="modal-footer">
+        ${url ? '<button class="btn btn-danger" id="plk-off">Desactivar</button><button class="btn btn-secondary" id="plk-nuevo">Generar uno nuevo</button><button class="btn btn-primary" id="plk-copiar">Copiar link</button>' : '<button class="btn btn-secondary" id="plk-cerrar">Cerrar</button><button class="btn btn-primary" id="plk-nuevo">Generar link de lectura</button>'}
+      </div></div>`;
+    m.classList.remove('hidden');
+    m.querySelector('#plk-x').onclick = cerrar;
+    m.querySelector('#plk-cerrar')?.addEventListener('click', cerrar);
+    const accion = async (fn, texto) => { const msgEl = m.querySelector('#plk-msg'); msgEl.textContent = texto; try { pintar(await fn(), ''); } catch (e) { msgEl.textContent = e.message || 'No se pudo. Probá de nuevo.'; } };
+    m.querySelector('#plk-nuevo')?.addEventListener('click', () => accion(() => crearPlanLink(clientId), 'Generando…'));
+    m.querySelector('#plk-off')?.addEventListener('click', () => { if (confirm('¿Desactivar el link? Quien lo tenga ya no va a poder ver el plan.')) accion(async () => { await quitarPlanLink(clientId); return { activo: false }; }, 'Desactivando…'); });
+    m.querySelector('#plk-copiar')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); m.querySelector('#plk-msg').textContent = '✓ Link copiado.'; }
+      catch (e) { m.querySelector('#plk-url').select(); m.querySelector('#plk-msg').textContent = 'Seleccionado: copialo con Ctrl+C.'; }
+    });
+  };
+  pintar({ activo: false }, 'Cargando…');
+  try { pintar(await getPlanLink(clientId), ''); } catch (e) { pintar({ activo: false }, e.message || ''); }
+};
 
 function renderPlan(container) {
   const html = (STATE.plan && STATE.plan.html) || '';
