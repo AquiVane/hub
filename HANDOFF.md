@@ -1096,3 +1096,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: la lista de remix también se ve al abrir un contenido que YA tiene remix cargados (aunque no esté marcado como Remix).
 
 - 28/11: fila "Remix u original · Fecha de publicación · Asignar a" bajo el título; la lista de Remix va arriba de Objetivo/Eje/Tipo (tras el Guion).
+
+- 28/11: cada remix tiene su propio "Copy del remix" (desplegable, contraído por defecto; campo `copy` dentro de `remixes[]`) y en celular "+ Agregar remix" va arriba de la lista.

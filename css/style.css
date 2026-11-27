@@ -1737,3 +1737,7 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 @media (max-width:640px) { .cm-det-acciones { position:static; margin:0 0 4px; justify-content:flex-start; } }
 
 #cont-advanced { margin-top: 14px; }
+
+/* Remix en celular: "+ Agregar remix" arriba de la lista */
+@media (max-width:640px) { #remix-section { display:flex; flex-direction:column; } #remix-section > label { order:-3; } #remix-section > button { order:-2; margin:0 0 8px !important; } #remix-section > #remix-list { order:-1; } #remix-section > span { order:0; } }
+

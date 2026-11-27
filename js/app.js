@@ -3506,10 +3506,17 @@ function renderRemixes() {
         ${REMIX_ESTADOS.map(e => `<option value="${e}" ${est === e ? 'selected' : ''}>${e}</option>`).join('')}
       </select>
       <button type="button" onclick="removeRemix(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;" title="Quitar este remix">×</button>
+
+      <details class="cm-det" style="flex:1 1 100%;" ${_remixAbiertos.has(r.id) ? 'open' : ''} ontoggle="toggleRemixCopy('${r.id}', this.open)">
+        <summary><span class="cm-lbl">Copy del remix</span><span class="cm-dot">${r.copy && String(r.copy).trim() ? '● con contenido' : ''}</span></summary>
+        <textarea class="form-control" rows="3" placeholder="El copy (texto del posteo) de este remix..." oninput="updateRemix(${i},'copy',this.value)">${_remixEsc(r.copy || '')}</textarea>
+      </details>
     </div>`;
   }).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin remix. Agregá uno.</p>';
 }
 window.renderRemixes = renderRemixes;
+const _remixAbiertos = new Set(); // qué "Copy del remix" están desplegados (por defecto todos contraídos)
+window.toggleRemixCopy = (id, abierto) => { if (abierto) _remixAbiertos.add(id); else _remixAbiertos.delete(id); };
 window.addRemix = function() {
   _remixes.push({ id: 'rx' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), fecha: '', link: '', estado: 'Idea' });
   renderRemixes();
