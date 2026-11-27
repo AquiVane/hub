@@ -19,7 +19,7 @@ import {
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion, transcribirReel, getPlanLink, crearPlanLink, quitarPlanLink,
   optimizarCargaCliente
-} from './data.js?v=38';
+} from './data.js?v=39';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -1166,13 +1166,14 @@ window.abrirPlanLinkModal = async function() {
   const cerrar = () => m.classList.add('hidden');
   const pintar = (st, msg) => {
     const url = st && st.activo ? `${location.origin}/plan.html?t=${st.token}` : '';
-    const vence = st && st.activo ? new Date(st.expiraEn).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const vence = st && st.activo && !st.permanente ? new Date(st.expiraEn).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
     m.innerHTML = `<div class="modal" style="max-width:520px;"><div class="modal-header"><h3>🔗 Link de lectura del plan</h3><button class="modal-close" id="plk-x">×</button></div>
       <div class="modal-body">
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Es un link para que ${_remixEsc(STATE.client.nombre || 'el cliente')} vea el Plan de ejecución <strong>sin iniciar sesión</strong>. Es solo de lectura y muestra únicamente el plan: no se puede editar nada ni entrar a otras partes del Hub. Cualquiera que tenga el link puede verlo, así que compartilo solo con quien corresponda.</p>
         ${url ? `<input id="plk-url" class="form-control" readonly value="${_remixEsc(url)}" onclick="this.select()">
-          <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0;">Vence el <strong>${vence}</strong> (30 días). Si lo desactivás o generás uno nuevo, el anterior deja de funcionar al instante.</p>`
+          <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0;">${st.permanente ? '<strong>Sin vencimiento</strong>: sigue funcionando hasta que lo desactives.' : `Vence el <strong>${vence}</strong> (30 días).`} Si lo desactivás o generás uno nuevo, el anterior deja de funcionar al instante.</p>`
         : '<p style="font-size:13px;margin:0;">Todavía no hay un link activo.</p>'}
+        <label class="check-label" style="margin-top:10px;display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" id="plk-perm"${st && st.activo && st.permanente ? ' checked' : ''}> Sin vencimiento (hasta que lo desactive a mano)</label>
         <p id="plk-msg" style="font-size:12px;margin:8px 0 0;min-height:16px;color:var(--text-muted);">${msg || ''}</p>
       </div>
       <div class="modal-footer">
@@ -1182,7 +1183,7 @@ window.abrirPlanLinkModal = async function() {
     m.querySelector('#plk-x').onclick = cerrar;
     m.querySelector('#plk-cerrar')?.addEventListener('click', cerrar);
     const accion = async (fn, texto) => { const msgEl = m.querySelector('#plk-msg'); msgEl.textContent = texto; try { pintar(await fn(), ''); } catch (e) { msgEl.textContent = e.message || 'No se pudo. Probá de nuevo.'; } };
-    m.querySelector('#plk-nuevo')?.addEventListener('click', () => accion(() => crearPlanLink(clientId), 'Generando…'));
+    m.querySelector('#plk-nuevo')?.addEventListener('click', () => accion(() => crearPlanLink(clientId, !!m.querySelector('#plk-perm')?.checked), 'Generando…'));
     m.querySelector('#plk-off')?.addEventListener('click', () => { if (confirm('¿Desactivar el link? Quien lo tenga ya no va a poder ver el plan.')) accion(async () => { await quitarPlanLink(clientId); return { activo: false }; }, 'Desactivando…'); });
     m.querySelector('#plk-copiar')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(url); m.querySelector('#plk-msg').textContent = '✓ Link copiado.'; }
