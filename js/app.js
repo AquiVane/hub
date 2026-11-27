@@ -1,5 +1,6 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
 import { montarConectorClaude } from './claude-conector.js?v=1';
+import { acomodarUbicFormato, ESTADOS_CONT, ESTADOS_EN_CURSO, tipoPieza, tipoDe, estadosPara, normEstado, normContenidos, convertirEstado, estadoClase, estadoColor, opcionesEstado, aplicarEstadosSelect } from './estados.js?v=1';
 import './kanban-movil.js?v=1'; // Kanban en celular: barra de estados, botones y arrastre con el dedo
 import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js?v=2';
 import {
@@ -458,7 +459,7 @@ if (!HOSTED) window.cambiarEstadoNotif = async function(id, estado) {
   // Si el ítem cambiado es de la sección que se está viendo ahora mismo,
   // refresca para que el cambio se vea sin tener que navegar afuera y volver.
   if (n?.itemTipo === 'tarea' && currentSection === 'tareas') { STATE.tareas = await getTareas(clientId); renderSection('tareas'); }
-  else if (n?.itemTipo === 'contenido' && currentSection === 'contenidos') { STATE.contenidos = await getContenidos(clientId); renderSection('contenidos'); }
+  else if (n?.itemTipo === 'contenido' && currentSection === 'contenidos') { STATE.contenidos = normContenidos(await getContenidos(clientId)); renderSection('contenidos'); }
   cargarNotificaciones();
 };
 
@@ -594,7 +595,7 @@ async function loadAllData() {
   STATE._cargaFallida = !client && !home;
   STATE._cargaMotivo = primerFallo ? String(primerFallo.message || primerFallo).slice(0, 140) : '';
   STATE.client = client || { id: clientId, nombre: clientId };
-  STATE.contenidos = cont || [];
+  STATE.contenidos = normContenidos(cont || []);
   STATE.tareas = tareas || [];
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
   // inmediato (09/09, pedido de Vaneh: "tiene que tener el mismo
@@ -686,7 +687,7 @@ window.addEventListener('hub-datos-remotos', async e => {
   }
   const tipos = new Set(paths.map(p => p.split('/')[3]));
   try {
-    if (tipos.has('contenidos')) STATE.contenidos = await getContenidos(clientId);
+    if (tipos.has('contenidos')) STATE.contenidos = normContenidos(await getContenidos(clientId));
     if (tipos.has('tareas')) STATE.tareas = await getTareas(clientId);
     if (tipos.has('home')) STATE.home = await getHomeData(clientId);
     if (tipos.has('campanas')) STATE.campanas = await getCampanas(clientId);
@@ -1487,7 +1488,7 @@ function renderDashboard(container) {
   const total = conts.length;
   const publicados = conts.filter(c => c.estado === 'Publicado').length;
   const programados = conts.filter(c => c.estado === 'Programado').length;
-  const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
+  const enProceso = conts.filter(c => ESTADOS_EN_CURSO.includes(c.estado) || c.estado === 'Aprobado').length;
 
   // ── TAREAS (general + sitio web) — resumen chico, va al lado del gráfico de torta ──
   const tareasActivas = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
@@ -1519,8 +1520,8 @@ function renderDashboard(container) {
     </div>`;
 
   // ── FORMATO breakdown ──
-  const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
-  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f => { formatos[f] = (formatos[f]||0)+1; }); });
+  const formatos = { Imagen: 0, Video: 0, Carrusel: 0, GIF: 0 };
+  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f0 => { const f = f0 === 'Reel' ? 'Video' : f0; if (f === 'Story') return; formatos[f] = (formatos[f]||0)+1; }); }); // Reel y Story ya no son formatos (son ubicaciones)
   const maxFormato = Math.max(1, ...Object.values(formatos));
 
   // ── TIPO breakdown ──
@@ -1819,7 +1820,7 @@ function renderHome(container) {
 
   const pubMes = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(hoy.toISOString().slice(0,7))).length;
   const aprobados = STATE.contenidos.filter(c => c.estado === 'Aprobado').length;
-  const enProceso = STATE.contenidos.filter(c => c.estado === 'En proceso').length;
+  const enProceso = STATE.contenidos.filter(c => ESTADOS_EN_CURSO.includes(c.estado)).length;
   const publicados = STATE.contenidos.filter(c => c.estado === 'Publicado').length;
 
   container.innerHTML = `
@@ -2080,7 +2081,7 @@ const CONT_VISTAS = [['lista', 'Lista'], ['estados', 'Kanban']]; // formas de ve
 const CONT_VISTAS_OCULTAS = ['feed-ig', 'muro-fb', 'stories', 'proceso'];
 // Se muestran en el filtro Ubicación como opciones deshabilitadas "Próximamente" (Vaneh 18/10)
 const CONT_VISTAS_PROXIMAMENTE = ['Feed IG', 'Muro FB', 'Stories IG'];
-const CONT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const CONT_ESTADOS = ESTADOS_CONT;
 const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
@@ -2334,7 +2335,7 @@ function bancoRowHtml(c) {
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
         <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
-          ${['Idea','Sin grabar','Guión grabado','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
+          ${opcionesEstado(tipoDe(c), c.estado)}
         </select>
       </td>
       <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
@@ -2492,10 +2493,18 @@ window.bancoUpdateFecha = async function(id, fecha) {
   STATE.contenidos[i] = c;
 };
 
+// Estado válido para el tipo de pieza (Reel/Video vs Imagen/Carrusel): traduce el equivalente si hace falta.
+function estadoValidoPara(c, estado) {
+  const t = tipoDe(c), ok = estadosPara(t);
+  if (ok.includes(estado)) return estado;
+  const n = convertirEstado(estado, t);
+  return ok.includes(n) ? n : estado;
+}
+
 window.bancoUpdateEstado = async function(id, estado) {
   const c = STATE.contenidos.find(x => x.id === id);
   if (!c) return;
-  c.estado = estado;
+  c.estado = estadoValidoPara(c, estado);
   const saved = await saveContenido(clientId, c);
   const i = STATE.contenidos.findIndex(x => x.id === id);
   STATE.contenidos[i] = saved;
@@ -2598,16 +2607,7 @@ function remixKanbanHtml(colKey) {
 }
 
 function renderKanbanContenidos(container) {
-  const cols = [
-    { key: 'Idea', label: 'Idea', cls: 's-idea' },
-    { key: 'Sin grabar', label: 'Sin grabar', cls: 's-singrabar' },
-    { key: 'Guión grabado', label: 'Guión grabado', cls: 's-grabado' },
-    { key: 'En proceso', label: 'En proceso', cls: 's-proceso' },
-    { key: 'En revisión', label: 'En revisión', cls: 's-revision' },
-    { key: 'Aprobado', label: 'Aprobado', cls: 's-aprobado' },
-    { key: 'Programado', label: 'Programado', cls: 's-programado' },
-    { key: 'Publicado', label: 'Publicado', cls: 's-publicado' },
-  ];
+  const cols = ESTADOS_CONT.map(e => ({ key: e, label: e, cls: estadoClase(e) }));
 
   container.innerHTML = `<div class="kanban-board" id="kanban-cont">${cols.map(col => {
     const items = STATE.contenidos.filter(c => c.estado === col.key && !c.archivado && matchFiltrosCont(c));
@@ -2644,7 +2644,7 @@ function renderKanbanContenidos(container) {
   initKanbanDrag('#kanban-cont', STATE.contenidos.filter(c => !c.archivado), async (id, newCol) => {
     const c = STATE.contenidos.find(x => x.id === id);
     if (!c) return;
-    c.estado = newCol;
+    c.estado = estadoValidoPara(c, newCol);
     await saveContenido(clientId, c);
     await estadoContenidoAGuion(c);
     renderContTab('estados');
@@ -3103,10 +3103,10 @@ function renderIdeas(container) {
 function detectarRedLink(url) {
   let u; try { u = new URL(url); } catch (e) { return null; }
   const h = u.hostname.replace(/^www\./, '').toLowerCase(), p = u.pathname.toLowerCase();
-  if (h.endsWith('instagram.com')) return { red: 'Instagram', formato: /\/reel/.test(p) ? 'Reel' : /\/stories/.test(p) ? 'Story' : 'Imagen', plataformas: ['Instagram'] };
+  if (h.endsWith('instagram.com')) return { red: 'Instagram', formato: /\/reel|\/stories/.test(p) ? 'Video' : 'Imagen', plataformas: ['Instagram'] };
   if (h.endsWith('tiktok.com')) return { red: 'TikTok', formato: 'Video', plataformas: ['TikTok'] };
   if (h.endsWith('youtube.com') || h === 'youtu.be') return { red: 'YouTube', formato: 'Video', plataformas: [] };
-  if (h.endsWith('facebook.com') || h === 'fb.watch') return { red: 'Facebook', formato: /\/reel|\/watch|fb\.watch/.test(p + h) ? 'Reel' : 'Imagen', plataformas: ['Facebook'] };
+  if (h.endsWith('facebook.com') || h === 'fb.watch') return { red: 'Facebook', formato: /\/reel|\/watch|fb\.watch/.test(p + h) ? 'Video' : 'Imagen', plataformas: ['Facebook'] };
   if (h.endsWith('linkedin.com')) return { red: 'LinkedIn', formato: 'Imagen', plataformas: ['LinkedIn'] };
   return { red: h, formato: 'Imagen', plataformas: [] };
 }
@@ -3138,7 +3138,7 @@ window.openIdeaModal = function(id) {
   document.getElementById('if-titulo').value = i.titulo || '';
   document.getElementById('if-notas').value = i.notas || '';
   document.getElementById('if-link').value = firstLink(i.linkDriveRef) || '';
-  document.getElementById('if-formato').value = i.formato || 'Imagen';
+  document.getElementById('if-formato').value = ({ Reel: 'Video', Story: 'Imagen' })[i.formato] || i.formato || 'Imagen';
   document.querySelectorAll('.idea-plat-check').forEach(cb => {
     cb.checked = (i.plataformas || ['Instagram','Facebook']).includes(cb.value);
   });
@@ -3156,7 +3156,8 @@ window.eliminarIdea = async function(id) {
 window.promoverIdea = async function(id) {
   const idea = STATE.ideas.find(i => i.id === id);
   if (!idea) return;
-  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: idea.formato||'', estado: 'En proceso', notas: idea.notas||'', linkDriveRef: Array.isArray(idea.linkDriveRef) ? idea.linkDriveRef.slice() : [], eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion:'Feed', cuenta: STATE.client.instagram||'' };
+  const _fm = idea.formato === 'Reel' ? 'Video' : (idea.formato === 'Story' ? '' : (idea.formato || '')); // Reel/Story viejos: ya no son formatos
+  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: _fm, estado: 'Sin empezar', notas: idea.notas||'', linkDriveRef: Array.isArray(idea.linkDriveRef) ? idea.linkDriveRef.slice() : [], eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion: idea.formato === 'Reel' ? 'Reel' : idea.formato === 'Story' ? 'Story' : 'Feed', cuenta: STATE.client.instagram||'' };
   const saved = await saveContenido(clientId, nuevo);
   STATE.contenidos.push(saved);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
@@ -3168,7 +3169,7 @@ window.promoverIdea = async function(id) {
 
 // ─ En proceso y revisión ─
 function renderEnProceso(container) {
-  const items = STATE.contenidos.filter(c => ['En proceso','En revisión'].includes(c.estado));
+  const items = STATE.contenidos.filter(c => ESTADOS_EN_CURSO.includes(c.estado));
   container.innerHTML = `
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">En proceso y en revisión (${items.length})</h3>
     ${items.length ? `
@@ -3374,7 +3375,7 @@ document.getElementById('closePreviewModal').addEventListener('click', closePrev
 
 // Platform → allowed ubicaciones
 const PLAT_UBIC = {
-  Instagram: ['Feed', 'Story', 'Reel', 'Carrusel'],
+  Instagram: ['Feed', 'Story', 'Reel'], // Carrusel NO es ubicación (es un formato)
   Facebook: ['Feed', 'Story', 'Reel'],
   LinkedIn: ['Feed'],
   'Twitter / X': ['Feed'],
@@ -3386,8 +3387,8 @@ const PLAT_UBIC = {
 
 // Platform → allowed formatos
 const PLAT_FORMAT = {
-  Instagram: ['Imagen', 'Video', 'Reel', 'Carrusel', 'Story', 'GIF'],
-  Facebook: ['Imagen', 'Video', 'Carrusel', 'Story', 'GIF'],
+  Instagram: ['Imagen', 'Video', 'Carrusel', 'GIF'], // Reel y Story NO son formatos (son ubicaciones)
+  Facebook: ['Imagen', 'Video', 'Carrusel', 'GIF'],
   LinkedIn: ['Imagen', 'Video', 'Carrusel', 'Documento'],
   'Twitter / X': ['Imagen', 'Video', 'GIF'],
   TikTok: ['Video'],
@@ -3426,7 +3427,24 @@ function updatePlatFilters() {
   fmtDiv.innerHTML = [...fmtSet].map(f =>
     `<label class="check-label"><input type="checkbox" value="${f}" class="fmt-check"${prevFmt.includes(f) ? ' checked' : ''}> ${f}</label>`
   ).join('');
+  syncVideoPorReel();
 }
+
+// Reel (o Shorts) es solo UBICACIÓN: si está tildado, el formato Video se tilda solo.
+function syncVideoPorReel() {
+  const hayReel = Array.from(document.querySelectorAll('.ubic-check:checked')).some(cb => ['Reel', 'Shorts'].includes(cb.value));
+  if (hayReel) { const v = document.querySelector('.fmt-check[value="Video"]'); if (v) v.checked = true; }
+  syncEstadosModal();
+}
+// Habilita/deshabilita los estados del modal según plataforma, ubicación y formato.
+function syncEstadosModal() {
+  const f = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+  const u = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  aplicarEstadosSelect(document.getElementById('cf-estado'), tipoPieza(f, u));
+}
+document.addEventListener('change', e => {
+  if (e.target && e.target.matches && e.target.matches('.ubic-check, .fmt-check')) { if (e.target.classList.contains('ubic-check')) syncVideoPorReel(); else syncEstadosModal(); updateDuracionVisibility(); }
+});
 
 // Multiple drive links
 let _driveLinks = [];
@@ -3657,7 +3675,7 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-titulo').value = c.titulo || '';
   { const cl = document.getElementById('cf-clase'); if (cl) { cl.value = c.clase || ''; cl.classList.remove('campo-error'); } } // sin valor por defecto: hay que elegir
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
-  document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
+  document.getElementById('cf-estado').value = normEstado({ ...c, estado: c.estado || defaults.estado || 'Sin empezar' });
   document.getElementById('cf-eje').value = c.eje || 'Institucional';
   document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
   document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
@@ -3685,11 +3703,16 @@ window.openContenidoModal = function(defaults = {}) {
   updatePlatFilters();
 
   // Ubicacion & Formato — set after filters rendered
-  const ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion : (c.ubicacion ? [c.ubicacion] : defaults.ubicacion || []);
-  const fmtArr = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+  let ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion.slice() : (c.ubicacion ? [c.ubicacion] : (defaults.ubicacion || []).slice());
+  let fmtArr = Array.isArray(c.formato) ? c.formato.slice() : (c.formato ? [c.formato] : []);
+  // Datos viejos: "Reel" y "Story" figuraban como formato, y "Carrusel" como ubicación -> se acomodan.
+  if (fmtArr.includes('Reel')) { fmtArr = fmtArr.filter(x => x !== 'Reel'); if (!fmtArr.includes('Video')) fmtArr.push('Video'); if (!ubicArr.includes('Reel')) ubicArr.push('Reel'); }
+  if (fmtArr.includes('Story')) { fmtArr = fmtArr.filter(x => x !== 'Story'); if (!ubicArr.includes('Story')) ubicArr.push('Story'); }
+  if (ubicArr.includes('Carrusel')) { ubicArr = ubicArr.filter(x => x !== 'Carrusel'); if (!fmtArr.includes('Carrusel')) fmtArr.push('Carrusel'); }
   setTimeout(() => {
     document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
     document.querySelectorAll('.fmt-check').forEach(cb => cb.checked = fmtArr.includes(cb.value));
+    syncVideoPorReel();
   }, 30);
 
   // Dimensiones
@@ -3748,8 +3771,7 @@ document.getElementById('plat-checks').addEventListener('change', () => { update
 
 function updateDuracionVisibility() {
   setTimeout(() => {
-    const videoFormats = ['Reel','Video','TikTok','Story','YouTube','Short'];
-    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => videoFormats.some(v => cb.value.includes(v)));
+    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => cb.value === 'Video') || Array.from(document.querySelectorAll('.ubic-check:checked')).some(cb => ['Reel', 'Shorts'].includes(cb.value));
     const g = document.getElementById('cf-duracion-group');
     if (g) g.style.display = hasVideo ? '' : 'none';
   }, 60);
@@ -3866,6 +3888,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
       : { email: contAsignadoEmail, nombre: contAsignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } }) : null,
   };
 
+  obj.estado = estadoValidoPara(obj, obj.estado); // el estado tiene que corresponder al tipo de pieza (video vs imagen)
   if (!obj.remixes.length && !(editingContenido && Array.isArray(editingContenido.remixes))) delete obj.remixes; // no ensuciar contenidos que nunca tuvieron remix
 
   try {
@@ -3978,19 +4001,19 @@ function normGuionTitulo(s) { return normImportTexto(s); }
 //  - contenido pasa a 'Guión grabado' / 'Sin grabar' -> su guion vinculado queda igual.
 //  - guion cambia de estado -> el contenido vinculado toma el mismo estado, SOLO si todavía está en una
 //    etapa temprana (Idea / Sin grabar / Guión grabado); nunca pisa Aprobado, Programado, Publicado, etc.
-const ESTADOS_PRE_PRODUCCION = ['Idea', 'Sin grabar', 'Guión grabado'];
+const ESTADOS_PRE_PRODUCCION = ['Sin empezar', 'Guión en revisión', 'Guión aprobado', 'Grabado'];
 async function estadoContenidoAGuion(c) {
-  if (!c || (c.estado !== 'Guión grabado' && c.estado !== 'Sin grabar')) return;
+  if (!c || (c.estado !== 'Grabado' && c.estado !== 'Sin empezar') || tipoDe(c) === 'imagen') return;
   const g = STATE.guiones.find(x => x.contenidoId === c.id);
-  const grabado = c.estado === 'Guión grabado';
+  const grabado = c.estado === 'Grabado';
   if (!g || !!g.grabado === grabado) return;
   const saved = await saveGuion(clientId, { ...g, grabado }, STATE.guiones);
   STATE.guiones[STATE.guiones.findIndex(x => x.id === saved.id)] = saved;
 }
 async function estadoGuionAContenido(g) {
   const c = g.contenidoId && STATE.contenidos.find(x => x.id === g.contenidoId);
-  if (!c || !ESTADOS_PRE_PRODUCCION.includes(c.estado)) return;
-  const nuevo = g.grabado ? 'Guión grabado' : 'Sin grabar';
+  if (!c || !ESTADOS_PRE_PRODUCCION.includes(c.estado) || tipoDe(c) === 'imagen') return;
+  const nuevo = g.grabado ? 'Grabado' : 'Sin empezar';
   if (c.estado === nuevo) return;
   c.estado = nuevo;
   const savedC = await saveContenido(clientId, c, STATE.contenidos);
@@ -4234,7 +4257,7 @@ window.traerGuionDeContenido = async function(contenidoId) {
   const c = STATE.contenidos.find(x => x.id === contenidoId);
   if (!c) return;
   const existente = STATE.guiones.find(g => g.contenidoId === contenidoId);
-  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', grabado: existente ? !!existente.grabado : c.estado === 'Guión grabado', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
+  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', grabado: existente ? !!existente.grabado : c.estado === 'Grabado', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
   const saved = await saveGuion(clientId, obj, STATE.guiones);
   if (existente) STATE.guiones[STATE.guiones.findIndex(g => g.id === saved.id)] = saved;
   else STATE.guiones.push(saved);
@@ -4245,7 +4268,7 @@ window.traerGuionDeContenido = async function(contenidoId) {
 // ──────────────────────────────────────────────────────
 // IMPORTAR CONTENIDOS DESDE EXCEL
 // ──────────────────────────────────────────────────────
-const IMPORT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const IMPORT_ESTADOS = ESTADOS_CONT;
 const IMPORT_PAUTA_MAP = {
   'solo organico': 'organico',
   'si dark post': 'dark',
@@ -4598,7 +4621,7 @@ window.confirmarImportTareas = async function() {
     aProcesar.forEach((f, i) => {
       if (f.tipo === 'contenido') {
         if (f.duplicadoId && f.accionDuplicado === 'actualizar') contActualizar.push(f);
-        else contNuevos.push({ titulo: f.titulo, estado: 'Idea', fechaPub: f.vencimiento || null, notas: f.notas, creadoPor: user.email });
+        else contNuevos.push({ titulo: f.titulo, estado: 'Sin empezar', fechaPub: f.vencimiento || null, notas: f.notas, creadoPor: user.email });
         return;
       }
       if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
@@ -4620,7 +4643,7 @@ window.confirmarImportTareas = async function() {
       const c = STATE.contenidos.find(x => x.id === f.duplicadoId);
       if (c) { await saveContenido(clientId, { ...c, fechaPub: f.vencimiento || c.fechaPub, notas: f.notas || c.notas }); nCont++; }
     }
-    if (nCont) STATE.contenidos = await getContenidos(clientId);
+    if (nCont) STATE.contenidos = normContenidos(await getContenidos(clientId));
     closeImportTareasModal();
     updateBadges();
     renderSection(currentSection);
@@ -4883,7 +4906,7 @@ document.getElementById('confirmQuickUpdateBtn').addEventListener('click', async
       for (const match of r.matches) {
         const idx = STATE.contenidos.findIndex(c => c.id === match.id);
         const contenido = idx > -1 ? STATE.contenidos[idx] : match;
-        if (r.estado) contenido.estado = r.estado;
+        if (r.estado) contenido.estado = estadoValidoPara(contenido, normEstado({ ...contenido, estado: r.estado }));
         if (r.notas) contenido.notas = r.notas;
         if (r.linkDrive.length) contenido.linkDrive = r.linkDrive;
         if (r.comentario) {
@@ -4963,17 +4986,19 @@ document.getElementById('import-file-input').addEventListener('change', async (e
       }
 
       const estadoRaw = String(obj.estado || '').trim();
-      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : 'Idea';
+      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : (normEstado({ estado: estadoRaw }) !== 'Sin empezar' && IMPORT_ESTADOS.includes(normEstado({ estado: estadoRaw })) ? normEstado({ estado: estadoRaw }) : 'Sin empezar'); // acepta los nombres viejos (Idea, Sin grabar, Guión grabado)
 
+      const _uf = acomodarUbicFormato(importSplitMulti(obj.ubicacion), formato);
+      const _estV = estadoValidoPara({ formato: _uf.formato, ubicacion: _uf.ubicacion }, estado);
       valid.push({
         titulo,
         clase: importParseClase(obj.clase),
         fechaPub: importParseFecha(obj.fechaPub),
-        estado,
+        estado: _estV,
         cuenta,
         plataformas,
-        ubicacion: importSplitMulti(obj.ubicacion),
-        formato,
+        ubicacion: _uf.ubicacion,
+        formato: _uf.formato,
         dimensiones: importSplitMulti(obj.dimensiones),
         eje: String(obj.eje || '').trim(),
         tipo: String(obj.tipo || '').trim(),
@@ -7602,7 +7627,7 @@ function renderInstrucciones(container) {
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
           '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá. Se puede filtrar por plataforma y por rango de fechas (Desde/Hasta), además del filtro Orgánico/Pauta.',
           '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
-          '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
+          '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre los estados (Sin empezar → … → Aprobado → Programado → Publicado). Los reels y videos tienen sus propios pasos (guion, grabado, editado) y las imágenes y carruseles los suyos (copy, textos).',
           '<strong>Feed IG:</strong> "Publicado" muestra el feed real; "Borrador (pendiente de aprobación)" es una grilla de 12 casilleros en formato 4:5 donde podés arrastrar imágenes, vincular un contenido ya cargado, o armar una portada de texto con su propio color mientras no haya material -- más la pestaña "Ver como Reel" para lo que marques como tal.',
           '<strong>Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
@@ -8164,14 +8189,10 @@ function fmtNum(n) {
 }
 
 function statusBadge(estado) {
-  const map = { 'Idea':'s-idea','Sin grabar':'s-singrabar','Guión grabado':'s-grabado','En proceso':'s-proceso','En revisión':'s-revision','Aprobado':'s-aprobado','Programado':'s-programado','Publicado':'s-publicado' };
-  return `<span class="status-badge ${map[estado]||'s-idea'}">${estado||'—'}</span>`;
+  return `<span class="status-badge ${estadoClase(estado)}">${estado||'—'}</span>`;
 }
 
-function statusColor(estado) {
-  const map = { 'Idea':'#94a3b8','Sin grabar':'#ef4444','Guión grabado':'#8b5cf6','En proceso':'#f59e0b','En revisión':'#ec4899','Aprobado':'#10b981','Programado':'#3b82f6','Publicado':'#22c55e' };
-  return map[estado] || '#94a3b8';
-}
+function statusColor(estado) { return estadoColor(estado); }
 
 function statusDot(estado) {
   return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(estado)};border:1.5px solid white;"></span>`;
@@ -8424,7 +8445,7 @@ window.rechazarContenido = async function(id) {
   if (!c) return;
   const motivo = prompt('Motivo del rechazo (opcional):');
   if (motivo === null) return;
-  c.estado = 'En proceso';
+  c.estado = tipoDe(c) === 'video' ? 'Editado' : 'En proceso';
   if (motivo) c.notas = `[Rechazado: ${motivo}]${c.notas ? ' — ' + c.notas : ''}`;
   await saveContenido(clientId, c);
   STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;

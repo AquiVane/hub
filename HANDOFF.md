@@ -1040,3 +1040,14 @@ Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en
 
 ## 27/11 — Demo de emprendedor
 Botón "Probar la demo sin registrarme" en `emprendedores.html` (llama a `POST /agencia/demo`, guarda sesión y abre el admin); barra fija de demo en `admin/index.html` para mails `@demo.hub.local`.
+
+## 27/11 — Estados de contenido nuevos (pedido de Vaneh)
+Un solo módulo: `js/estados.js` (copia en `apps-cosmart/calendario/js/estados.js`). Dos recorridos:
+- **Reels y videos:** Sin empezar · Guión en revisión · Guión aprobado · Grabado · Editado · En revisión · Aprobado · Programado · Publicado.
+- **Flyers / imágenes / carruseles:** Sin empezar · Copy en revisión · Textos aprobados · En proceso · En revisión · Aprobado · Programado · Publicado.
+- El selector de estado del modal (y el de cada fila del banco / "Mis tareas") habilita/deshabilita opciones según plataforma, ubicación y formato (`tipoPieza`). Sin formato elegido: están los 12 habilitados. Al cambiar de tipo, el estado se traduce (Textos aprobados ⇄ Guión aprobado, etc.).
+- **Reel, Story y Carrusel:** Reel y Story son solo UBICACIÓN; Carrusel es solo FORMATO. Tildar Reel (o Shorts) tilda solo el formato Video. Datos viejos se acomodan al abrir/importar (`acomodarUbicFormato`).
+- **Estados viejos** (Idea, Sin grabar, Guión grabado, Revisión) se traducen en memoria al leer (`normContenidos`) y quedan grabados al guardar; el servidor no se migró. "En proceso" de un video viejo pasa a Grabado.
+- Kanban = 12 columnas (unión). Guiones: el vínculo "grabado" ahora es Sin empezar ⇄ Grabado (solo para piezas que no son imagen).
+- Excel (plantillas de Hub y Calendario) actualizadas; el import acepta los nombres viejos.
+- Pendiente: desplegar `marketing-hub` (seeds de demo + conteo del informe mensual con los estados nuevos). Los remix mantienen Idea / En proceso / Publicado.

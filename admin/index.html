@@ -27,7 +27,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=45">
+  <link rel="stylesheet" href="../css/style.css?v=46">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -2611,6 +2611,7 @@
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
   import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=36';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
+  import { ESTADOS_CONT, ESTADOS_EN_CURSO, tipoDe, estadosPara, normEstado, opcionesEstado, estadoColor } from '../js/estados.js?v=1';
 
   const user = requireAuth(['admin', 'colaborador']);
   if (!user) throw new Error('No auth');
@@ -2889,7 +2890,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=47');
+      const res = await fetch('../app/index.html?hv=48');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -2905,7 +2906,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=100');
+      await import('../js/app.js?v=101');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -5457,7 +5458,7 @@
   let _misSubtareasCache = []; // [{clientId, clientNombre, tarea (padre), subIndex, sub, personal, subAsignadoEmail}] -- solo subtareas pendientes con asignado
   let _misTareasView = 'kanban';
   const ESTADOS_TAREA = ['Sin empezar', 'En progreso', 'Listo'];
-  const ESTADOS_CONTENIDO = ['Idea', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+  const ESTADOS_CONTENIDO = ESTADOS_CONT;
   const MESES_NOMBRE_JS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
   let _misTareasTab = 'laboral';
@@ -5474,7 +5475,7 @@
   // Es virtual (no se guarda nada): al restaurarla se marca noAutoArchivar.
   const ESTADO_COLOR = { 'Sin empezar': '#64748b', 'En progreso': '#3b82f6', 'Listo': '#10b981' };
   function etiquetaEstado(estado) {
-    const c = ESTADO_COLOR[estado] || '#8b5cf6';
+    const c = ESTADO_COLOR[estado] || (ESTADOS_CONT.includes(estado) ? estadoColor(estado) : '#8b5cf6');
     return `<span style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap;background:${c}22;color:${c};"><span style="width:7px;height:7px;border-radius:50%;background:${c};"></span>${estado || 'Sin empezar'}</span>`;
   }
   function estaArchivada(t) {
@@ -5564,6 +5565,7 @@
         });
         (contenidos || []).forEach(t => {
           if (t.asignado?.email && t.estado !== 'Publicado') {
+            t.estado = normEstado(t); // estados viejos (Idea, Sin grabar…) -> los nuevos
             items.push({ clientId: c.id, clientNombre: c.nombre || c.name || c.id, tipo: 'contenido', tarea: t, personal: false, asignadoEmail: t.asignado.email.toLowerCase(), creadoPorEmail: '' });
           }
         });
@@ -5867,7 +5869,7 @@
       ${t.prioridad ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:${prioColor[t.prioridad] || '#64748b'};font-weight:700;flex-shrink:0;">${t.prioridad}</span>` : ''}
       ${cuadranteBadge(t.cuadrante)}
       <select class="form-control" style="flex-shrink:0;width:auto;font-size:12px;padding:4px 8px;" onchange="cambiarEstadoMiTarea(${idx}, this.value)">
-        ${estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('')}
+        ${tipo === 'tarea' ? estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('') : opcionesEstado(tipoDe(t), t.estado)}
       </select>
       <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="openMisTareaModal(${idx})">Ver / Editar</button>
     </div>`;
@@ -5910,8 +5912,8 @@
       return;
     }
     const cols = [
-      { key: 'Sin empezar', color: '#94a3b8', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Sin empezar' : ['Idea','En proceso'].includes(i.tarea.estado) },
-      { key: 'En progreso', color: '#3b82f6', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'En progreso' : ['En revisión'].includes(i.tarea.estado) },
+      { key: 'Sin empezar', color: '#94a3b8', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Sin empezar' : ['Sin empezar'].includes(i.tarea.estado) },
+      { key: 'En progreso', color: '#3b82f6', match: (i) => i.tipo === 'tarea' ? i.tarea.estado === 'En progreso' : ESTADOS_EN_CURSO.includes(i.tarea.estado) },
       { key: 'Listo', color: '#10b981', match: (i) => estaListo(i) },
     ];
     listEl.innerHTML = `<div class="kanban-board">${cols.map(col => {
@@ -6130,7 +6132,7 @@
     document.getElementById('mt-vertical').value = esInternaCosmart ? (t.vertical || '') : '';
     document.getElementById('mt-titulo').value = t.titulo || '';
     const estados = tipo === 'tarea' ? ESTADOS_TAREA : ESTADOS_CONTENIDO;
-    document.getElementById('mt-estado').innerHTML = estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('');
+    document.getElementById('mt-estado').innerHTML = tipo === 'tarea' ? estados.map(e => `<option value="${e}" ${e === t.estado ? 'selected' : ''}>${e}</option>`).join('') : opcionesEstado(tipoDe(t), t.estado);
     document.getElementById('mt-prioridad-group').style.display = tipo === 'tarea' ? '' : 'none';
     document.getElementById('mt-cuadrante-group').style.display = tipo === 'tarea' ? '' : 'none';
     document.getElementById('archiveMisTareaBtn').style.display = tipo === 'tarea' ? '' : 'none';
@@ -6816,7 +6818,7 @@
           } else {
             await saveContenido(f.destino, {
               titulo: f.titulo,
-              estado: 'Idea',
+              estado: 'Sin empezar',
               fechaPub: f.vencimiento || null,
               notas: f.notas,
               creadoPor: user.email,
