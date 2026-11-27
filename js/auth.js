@@ -44,7 +44,7 @@ export async function loginUser(email, password) {
 
   const userData = {
     email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name, mustChangePassword: data.mustChangePassword || false,
-    agencyId: data.agencyId || 'cosmart', agenciaNombre: data.agenciaNombre || null, agenciaLogoUrl: data.agenciaLogoUrl || null,
+    agencyId: data.agencyId || 'cosmart', agenciaNombre: data.agenciaNombre || null, agenciaLogoUrl: data.agenciaLogoUrl || null, agenciaPerfil: data.agenciaPerfil || 'agencia',
   };
   saveSession(data.token, userData);
   return userData;

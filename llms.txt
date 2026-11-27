@@ -1,0 +1,5 @@
+# Marketing Hub — COSMART
+> Panel de gestión de tareas, contenidos, ideas y equipo, creado por COSMART (Argentina). Dos versiones: para agencias de marketing y para emprendedores. 7 días gratis.
+
+- [Hub para emprendedores](https://hub.cosmart.com.ar/emprendedores.html): organizá tu emprendimiento solo/a o con tu equipo (diseño, familia, agencia).
+- [Hub para agencias](https://hub.cosmart.com.ar/gestion-de-clientes-para-agencias.html): gestión de clientes, tareas, contenidos y reportes.

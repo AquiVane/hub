@@ -2980,6 +2980,8 @@
     const quitarEscudo = () => { const e = document.getElementById('hubRestoreStyle'); if (e) e.remove(); };
     const volver = () => {
       let sec = null; try { sec = localStorage.getItem('mh_admin_sec'); } catch (e) {}
+      // Cuenta de emprendedor: la primera vez arranca en sus contenidos (no en "Clientes" de agencia).
+      if (!sec && user.agenciaPerfil === 'emprendedor') sec = 'contenidospropios';
       const btn = sec && sec !== 'clientes' ? document.querySelector(`.nav-item[onclick*="showSection('${sec}')"]`) : null;
       if (btn) btn.click();
       quitarEscudo();
