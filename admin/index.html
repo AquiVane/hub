@@ -63,6 +63,10 @@
       <button class="nav-item" data-grupo="pauta" onclick="irGrupo('pauta')">
         <i data-lucide="megaphone" class="nav-icon"></i><span>Pauta publicitaria</span>
       </button>
+      <button class="nav-item" data-grupo="metricas" onclick="irGrupo('metricas')">
+        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
+        <span class="badge" id="informesBadge" style="display:none;"></span>
+      </button>
       <button class="nav-item" data-grupo="instagram" onclick="irGrupo('instagram')">
         <i data-lucide="message-circle" class="nav-icon"></i><span>Automatizaciones</span>
       </button>
@@ -74,10 +78,6 @@
       </button>
       <button class="nav-item" data-grupo="crm" id="navCrmBtn" onclick="irGrupo('crm')">
         <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
-      </button>
-      <button class="nav-item" data-grupo="metricas" onclick="irGrupo('metricas')">
-        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
-        <span class="badge" id="informesBadge" style="display:none;"></span>
       </button>
       <button class="nav-item" data-grupo="recursos" onclick="irGrupo('recursos')">
         <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos útiles</span>
@@ -2921,11 +2921,6 @@
     btnTranscribir.innerHTML = '<i data-lucide="captions" class="nav-icon"></i><span>Transcriptor</span>';
     btnTranscribir.onclick = () => showSection('transcribir');
     document.querySelector('.nav-section').appendChild(btnTranscribir);
-    const btnNewsletter = document.createElement('button');
-    btnNewsletter.className = 'nav-item';
-    btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
-    btnNewsletter.onclick = () => showSection('newsletter');
-    document.querySelector('.nav-section').appendChild(btnNewsletter);
   }
 
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
@@ -2961,7 +2956,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=61');
+      const res = await fetch('../app/index.html?hv=62');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3342,7 +3337,8 @@
       { id: 'informes', label: 'Informes clientes', sec: 'informes', si: esAdminRol },
       { id: 'email-stats', label: 'Métricas de mails', sec: 'email-stats', si: esAdminRol },
       { id: 'ventas-panel', label: 'Panel de ventas', sec: 'ventas-panel', si: esCosmart && esAdminRol },
-      { id: 'visitas', label: 'Visitas', sec: 'visitas', si: esCosmart && esAdminRol } ] },
+      { id: 'visitas', label: 'Visitas', sec: 'visitas', si: esCosmart && esAdminRol },
+      { id: 'newsletter', label: 'Newsletter', sec: 'newsletter', si: esCosmart && esAdminRol } ] },
     { id: 'recursos', tabs: [
       { id: 'links', label: 'Links', sec: 'contenidospropios', embed: 'links' },
       { id: 'archivos', label: 'Archivos', sec: 'contenidospropios', embed: 'archivos' },

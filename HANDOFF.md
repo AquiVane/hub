@@ -1100,3 +1100,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 - 28/11: cada remix tiene su propio "Copy del remix" (desplegable, contraído por defecto; campo `copy` dentro de `remixes[]`) y en celular "+ Agregar remix" va arriba de la lista.
 
 - 28/11: "Transcriptor" también es pestaña del grupo Contenidos (solo admin COSMART); el ítem de menú y el botón dentro de Nuevo contenido siguen.
+
+- 28/11: "Métricas" sube debajo de Pauta publicitaria y "Newsletter" pasa a ser pestaña de Métricas (ya no tiene ítem propio en el menú).
