@@ -1109,3 +1109,5 @@ Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegab
 
 ## 28/11 — Plantilla/Excel de contenidos actualizada
 Misma lógica para contenido original y Remix. Columnas: Título · Remix o original · Fecha · Estado · Cuenta · Plataformas · Ubicación · Formato · Dimensiones · **Objetivo · Eje · Tipo** · Copy · Texto en pantalla · Prompt · Sugerencia · Guion · **Pauta (Orgánico/Pauta/Ambos)** · Links · Notas · Asignar a · **Remix 1/2/3 · Fecha/Link/Estado/Copy**. Listas desplegables en la plantilla. Un Remix solo exige Título (importer); remix del Excel solo pisan los existentes si la fila trae alguno. Valores viejos (Idea, Engagement, Institucional…) se traducen. Export con las mismas columnas. Hecho también en Calendario (sin "Asignar a").
+
+- 28/11: Tareas → pestañas "Únicas" (sin repetición) y "Recurrentes" (diaria/semanal/mensual/anual…) sobre la misma sección Mis tareas (`window.__misTareasModo`); las tareas con `recurrencia` ya no se mezclan con las únicas. Desde Recurrentes, "+ Nueva tarea" arranca con repetición mensual. Contenidos asignados van siempre en Únicas. No se tocó ningún dato.

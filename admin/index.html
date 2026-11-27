@@ -2950,7 +2950,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=66');
+      const res = await fetch('../app/index.html?hv=67');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3310,7 +3310,8 @@
       { id: 'administracion', label: 'Administración', sec: 'administracion', si: esAdminRol },
       { id: 'procesos', label: 'Procesos', sec: 'procesos' } ] },
     { id: 'tareas', tabs: [
-      { id: 'mistareas', label: 'Mis tareas', sec: 'mistareas' },
+      { id: 'mistareas', label: 'Únicas', sec: 'mistareas', modo: 'unicas' },
+      { id: 'recurrentes', label: 'Recurrentes', sec: 'mistareas', modo: 'recurrentes' },
       { id: 'internas', label: esCosmart ? 'Tareas COSMART' : 'Tareas internas', sec: 'internas' },
       { id: 'proyectos', label: 'Proyectos', sec: 'proyectos' } ] },
     { id: 'contenidos', tabs: [
@@ -3347,6 +3348,7 @@
   document.querySelectorAll('.nav-item[data-grupo]').forEach(b => { if (!grupoDe(b.dataset.grupo)?.tabs.length) b.remove(); });
 
   window.__embedActual = 'contenidos';
+  window.__misTareasModo = 'unicas'; // Tareas: 'unicas' (sin repetición) o 'recurrentes' (se repiten: diarias, semanales, mensuales, anuales…)
   window.abrirEmbedAdmin = async function(embed) {
     window.__embedActual = embed || 'contenidos';
     try { localStorage.setItem('mh_admin_embed', window.__embedActual); } catch (e) {}
@@ -3359,7 +3361,8 @@
     const t = grupoDe(gid)?.tabs.find(x => x.id === tid);
     if (!t) return;
     try { localStorage.setItem('mh_admin_tab_' + gid, tid); } catch (e) {}
-    if (t.embed) window.abrirEmbedAdmin(t.embed); else window.showSection(t.sec);
+    if (t.modo) { window.__misTareasModo = t.modo; try { renderMisTareas(); } catch (e) {} }
+    if (t.embed) window.abrirEmbedAdmin(t.embed); else { window.showSection(t.sec); if (t.modo) sincronizarMenu(); }
   };
   window.irGrupo = function(gid) {
     const g = grupoDe(gid); if (!g || !g.tabs.length) return;
@@ -3374,6 +3377,7 @@
     for (const g of GRUPOS) for (const t of g.tabs) {
       if (t.sec !== sec) continue;
       if (sec === 'contenidospropios') { if (t.embed === window.__embedActual) return { g, t }; continue; }
+      if (t.modo) { if (t.modo === window.__misTareasModo) return { g, t }; continue; }
       return { g, t };
     }
     return null;
@@ -6120,6 +6124,8 @@
     renderMisTareas();
   };
 
+  // Únicas vs Recurrentes (28/11): las tareas con repetición van en su propia pestaña; los contenidos asignados siempre van en Únicas.
+  const _modoOk = i => (i.tipo === 'tarea' ? !!i.tarea.recurrencia : false) === (window.__misTareasModo === 'recurrentes');
   function misTareasFiltradas(ignorarTab) {
     // OJO: "|| !i.asignadoEmail" se sacó a propósito -- con eso puesto,
     // CUALQUIER tarea sin asignar de un cliente le aparecía a TODOS los
@@ -6129,6 +6135,7 @@
     return _misTareasCache.filter(i =>
       (ignorarTab || (_misTareasTab === 'personal' ? i.personal : !i.personal)) &&
       matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) &&
+      _modoOk(i) &&
       (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user)) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
       (!_misTareasFiltroVertical || i.tarea.vertical === _misTareasFiltroVertical) &&
@@ -6145,6 +6152,7 @@
   function misSubtareasFiltradas() {
     return _misSubtareasCache.filter(i =>
       (_misTareasTab === 'personal' ? i.personal : !i.personal) &&
+      (!!i.tarea.recurrencia) === (window.__misTareasModo === 'recurrentes') &&
       (_misTareasVerDe === '_todos' || !_misTareasVerDe || i.subAsignadoEmail === _misTareasVerDe) &&
       puedeVerTarea(i.tarea, user) &&
       (!_misTareasFiltroCliente || i.clientId === _misTareasFiltroCliente) &&
@@ -6256,8 +6264,8 @@
     const estaListo = (i) => i.tipo === 'tarea' ? i.tarea.estado === 'Listo' : ['Aprobado', 'Programado'].includes(i.tarea.estado);
     const visibles = misTareasFiltradas();
     const pendientes = visibles.filter(i => !estaListo(i));
-    const totalLaboral = _misTareasCache.filter(i => !i.personal && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
-    const totalPersonal = _misTareasCache.filter(i => i.personal && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
+    const totalLaboral = _misTareasCache.filter(i => !i.personal && _modoOk(i) && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
+    const totalPersonal = _misTareasCache.filter(i => i.personal && _modoOk(i) && matchVerDeMis(i.asignadoEmail, i.creadoPorEmail, _misTareasVerDe) && (i.tipo !== 'tarea' || puedeVerTarea(i.tarea, user))).length;
     const subPendientes = misSubtareasFiltradas().length;
     countEl.textContent = `${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''} · ${totalLaboral} laboral${totalLaboral !== 1 ? 'es' : ''}, ${totalPersonal} personal${totalPersonal !== 1 ? 'es' : ''} en total${subPendientes ? ` · ${subPendientes} subtarea${subPendientes !== 1 ? 's' : ''} asignada${subPendientes !== 1 ? 's' : ''}` : ''}`;
     if (_misTareasView === 'calendario') renderMisTareasCalendario();
@@ -6863,7 +6871,7 @@
     document.getElementById('nmt-visible-cliente').checked = false;
     document.getElementById('nmt-vencimiento').value = '';
     document.getElementById('nmt-hora').value = '';
-    document.getElementById('nmt-recurrencia').value = '';
+    document.getElementById('nmt-recurrencia').value = window.__misTareasModo === 'recurrentes' ? 'mensual' : ''; // desde "Recurrentes" ya viene con repetición (se puede cambiar)
     document.querySelectorAll('.nmt-dia-check').forEach(cb => { cb.checked = false; });
     toggleNmtRecurrencia();
     document.getElementById('nmt-es-proyecto').checked = false;
