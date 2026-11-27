@@ -1051,3 +1051,13 @@ Un solo módulo: `js/estados.js` (copia en `apps-cosmart/calendario/js/estados.j
 - Kanban = 12 columnas (unión). Guiones: el vínculo "grabado" ahora es Sin empezar ⇄ Grabado (solo para piezas que no son imagen).
 - Excel (plantillas de Hub y Calendario) actualizadas; el import acepta los nombres viejos.
 - Pendiente: desplegar `marketing-hub` (seeds de demo + conteo del informe mensual con los estados nuevos). Los remix mantienen Idea / En proceso / Publicado.
+
+## 28/11 — Menú del admin simplificado (grupos con pestañas)
+Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRUPO (`GRUPOS` en `admin/index.html`) cuyas pestañas abren las MISMAS secciones de siempre; `sincronizarMenu()` (MutationObserver sobre las `sec-*`) mantiene menú y pestañas alineados sin importar quién abrió la sección.
+- **Clientes** → Clientes · Colaboradores · Procesos. **Tareas** → Mis tareas · Tareas COSMART (agencias: "Tareas internas") · Proyectos.
+- **Contenidos COSMART** (agencias: "Contenidos Agencia"; emprendedor: "Contenidos") → Contenidos · Guiones · Dashboard. **Pauta publicitaria** abre la pestaña Pauta del mismo módulo. Automatizaciones, Ideas, CRM Leads, Instrucciones y Configuración siguen.
+- **Inventario** → COSMART: Inventario (iframe de siempre) · Mapa de productos. Resto de cuentas: inventario NATIVO (`sec-productos`, datos en `/data/_cosmart/productos`): uno a uno, Excel (`plantillas/Plantilla_Inventario_Hub.xlsx`, mezcla por SKU/nombre, nunca borra) y "Cargar con IA" (usa `/ai/preguntar`, requiere la API key propia de Claude en Configuración).
+- **Métricas** → Actividad · Informes clientes · Métricas de mails · Panel de ventas · Visitas (las dos últimas solo COSMART admin).
+- **Recursos útiles** → Links · Archivos · Recursos. En el módulo de contenidos embebido, la barra propia queda oculta (la maneja el menú: `window.__hubEmbedTab`) y existe la sección `archivos` (solo archivos) además de `links` (solo links) cuando va dentro del admin (HOSTED).
+- **Módulo Agencias** sacado del menú (pedido). Ojo: ahí vivía la config de precios de Mercado Pago (`guardarPrecioMP`); el código sigue pero sin acceso desde el menú — si hay que cambiar precios, moverlo a Configuración.
+- `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.

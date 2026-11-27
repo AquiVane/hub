@@ -27,7 +27,7 @@
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=46">
+  <link rel="stylesheet" href="../css/style.css?v=47">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .cp-skeleton { display:flex; flex-direction:column; gap:12px; padding:4px 0; pointer-events:none; }
@@ -51,62 +51,41 @@
     <div class="sidebar-panel-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;padding:0 16px 12px;">Panel administrador</div>
     <nav class="nav-section">
       <div class="nav-section-label">Menú</div>
-      <button class="nav-item active" onclick="showSection('clientes')">
+      <button class="nav-item active" data-grupo="clientes" onclick="irGrupo('clientes')">
         <i data-lucide="users" class="nav-icon"></i><span>Clientes</span>
       </button>
-      <button class="nav-item" onclick="showSection('colaboradores')">
-        <i data-lucide="user-cog" class="nav-icon"></i><span>Colaboradores</span>
+      <button class="nav-item" data-grupo="tareas" id="navMisTareasBtn" onclick="irGrupo('tareas')">
+        <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
       </button>
-      <button class="nav-item" id="navMisTareasBtn" onclick="showSection('mistareas')">
-        <i data-lucide="list-checks" class="nav-icon"></i><span>Mis tareas</span>
+      <button class="nav-item" data-grupo="contenidos" onclick="irGrupo('contenidos')">
+        <i data-lucide="clapperboard" class="nav-icon"></i><span id="navContenidosLabel">Contenidos</span>
       </button>
-      <button class="nav-item" id="navInternasBtn" onclick="showSection('internas')">
-        <i data-lucide="building-2" class="nav-icon"></i><span id="navGestionInternaLabel">Gestión COSMART</span>
+      <button class="nav-item" data-grupo="pauta" onclick="irGrupo('pauta')">
+        <i data-lucide="megaphone" class="nav-icon"></i><span>Pauta publicitaria</span>
       </button>
-      <button class="nav-item" onclick="showSection('contenidospropios');abrirContenidosPropiosAdmin();">
-        <i data-lucide="clapperboard" class="nav-icon"></i><span>Contenidos propios</span>
-      </button>
-      <button class="nav-item" onclick="showSection('instagram')">
+      <button class="nav-item" data-grupo="instagram" onclick="irGrupo('instagram')">
         <i data-lucide="message-circle" class="nav-icon"></i><span>Automatizaciones</span>
       </button>
-      <button class="nav-item" id="navLinksArchivosBtn" onclick="showSection('contenidospropios');abrirLinksArchivosAdmin();">
-        <i data-lucide="folder-open" class="nav-icon"></i><span>Links y Archivos</span>
+      <button class="nav-item" data-grupo="inventario" id="navInventarioBtn" onclick="irGrupo('inventario')">
+        <i data-lucide="package-search" class="nav-icon"></i><span>Inventario</span>
       </button>
-      <button class="nav-item" onclick="showSection('mapa')">
-        <i data-lucide="map" class="nav-icon"></i><span>Mapa de productos</span>
-      </button>
-      <button class="nav-item" id="navInventarioBtn" onclick="showSection('inventario')">
-        <i data-lucide="package-search" class="nav-icon"></i><span>Inventario COSMART</span>
-      </button>
-      <button class="nav-item" onclick="showSection('proyectos')">
-        <i data-lucide="rocket" class="nav-icon"></i><span>Proyectos</span>
-      </button>
-      <button class="nav-item" onclick="showSection('procesos')">
-        <i data-lucide="list-tree" class="nav-icon"></i><span>Procesos</span>
-      </button>
-      <button class="nav-item" onclick="showSection('ideas')">
+      <button class="nav-item" data-grupo="ideas" onclick="irGrupo('ideas')">
         <i data-lucide="lightbulb" class="nav-icon"></i><span>Ideas</span>
       </button>
-      <button class="nav-item" id="navCrmBtn" onclick="showSection('crm')">
+      <button class="nav-item" data-grupo="crm" id="navCrmBtn" onclick="irGrupo('crm')">
         <i data-lucide="target" class="nav-icon"></i><span>CRM Leads</span>
       </button>
-      <button class="nav-item" onclick="showSection('actividad')">
-        <i data-lucide="activity" class="nav-icon"></i><span>Actividad</span>
-      </button>
-      <button class="nav-item" onclick="showSection('informes')">
-        <i data-lucide="mail-check" class="nav-icon"></i><span>Informes clientes</span>
+      <button class="nav-item" data-grupo="metricas" onclick="irGrupo('metricas')">
+        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
         <span class="badge" id="informesBadge" style="display:none;"></span>
       </button>
-      <button class="nav-item" onclick="showSection('email-stats')">
-        <i data-lucide="bar-chart-3" class="nav-icon"></i><span>Métricas</span>
+      <button class="nav-item" data-grupo="recursos" onclick="irGrupo('recursos')">
+        <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos útiles</span>
       </button>
-      <button class="nav-item" onclick="showSection('recursos')">
-        <i data-lucide="folder-open" class="nav-icon"></i><span>Recursos</span>
-      </button>
-      <button class="nav-item" onclick="showSection('instrucciones')">
+      <button class="nav-item" data-grupo="instrucciones" onclick="irGrupo('instrucciones')">
         <i data-lucide="map" class="nav-icon"></i><span>Instrucciones</span>
       </button>
-      <button class="nav-item" onclick="showSection('config')">
+      <button class="nav-item" data-grupo="config" onclick="irGrupo('config')">
         <i data-lucide="settings" class="nav-icon"></i><span>Configuración</span>
       </button>
     </nav>
@@ -156,6 +135,9 @@
     </div>
 
     <div class="content">
+
+      <!-- Pestañas del grupo de menú activo (Clientes, Tareas, Contenidos, Métricas, Recursos útiles…) -->
+      <div id="grupoTabs" class="tabs grupo-tabs hidden"></div>
 
       <!-- Clientes -->
       <div id="sec-clientes">
@@ -267,7 +249,7 @@
       <!-- Tareas internas COSMART (no atadas a ningún cliente) -->
       <div id="sec-internas" class="hidden">
         <div class="flex items-center gap-8" style="flex-wrap:nowrap;margin-bottom:14px;">
-          <h2 style="font-size:18px;font-weight:700;flex-shrink:0;" id="secGestionInternaLabel">Gestión COSMART</h2>
+          <h2 style="font-size:18px;font-weight:700;flex-shrink:0;" id="secGestionInternaLabel">Tareas COSMART</h2>
           <input type="text" id="internasBuscar" class="form-control form-control-sm" placeholder="🔎 Buscar tarea..." style="min-width:0;flex:1;" oninput="filtrarInternasPorBusqueda(this.value)">
           <div class="client-row-menu-wrap">
             <button class="btn btn-secondary btn-sm" onclick="toggleMenuAcciones(this, event)" title="Más opciones" style="padding:0 8px;height:30px;"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
@@ -790,6 +772,32 @@
         </div>
       </div>
 
+      <!-- Inventario propio (agencias y emprendedores): productos con stock/precio/costo. Se cargan uno a uno, con Excel o con IA. -->
+      <div id="sec-productos" class="hidden">
+        <div class="mb-20 flex items-center gap-8" style="flex-wrap:wrap;">
+          <h2 style="font-size:18px;font-weight:700;">Inventario</h2>
+          <span id="prod-resumen" class="text-muted text-sm"></span>
+          <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+            <a class="btn btn-secondary btn-sm" href="../plantillas/Plantilla_Inventario_Hub.xlsx" download="Plantilla_Inventario_Hub.xlsx">Plantilla Excel</a>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('prod-file').click()">Subir Excel</button>
+            <button class="btn btn-secondary btn-sm" onclick="abrirProductosIA()">Cargar con IA</button>
+            <button class="btn btn-primary btn-sm" onclick="openProductoModal(null)">+ Agregar producto</button>
+          </div>
+          <input type="file" id="prod-file" accept=".xlsx,.xls,.csv" class="hidden">
+        </div>
+        <input type="search" id="prod-buscar" class="form-control" placeholder="Buscar por nombre, SKU, categoría o proveedor…" style="max-width:420px;margin-bottom:12px;" oninput="renderProductos()">
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <table class="data-table" style="min-width:640px;">
+            <thead><tr><th>Producto</th><th>SKU</th><th>Categoría</th><th style="text-align:right;">Stock</th><th style="text-align:right;">Precio</th><th style="text-align:right;">Costo</th><th>Proveedor</th><th></th></tr></thead>
+            <tbody id="prod-tbody"></tbody>
+          </table>
+        </div>
+        <div id="prod-vacio" class="empty-state hidden">
+          <h3>Todavía no cargaste productos</h3>
+          <p>Agregalos uno a uno, subí tu planilla de Excel (descargá la plantilla) o pegá tu lista y la IA la ordena por vos.</p>
+        </div>
+      </div>
+
       <!-- Recursos -->
       <div id="sec-recursos" class="hidden">
         <div class="mb-20 flex items-center gap-8">
@@ -814,6 +822,15 @@
             <div style="flex:1;min-width:0;">
               <div class="link-card-title">Plantilla Excel de Tareas</div>
               <div class="link-card-desc">Modelo vacío para importar tareas en "Mis tareas"</div>
+            </div>
+          </a>
+          <a href="../plantillas/Plantilla_Inventario_Hub.xlsx" download="Plantilla_Inventario_Hub.xlsx" class="link-card" style="text-decoration:none;">
+            <div class="link-card-icon">
+              <i data-lucide="file-spreadsheet" style="width:14px;height:14px;color:var(--primary);stroke-width:1.75;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="link-card-title">Plantilla Excel de Inventario</div>
+              <div class="link-card-desc">Modelo vacío para cargar tus productos con stock, precio y costo</div>
             </div>
           </a>
         </div>
@@ -2279,6 +2296,55 @@
   </div>
 </div>
 
+<!-- Modal: producto del inventario -->
+<div id="productoModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 id="prod-modal-title">Nuevo producto</h3>
+      <button class="modal-close" onclick="document.getElementById('productoModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Producto <span class="req-star">*</span></label><input type="text" id="pd-nombre" class="form-control" placeholder="Ej: Vela de soja 200 g"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group"><label>SKU / código</label><input type="text" id="pd-sku" class="form-control"></div>
+        <div class="form-group"><label>Categoría</label><input type="text" id="pd-categoria" class="form-control"></div>
+        <div class="form-group"><label>Stock</label><input type="number" id="pd-stock" class="form-control" min="0" step="any"></div>
+        <div class="form-group"><label>Stock mínimo (alerta)</label><input type="number" id="pd-minimo" class="form-control" min="0" step="any"></div>
+        <div class="form-group"><label>Precio de venta</label><input type="number" id="pd-precio" class="form-control" min="0" step="any"></div>
+        <div class="form-group"><label>Costo</label><input type="number" id="pd-costo" class="form-control" min="0" step="any"></div>
+      </div>
+      <div class="form-group"><label>Proveedor</label><input type="text" id="pd-proveedor" class="form-control"></div>
+      <div class="form-group"><label>Notas</label><textarea id="pd-notas" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger hidden" id="pd-eliminar-btn" onclick="eliminarProducto()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('productoModal').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: cargar productos con IA -->
+<div id="productosIAModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>Cargar productos con IA</h3>
+      <button class="modal-close" onclick="document.getElementById('productosIAModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Pegá tu lista tal como la tengas (de WhatsApp, notas, un Excel, un PDF copiado…) y la IA arma los productos. Antes de guardar los revisás.</p>
+      <textarea id="pia-texto" class="form-control" rows="7" placeholder="Ej: Vela de soja 200g - 15 unidades - $4500 (costo $2200) / Difusor mini - 8 u. - $6900…"></textarea>
+      <div id="pia-estado" style="font-size:12px;margin-top:8px;color:var(--text-muted);"></div>
+      <div id="pia-preview" style="margin-top:10px;max-height:220px;overflow:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('productosIAModal').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-secondary" id="pia-procesar" onclick="procesarProductosIA()">Procesar con IA</button>
+      <button class="btn btn-primary hidden" id="pia-agregar" onclick="agregarProductosIA()">Agregar a mi inventario</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: agregar/editar recurso -->
 <div id="recursoModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:460px;">
@@ -2609,7 +2675,7 @@
 <script type="module">
   import { requireAuth, logoutUser, getSessionToken, changePassword } from '../js/auth.js';
   import { montarConectorClaude } from '../js/claude-conector.js?v=1';
-  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas } from '../js/data.js?v=36';
+  import { getAllClients, reorderClients, createClient, createColaborador, getClientData, saveClientData, getTareas, saveTarea, saveTareasList, deleteTarea, getContenidos, saveContenido, deleteContenido, getCampanas, getColaboradores, getEquipo, updateColaborador, deleteColaborador, getInformes, aprobarInforme, desaprobarInforme, eliminarInforme, generarInformesManual, enviarResumenEquipoManual, previewResumenEquipo, getEmailStats, getProcesos, saveProcesos, getAgencias, updateAgencia, getPrecioMP, setPrecioMP, getIdeas, saveIdea, deleteIdea, migrarIdeasContenidoPropias, getClaudeConfig, setClaudeApiKey, preguntarClaude, getIntegracionesChatGPT, crearIntegracionChatGPT, revocarIntegracionChatGPT, getCuentasPubAgencia, setCuentasPubAgencia, getWebhookConfig, setWebhookConfig, getLeads, saveLead, deleteLead, getRecursos, saveRecursos, getVerticalesAgencia, setVerticalesAgencia, getNotificaciones, actualizarNotificacion, marcarTodasNotifsLeidasApi, suscribirPush, desuscribirPush, probarPush, getChatMensajes, enviarMensajeChat, getChatNoLeidos, getEmkConfig, setEmkConfig, getAgenteEstado, agenteClaude, getVentasPanel, getNewsletterMetricas, getVentasPanelMeses, getVentasPanelConfig, setVentasPanelConfig, getAdsConexiones, conectarMetaAds, quitarConexionAds, getVisitas, getListaTipo, saveListaTipo } from '../js/data.js?v=37';
   import { DEMO_MODE, WORKER_URL } from '../js/firebase.js';
   import { ESTADOS_CONT, ESTADOS_EN_CURSO, tipoDe, estadosPara, normEstado, opcionesEstado, estadoColor } from '../js/estados.js?v=1';
 
@@ -2649,9 +2715,6 @@
   }
   if (user.role !== 'admin') {
     document.getElementById('btnNuevoCliente').style.display = 'none';
-    document.querySelector('button[onclick="showSection(\'informes\')"]').style.display = 'none';
-    document.querySelector('button[onclick="showSection(\'email-stats\')"]').style.display = 'none';
-    document.querySelector('button[onclick="showSection(\'colaboradores\')"]').style.display = 'none';
   }
 
   // Marca de la agencia: COSMART mantiene su logo/nombre de siempre.
@@ -2664,9 +2727,7 @@
     // "Gestión COSMART" es el nombre de la sección de tareas internas
     // (sin cliente) -- tiene sentido solo para la agencia COSMART. Para
     // cualquier otra agencia se llama simplemente "Gestión interna".
-    document.getElementById('navInventarioBtn')?.remove();
-    document.getElementById('navGestionInternaLabel').textContent = 'Gestión interna';
-    document.getElementById('secGestionInternaLabel').textContent = 'Gestión interna';
+    document.getElementById('secGestionInternaLabel').textContent = 'Tareas internas';
     const logoImg = document.getElementById('sidebarLogoImg');
     if (user.agenciaLogoUrl) {
       logoImg.src = user.agenciaLogoUrl;
@@ -2833,16 +2894,6 @@
   // que ir a la PWA de ventas aparte. Mismo gate que la card de EMK
   // (solo admin de COSMART, es la única agencia con estos verticales).
   if (esCosmart && user.role === 'admin') {
-    const btnVentasPanel = document.createElement('button');
-    btnVentasPanel.className = 'nav-item';
-    btnVentasPanel.innerHTML = '<i data-lucide="trending-up" class="nav-icon"></i><span>Panel de ventas</span>';
-    btnVentasPanel.onclick = () => showSection('ventas-panel');
-    document.querySelector('.nav-section').appendChild(btnVentasPanel);
-    const btnVisitas = document.createElement('button');
-    btnVisitas.className = 'nav-item';
-    btnVisitas.innerHTML = '<i data-lucide="bar-chart-3" class="nav-icon"></i><span>Visitas</span>';
-    btnVisitas.onclick = () => showSection('visitas');
-    document.querySelector('.nav-section').appendChild(btnVisitas);
     const btnNewsletter = document.createElement('button');
     btnNewsletter.className = 'nav-item';
     btnNewsletter.innerHTML = '<i data-lucide="mail" class="nav-icon"></i><span>Newsletter</span>';
@@ -2853,14 +2904,7 @@
   // "Agencias": solo lo ve Vaneh (la super-administradora, dueña del
   // sistema) -- gestiona altas/bajas de las agencias que usan el Hub.
   // Pedido explícito: ningún otro admin de COSMART debe verla, solo ella.
-  const esVaneh = (user.email || '').toLowerCase() === 'vaneh@cosmart.com.ar';
-  if (esCosmart && esVaneh) {
-    const btnAgencias = document.createElement('button');
-    btnAgencias.className = 'nav-item';
-    btnAgencias.innerHTML = '<i data-lucide="building" class="nav-icon"></i><span>Agencias</span>';
-    btnAgencias.onclick = () => showSection('agencias');
-    document.querySelector('.nav-section').appendChild(btnAgencias);
-  }
+  // (28/11) El módulo "Agencias" salió del menú por pedido de Vaneh. El código y los datos siguen en el sistema, sin tocar.
 
   document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
@@ -2890,7 +2934,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=48');
+      const res = await fetch('../app/index.html?hv=49');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -2906,7 +2950,7 @@
       });
       window.__HUB_HOSTED__ = true;
       const listo = new Promise(r => { window.addEventListener('hub-cp-ready', r, { once: true }); setTimeout(r, 10000); });
-      await import('../js/app.js?v=101');
+      await import('../js/app.js?v=102');
       await listo;
       mostrarContenidosPropiosListo();
     })().catch(err => {
@@ -2955,11 +2999,10 @@
   window.__hubListo = true; // el módulo del admin se evaluó hasta acá: arrancó (ver js/heal.js)
   window.showSection = function(sec) {
     try { localStorage.setItem('mh_admin_sec', sec); } catch (e) {}
-    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','instagram'].forEach(s => {
+    ['clientes','mistareas','colaboradores','internas','procesos','informes','email-stats','actividad','config','agencias','recursos','instrucciones','ideas','proyectos','crm','contenidospropios','ventas-panel','visitas','newsletter','mapa','inventario','productos','instagram'].forEach(s => {
       document.getElementById(`sec-${s}`)?.classList.toggle('hidden', s !== sec);
     });
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    if (sec === 'productos') window.cargarProductos?.();
     if (sec === 'mapa') cargarMapaAdmin();
     if (sec === 'inventario') cargarInventarioAdmin();
     if (sec === 'mistareas') loadMisTareas();
@@ -2982,6 +3025,228 @@
     actualizarBotonTopbar(sec);
   };
 
+
+
+  // ══ Inventario propio (agencias y emprendedores) ═════════════════════════
+  let _productos = [], _prodEditId = null, _prodIA = [];
+  const _pEsc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const _pNum = v => { if (v === '' || v == null) return 0; const n = Number(String(v).replace(/[^\d,.\-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
+  const _pMoney = n => n ? '$' + Number(n).toLocaleString('es-AR') : '—';
+  window.cargarProductos = async function() {
+    try { _productos = await getListaTipo('_cosmart', 'productos'); } catch (e) { _productos = _productos || []; }
+    renderProductos();
+  };
+  window.renderProductos = function() {
+    const q = (document.getElementById('prod-buscar')?.value || '').toLowerCase().trim();
+    const lista = _productos.filter(p => !q || [p.nombre, p.sku, p.categoria, p.proveedor].join(' ').toLowerCase().includes(q));
+    const tb = document.getElementById('prod-tbody'); if (!tb) return;
+    document.getElementById('prod-vacio').classList.toggle('hidden', _productos.length > 0);
+    const valor = _productos.reduce((a, p) => a + _pNum(p.stock) * _pNum(p.costo), 0);
+    const bajos = _productos.filter(p => _pNum(p.minimo) > 0 && _pNum(p.stock) <= _pNum(p.minimo)).length;
+    document.getElementById('prod-resumen').textContent = _productos.length ? `${_productos.length} producto${_productos.length !== 1 ? 's' : ''} · stock valorizado a costo ${_pMoney(Math.round(valor))}${bajos ? ` · ${bajos} con stock bajo` : ''}` : '';
+    tb.innerHTML = lista.map(p => {
+      const bajo = _pNum(p.minimo) > 0 && _pNum(p.stock) <= _pNum(p.minimo);
+      return `<tr onclick="openProductoModal('${p.id}')" style="cursor:pointer;">
+        <td style="font-weight:600;">${_pEsc(p.nombre)}</td><td>${_pEsc(p.sku)}</td><td>${_pEsc(p.categoria)}</td>
+        <td style="text-align:right;font-weight:700;${bajo ? 'color:#ef4444;' : ''}">${_pEsc(p.stock ?? 0)}${bajo ? ' ⚠' : ''}</td>
+        <td style="text-align:right;">${_pMoney(_pNum(p.precio))}</td><td style="text-align:right;">${_pMoney(_pNum(p.costo))}</td>
+        <td>${_pEsc(p.proveedor)}</td><td style="width:34px;"><i data-lucide="pencil" style="width:13px;height:13px;"></i></td></tr>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  };
+  const _pGuardar = async () => { await saveListaTipo('_cosmart', 'productos', _productos); };
+  window.openProductoModal = function(id) {
+    _prodEditId = id || null;
+    const p = _productos.find(x => x.id === id) || {};
+    document.getElementById('prod-modal-title').textContent = id ? 'Editar producto' : 'Nuevo producto';
+    [['nombre','nombre'],['sku','sku'],['categoria','categoria'],['stock','stock'],['minimo','minimo'],['precio','precio'],['costo','costo'],['proveedor','proveedor'],['notas','notas']].forEach(([f, k]) => { document.getElementById('pd-' + f).value = p[k] ?? ''; });
+    document.getElementById('pd-eliminar-btn').classList.toggle('hidden', !id);
+    document.getElementById('productoModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('pd-nombre').focus(), 50);
+  };
+  window.guardarProducto = async function() {
+    const g = f => document.getElementById('pd-' + f).value.trim();
+    if (!g('nombre')) { alert('Poné el nombre del producto.'); return; }
+    const obj = { id: _prodEditId || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)), nombre: g('nombre'), sku: g('sku'), categoria: g('categoria'), stock: _pNum(g('stock')), minimo: _pNum(g('minimo')), precio: _pNum(g('precio')), costo: _pNum(g('costo')), proveedor: g('proveedor'), notas: g('notas') };
+    const i = _productos.findIndex(x => x.id === obj.id);
+    if (i >= 0) _productos[i] = { ..._productos[i], ...obj }; else _productos.push(obj);
+    try { await _pGuardar(); document.getElementById('productoModal').classList.add('hidden'); renderProductos(); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'probá de nuevo.')); }
+  };
+  window.eliminarProducto = async function() {
+    if (!_prodEditId || !confirm('¿Eliminar este producto?')) return;
+    _productos = _productos.filter(x => x.id !== _prodEditId);
+    try { await _pGuardar(); document.getElementById('productoModal').classList.add('hidden'); renderProductos(); }
+    catch (e) { alert('No se pudo eliminar: ' + (e.message || 'probá de nuevo.')); }
+  };
+  // Mezcla una lista nueva con el inventario: si coincide el SKU (o el nombre) se actualiza, si no se agrega. Nunca borra nada.
+  function _pMezclar(nuevos) {
+    let agregados = 0, actualizados = 0;
+    nuevos.forEach(n => {
+      if (!n.nombre) return;
+      const i = _productos.findIndex(x => (n.sku && x.sku && x.sku.toLowerCase() === n.sku.toLowerCase()) || x.nombre.toLowerCase() === n.nombre.toLowerCase());
+      if (i >= 0) { _productos[i] = { ..._productos[i], ...Object.fromEntries(Object.entries(n).filter(([, v]) => v !== '' && v != null)) }; actualizados++; }
+      else { _productos.push({ id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nombre: '', sku: '', categoria: '', stock: 0, minimo: 0, precio: 0, costo: 0, proveedor: '', notas: '', ...n }); agregados++; }
+    });
+    return { agregados, actualizados };
+  }
+  const _pHdr = { producto: 'nombre', nombre: 'nombre', articulo: 'nombre', sku: 'sku', codigo: 'sku', categoria: 'categoria', rubro: 'categoria', stock: 'stock', cantidad: 'stock', existencias: 'stock', 'stock minimo': 'minimo', minimo: 'minimo', precio: 'precio', 'precio de venta': 'precio', 'precio venta': 'precio', pvp: 'precio', costo: 'costo', 'precio de costo': 'costo', 'precio costo': 'costo', proveedor: 'proveedor', notas: 'notas', observaciones: 'notas' };
+  const _pNormH = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  document.getElementById('prod-file')?.addEventListener('change', async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      await loadXLSXLibAdmin();
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+      if (raw.length < 2) { alert('El archivo no tiene filas para importar.'); return; }
+      const cols = raw[0].map(h => _pHdr[_pNormH(h)] || null);
+      if (!cols.includes('nombre')) { alert('No encontré la columna "Producto". Descargá la plantilla y usala como modelo.'); return; }
+      const nuevos = [];
+      raw.slice(1).forEach(r => {
+        if (!r || r.every(v => v === '' || v == null)) return;
+        const o = {}; cols.forEach((c, i) => { if (c) o[c] = r[i]; });
+        const n = { nombre: String(o.nombre || '').trim(), sku: String(o.sku || '').trim(), categoria: String(o.categoria || '').trim(), proveedor: String(o.proveedor || '').trim(), notas: String(o.notas || '').trim() };
+        ['stock', 'minimo', 'precio', 'costo'].forEach(k => { if (o[k] !== undefined && o[k] !== '') n[k] = _pNum(o[k]); });
+        if (n.nombre) nuevos.push(n);
+      });
+      if (!nuevos.length) { alert('No encontré productos con nombre en el archivo.'); return; }
+      const r = _pMezclar(nuevos);
+      await _pGuardar(); renderProductos();
+      alert(`Listo: ${r.agregados} producto${r.agregados !== 1 ? 's' : ''} nuevo${r.agregados !== 1 ? 's' : ''} y ${r.actualizados} actualizado${r.actualizados !== 1 ? 's' : ''}.`);
+    } catch (err) { alert('No se pudo leer el Excel: ' + (err.message || err)); }
+  });
+  window.abrirProductosIA = function() {
+    _prodIA = [];
+    document.getElementById('pia-texto').value = ''; document.getElementById('pia-estado').textContent = '';
+    document.getElementById('pia-preview').innerHTML = ''; document.getElementById('pia-agregar').classList.add('hidden');
+    document.getElementById('productosIAModal').classList.remove('hidden');
+  };
+  window.procesarProductosIA = async function() {
+    const texto = document.getElementById('pia-texto').value.trim();
+    const est = document.getElementById('pia-estado'), btn = document.getElementById('pia-procesar');
+    if (!texto) { est.textContent = 'Pegá primero tu lista de productos.'; return; }
+    btn.disabled = true; est.textContent = 'Procesando con IA…';
+    try {
+      const msg = 'Convertí el siguiente texto en una lista de productos de un inventario. Respondé SOLO con un arreglo JSON (sin explicaciones ni formato extra) donde cada elemento tenga: nombre (texto), sku (texto o ""), categoria (texto o ""), stock (número), precio (número, precio de venta), costo (número) y proveedor (texto o ""). Si un dato no está, dejalo vacío o en 0. Texto:\n\n' + texto;
+      const { respuesta } = await preguntarClaude(msg, [], false);
+      const m = String(respuesta || '').match(/\[[\s\S]*\]/);
+      if (!m) throw new Error('La IA no devolvió una lista que pueda leer. Probá con un texto más ordenado.');
+      const arr = JSON.parse(m[0]);
+      _prodIA = arr.filter(x => x && x.nombre).map(x => ({ nombre: String(x.nombre).trim(), sku: String(x.sku || '').trim(), categoria: String(x.categoria || '').trim(), proveedor: String(x.proveedor || '').trim(), stock: _pNum(x.stock), precio: _pNum(x.precio), costo: _pNum(x.costo) }));
+      if (!_prodIA.length) throw new Error('No encontré productos en ese texto.');
+      est.textContent = `La IA encontró ${_prodIA.length} producto${_prodIA.length !== 1 ? 's' : ''}. Revisalos y confirmá.`;
+      document.getElementById('pia-preview').innerHTML = `<table class="data-table"><thead><tr><th>Producto</th><th>Stock</th><th>Precio</th><th>Costo</th></tr></thead><tbody>${_prodIA.map(p => `<tr><td>${_pEsc(p.nombre)}</td><td>${p.stock}</td><td>${_pMoney(p.precio)}</td><td>${_pMoney(p.costo)}</td></tr>`).join('')}</tbody></table>`;
+      document.getElementById('pia-agregar').classList.remove('hidden');
+    } catch (e) {
+      est.textContent = (e.message || 'No se pudo procesar.') + (/clave|api|config/i.test(e.message || '') && !/Configuraci/.test(e.message || '') ? ' Revisá en Configuración que la IA esté conectada.' : '');
+    }
+    btn.disabled = false;
+  };
+  window.agregarProductosIA = async function() {
+    if (!_prodIA.length) return;
+    const r = _pMezclar(_prodIA);
+    try { await _pGuardar(); document.getElementById('productosIAModal').classList.add('hidden'); renderProductos(); alert(`Listo: ${r.agregados} nuevo${r.agregados !== 1 ? 's' : ''} y ${r.actualizados} actualizado${r.actualizados !== 1 ? 's' : ''}.`); }
+    catch (e) { alert('No se pudo guardar: ' + (e.message || 'probá de nuevo.')); }
+  };
+
+  // ══ Menú simplificado (28/11, pedido de Vaneh) ══════════════════════════
+  // Cada ítem del menú es un GRUPO con pestañas. Las pestañas abren las mismas secciones de siempre (nada se mueve
+  // ni se reemplaza: solo cambia desde dónde se llega a cada una).
+  const esPerfilEmp = user.agenciaPerfil === 'emprendedor';
+  const esAdminRol = user.role === 'admin';
+  const GRUPOS = [
+    { id: 'clientes', tabs: [
+      { id: 'clientes', label: 'Clientes', sec: 'clientes' },
+      { id: 'colaboradores', label: 'Colaboradores', sec: 'colaboradores', si: esAdminRol },
+      { id: 'procesos', label: 'Procesos', sec: 'procesos' } ] },
+    { id: 'tareas', tabs: [
+      { id: 'mistareas', label: 'Mis tareas', sec: 'mistareas' },
+      { id: 'internas', label: esCosmart ? 'Tareas COSMART' : 'Tareas internas', sec: 'internas' },
+      { id: 'proyectos', label: 'Proyectos', sec: 'proyectos' } ] },
+    { id: 'contenidos', tabs: [
+      { id: 'contenidos', label: 'Contenidos', sec: 'contenidospropios', embed: 'contenidos' },
+      { id: 'guiones', label: 'Guiones', sec: 'contenidospropios', embed: 'guiones' },
+      { id: 'dashboard', label: 'Dashboard', sec: 'contenidospropios', embed: 'dashboard' } ] },
+    { id: 'pauta', tabs: [ { id: 'pauta', label: 'Pauta publicitaria', sec: 'contenidospropios', embed: 'pauta' } ] },
+    { id: 'instagram', tabs: [ { id: 'instagram', label: 'Automatizaciones', sec: 'instagram' } ] },
+    { id: 'inventario', tabs: [
+      { id: 'inventario', label: 'Inventario', sec: esCosmart ? 'inventario' : 'productos' },
+      { id: 'mapa', label: 'Mapa de productos', sec: 'mapa', si: esCosmart } ] },
+    { id: 'ideas', tabs: [ { id: 'ideas', label: 'Ideas', sec: 'ideas' } ] },
+    { id: 'crm', tabs: [ { id: 'crm', label: 'CRM Leads', sec: 'crm' } ] },
+    { id: 'metricas', tabs: [
+      { id: 'actividad', label: 'Actividad', sec: 'actividad' },
+      { id: 'informes', label: 'Informes clientes', sec: 'informes', si: esAdminRol },
+      { id: 'email-stats', label: 'Métricas de mails', sec: 'email-stats', si: esAdminRol },
+      { id: 'ventas-panel', label: 'Panel de ventas', sec: 'ventas-panel', si: esCosmart && esAdminRol },
+      { id: 'visitas', label: 'Visitas', sec: 'visitas', si: esCosmart && esAdminRol } ] },
+    { id: 'recursos', tabs: [
+      { id: 'links', label: 'Links', sec: 'contenidospropios', embed: 'links' },
+      { id: 'archivos', label: 'Archivos', sec: 'contenidospropios', embed: 'archivos' },
+      { id: 'recursos', label: 'Recursos', sec: 'recursos' } ] },
+    { id: 'instrucciones', tabs: [ { id: 'instrucciones', label: 'Instrucciones', sec: 'instrucciones' } ] },
+    { id: 'config', tabs: [ { id: 'config', label: 'Configuración', sec: 'config' } ] },
+  ];
+  GRUPOS.forEach(g => { g.tabs = g.tabs.filter(t => t.si !== false); });
+  const grupoDe = id => GRUPOS.find(g => g.id === id);
+  // Nombre del ítem "Contenidos" según el tipo de cuenta
+  { const l = document.getElementById('navContenidosLabel'); if (l) l.textContent = esCosmart ? 'Contenidos COSMART' : (esPerfilEmp ? 'Contenidos' : 'Contenidos Agencia'); }
+  document.querySelectorAll('.nav-item[data-grupo]').forEach(b => { if (!grupoDe(b.dataset.grupo)?.tabs.length) b.remove(); });
+
+  window.__embedActual = 'contenidos';
+  window.abrirEmbedAdmin = async function(embed) {
+    window.__embedActual = embed || 'contenidos';
+    try { localStorage.setItem('mh_admin_embed', window.__embedActual); } catch (e) {}
+    window.showSection('contenidospropios');
+    await window.cargarContenidosPropios();
+    window.__hubEmbedTab?.(window.__embedActual);
+    sincronizarMenu();
+  };
+  window.abrirTabGrupo = function(gid, tid) {
+    const t = grupoDe(gid)?.tabs.find(x => x.id === tid);
+    if (!t) return;
+    try { localStorage.setItem('mh_admin_tab_' + gid, tid); } catch (e) {}
+    if (t.embed) window.abrirEmbedAdmin(t.embed); else window.showSection(t.sec);
+  };
+  window.irGrupo = function(gid) {
+    const g = grupoDe(gid); if (!g || !g.tabs.length) return;
+    let tid = null; try { tid = localStorage.getItem('mh_admin_tab_' + gid); } catch (e) {}
+    const t = g.tabs.find(x => x.id === tid) || g.tabs[0];
+    window.abrirTabGrupo(gid, t.id);
+  };
+  // Pestaña/grupo que corresponde a la sección que está a la vista
+  function grupoYTabActual() {
+    const visible = [...document.querySelectorAll('.content > [id^="sec-"]')].find(el => !el.classList.contains('hidden'));
+    const sec = visible ? visible.id.slice(4) : 'clientes';
+    for (const g of GRUPOS) for (const t of g.tabs) {
+      if (t.sec !== sec) continue;
+      if (sec === 'contenidospropios') { if (t.embed === window.__embedActual) return { g, t }; continue; }
+      return { g, t };
+    }
+    return null;
+  }
+  function sincronizarMenu() {
+    const bar = document.getElementById('grupoTabs');
+    const cur = grupoYTabActual();
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', !!cur && b.dataset.grupo === cur.g.id));
+    if (!bar) return;
+    if (!cur || cur.g.tabs.length < 2) { if (!bar.classList.contains('hidden')) bar.classList.add('hidden'); if (bar.innerHTML) bar.innerHTML = ''; return; }
+    if (bar.classList.contains('hidden')) bar.classList.remove('hidden');
+    const html = cur.g.tabs.map(t => `<button type="button" class="tab-btn${t.id === cur.t.id ? ' active' : ''}" onclick="abrirTabGrupo('${cur.g.id}','${t.id}')">${t.label}</button>`).join('');
+    if (bar.innerHTML !== html) bar.innerHTML = html;
+  }
+  window.sincronizarMenu = sincronizarMenu;
+  { // se resincroniza solo cada vez que cambia qué sección está visible (sin importar quién la abrió)
+    const cont = document.querySelector('.content');
+    let pend = false;
+    new MutationObserver(recs => {
+      if (pend || !recs.some(r => r.target.id && r.target.id.startsWith('sec-'))) return;
+      pend = true; Promise.resolve().then(() => { pend = false; sincronizarMenu(); });
+    }).observe(cont, { attributes: true, attributeFilter: ['class'], subtree: true });
+    sincronizarMenu();
+  }
+
   // Sincronización en vivo (01/11): cuando offline.js avisa que otro dispositivo
   // cambió datos, se vuelve a cargar la sección visible -- salvo que haya un
   // modal abierto o se esté escribiendo (se reintenta en unos segundos).
@@ -2992,8 +3257,10 @@
       let sec = null; try { sec = localStorage.getItem('mh_admin_sec'); } catch (e) {}
       // Cuenta de emprendedor: la primera vez arranca en sus contenidos (no en "Clientes" de agencia).
       if (!sec && user.agenciaPerfil === 'emprendedor') sec = 'contenidospropios';
-      const btn = sec && sec !== 'clientes' ? document.querySelector(`.nav-item[onclick*="showSection('${sec}')"]`) : null;
-      if (btn) btn.click();
+      if (sec && sec !== 'clientes') {
+        let emb = null; try { emb = localStorage.getItem('mh_admin_embed'); } catch (e) {}
+        if (sec === 'contenidospropios') window.abrirEmbedAdmin(emb || 'contenidos'); else window.showSection(sec);
+      }
       quitarEscudo();
     };
     // Después de que termine de evaluarse el módulo (showSection usa variables que se definen más abajo); el escudo CSS evita ver Clientes mientras tanto.
@@ -8321,28 +8588,22 @@
   // recursos ni actividad".
   function construirTourAdmin() {
     const nombreInterno = esCosmart ? 'COSMART' : 'tu empresa';
+    const N = g => `.nav-item[data-grupo="${g}"]`;
     const steps = [
-      { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
+      { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: esPerfilEmp ? 'Este es el panel de tu emprendimiento. Ya te dejamos datos de ejemplo para que explores sin miedo a romper nada.' : 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
       { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail. Además, todos los lunes a las 9am te llega un resumen de todo lo que sigue pendiente.' },
-      { selector: '.nav-item[onclick*="showSection(\'clientes\')"]', titulo: 'Clientes', texto: 'Acá ves y creás todos tus clientes. Cada uno tiene su propio panel (tareas, contenidos, pauta digital, informes) -- para abrirlo, entrá al cliente y buscá "Abrir panel del cliente".' },
+      { selector: N('clientes'), titulo: 'Clientes', texto: 'Acá ves y creás tus clientes, y en las pestañas de arriba están Colaboradores (tu equipo) y Procesos (instructivos y checklists internos, solo para colaboradores y admin).' },
     ];
     if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'mistareas\')"]', titulo: 'Mis tareas', texto: `Tus propias tareas, de cualquier cliente o internas de ${nombreInterno}, todas juntas -- con Kanban, Lista y Calendario. El botón "+ Nueva tarea" está arriba a la derecha.` });
-    steps.push({ selector: '#navInternasBtn', titulo: 'Gestión interna', texto: `Tareas del equipo que no son de ningún cliente puntual (procesos internos de ${nombreInterno}, administrativas, etc.).` });
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'procesos\')"]', titulo: 'Procesos', texto: 'Documentación interna del equipo (instructivos, checklists) -- solo la ven colaboradores y admin, nunca el cliente.' });
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'ideas\')"]', titulo: 'Ideas', texto: 'Anotá lo que se te ocurra sin necesidad de un plan armado. Cuando esté madura, "Transformar en proyecto" la manda directo a tareas.' });
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'proyectos\')"]', titulo: 'Proyectos', texto: 'Todas las tareas marcadas "Es un proyecto", de cualquier cliente o interna, juntas en un solo lugar.' });
-    if (user.role === 'admin') {
-      steps.push({ selector: '.nav-item[onclick*="showSection(\'colaboradores\')"]', titulo: 'Colaboradores', texto: 'Sumá gente a tu equipo y asignales clientes.' });
-      steps.push({ selector: '#btnClientesMenu', titulo: 'Dar de alta un colaborador', texto: 'Tocá acá arriba (los 3 puntitos) y vas a encontrar "Nuevo colaborador" -- con contraseña temporal, se lo forzamos a cambiar en su primer login.' });
-    }
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'actividad\')"]', titulo: 'Actividad', texto: 'Reporte de tareas/contenidos/campañas completadas en un rango de fechas, por cliente y por colaborador -- sirve para medir productividad o adjuntar a una factura.' });
-    if (user.role === 'admin') {
-      steps.push({ selector: '.nav-item[onclick*="showSection(\'informes\')"]', titulo: 'Informes clientes', texto: 'Se generan solos el día 1 de cada mes. No se le mandan al cliente hasta que vos apruebes cada uno.' });
-      steps.push({ selector: '.nav-item[onclick*="showSection(\'email-stats\')"]', titulo: 'Métricas', texto: 'Estadísticas de los mails automáticos que manda el Hub.' });
-    }
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'recursos\')"]', titulo: 'Recursos', texto: 'Plantillas y archivos de referencia para todo el equipo.' });
-    steps.push({ selector: '.nav-item[onclick*="showSection(\'config\')"]', titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' });
+    steps.push({ selector: N('tareas'), titulo: 'Tareas', texto: `En una sola solapa: "Mis tareas" (las que te asignaron), las tareas internas de ${nombreInterno} y los Proyectos. Con Kanban, Lista y Calendario.` });
+    if (user.role === 'admin') steps.push({ selector: '#btnClientesMenu', titulo: 'Dar de alta un colaborador', texto: 'Tocá acá arriba (los 3 puntitos) y vas a encontrar "Nuevo colaborador" -- con contraseña temporal, se lo forzamos a cambiar en su primer login.' });
+    steps.push({ selector: N('contenidos'), titulo: 'Contenidos', texto: 'El calendario editorial: banco de contenidos, guiones y dashboard. Cada contenido sigue sus propios estados según sea video/reel o imagen/carrusel.' });
+    steps.push({ selector: N('pauta'), titulo: 'Pauta publicitaria', texto: 'Campañas, presupuesto y seguimiento de tu pauta paga.' });
+    steps.push({ selector: N('inventario'), titulo: 'Inventario', texto: esCosmart ? 'Inventario y mapa de productos, en solapas.' : 'Tus productos con stock, precio y costo. Los podés cargar uno a uno, con una planilla de Excel o con IA.' });
+    steps.push({ selector: N('ideas'), titulo: 'Ideas', texto: 'Anotá lo que se te ocurra sin necesidad de un plan armado. Cuando esté madura, "Transformar en proyecto" la manda directo a tareas.' });
+    steps.push({ selector: N('metricas'), titulo: 'Métricas', texto: 'Todo junto en solapas: actividad por persona, informes de clientes (se generan solos el día 1 de cada mes y no se envían hasta que los apruebes), estadísticas de mails' + (esCosmart && user.role === 'admin' ? ', panel de ventas y visitas.' : '.') });
+    steps.push({ selector: N('recursos'), titulo: 'Recursos útiles', texto: 'Tres solapas: Links, Archivos y Recursos (plantillas y archivos de referencia para todo el equipo).' });
+    steps.push({ selector: N('config'), titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' });
     return steps;
   }
   const TOUR_STORAGE_KEY = 'hub_tour_admin_v1';
@@ -8667,7 +8928,7 @@
   ];
 
   window.irACrmLeads = function() {
-    document.querySelector('.nav-item[onclick*="showSection(\'crm\')"]')?.click();
+    window.irGrupo('crm');
   };
   window.filtrarLeadsPorVertical = function(v) { _leadsVerticalFiltro = v; renderLeadsBoard(); };
   window.filtrarLeadsPorEtiqueta = function(v) { _leadsEtiquetaFiltro = v; renderLeadsBoard(); };

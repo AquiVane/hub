@@ -663,6 +663,17 @@ export async function saveIdea(clientId, idea, knownList, tipo = 'ideas') {
   return idea;
 }
 
+// Lista genérica por tipo (ej. 'productos' del Inventario): se lee y se guarda COMPLETA en un solo pedido.
+export async function getListaTipo(clientId, tipo) {
+  if (DEMO_MODE) return [];
+  const r = await api('GET', `/data/${clientId}/${tipo}`);
+  return Array.isArray(r) ? r : [];
+}
+export async function saveListaTipo(clientId, tipo, lista) {
+  if (DEMO_MODE) return { ok: true };
+  return api('POST', `/data/${clientId}/${tipo}`, lista);
+}
+
 export async function deleteIdea(clientId, id, knownList, tipo = 'ideas') {
   if (DEMO_MODE) {
     const data = getDemoData(clientId);
