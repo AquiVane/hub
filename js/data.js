@@ -981,6 +981,16 @@ export async function getVisitas(dias) {
   return api('GET', `/admin/visitas?dias=${encodeURIComponent(dias)}`);
 }
 
+// ── Transcriptor de reels (27/11) ──
+export async function transcribirReel(url) {
+  if (DEMO_MODE) return { ok: true, texto: 'Texto de ejemplo', idioma: 'en' };
+  return api('POST', '/admin/transcribir', { url });
+}
+export async function traducirTexto(texto, de) {
+  if (DEMO_MODE) return { ok: true, texto: 'Texto de ejemplo' };
+  return api('POST', '/admin/traducir', { texto, de });
+}
+
 export async function saveLead(lead) {
   if (DEMO_MODE) return { ok: true };
   return api('POST', '/admin/leads', lead);
