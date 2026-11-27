@@ -19,7 +19,7 @@ import {
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
   getNotificaciones, actualizarNotificacion,
   optimizarCargaCliente
-} from './data.js?v=36';
+} from './data.js?v=37';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -261,37 +261,21 @@ async function init() {
         document.getElementById('fab-btn').style.display = 'none';
         document.getElementById('mobile-bottom-nav').style.display = 'none';
       }
-      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard'], ['links', 'Links y Archivos']];
+      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard'], ['links', 'Links'], ['archivos', 'Archivos']];
       const tabBar = document.createElement('div');
       tabBar.id = 'embed-tabs';
       tabBar.className = 'tabs';
       tabBar.style.cssText = 'margin:16px 24px 0;flex-shrink:0;';
       tabBar.innerHTML = EMBED_TABS.map(([sec, label], i) => `<button type="button" class="tab-btn${i === 0 ? ' active' : ''}" data-embed-sec="${sec}">${label}</button>`).join('');
-      tabBar.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          renderSection(btn.dataset.embedSec);
-        });
-      });
+      const _activarEmbedTab = sec => {
+        tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.embedSec === sec));
+        renderSection(sec);
+      };
+      tabBar.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => _activarEmbedTab(btn.dataset.embedSec)));
+      // En el admin (HOSTED) la barra de pestañas la maneja el menú del admin (Contenidos / Pauta / Recursos útiles): esta queda oculta y se la maneja desde afuera.
+      if (HOSTED) { tabBar.style.display = 'none'; window.__hubEmbedTab = _activarEmbedTab; }
       const _mc = document.getElementById('main-content');
       _mc.parentNode.insertBefore(tabBar, _mc);
-      if (HOSTED) {
-        // Cuenta de emprendedor: el Dashboard vive en "Reportes y métricas" (admin/index.html), no entre las solapas
-        // de Contenidos propios. El admin maneja qué solapas se ven (hubCpTabs) y pide secciones sueltas (hubCpRenderSection).
-        window.hubCpTabs = (visibles) => {
-          const hay = Array.isArray(visibles) && visibles.length;
-          // setProperty(...,'important'): el CSS de .tabs/.tab-btn fuerza display con !important.
-          const mostrar = (el, ver) => ver ? el.style.removeProperty('display') : el.style.setProperty('display', 'none', 'important');
-          mostrar(tabBar, hay);
-          tabBar.querySelectorAll('.tab-btn').forEach(b => mostrar(b, !hay || visibles.includes(b.dataset.embedSec)));
-        };
-        window.hubCpRenderSection = (sec) => {
-          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.embedSec === sec));
-          renderSection(sec);
-        };
-        if (user.agenciaPerfil === 'emprendedor') window.hubCpTabs(['contenidos', 'guiones', 'pauta', 'links']);
-      }
     }
 
     // Logo upload
@@ -715,7 +699,7 @@ window.addEventListener('hub-datos-remotos', async e => {
   if (currentSection === 'tareas') refreshTareasView();
   else if (currentSection === 'contenidos' && document.getElementById('cont-tab-body')) renderContTab(activeContTab);
   else if (currentSection === 'crm' && STATE.leads) renderCrm(document.getElementById('crm-cuerpo') || document.getElementById('main-content'));
-  else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links'].includes(currentSection)) renderSection(currentSection);
+  else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links', 'archivos'].includes(currentSection)) renderSection(currentSection);
 });
 
 function applyClientLogo(src) {
@@ -999,9 +983,10 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones', crm: 'CRM' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: HOSTED ? 'Links' : 'Links y Archivos', archivos: 'Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones', crm: 'CRM' };
   const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', guiones: 'Repositorio de guiones para grabar, vinculados o no a un contenido', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
   subs.crm = 'Contactos interesados en tu negocio, por etapa';
+  subs.archivos = 'Archivos subidos'; if (subs.links == null) subs.links = 'Atajos a tus recursos';
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -1080,27 +1065,28 @@ function renderSection(sec) {
     renderPauta(content);
     setTimeout(refreshIcons, 50);
   }
-  else if (sec === 'links') {
+  else if (sec === 'links' || sec === 'archivos') {
+    const soloLinks = HOSTED && sec === 'links', soloArch = HOSTED && sec === 'archivos';
     const linkBtn = document.createElement('button');
     linkBtn.className = 'btn btn-secondary alm-w';
     linkBtn.textContent = '+ Nuevo link';
     linkBtn.onclick = () => openLinkModal(null);
-    actions.appendChild(linkBtn);
+    if (!soloArch) actions.appendChild(linkBtn);
     const archivoBtn = document.createElement('button');
     archivoBtn.className = 'btn btn-primary alm-w';
     archivoBtn.textContent = '+ Nuevo archivo';
     archivoBtn.onclick = () => openArchivoModal(null);
-    actions.appendChild(archivoBtn);
+    if (!soloLinks) actions.appendChild(archivoBtn);
     content.innerHTML = `
-      <div class="links-archivos-split">
-        <div class="links-archivos-col">
+      <div class="links-archivos-split"${(soloLinks || soloArch) ? ' style="grid-template-columns:1fr;"' : ''}>
+        ${soloArch ? '' : `<div class="links-archivos-col">
           <h3 class="links-archivos-col-title"><i data-lucide="link" style="width:15px;height:15px;"></i> Links</h3>
           <div id="links-col-body"></div>
-        </div>
-        <div class="links-archivos-col">
+        </div>`}
+        ${soloLinks ? '' : `<div class="links-archivos-col">
           <h3 class="links-archivos-col-title"><i data-lucide="folder-open" style="width:15px;height:15px;"></i> Archivos</h3>
           <div id="archivos-col-body"></div>
-        </div>
+        </div>`}
       </div>
       ${esPropioAgencia ? '' : `<button class="btn btn-primary contactos-fab" onclick="openEquipoModal()">
         <i data-lucide="contact" style="width:16px;height:16px;"></i> Contactos
@@ -6078,7 +6064,7 @@ document.getElementById('tarea-archivo-input')?.addEventListener('change', async
     await saveHomeData(clientId, STATE.home);
     _tareaArchivosPendientes.push(obj.id);
     renderTareaArchivosChips();
-    if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+    if (currentSection === 'links' || currentSection === 'archivos') renderArchivos(document.getElementById('archivos-col-body'));
   } catch (err) {
     alert('Error al subir el archivo: ' + err.message);
   }
@@ -6126,7 +6112,7 @@ document.getElementById('tarea-archivo-folder-input')?.addEventListener('change'
   _tareaArchivosPendientes.push(...nuevosIds);
   if (statusEl) statusEl.textContent = '';
   renderTareaArchivosChips();
-  if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+  if (currentSection === 'links' || currentSection === 'archivos') renderArchivos(document.getElementById('archivos-col-body'));
   if (saltados) alert(`Se subieron ${ok} archivo${ok !== 1 ? 's' : ''}. ${saltados} se saltearon (pesan más de 50 MB o falló la subida).`);
 });
 
@@ -6783,6 +6769,7 @@ window.setLinkCatFilter = function(cat) {
 };
 
 function renderLinks(container) {
+  if (!container) return;
   const links = STATE.links || [];
   const cats = ['Todas', ...new Set(links.map(l => l.categoria).filter(Boolean))];
   if (!window._linkCatFilter) window._linkCatFilter = 'Todas';
@@ -7015,7 +7002,7 @@ async function espacioConfirmado() {
   const m = document.getElementById('almc-msg');
   if (m) { m.style.color = '#16a34a'; m.textContent = '¡Listo! Ya tenés 5 GB más para tus archivos.'; }
   await cargarAlmacenamiento();
-  if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+  if (currentSection === 'links' || currentSection === 'archivos') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
   setTimeout(cerrarModalEspacio, 2200);
 }
 
@@ -7047,7 +7034,7 @@ window.cancelarEspacioExtra = async function() {
   try {
     _almacenamiento = await cancelarEspacioCliente();
     await cargarAlmacenamiento();
-    if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+    if (currentSection === 'links' || currentSection === 'archivos') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
   } catch (e) { alert('No se pudo cancelar: ' + e.message); }
 };
 
@@ -7094,6 +7081,7 @@ function archivoCardHtml(a) {
 }
 
 function renderArchivos(container) {
+  if (!container) return;
   const todos = STATE.home.archivos || [];
 
   if (_archivoBusqueda) {

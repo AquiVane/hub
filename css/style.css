@@ -1702,3 +1702,7 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 }
 .s-textos { background: rgba(6,182,212,.16); color: #06b6d4; }
 .s-editado { background: rgba(99,102,241,.18); color: #6366f1; }
+/* Pestañas de grupo del menú del admin: en celular se deslizan de costado, nunca se parten ni sobresalen de la pantalla */
+.grupo-tabs { display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:14px; scrollbar-width:thin; }
+.grupo-tabs .tab-btn { flex:0 0 auto; white-space:nowrap; }
+.grupo-tabs.hidden { display:none; }
