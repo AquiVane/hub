@@ -1077,5 +1077,13 @@ Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRU
 
 - 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
 
+---
+
+## 27/11/2026 — El sitio ya no publica los `.md` (pedido de Vaneh: "que nadie vea nada del código")
+- Cloudflare Pages sirve todo lo que está en el repo. Se agregó `_worker.js` + `_routes.json`: `*.md`, `/.claude/*` y `/.github/*` responden **404** (verificado en producción; antes `HANDOFF.md`, `CLAUDE.md` y `MEMORIA-TECNICA.md` eran públicos). El Worker solo corre para esas rutas; el resto del sitio y los `_headers` no cambian.
+- **No** guardar informes, claves ni notas en la raíz de este repo esperando que sean privados: lo que no sea `.md`/`.claude`/`.github` sigue siendo público (los `.html`/`.js` del front lo son por necesidad). Los informes internos van a `cosmart-workers/docs/`.
+- Pendiente (Vaneh, en el panel): borrar los deployments viejos de Pages del proyecto `hub` (previews anteriores servían `AUDITORIA.md`/`HANDOFF.md`).
+- Contraseña mínima 8 en el front ya está en producción junto con el backend.
+
 ## 28/11 — Gestión, Proveedores y Administración
 Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).
