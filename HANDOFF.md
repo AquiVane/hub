@@ -1040,7 +1040,7 @@ Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en
 
 - Contraseña mínima **8** cuando la persona la elige (`signup.html`, `reset.html`, cambio de clave en `js/app.js` y `admin/index.html`); la del backend ya exige lo mismo. Las contraseñas que un admin crea para clientes/colaboradores siguen en 6.
 - Nuevo CI `.github/workflows/validar.yml` (`node --check` de `js/*.js`, `sw.js` y del script module inline de `admin/index.html`).
-- Informe completo y pendientes en `AUDITORIA.md`. Falta: Términos y Condiciones / Privacidad general + aceptación en el alta (texto a aprobar por Vaneh).
+- Informe completo y pendientes en `docs/AUDITORIA.md` del repo privado `cosmart-workers` (NO se guarda acá: este repo se publica entero en la web y los `.md` de la raíz quedan públicos). Falta: Términos y Condiciones / Privacidad general + aceptación en el alta (texto a aprobar por Vaneh).
 
 ## 27/11 — Modo emprendedor v1
 - Signup acepta `perfil` (`emprendedor`|`agencia`, default agencia) y lo guarda en la agencia; el login devuelve `agenciaPerfil`; `auth.js` lo guarda. El emprendedor no recibe cliente demo y su admin arranca en "Contenidos propios".
