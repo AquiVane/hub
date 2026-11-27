@@ -3683,9 +3683,11 @@ function aplicarModoClase() {
   modal.querySelectorAll('.form-grid .form-group').forEach(g => {
     const mantiene = _CM_SOLO_REMIX.some(id => g.id === id || g.querySelector('#' + id));
     let oculto = esRemix && !mantiene;
-    if (g.id === 'remix-section') oculto = !esRemix || esPropioAgencia; // la lista de remix no existe en Contenidos propios
+    if (g.id === 'remix-section') oculto = !esRemix; // la lista de remix (agregar de a uno, con su fecha, link y estado) aparece cuando se elige Remix
     g.classList.toggle('cm-oculto', oculto);
   });
+  // En celular las opciones avanzadas están plegadas: con Remix se abren solas para que la lista de remix se vea.
+  if (esRemix) { const adv = document.getElementById('cont-advanced'); if (adv && !adv.classList.contains('open')) window.toggleContAdvanced?.(); }
 }
 document.getElementById('cf-clase')?.addEventListener('change', aplicarModoClase);
 
