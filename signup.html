@@ -322,6 +322,14 @@
     }).render('#paypal_container');
   }
 
+  const PERFIL = new URLSearchParams(location.search).get('perfil') === 'emprendedor' ? 'emprendedor' : 'agencia';
+  if (PERFIL === 'emprendedor') {
+    document.title = 'Creá tu Hub para emprendedores — COSMART';
+    document.querySelector('.signup-title').textContent = 'Creá tu Hub de emprendedor';
+    document.querySelector('.signup-subtitle').textContent = 'Un panel propio para organizar tu emprendimiento: tareas, contenidos, ideas y tu equipo — con COSMART detrás.';
+    document.querySelector('label[for="agenciaNombre"]').textContent = 'Nombre de tu emprendimiento/marca *';
+    document.getElementById('agenciaNombre').placeholder = 'Ej: Dulce Hogar';
+  }
   document.getElementById('signupForm').addEventListener('submit', async e => {
     e.preventDefault();
     const agenciaNombre = document.getElementById('agenciaNombre').value.trim();
@@ -338,7 +346,7 @@
       const res = await fetch(WORKER_URL + '/agencia/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenciaNombre, nombre, email, password }),
+        body: JSON.stringify({ agenciaNombre, nombre, email, password, perfil: PERFIL }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'No se pudo crear la cuenta.');

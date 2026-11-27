@@ -554,30 +554,72 @@ export async function setPacksAlmacenamiento(packs) {
   return api('POST', '/almacenamiento/packs', { packs });
 }
 
+// Visor de archivos DENTRO de la app (27/11, Vaneh: "no tengo botón de descarga"): antes el archivo se abría suelto en una
+// ventana nueva, sin ningún botón (y en la app instalada no había cómo volver ni descargarlo). Ahora se ve en la misma pantalla,
+// con Descargar y Cerrar. Sirve para imágenes, videos, audios y PDF; el resto se descarga.
+const _nombreArchivo = f => String(f || 'archivo').split('/').pop() || 'archivo';
+function _tipoVisor(mime, nombre) {
+  const m = String(mime || '').toLowerCase(), n = String(nombre || '').toLowerCase();
+  if (m.startsWith('image/') || /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/.test(n)) return 'imagen';
+  if (m.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/.test(n)) return 'video';
+  if (m.startsWith('audio/') || /\.(mp3|wav|m4a|ogg)$/.test(n)) return 'audio';
+  if (m === 'application/pdf' || /\.pdf$/.test(n)) return 'pdf';
+  return 'otro';
+}
+export function mostrarVisorArchivo({ url, nombre, mime, alCerrar } = {}) {
+  document.getElementById('hubVisorArchivo')?.remove();
+  const corto = _nombreArchivo(nombre);
+  const ov = document.createElement('div');
+  ov.id = 'hubVisorArchivo'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.93);display:flex;flex-direction:column;';
+  const btn = 'border:none;border-radius:8px;padding:0 14px;min-height:40px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;';
+  ov.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));background:rgba(0,0,0,.5);">'
+    + '<span id="hubVisorNombre" style="flex:1;min-width:0;color:#fff;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
+    + `<a id="hubVisorDescargar" style="${btn}background:#1A4DAA;color:#fff;" href="#">Descargar</a>`
+    + `<button type="button" id="hubVisorCerrar" style="${btn}background:#fff;color:#111;">Cerrar</button></div>`
+    + '<div id="hubVisorCuerpo" style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:10px;"></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#hubVisorNombre').textContent = corto;
+  const cuerpo = ov.querySelector('#hubVisorCuerpo');
+  const cerrar = () => { ov.remove(); document.removeEventListener('keydown', esc); if (alCerrar) alCerrar(); };
+  const esc = e => { if (e.key === 'Escape') cerrar(); };
+  document.addEventListener('keydown', esc);
+  ov.querySelector('#hubVisorCerrar').onclick = cerrar;
+  cuerpo.addEventListener('click', e => { if (e.target === cuerpo) cerrar(); });
+  const desc = ov.querySelector('#hubVisorDescargar');
+  const ponerContenido = (u, mm) => {
+    desc.href = u; desc.setAttribute('download', corto);
+    const t = _tipoVisor(mm, corto);
+    if (t === 'imagen') cuerpo.innerHTML = '<img alt="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;">';
+    else if (t === 'video') cuerpo.innerHTML = '<video controls playsinline style="max-width:100%;max-height:100%;border-radius:6px;background:#000;"></video>';
+    else if (t === 'audio') cuerpo.innerHTML = '<audio controls style="width:min(100%,480px);"></audio>';
+    else if (t === 'pdf') cuerpo.innerHTML = '<iframe title="PDF" style="width:100%;height:100%;border:0;background:#fff;border-radius:6px;"></iframe>';
+    else cuerpo.innerHTML = '<div style="color:#fff;text-align:center;font-size:14px;line-height:1.6;max-width:320px;">Este tipo de archivo no se puede ver acá.<br>Tocá <strong>Descargar</strong> para guardarlo.</div>';
+    const el = cuerpo.firstElementChild;
+    if (el && el.tagName !== 'DIV') el.src = u;
+  };
+  if (url) ponerContenido(url, mime);
+  else { cuerpo.innerHTML = '<div style="color:#fff;font-size:14px;">Cargando…</div>'; desc.style.opacity = '.4'; desc.style.pointerEvents = 'none'; }
+  return { cerrar, mostrar: (u, mm) => { desc.style.opacity = ''; desc.style.pointerEvents = ''; ponerContenido(u, mm); } };
+}
+
 export async function abrirArchivo(clientId, key, filename) {
-  // La pestaña se abre ACÁ, antes del await -- todavía dentro del mismo
-  // gesto de click del usuario. Si se abre recién después de esperar el
-  // fetch, el navegador ya no lo asocia a ningún click y el popup queda
-  // bloqueado en silencio (sin avisar nada) -- eso era el bug real de
-  // "no abre al tocar abrir".
-  const win = window.open('', '_blank');
-  const res = await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
-    headers: { 'Authorization': `Bearer ${getSessionToken()}` },
-  });
-  if (!res.ok) {
-    win?.close();
-    throw new Error('No se pudo descargar el archivo');
+  const visor = mostrarVisorArchivo({ nombre: filename });
+  let url;
+  try {
+    const res = await fetch(`${WORKER_URL}/archivo-file/${encodeURIComponent(clientId)}/${encodeURIComponent(key)}`, {
+      headers: { 'Authorization': `Bearer ${getSessionToken()}` },
+    });
+    if (!res.ok) throw new Error('No se pudo descargar el archivo');
+    const blob = await res.blob();
+    url = URL.createObjectURL(blob);
+    visor.mostrar(url, blob.type);
+    const ov = document.getElementById('hubVisorArchivo');
+    if (ov) new MutationObserver((_, ob) => { if (!document.getElementById('hubVisorArchivo')) { URL.revokeObjectURL(url); ob.disconnect(); } }).observe(document.body, { childList: true });
+  } catch (e) {
+    visor.cerrar();
+    throw e;
   }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  if (win && !win.closed) {
-    win.location.href = url;
-  } else {
-    const a = document.createElement('a');
-    a.href = url; a.download = filename || 'archivo';
-    a.click();
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // Para mostrar inline (miniatura o lightbox) un archivo subido a R2 --
