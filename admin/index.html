@@ -52,7 +52,7 @@
     <nav class="nav-section">
       <div class="nav-section-label">Menú</div>
       <button class="nav-item active" data-grupo="clientes" onclick="irGrupo('clientes')">
-        <i data-lucide="users" class="nav-icon"></i><span>Clientes</span>
+        <i data-lucide="users" class="nav-icon"></i><span>Clientes y colaboradores</span>
       </button>
       <button class="nav-item" data-grupo="tareas" id="navMisTareasBtn" onclick="irGrupo('tareas')">
         <i data-lucide="list-checks" class="nav-icon"></i><span>Tareas</span>
@@ -2958,7 +2958,7 @@
     if (_cpPromise) return _cpPromise;
     _cpPromise = (async () => {
       const host = document.getElementById('cp-app');
-      const res = await fetch('../app/index.html?hv=49');
+      const res = await fetch('../app/index.html?hv=50');
       if (!res.ok) throw new Error('No se pudo cargar el panel (' + res.status + ')');
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
       host.innerHTML = '<div class="cp-head"><div class="cp-head-txt"><div class="cp-title" id="topbar-title"></div><div class="cp-sub" id="topbar-sub"></div></div><div class="topbar-right cp-actions" id="topbar-actions"></div></div><div id="main-content"></div>';
@@ -3269,7 +3269,7 @@
   GRUPOS.forEach(g => { g.tabs = g.tabs.filter(t => t.si !== false); });
   const grupoDe = id => GRUPOS.find(g => g.id === id);
   // Nombre del ítem "Contenidos" según el tipo de cuenta
-  { const l = document.getElementById('navContenidosLabel'); if (l) l.textContent = esCosmart ? 'Contenidos COSMART' : (esPerfilEmp ? 'Contenidos' : 'Contenidos Agencia'); }
+  { const l = document.getElementById('navContenidosLabel'); if (l) l.textContent = 'Contenidos'; }
   document.querySelectorAll('.nav-item[data-grupo]').forEach(b => { if (!grupoDe(b.dataset.grupo)?.tabs.length) b.remove(); });
 
   window.__embedActual = 'contenidos';
@@ -8670,7 +8670,7 @@
     const steps = [
       { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: esPerfilEmp ? 'Este es el panel de tu emprendimiento. Ya te dejamos datos de ejemplo para que explores sin miedo a romper nada.' : 'Este es tu panel de administración. Te dejamos un "Cliente Demo" ya cargado con datos de ejemplo para que explores sin miedo a romper nada.' },
       { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones, y cuando un cliente mueve una tarea, comenta o edita un contenido -- sin tener que revisar el mail. Además, todos los lunes a las 9am te llega un resumen de todo lo que sigue pendiente.' },
-      { selector: N('clientes'), titulo: 'Clientes', texto: 'Acá ves y creás tus clientes, y en las pestañas de arriba están Colaboradores (tu equipo) y Procesos (instructivos y checklists internos, solo para colaboradores y admin).' },
+      { selector: N('clientes'), titulo: 'Clientes y colaboradores', texto: 'Acá ves y creás tus clientes, y en las pestañas de arriba están Colaboradores (tu equipo) y Procesos (instructivos y checklists internos, solo para colaboradores y admin).' },
     ];
     if (user.role === 'admin') steps.push({ selector: '#btnNuevoCliente', titulo: 'Dar de alta un cliente', texto: 'Tocá acá para cargar un cliente nuevo: nombre, redes, email de acceso y contraseña. Con eso ya tiene su propio panel.' });
     steps.push({ selector: N('tareas'), titulo: 'Tareas', texto: `En una sola solapa: "Mis tareas" (las que te asignaron), las tareas internas de ${nombreInterno} y los Proyectos. Con Kanban, Lista y Calendario.` });
