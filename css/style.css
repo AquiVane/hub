@@ -1428,7 +1428,8 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
 .cp-title { font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
 .cp-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 .cp-actions { flex-wrap: wrap; }
-.cp-host #embed-tabs { display: flex !important; margin: 0 0 12px !important; width: auto !important; box-sizing: border-box; }
+/* en el admin el menú maneja las pestañas (Contenidos / Pauta / Recursos útiles): la barra propia del módulo no se ve */
+.cp-host #embed-tabs { display: none !important; }
 .cp-host #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center; padding: 8px 4px; }
 
 /* ── Clientes en celular: UNA sola línea, fina y delicada (nombre · Ver panel · ⋮ · ▲▼) ──
@@ -1700,3 +1701,43 @@ body.embed #embed-tabs .tab-btn { flex: 1 1 0; min-width: 0; text-align: center;
   .cont-selectores { grid-template-columns: 1.45fr 1fr; }
   .cont-sel-grande { font-size: 11.5px; padding: 8px 22px 8px 6px; background-position: right 7px center; background-size: 10px; letter-spacing: -.1px; }
 }
+.s-textos { background: rgba(6,182,212,.16); color: #06b6d4; }
+.s-editado { background: rgba(99,102,241,.18); color: #6366f1; }
+/* Pestañas de grupo del menú del admin: en celular se deslizan de costado, nunca se parten ni sobresalen de la pantalla */
+.grupo-tabs { display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:14px; scrollbar-width:thin; }
+.grupo-tabs .tab-btn { flex:0 0 auto; white-space:nowrap; }
+.grupo-tabs.hidden { display:none; }
+/* "Planes de campaña" (Pauta Digital): botón azul bien visible */
+.tab-btn.tab-btn-planes { background:#1A4DAA; color:#fff; border-radius:8px; margin-left:8px; font-weight:700; }
+.tab-btn.tab-btn-planes.active { background:#0D2B6B; color:#fff; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+
+.cm-oculto { display:none !important; }
+
+/* Modal de contenido: filas horizontales, dimensión multiselección y campos largos contraíbles */
+.cm-row { grid-column: 1 / -1; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+.cm-row > .form-group { flex:1 1 150px; min-width:0; margin:0; }
+.cm-det > summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:4px 0; font-family:"Playfair Display",serif; color:#1A4DAA; font-size:13px; font-weight:700; letter-spacing:.01em; user-select:none; }
+.cm-det > summary::-webkit-details-marker { display:none; }
+.cm-det > summary::before { content:"▸"; font-size:12px; transition:transform .15s; }
+.cm-det[open] > summary::before { transform:rotate(90deg); }
+.cm-dot { font-family:inherit; font-size:11px; font-weight:600; color:var(--text-muted); }
+.cm-det > textarea { margin-top:6px; }
+.cm-multi { position:relative; }
+.cm-multi > summary.form-control { cursor:pointer; list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cm-multi > summary::-webkit-details-marker { display:none; }
+.cm-multi-panel { position:absolute; z-index:40; top:calc(100% + 4px); left:0; min-width:230px; background:var(--surface); border:1px solid var(--border-strong,var(--border)); border-radius:8px; padding:8px 10px; box-shadow:0 8px 24px rgba(0,0,0,.25); display:flex; flex-direction:column; gap:6px; }
+@media (max-width:640px) { .cm-row > .form-group { flex:1 1 100%; } }
+
+
+.cm-det-wrap { position:relative; }
+.cm-det-acciones { position:absolute; right:0; top:0; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; z-index:2; }
+.cm-det-acciones .btn { font-size:11px; }
+.cm-multi-panel.check-group { max-height:260px; overflow-y:auto; }
+.cm-row-titulo { align-items:flex-end; }
+@media (max-width:640px) { .cm-det-acciones { position:static; margin:0 0 4px; justify-content:flex-start; } }
+
+#cont-advanced { margin-top: 14px; }
+
+/* Remix en celular: "+ Agregar remix" arriba de la lista */
+@media (max-width:640px) { #remix-section { display:flex; flex-direction:column; } #remix-section > label { order:-3; } #remix-section > button { order:-2; margin:0 0 8px !important; } #remix-section > #remix-list { order:-1; } #remix-section > span { order:0; } }
+

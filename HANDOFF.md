@@ -4,7 +4,16 @@
 - **Pauta Digital de Ando (`ar`):** se cargó la ficha `ANDO | Grow | Dic26` (Meta Ads, estado **Borrador**, $135.000, 01/12-31/12) con `hub_item`. El plan HTML `planpauta-igdic26` ("Growth Instagram diciembre") ahora tiene links de descarga de las piezas feed 4:5 además de las historias. Vaneh la publicó en Meta (en revisión). Pasar la ficha a **Activa** el 01/12. Público cargado en Meta: zona norte + CABA (sin zona sur), sin tope de edad; el plan/ficha todavía dicen "zona sur" y "25-55" (pendiente de ajustar si Vaneh lo pide).
 - **Campaña de leads (pendiente):** destino `andoreciclaje.com/reciclado_para_empresas`. El sitio dispara `fbq('track','Lead')` al aparecer "Felicitaciones" pero NO se vio el código base del Pixel (verificar en Events Manager); datos de ejemplo `555-555-5555` en el encabezado, sin política de privacidad, typos "9O/5O.OOO/Reeciclaje". Esperando presupuesto/fechas/ángulos de Vaneh.
 - **Calendario de contenidos de diciembre** (21 piezas, todo orgánico, original, asignado a Barbie `medioambiente@andoreciclaje.com`) armado en Excel con la plantilla nueva (importar desde Contenidos → Excel). Los 3 reels virales cierran con el CTA «Seguinos en @andoreciclaje para aprender cómo tenés que reciclar en tu empresa.» (también en el copy, igual que el carrusel viral #12). Candidatas a pauta de leads: #01, #09, #13, #19. Pendiente: Vaneh decide qué se pone en pauta y qué se fija en el perfil.
-- **Archivo estático:** `campanas/ando-calendario-2026-12/Ando-Reciclaje-AI-Operating-System.md` (copia del `AI_OPERATING_SYSTEM.md` de `cosmart-workers/clientes/ando-reciclaje/`), enlazado en «Link material de referencia» de cada contenido. Público por URL (no listado): es una guía de marca sin datos sensibles; si hay que privatizarlo, moverlo a Links y Archivos.
+- **Archivo estático:** `campanas/ando-calendario-2026-12/Ando-Reciclaje-AI-Operating-System.txt` (copia del `AI_OPERATING_SYSTEM.md` de `cosmart-workers/clientes/ando-reciclaje/`), enlazado en «Link material de referencia» de cada contenido. Público por URL (no listado): es una guía de marca sin datos sensibles; si hay que privatizarlo, moverlo a Links y Archivos.
+
+## 27/11 (2) — Transcriptor de reels en el admin (pedido de Vaneh, estilo SocialBoost)
+- Nueva sección **Transcriptor** (solo admin de COSMART, menú lateral): pegás uno o varios links de Instagram (uno por línea) → **Transcribir** → texto; botones **Copiar transcripción**, **Traducir** (al español), **Volver a transcribir**, **Limpiar resultados**. `admin/index.html` (`sec-transcribir`), `transcribirReel`/`traducirTexto` en `js/data.js`.
+- Backend (`cosmart-workers/marketing-hub`): `POST /admin/transcribir` y `/admin/traducir`. **Requiere deploy manual con OK de Vaneh + configurar el proveedor que baja el reel** (Instagram no entrega el video a IPs de servidor; probado). Ver HANDOFF del worker.
+- No hecho: botón "Generar guion" que tiene SocialBoost (no se pidió). Sin SEO nuevo: es una sección interna del admin.
+
+## 27/11 — Visor de archivos con botón Descargar (data.js v36, app.js v100)
+- Vaneh: al abrir un archivo adjunto (ej. una pieza de Ando) se veía la imagen suelta en una ventana sin ningún botón. Ahora `abrirArchivo()` (data.js) abre el archivo en un **visor dentro de la misma pantalla** (`mostrarVisorArchivo`): imagen / video / audio / PDF, con **Descargar** (baja el archivo con su nombre, sin la carpeta) y **Cerrar** (también Esc o tocar afuera); tipos que no se pueden ver (Word, zip…) ofrecen solo Descargar. `ampliarImagen()` (miniaturas de contenidos/tareas) usa el mismo visor, así que también tiene Descargar. Ya no se abre ninguna ventana nueva (en la app instalada no había cómo volver).
+- Cubre todos los lugares que usan `abrirArchivo`/`ampliarImagen`: Links y Archivos, adjuntos de tareas, adjuntos de contenidos, Contenidos propios del admin. La app Calendario no tiene subida de archivos (no aplica).
 
 ## 24/11 (4) — Cartel de sincronización: "Guardado · sincronizando…" (offline.js v20)
 - Pedido de Vaneh: el cartel decía "Guardado en tu teléfono" aunque estuviera en la compu. Ahora dice solo **"Guardado · sincronizando…"**. `offline.js?v=20`, `data.js?v=35`.
@@ -1035,3 +1044,80 @@ Las respuestas de otras personas dentro de un hilo de comentarios ahora disparan
 ## 20/11/2026 — Automatizaciones: color por canal, etiqueta y palabra clave
 Tarjetas de `Automatizaciones`: Instagram en fucsia (`.ig-card-ig`), Facebook en azul de siempre (`.ig-card-fb`), con etiqueta pegada arriba (`.ig-canal`: Instagram / Facebook / Instagram + Facebook / Instagram · Historias) y la píldora "Palabra clave: …" a la izquierda del interruptor Activa/Pausada. `instagram.js?v=33`. Nota: "recuperar" no pasa de 7 días a propósito (Meta no permite mensaje privado después); un comentario de "1 sem" en Facebook ya tiene 7 días o más.
 - 20/11 (tarde): plantillas "Sistema IA · Instagram" (dos pasos, exige seguir, seguimiento a 60 min con botón a `/hace-que-la-ia-escriba-como-tu-marca`) y "Sistema IA · Facebook" (directo, sin seguir) en "Empezar desde una plantilla". El link de la guía gratuita queda VACÍO a propósito (Vaneh lo pega; el guardado lo exige). Nuevo: botón opcional en el mensaje de seguimiento (`seguimiento1BotonTexto/Url`). `instagram.js?v=34`. Texto aprobado por Vaneh el 20/11 ("dale").
+
+---
+
+## 24/11/2026 — Endurecimiento tras la auditoría (front)
+
+- Contraseña mínima **8** cuando la persona la elige (`signup.html`, `reset.html`, cambio de clave en `js/app.js` y `admin/index.html`); la del backend ya exige lo mismo. Las contraseñas que un admin crea para clientes/colaboradores siguen en 6.
+- Nuevo CI `.github/workflows/validar.yml` (`node --check` de `js/*.js`, `sw.js` y del script module inline de `admin/index.html`).
+- Informe completo y pendientes en `docs/AUDITORIA.md` del repo privado `cosmart-workers` (NO se guarda acá: este repo se publica entero en la web y los `.md` de la raíz quedan públicos). Falta: Términos y Condiciones / Privacidad general + aceptación en el alta (texto a aprobar por Vaneh).
+
+## 27/11 — Modo emprendedor v1
+- Signup acepta `perfil` (`emprendedor`|`agencia`, default agencia) y lo guarda en la agencia; el login devuelve `agenciaPerfil`; `auth.js` lo guarda. El emprendedor no recibe cliente demo y su admin arranca en "Contenidos propios".
+- `emprendedores.html` (landing, SEO + sitemap + llms.txt) y `signup.html?perfil=emprendedor`. Se replica el panel admin completo; falta decidir qué sobra, proveedores, idioma/moneda por país, soporte propio y arranque guiado (pendiente). Requiere deploy manual de `marketing-hub` (junto con papelera/copias).
+
+## 27/11 — Demo de emprendedor
+Botón "Probar la demo sin registrarme" en `emprendedores.html` (llama a `POST /agencia/demo`, guarda sesión y abre el admin); barra fija de demo en `admin/index.html` para mails `@demo.hub.local`.
+
+## 27/11 — Estados de contenido nuevos (pedido de Vaneh)
+Un solo módulo: `js/estados.js` (copia en `apps-cosmart/calendario/js/estados.js`). Dos recorridos:
+- **Reels y videos:** Sin empezar · Guión en revisión · Guión aprobado · Grabado · Editado · En revisión · Aprobado · Programado · Publicado.
+- **Flyers / imágenes / carruseles:** Sin empezar · Copy en revisión · Textos aprobados · En proceso · En revisión · Aprobado · Programado · Publicado.
+- El selector de estado del modal (y el de cada fila del banco / "Mis tareas") habilita/deshabilita opciones según plataforma, ubicación y formato (`tipoPieza`). Sin formato elegido: están los 12 habilitados. Al cambiar de tipo, el estado se traduce (Textos aprobados ⇄ Guión aprobado, etc.).
+- **Reel, Story y Carrusel:** Reel y Story son solo UBICACIÓN; Carrusel es solo FORMATO. Tildar Reel (o Shorts) tilda solo el formato Video. Datos viejos se acomodan al abrir/importar (`acomodarUbicFormato`).
+- **Estados viejos** (Idea, Sin grabar, Guión grabado, Revisión) se traducen en memoria al leer (`normContenidos`) y quedan grabados al guardar; el servidor no se migró. "En proceso" de un video viejo pasa a Grabado.
+- Kanban = 12 columnas (unión). Guiones: el vínculo "grabado" ahora es Sin empezar ⇄ Grabado (solo para piezas que no son imagen).
+- Excel (plantillas de Hub y Calendario) actualizadas; el import acepta los nombres viejos.
+- Pendiente: desplegar `marketing-hub` (seeds de demo + conteo del informe mensual con los estados nuevos). Los remix mantienen Idea / En proceso / Publicado.
+
+## 28/11 — Menú del admin simplificado (grupos con pestañas)
+Pedido de Vaneh. Nada se borró ni se reemplazó: cada ítem del menú es un GRUPO (`GRUPOS` en `admin/index.html`) cuyas pestañas abren las MISMAS secciones de siempre; `sincronizarMenu()` (MutationObserver sobre las `sec-*`) mantiene menú y pestañas alineados sin importar quién abrió la sección.
+- **Clientes** → Clientes · Colaboradores · Procesos. **Tareas** → Mis tareas · Tareas COSMART (agencias: "Tareas internas") · Proyectos.
+- **Contenidos COSMART** (agencias: "Contenidos Agencia"; emprendedor: "Contenidos") → Contenidos · Guiones · Dashboard. **Pauta publicitaria** abre la pestaña Pauta del mismo módulo. Automatizaciones, Ideas, CRM Leads, Instrucciones y Configuración siguen.
+- **Inventario** → COSMART: Inventario (iframe de siempre) · Mapa de productos. Resto de cuentas: inventario NATIVO (`sec-productos`, datos en `/data/_cosmart/productos`): uno a uno, Excel (`plantillas/Plantilla_Inventario_Hub.xlsx`, mezcla por SKU/nombre, nunca borra) y "Cargar con IA" (usa `/ai/preguntar`, requiere la API key propia de Claude en Configuración).
+- **Métricas** → Actividad · Informes clientes · Métricas de mails · Panel de ventas · Visitas (las dos últimas solo COSMART admin).
+- **Recursos útiles** → Links · Archivos · Recursos. En el módulo de contenidos embebido, la barra propia queda oculta (la maneja el menú: `window.__hubEmbedTab`) y existe la sección `archivos` (solo archivos) además de `links` (solo links) cuando va dentro del admin (HOSTED).
+- **Módulo Agencias** sacado del menú (pedido). Ojo: ahí vivía la config de precios de Mercado Pago (`guardarPrecioMP`); el código sigue pero sin acceso desde el menú — si hay que cambiar precios, moverlo a Configuración.
+- `data.js` v37 (nuevas `getListaTipo`/`saveListaTipo`), `app.js` v102.
+
+- 28/11 (corrección): la barra propia del módulo embebido (`#embed-tabs`) se ocultaba solo por JS y el CSS `.cp-host #embed-tabs{display:flex!important}` la mostraba (se veía Contenidos/Guiones/Pauta/Dashboard adentro de Pauta y Recursos útiles). Ahora el CSS la oculta. Inventario: pestañas "Inventario" (nativo, para TODAS las cuentas, con plantilla Excel / uno a uno / IA), "Inventario COSMART" (iframe de siempre) y "Mapa de productos" (solo COSMART).
+
+## 28/11 — Gestión, Proveedores y Administración
+Menú "Gestión" (antes "Clientes y colaboradores") con pestañas Clientes · Colaboradores · Proveedores · Administración · Procesos. **Proveedores** y **Administración** son paneles NUEVOS (mini-listas con alta/edición/baja, datos en `/data/_cosmart/proveedores` y `/administracion`; Administración suma ingresos/gastos/pendientes). Pauta Digital: "Planes de campaña" azul y "+ Nueva campaña" roja. Modal de contenido: el Guion va debajo de "Material de referencia" y el modal SIEMPRE abre arriba (también en Calendario).
+
+## 28/11 — Modal de contenido según Remix / Original
+Objetivo: solo Notoriedad · Interacción · Acción (los viejos se traducen al abrir). `aplicarModoClase()`: **Remix** → solo título, objetivo, copy, texto en pantalla, asignar a, notas, comentarios y la lista de remix (cuenta/plataforma/formato ya no son obligatorios); **Contenido original** → todo, sin lista de remix; **Contenidos propios** → no existe la parte de Remix. Aplicado también en Calendario.
+
+## 28/11 — Modal de contenido: filas, campos contraíbles, Transcribir
+Orden: Cuenta · Fecha · Duración (solo video) · Dimensión (desplegable multiselección) · Orgánico/Pauta/Ambos (select `cf-pauta`) en una línea; Plataformas · Ubicación · Formato · Estado; Objetivo · Eje · Tipo en una línea. Eje: Entretener/Informar/Inspirar; Tipo: Comunicacional/Interactivo/De venta/Viral (los viejos se traducen al abrir). Copy, texto en pantalla, guion, prompt y sugerencia son `<details>` contraídos por defecto. Botón "Transcribir" bajo el material de referencia (solo Hub): llama a `transcribirReel` (`/admin/transcribir`, solo admin) con el primer link y deja el texto en el Guion. En Calendario no existe esa función (otro backend).
+
+## 28/11 — Modal de contenido (ajustes)
+Estado junto al título; Plataformas/Ubicación/Formato/Dimensión son desplegables multiselección con resumen (`actualizarDimResumen`); "Abrir teleprompter"/"Abrir en Guiones" quedan a la derecha del título Guion, visibles sin desplegar. El desplegable ¿Remix u original? vuelve a estar SIEMPRE (también en Contenidos propios y es obligatorio); en Contenidos propios solo se oculta la LISTA de remix.
+
+- 28/11: Objetivo · Eje · Tipo ahora van justo debajo del Guion (antes de Cuenta/Fecha). Ojo: un script mío rompió `calendario/app.html` (se pisó un bloque) en el commit a5f7634 de apps-cosmart; se restauró desde abe9320 y se reaplicó bien.
+
+- 28/11 (corrección): la lista de Remix (agregar de a uno, con fecha, link y estado por remix) aparece siempre que se elige "Remix", también en Contenidos propios y abre sola las opciones avanzadas en celular.
+
+- 28/11: la lista de remix también se ve al abrir un contenido que YA tiene remix cargados (aunque no esté marcado como Remix).
+
+- 28/11: fila "Remix u original · Fecha de publicación · Asignar a" bajo el título; la lista de Remix va arriba de Objetivo/Eje/Tipo (tras el Guion).
+
+- 28/11: cada remix tiene su propio "Copy del remix" (desplegable, contraído por defecto; campo `copy` dentro de `remixes[]`) y en celular "+ Agregar remix" va arriba de la lista.
+
+- 28/11: "Transcriptor" también es pestaña del grupo Contenidos (solo admin COSMART); el ítem de menú y el botón dentro de Nuevo contenido siguen.
+
+- 28/11: "Métricas" sube debajo de Pauta publicitaria y "Newsletter" pasa a ser pestaña de Métricas (ya no tiene ítem propio en el menú).
+
+- 28/11: agencias y emprendedores ven el mismo menú SIN lo exclusivo de COSMART (Transcriptor —también el botón dentro de Nuevo contenido—, Newsletter, Panel de ventas, Visitas, Inventario COSMART, Mapa de productos).
+
+- 28/11: "Mis tareas" (Tareas) arranca en "Yo" también para admin y solo muestra lo ASIGNADO a esa persona (o creado por ella sin asignar): lo que creó y está asignado a otra persona/cliente ya no aparece (`matchVerDeMis`). "Todos"/"Equipo" siguen en el selector "Ver de". Tareas internas no cambió.
+
+## 28/11 — Plantilla/Excel de contenidos actualizada
+Misma lógica para contenido original y Remix. Columnas: Título · Remix o original · Fecha · Estado · Cuenta · Plataformas · Ubicación · Formato · Dimensiones · **Objetivo · Eje · Tipo** · Copy · Texto en pantalla · Prompt · Sugerencia · Guion · **Pauta (Orgánico/Pauta/Ambos)** · Links · Notas · Asignar a · **Remix 1/2/3 · Fecha/Link/Estado/Copy**. Listas desplegables en la plantilla. Un Remix solo exige Título (importer); remix del Excel solo pisan los existentes si la fila trae alguno. Valores viejos (Idea, Engagement, Institucional…) se traducen. Export con las mismas columnas. Hecho también en Calendario (sin "Asignar a").
+
+- 28/11: Tareas → pestañas "Únicas" (sin repetición) y "Recurrentes" (diaria/semanal/mensual/anual…) sobre la misma sección Mis tareas (`window.__misTareasModo`); las tareas con `recurrencia` ya no se mezclan con las únicas. Desde Recurrentes, "+ Nueva tarea" arranca con repetición mensual. Contenidos asignados van siempre en Únicas. No se tocó ningún dato.
+
+- 28/11: links directos a una sección del panel del cliente: `app/index.html?client=<id>&open=plan` (Plan de ejecución), `&open=reportes`, `&open=planes` (Pauta Digital → Planes de campaña). Si no hay sesión, `requireAuth` guarda el destino (`sessionStorage.mh_next`) y `login.html` vuelve ahí tras iniciar sesión (solo rutas /app/ o /admin/index.html). Martín Cañeque = cliente `mc`.
+
+- 28/11: "Link de lectura" del Plan de ejecución (botón en la sección Plan + `plan.html` pública con iframe sandbox). Usa `/plan-link/:clientId` y `/publico/plan/:token` de marketing-hub (requiere ese deploy). data.js v38, app.js v114.

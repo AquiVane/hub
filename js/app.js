@@ -1,5 +1,6 @@
 import { requireAuth, logoutUser, changePassword } from './auth.js';
 import { montarConectorClaude } from './claude-conector.js?v=1';
+import { acomodarUbicFormato, ESTADOS_CONT, ESTADOS_EN_CURSO, tipoPieza, tipoDe, estadosPara, normEstado, normContenidos, convertirEstado, estadoClase, estadoColor, opcionesEstado, aplicarEstadosSelect } from './estados.js?v=1';
 import './kanban-movil.js?v=1'; // Kanban en celular: barra de estados, botones y arrastre con el dedo
 import { montarPlay, montarPlayBoton, detenerPlay, armarNarracionReporte, armarNarracionDashboard } from './play.js?v=2';
 import {
@@ -13,12 +14,12 @@ import {
   getPlanesPauta, savePlanesPauta, getPlanPautaHtml, savePlanPautaHtml,
   getReportesIndice, saveReportesIndice, getReporteHtml, saveReporteHtml,
   getFeedBorrador, saveFeedBorrador,
-  uploadArchivo, abrirArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
+  uploadArchivo, abrirArchivo, mostrarVisorArchivo, getArchivoBlobUrl, getAllClients, getEquipo,
   borrarArchivoR2, getAlmacenamiento, setPacksAlmacenamiento,
   getAlmacenamientoCliente, pagarEspacioMP, planPaypalEspacio, confirmarPaypalEspacio, cancelarEspacioCliente,
-  getNotificaciones, actualizarNotificacion,
+  getNotificaciones, actualizarNotificacion, transcribirReel, getPlanLink, crearPlanLink, quitarPlanLink,
   optimizarCargaCliente
-} from './data.js?v=35';
+} from './data.js?v=39';
 
 // HOSTED: este mismo módulo corre DENTRO de admin/index.html (sección "Contenidos propios"), en la
 // misma página -- sin iframe (Vaneh, 22/10: "tiene que estar ahí como todo lo demás"). En ese modo
@@ -260,19 +261,19 @@ async function init() {
         document.getElementById('fab-btn').style.display = 'none';
         document.getElementById('mobile-bottom-nav').style.display = 'none';
       }
-      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard'], ['links', 'Links y Archivos']];
+      const EMBED_TABS = [['contenidos', 'Contenidos'], ['guiones', 'Guiones'], ['pauta', 'Pauta Digital'], ['dashboard', 'Dashboard'], ['links', 'Links'], ['archivos', 'Archivos']];
       const tabBar = document.createElement('div');
       tabBar.id = 'embed-tabs';
       tabBar.className = 'tabs';
       tabBar.style.cssText = 'margin:16px 24px 0;flex-shrink:0;';
       tabBar.innerHTML = EMBED_TABS.map(([sec, label], i) => `<button type="button" class="tab-btn${i === 0 ? ' active' : ''}" data-embed-sec="${sec}">${label}</button>`).join('');
-      tabBar.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          renderSection(btn.dataset.embedSec);
-        });
-      });
+      const _activarEmbedTab = sec => {
+        tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.embedSec === sec));
+        renderSection(sec);
+      };
+      tabBar.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => _activarEmbedTab(btn.dataset.embedSec)));
+      // En el admin (HOSTED) la barra de pestañas la maneja el menú del admin (Contenidos / Pauta / Recursos útiles): esta queda oculta y se la maneja desde afuera.
+      if (HOSTED) { tabBar.style.display = 'none'; window.__hubEmbedTab = _activarEmbedTab; }
       const _mc = document.getElementById('main-content');
       _mc.parentNode.insertBefore(tabBar, _mc);
     }
@@ -327,6 +328,11 @@ async function init() {
     } else if (openTipo === 'web' && openId && (STATE.home.webTareas || []).some(t => String(t.id) === String(openId))) {
       renderSection('web');
       openWebTaskModal(openId);
+    } else if ((openTipo === 'plan' || openTipo === 'reportes') && NAV_SCOPE.querySelector(`.nav-item[data-section="${openTipo}"]:not(.hidden)`)) {
+      renderSection(openTipo); // link directo a una sección (ej. el plan de marketing)
+    } else if (openTipo === 'planes' && NAV_SCOPE.querySelector('.nav-item[data-section="pauta"]:not(.hidden)')) {
+      activePautaTab = 'planes'; // link directo a Pauta Digital → Planes de campaña
+      renderSection('pauta');
     } else if (esPropioAgencia) {
       renderSection('contenidos');
     } else {
@@ -458,7 +464,7 @@ if (!HOSTED) window.cambiarEstadoNotif = async function(id, estado) {
   // Si el ítem cambiado es de la sección que se está viendo ahora mismo,
   // refresca para que el cambio se vea sin tener que navegar afuera y volver.
   if (n?.itemTipo === 'tarea' && currentSection === 'tareas') { STATE.tareas = await getTareas(clientId); renderSection('tareas'); }
-  else if (n?.itemTipo === 'contenido' && currentSection === 'contenidos') { STATE.contenidos = await getContenidos(clientId); renderSection('contenidos'); }
+  else if (n?.itemTipo === 'contenido' && currentSection === 'contenidos') { STATE.contenidos = normContenidos(await getContenidos(clientId)); renderSection('contenidos'); }
   cargarNotificaciones();
 };
 
@@ -594,7 +600,7 @@ async function loadAllData() {
   STATE._cargaFallida = !client && !home;
   STATE._cargaMotivo = primerFallo ? String(primerFallo.message || primerFallo).slice(0, 140) : '';
   STATE.client = client || { id: clientId, nombre: clientId };
-  STATE.contenidos = cont || [];
+  STATE.contenidos = normContenidos(cont || []);
   STATE.tareas = tareas || [];
   // Recurrentes que quedaron "Listo" de antes de que existiera el regenerado
   // inmediato (09/09, pedido de Vaneh: "tiene que tener el mismo
@@ -686,7 +692,7 @@ window.addEventListener('hub-datos-remotos', async e => {
   }
   const tipos = new Set(paths.map(p => p.split('/')[3]));
   try {
-    if (tipos.has('contenidos')) STATE.contenidos = await getContenidos(clientId);
+    if (tipos.has('contenidos')) STATE.contenidos = normContenidos(await getContenidos(clientId));
     if (tipos.has('tareas')) STATE.tareas = await getTareas(clientId);
     if (tipos.has('home')) STATE.home = await getHomeData(clientId);
     if (tipos.has('campanas')) STATE.campanas = await getCampanas(clientId);
@@ -698,7 +704,7 @@ window.addEventListener('hub-datos-remotos', async e => {
   if (currentSection === 'tareas') refreshTareasView();
   else if (currentSection === 'contenidos' && document.getElementById('cont-tab-body')) renderContTab(activeContTab);
   else if (currentSection === 'crm' && STATE.leads) renderCrm(document.getElementById('crm-cuerpo') || document.getElementById('main-content'));
-  else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links'].includes(currentSection)) renderSection(currentSection);
+  else if (['home', 'pauta', 'ideas', 'guiones', 'dashboard', 'links', 'archivos'].includes(currentSection)) renderSection(currentSection);
 });
 
 function applyClientLogo(src) {
@@ -982,9 +988,10 @@ function renderSection(sec) {
   // Sincronizar bottom nav y FAB en mobile
   if (typeof updateBottomNav === 'function') updateBottomNav(sec);
   if (typeof updateFab === 'function') updateFab(sec);
-  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: 'Links y Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones', crm: 'CRM' };
+  const titles = { home: 'Inicio', dashboard: 'Dashboard Editorial', contenidos: 'Contenidos', guiones: 'Guiones', tareas: 'Tareas', pauta: 'Pauta Digital', links: HOSTED ? 'Links' : 'Links y Archivos', archivos: 'Archivos', web: 'Sitio Web', plan: 'Plan de ejecución', reportes: 'Reportes', instrucciones: 'Instrucciones', crm: 'CRM' };
   const subs = { home: 'Resumen y prioridades del mes', dashboard: 'Calendario editorial y métricas de contenido', contenidos: 'Gestión de contenidos para redes sociales', guiones: 'Repositorio de guiones para grabar, vinculados o no a un contenido', tareas: 'Tareas internas del equipo', pauta: 'Campañas y métricas de pauta digital', links: 'Atajos rápidos y documentos clave del cliente', web: 'Gestión del sitio web: contenidos, arreglos y métricas', plan: 'Plan estratégico del cliente', reportes: 'Reportes mensuales de resultados', instrucciones: 'Guía de uso del Marketing Hub' };
   subs.crm = 'Contactos interesados en tu negocio, por etapa';
+  subs.archivos = 'Archivos subidos'; if (subs.links == null) subs.links = 'Atajos a tus recursos';
   document.getElementById('topbar-title').textContent = titles[sec];
   document.getElementById('topbar-sub').textContent = subs[sec];
 
@@ -1057,33 +1064,35 @@ function renderSection(sec) {
     actions.appendChild(importBtn);
     const btn = document.createElement('button');
     btn.className = 'btn btn-primary';
+    btn.style.cssText = 'background:#E02020;border-color:#E02020;color:#fff;';
     btn.textContent = '+ Nueva campaña';
     btn.onclick = () => openCampanaModal(null);
     actions.appendChild(btn);
     renderPauta(content);
     setTimeout(refreshIcons, 50);
   }
-  else if (sec === 'links') {
+  else if (sec === 'links' || sec === 'archivos') {
+    const soloLinks = HOSTED && sec === 'links', soloArch = HOSTED && sec === 'archivos';
     const linkBtn = document.createElement('button');
     linkBtn.className = 'btn btn-secondary alm-w';
     linkBtn.textContent = '+ Nuevo link';
     linkBtn.onclick = () => openLinkModal(null);
-    actions.appendChild(linkBtn);
+    if (!soloArch) actions.appendChild(linkBtn);
     const archivoBtn = document.createElement('button');
     archivoBtn.className = 'btn btn-primary alm-w';
     archivoBtn.textContent = '+ Nuevo archivo';
     archivoBtn.onclick = () => openArchivoModal(null);
-    actions.appendChild(archivoBtn);
+    if (!soloLinks) actions.appendChild(archivoBtn);
     content.innerHTML = `
-      <div class="links-archivos-split">
-        <div class="links-archivos-col">
+      <div class="links-archivos-split"${(soloLinks || soloArch) ? ' style="grid-template-columns:1fr;"' : ''}>
+        ${soloArch ? '' : `<div class="links-archivos-col">
           <h3 class="links-archivos-col-title"><i data-lucide="link" style="width:15px;height:15px;"></i> Links</h3>
           <div id="links-col-body"></div>
-        </div>
-        <div class="links-archivos-col">
+        </div>`}
+        ${soloLinks ? '' : `<div class="links-archivos-col">
           <h3 class="links-archivos-col-title"><i data-lucide="folder-open" style="width:15px;height:15px;"></i> Archivos</h3>
           <div id="archivos-col-body"></div>
-        </div>
+        </div>`}
       </div>
       ${esPropioAgencia ? '' : `<button class="btn btn-primary contactos-fab" onclick="openEquipoModal()">
         <i data-lucide="contact" style="width:16px;height:16px;"></i> Contactos
@@ -1119,6 +1128,14 @@ function renderSection(sec) {
       btn.textContent = STATE.plan?.html ? '↻ Actualizar plan' : '+ Cargar plan';
       btn.onclick = openPlanModal;
       actions.appendChild(btn);
+      if (STATE.plan?.html && !esPropioAgencia) {
+        const lk = document.createElement('button');
+        lk.className = 'btn btn-secondary';
+        lk.textContent = '🔗 Link de lectura';
+        lk.title = 'Un link para que el cliente vea el plan sin iniciar sesión (solo lectura)';
+        lk.onclick = () => abrirPlanLinkModal();
+        actions.appendChild(lk);
+      }
     }
     renderPlan(content);
   }
@@ -1141,6 +1158,41 @@ function renderSection(sec) {
     setTimeout(refreshIcons, 50);
   }
 }
+
+// ── Link de lectura al Plan (sin login) ──
+window.abrirPlanLinkModal = async function() {
+  let m = document.getElementById('planLinkModal');
+  if (!m) { m = document.createElement('div'); m.id = 'planLinkModal'; m.className = 'modal-overlay'; document.body.appendChild(m); }
+  const cerrar = () => m.classList.add('hidden');
+  const pintar = (st, msg) => {
+    const url = st && st.activo ? `${location.origin}/plan.html?t=${st.token}` : '';
+    const vence = st && st.activo && !st.permanente ? new Date(st.expiraEn).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    m.innerHTML = `<div class="modal" style="max-width:520px;"><div class="modal-header"><h3>🔗 Link de lectura del plan</h3><button class="modal-close" id="plk-x">×</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Es un link para que ${_remixEsc(STATE.client.nombre || 'el cliente')} vea el Plan de ejecución <strong>sin iniciar sesión</strong>. Es solo de lectura y muestra únicamente el plan: no se puede editar nada ni entrar a otras partes del Hub. Cualquiera que tenga el link puede verlo, así que compartilo solo con quien corresponda.</p>
+        ${url ? `<input id="plk-url" class="form-control" readonly value="${_remixEsc(url)}" onclick="this.select()">
+          <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0;">${st.permanente ? '<strong>Sin vencimiento</strong>: sigue funcionando hasta que lo desactives.' : `Vence el <strong>${vence}</strong> (30 días).`} Si lo desactivás o generás uno nuevo, el anterior deja de funcionar al instante.</p>`
+        : '<p style="font-size:13px;margin:0;">Todavía no hay un link activo.</p>'}
+        <label class="check-label" style="margin-top:10px;display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" id="plk-perm"${st && st.activo && st.permanente ? ' checked' : ''}> Sin vencimiento (hasta que lo desactive a mano)</label>
+        <p id="plk-msg" style="font-size:12px;margin:8px 0 0;min-height:16px;color:var(--text-muted);">${msg || ''}</p>
+      </div>
+      <div class="modal-footer">
+        ${url ? '<button class="btn btn-danger" id="plk-off">Desactivar</button><button class="btn btn-secondary" id="plk-nuevo">Generar uno nuevo</button><button class="btn btn-primary" id="plk-copiar">Copiar link</button>' : '<button class="btn btn-secondary" id="plk-cerrar">Cerrar</button><button class="btn btn-primary" id="plk-nuevo">Generar link de lectura</button>'}
+      </div></div>`;
+    m.classList.remove('hidden');
+    m.querySelector('#plk-x').onclick = cerrar;
+    m.querySelector('#plk-cerrar')?.addEventListener('click', cerrar);
+    const accion = async (fn, texto) => { const msgEl = m.querySelector('#plk-msg'); msgEl.textContent = texto; try { pintar(await fn(), ''); } catch (e) { msgEl.textContent = e.message || 'No se pudo. Probá de nuevo.'; } };
+    m.querySelector('#plk-nuevo')?.addEventListener('click', () => accion(() => crearPlanLink(clientId, !!m.querySelector('#plk-perm')?.checked), 'Generando…'));
+    m.querySelector('#plk-off')?.addEventListener('click', () => { if (confirm('¿Desactivar el link? Quien lo tenga ya no va a poder ver el plan.')) accion(async () => { await quitarPlanLink(clientId); return { activo: false }; }, 'Desactivando…'); });
+    m.querySelector('#plk-copiar')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); m.querySelector('#plk-msg').textContent = '✓ Link copiado.'; }
+      catch (e) { m.querySelector('#plk-url').select(); m.querySelector('#plk-msg').textContent = 'Seleccionado: copialo con Ctrl+C.'; }
+    });
+  };
+  pintar({ activo: false }, 'Cargando…');
+  try { pintar(await getPlanLink(clientId), ''); } catch (e) { pintar({ activo: false }, e.message || ''); }
+};
 
 function renderPlan(container) {
   const html = (STATE.plan && STATE.plan.html) || '';
@@ -1487,7 +1539,7 @@ function renderDashboard(container) {
   const total = conts.length;
   const publicados = conts.filter(c => c.estado === 'Publicado').length;
   const programados = conts.filter(c => c.estado === 'Programado').length;
-  const enProceso = conts.filter(c => ['En proceso','Revisión','Aprobado'].includes(c.estado)).length;
+  const enProceso = conts.filter(c => ESTADOS_EN_CURSO.includes(c.estado) || c.estado === 'Aprobado').length;
 
   // ── TAREAS (general + sitio web) — resumen chico, va al lado del gráfico de torta ──
   const tareasActivas = tareasVisibles(STATE.tareas).filter(t => !t.archivado);
@@ -1519,8 +1571,8 @@ function renderDashboard(container) {
     </div>`;
 
   // ── FORMATO breakdown ──
-  const formatos = { Imagen: 0, Video: 0, Reel: 0, Carrusel: 0, Story: 0, GIF: 0 };
-  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f => { formatos[f] = (formatos[f]||0)+1; }); });
+  const formatos = { Imagen: 0, Video: 0, Carrusel: 0, GIF: 0 };
+  conts.forEach(c => { const fmts = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []); fmts.forEach(f0 => { const f = f0 === 'Reel' ? 'Video' : f0; if (f === 'Story') return; formatos[f] = (formatos[f]||0)+1; }); }); // Reel y Story ya no son formatos (son ubicaciones)
   const maxFormato = Math.max(1, ...Object.values(formatos));
 
   // ── TIPO breakdown ──
@@ -1819,7 +1871,7 @@ function renderHome(container) {
 
   const pubMes = STATE.contenidos.filter(c => c.fechaPub && c.fechaPub.startsWith(hoy.toISOString().slice(0,7))).length;
   const aprobados = STATE.contenidos.filter(c => c.estado === 'Aprobado').length;
-  const enProceso = STATE.contenidos.filter(c => c.estado === 'En proceso').length;
+  const enProceso = STATE.contenidos.filter(c => ESTADOS_EN_CURSO.includes(c.estado)).length;
   const publicados = STATE.contenidos.filter(c => c.estado === 'Publicado').length;
 
   container.innerHTML = `
@@ -2080,7 +2132,7 @@ const CONT_VISTAS = [['lista', 'Lista'], ['estados', 'Kanban']]; // formas de ve
 const CONT_VISTAS_OCULTAS = ['feed-ig', 'muro-fb', 'stories', 'proceso'];
 // Se muestran en el filtro Ubicación como opciones deshabilitadas "Próximamente" (Vaneh 18/10)
 const CONT_VISTAS_PROXIMAMENTE = ['Feed IG', 'Muro FB', 'Stories IG'];
-const CONT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const CONT_ESTADOS = ESTADOS_CONT;
 const CONT_UBICACIONES_BASE = ['Feed', 'Story', 'Reel'];
 let _filtroEstado = 'todos';
 let _filtroUbicacion = 'todas';
@@ -2334,7 +2386,7 @@ function bancoRowHtml(c) {
       <td>${(c.plataformas||[]).map(p => platBadge(p)).join(' ')}</td>
       <td onclick="event.stopPropagation()">
         <select class="banco-estado-select" onchange="bancoUpdateEstado('${c.id}', this.value)" style="border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;font-weight:600;">
-          ${['Idea','Sin grabar','Guión grabado','En proceso','En revisión','Aprobado','Programado','Publicado'].map(op => `<option value="${op}" ${c.estado===op?'selected':''}>${op}</option>`).join('')}
+          ${opcionesEstado(tipoDe(c), c.estado)}
         </select>
       </td>
       <td style="font-size:12px;">${Array.isArray(c.formato)?c.formato.join(', '):(c.formato||'')}</td>
@@ -2492,10 +2544,18 @@ window.bancoUpdateFecha = async function(id, fecha) {
   STATE.contenidos[i] = c;
 };
 
+// Estado válido para el tipo de pieza (Reel/Video vs Imagen/Carrusel): traduce el equivalente si hace falta.
+function estadoValidoPara(c, estado) {
+  const t = tipoDe(c), ok = estadosPara(t);
+  if (ok.includes(estado)) return estado;
+  const n = convertirEstado(estado, t);
+  return ok.includes(n) ? n : estado;
+}
+
 window.bancoUpdateEstado = async function(id, estado) {
   const c = STATE.contenidos.find(x => x.id === id);
   if (!c) return;
-  c.estado = estado;
+  c.estado = estadoValidoPara(c, estado);
   const saved = await saveContenido(clientId, c);
   const i = STATE.contenidos.findIndex(x => x.id === id);
   STATE.contenidos[i] = saved;
@@ -2598,16 +2658,7 @@ function remixKanbanHtml(colKey) {
 }
 
 function renderKanbanContenidos(container) {
-  const cols = [
-    { key: 'Idea', label: 'Idea', cls: 's-idea' },
-    { key: 'Sin grabar', label: 'Sin grabar', cls: 's-singrabar' },
-    { key: 'Guión grabado', label: 'Guión grabado', cls: 's-grabado' },
-    { key: 'En proceso', label: 'En proceso', cls: 's-proceso' },
-    { key: 'En revisión', label: 'En revisión', cls: 's-revision' },
-    { key: 'Aprobado', label: 'Aprobado', cls: 's-aprobado' },
-    { key: 'Programado', label: 'Programado', cls: 's-programado' },
-    { key: 'Publicado', label: 'Publicado', cls: 's-publicado' },
-  ];
+  const cols = ESTADOS_CONT.map(e => ({ key: e, label: e, cls: estadoClase(e) }));
 
   container.innerHTML = `<div class="kanban-board" id="kanban-cont">${cols.map(col => {
     const items = STATE.contenidos.filter(c => c.estado === col.key && !c.archivado && matchFiltrosCont(c));
@@ -2644,7 +2695,7 @@ function renderKanbanContenidos(container) {
   initKanbanDrag('#kanban-cont', STATE.contenidos.filter(c => !c.archivado), async (id, newCol) => {
     const c = STATE.contenidos.find(x => x.id === id);
     if (!c) return;
-    c.estado = newCol;
+    c.estado = estadoValidoPara(c, newCol);
     await saveContenido(clientId, c);
     await estadoContenidoAGuion(c);
     renderContTab('estados');
@@ -3103,10 +3154,10 @@ function renderIdeas(container) {
 function detectarRedLink(url) {
   let u; try { u = new URL(url); } catch (e) { return null; }
   const h = u.hostname.replace(/^www\./, '').toLowerCase(), p = u.pathname.toLowerCase();
-  if (h.endsWith('instagram.com')) return { red: 'Instagram', formato: /\/reel/.test(p) ? 'Reel' : /\/stories/.test(p) ? 'Story' : 'Imagen', plataformas: ['Instagram'] };
+  if (h.endsWith('instagram.com')) return { red: 'Instagram', formato: /\/reel|\/stories/.test(p) ? 'Video' : 'Imagen', plataformas: ['Instagram'] };
   if (h.endsWith('tiktok.com')) return { red: 'TikTok', formato: 'Video', plataformas: ['TikTok'] };
   if (h.endsWith('youtube.com') || h === 'youtu.be') return { red: 'YouTube', formato: 'Video', plataformas: [] };
-  if (h.endsWith('facebook.com') || h === 'fb.watch') return { red: 'Facebook', formato: /\/reel|\/watch|fb\.watch/.test(p + h) ? 'Reel' : 'Imagen', plataformas: ['Facebook'] };
+  if (h.endsWith('facebook.com') || h === 'fb.watch') return { red: 'Facebook', formato: /\/reel|\/watch|fb\.watch/.test(p + h) ? 'Video' : 'Imagen', plataformas: ['Facebook'] };
   if (h.endsWith('linkedin.com')) return { red: 'LinkedIn', formato: 'Imagen', plataformas: ['LinkedIn'] };
   return { red: h, formato: 'Imagen', plataformas: [] };
 }
@@ -3138,7 +3189,7 @@ window.openIdeaModal = function(id) {
   document.getElementById('if-titulo').value = i.titulo || '';
   document.getElementById('if-notas').value = i.notas || '';
   document.getElementById('if-link').value = firstLink(i.linkDriveRef) || '';
-  document.getElementById('if-formato').value = i.formato || 'Imagen';
+  document.getElementById('if-formato').value = ({ Reel: 'Video', Story: 'Imagen' })[i.formato] || i.formato || 'Imagen';
   document.querySelectorAll('.idea-plat-check').forEach(cb => {
     cb.checked = (i.plataformas || ['Instagram','Facebook']).includes(cb.value);
   });
@@ -3156,7 +3207,8 @@ window.eliminarIdea = async function(id) {
 window.promoverIdea = async function(id) {
   const idea = STATE.ideas.find(i => i.id === id);
   if (!idea) return;
-  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: idea.formato||'', estado: 'En proceso', notas: idea.notas||'', linkDriveRef: Array.isArray(idea.linkDriveRef) ? idea.linkDriveRef.slice() : [], eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion:'Feed', cuenta: STATE.client.instagram||'' };
+  const _fm = idea.formato === 'Reel' ? 'Video' : (idea.formato === 'Story' ? '' : (idea.formato || '')); // Reel/Story viejos: ya no son formatos
+  const nuevo = { titulo: idea.titulo, plataformas: idea.plataformas||[], formato: _fm, estado: 'Sin empezar', notas: idea.notas||'', linkDriveRef: Array.isArray(idea.linkDriveRef) ? idea.linkDriveRef.slice() : [], eje:'', tipo:'', objetivo:'', fechaPub:'', ubicacion: idea.formato === 'Reel' ? 'Reel' : idea.formato === 'Story' ? 'Story' : 'Feed', cuenta: STATE.client.instagram||'' };
   const saved = await saveContenido(clientId, nuevo);
   STATE.contenidos.push(saved);
   STATE.ideas = STATE.ideas.filter(i => i.id !== id);
@@ -3168,7 +3220,7 @@ window.promoverIdea = async function(id) {
 
 // ─ En proceso y revisión ─
 function renderEnProceso(container) {
-  const items = STATE.contenidos.filter(c => ['En proceso','En revisión'].includes(c.estado));
+  const items = STATE.contenidos.filter(c => ESTADOS_EN_CURSO.includes(c.estado));
   container.innerHTML = `
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">En proceso y en revisión (${items.length})</h3>
     ${items.length ? `
@@ -3374,7 +3426,7 @@ document.getElementById('closePreviewModal').addEventListener('click', closePrev
 
 // Platform → allowed ubicaciones
 const PLAT_UBIC = {
-  Instagram: ['Feed', 'Story', 'Reel', 'Carrusel'],
+  Instagram: ['Feed', 'Story', 'Reel'], // Carrusel NO es ubicación (es un formato)
   Facebook: ['Feed', 'Story', 'Reel'],
   LinkedIn: ['Feed'],
   'Twitter / X': ['Feed'],
@@ -3386,8 +3438,8 @@ const PLAT_UBIC = {
 
 // Platform → allowed formatos
 const PLAT_FORMAT = {
-  Instagram: ['Imagen', 'Video', 'Reel', 'Carrusel', 'Story', 'GIF'],
-  Facebook: ['Imagen', 'Video', 'Carrusel', 'Story', 'GIF'],
+  Instagram: ['Imagen', 'Video', 'Carrusel', 'GIF'], // Reel y Story NO son formatos (son ubicaciones)
+  Facebook: ['Imagen', 'Video', 'Carrusel', 'GIF'],
   LinkedIn: ['Imagen', 'Video', 'Carrusel', 'Documento'],
   'Twitter / X': ['Imagen', 'Video', 'GIF'],
   TikTok: ['Video'],
@@ -3426,7 +3478,25 @@ function updatePlatFilters() {
   fmtDiv.innerHTML = [...fmtSet].map(f =>
     `<label class="check-label"><input type="checkbox" value="${f}" class="fmt-check"${prevFmt.includes(f) ? ' checked' : ''}> ${f}</label>`
   ).join('');
+  syncVideoPorReel();
 }
+
+// Reel (o Shorts) es solo UBICACIÓN: si está tildado, el formato Video se tilda solo.
+function syncVideoPorReel() {
+  const hayReel = Array.from(document.querySelectorAll('.ubic-check:checked')).some(cb => ['Reel', 'Shorts'].includes(cb.value));
+  if (hayReel) { const v = document.querySelector('.fmt-check[value="Video"]'); if (v) v.checked = true; }
+  syncEstadosModal();
+}
+// Habilita/deshabilita los estados del modal según plataforma, ubicación y formato.
+function syncEstadosModal() {
+  actualizarDimResumen();
+  const f = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
+  const u = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
+  aplicarEstadosSelect(document.getElementById('cf-estado'), tipoPieza(f, u));
+}
+document.addEventListener('change', e => {
+  if (e.target && e.target.matches && e.target.matches('.ubic-check, .fmt-check')) { if (e.target.classList.contains('ubic-check')) syncVideoPorReel(); else syncEstadosModal(); updateDuracionVisibility(); }
+});
 
 // Multiple drive links
 let _driveLinks = [];
@@ -3484,10 +3554,17 @@ function renderRemixes() {
         ${REMIX_ESTADOS.map(e => `<option value="${e}" ${est === e ? 'selected' : ''}>${e}</option>`).join('')}
       </select>
       <button type="button" onclick="removeRemix(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;" title="Quitar este remix">×</button>
+
+      <details class="cm-det" style="flex:1 1 100%;" ${_remixAbiertos.has(r.id) ? 'open' : ''} ontoggle="toggleRemixCopy('${r.id}', this.open)">
+        <summary><span class="cm-lbl">Copy del remix</span><span class="cm-dot">${r.copy && String(r.copy).trim() ? '● con contenido' : ''}</span></summary>
+        <textarea class="form-control" rows="3" placeholder="El copy (texto del posteo) de este remix..." oninput="updateRemix(${i},'copy',this.value)">${_remixEsc(r.copy || '')}</textarea>
+      </details>
     </div>`;
   }).join('') || '<p style="font-size:12px;color:var(--text-muted);margin:0;">Sin remix. Agregá uno.</p>';
 }
 window.renderRemixes = renderRemixes;
+const _remixAbiertos = new Set(); // qué "Copy del remix" están desplegados (por defecto todos contraídos)
+window.toggleRemixCopy = (id, abierto) => { if (abierto) _remixAbiertos.add(id); else _remixAbiertos.delete(id); };
 window.addRemix = function() {
   _remixes.push({ id: 'rx' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), fecha: '', link: '', estado: 'Idea' });
   renderRemixes();
@@ -3648,8 +3725,66 @@ function populateCuentaSelect(selected, esNuevo) {
   customInput.style.display = sel.value === '__custom__' ? '' : 'none';
 }
 
+
+// Modo según "¿Remix o contenido original?" (28/11, pedido de Vaneh):
+//  · Remix → solo título, objetivo, copy, texto en pantalla, asignar a, notas y comentarios + la lista de remix. Sin formato, ubicación, plataforma, etc.
+//  · Contenido original → todo lo de siempre, SIN la lista de remix.
+//  · Contenidos propios → no existe la parte de Remix (ni el desplegable ni la lista).
+const _CM_SOLO_REMIX = ['cf-titulo', 'cf-clase', 'remix-section', 'cf-objetivo', 'cf-copy', 'cf-texto-pantalla', 'cont-asignado', 'cf-notas'];
+function aplicarModoClase() {
+  const modal = document.getElementById('contenidoModal'); if (!modal) return;
+  const clase = document.getElementById('cf-clase')?.value || '';
+  const esRemix = clase === 'Remix';
+  modal.querySelectorAll('.form-grid .form-group').forEach(g => {
+    const mantiene = _CM_SOLO_REMIX.some(id => g.id === id || g.querySelector('#' + id));
+    let oculto = esRemix && !mantiene;
+    if (g.id === 'remix-section') oculto = !(esRemix || (Array.isArray(_remixes) && _remixes.length > 0)); // también se ve si el contenido YA tiene remix cargados // la lista de remix (agregar de a uno, con su fecha, link y estado) aparece cuando se elige Remix
+    g.classList.toggle('cm-oculto', oculto);
+  });
+  // En celular las opciones avanzadas están plegadas: con Remix se abren solas para que la lista de remix se vea.
+  if (esRemix) { const adv = document.getElementById('cont-advanced'); if (adv && !adv.classList.contains('open')) window.toggleContAdvanced?.(); }
+}
+document.getElementById('cf-clase')?.addEventListener('change', aplicarModoClase);
+
+// Dimensión: desplegable de selección múltiple (muestra lo elegido) + campos largos (copy, texto, guion, prompt, sugerencia) contraídos por defecto.
+function actualizarDimResumen() {
+  [['cf-dim-resumen', '.dim-check'], ['res-plat', '.plat-check'], ['res-ubic', '.ubic-check'], ['res-fmt', '.fmt-check']].forEach(([id, sel]) => {
+    const el = document.getElementById(id); if (!el) return;
+    const v = Array.from(document.querySelectorAll(sel + ':checked')).map(cb => cb.value);
+    el.textContent = v.length ? v.join(' · ') : (id === 'res-plat' ? 'Elegir…' : (document.querySelector(sel) ? 'Elegir…' : 'Primero elegí plataforma'));
+  });
+}
+document.addEventListener('change', e => { if (e.target.matches?.('.dim-check, .plat-check, .ubic-check, .fmt-check')) actualizarDimResumen(); });
+document.addEventListener('click', e => document.querySelectorAll('.cm-multi[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
+function marcarCamposLargos() {
+  document.querySelectorAll('#contenidoModal .cm-det').forEach(d => {
+    const ta = d.querySelector('textarea'), dot = d.querySelector('.cm-dot');
+    d.open = false; // siempre contraídos al abrir
+    if (dot) dot.textContent = ta && ta.value.trim() ? '● con contenido' : '';
+    if (ta && !ta.dataset.dotBound) { ta.dataset.dotBound = '1'; ta.addEventListener('input', () => { if (dot) dot.textContent = ta.value.trim() ? '● con contenido' : ''; }); }
+  });
+}
+
+// Botón "Transcribir" (bajo el material de referencia): transcribe el video del primer link de referencia y lo deja en el Guion.
+window.transcribirReferencia = async function() {
+  const url = (_refLinks || []).map(u => String(u || '').trim()).find(u => /^https?:\/\//i.test(u));
+  if (!url) { alert('Pegá primero un link de referencia (ej. un reel de Instagram).'); return; }
+  const btn = document.getElementById('cf-transcribir'), txt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Transcribiendo…'; }
+  try {
+    const r = await transcribirReel(url);
+    if (!r || !r.texto) throw new Error('No se pudo obtener el texto de ese video.');
+    const g = document.getElementById('cf-guion');
+    g.value = g.value.trim() ? g.value.replace(/\s+$/, '') + '\n\n— Transcripción del material de referencia —\n' + r.texto : r.texto;
+    const d = document.getElementById('det-cf-guion'); if (d) { d.open = true; d.querySelector('.cm-dot').textContent = '● con contenido'; }
+    g.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } catch (e) { alert('No se pudo transcribir: ' + (e.message || 'probá de nuevo.')); }
+  if (btn) { btn.disabled = false; btn.textContent = txt; }
+};
+
 window.openContenidoModal = function(defaults = {}) {
   defaults = defaults || {};
+  { const bt = document.getElementById('cf-transcribir'); if (bt) bt.style.display = (user.agencyId && user.agencyId !== 'cosmart') ? 'none' : ''; } // el transcriptor es solo de COSMART por ahora
   editingContenido = defaults?.id ? STATE.contenidos.find(c => c.id === defaults.id) : null;
   const c = editingContenido || {};
 
@@ -3657,10 +3792,10 @@ window.openContenidoModal = function(defaults = {}) {
   document.getElementById('cf-titulo').value = c.titulo || '';
   { const cl = document.getElementById('cf-clase'); if (cl) { cl.value = c.clase || ''; cl.classList.remove('campo-error'); } } // sin valor por defecto: hay que elegir
   document.getElementById('cf-fecha').value = c.fechaPub || defaults.fechaPub || '';
-  document.getElementById('cf-estado').value = c.estado || defaults.estado || 'Idea';
-  document.getElementById('cf-eje').value = c.eje || 'Institucional';
-  document.getElementById('cf-tipo').value = c.tipo || 'Informativo';
-  document.getElementById('cf-objetivo').value = c.objetivo || 'Notoriedad';
+  document.getElementById('cf-estado').value = normEstado({ ...c, estado: c.estado || defaults.estado || 'Sin empezar' });
+  document.getElementById('cf-eje').value = ({ Institucional: 'Informar', Entretenimiento: 'Entretener', Comercial: 'Informar', 'Interacción': 'Entretener', Educativo: 'Informar', Inspiracional: 'Inspirar' })[c.eje] || c.eje || 'Informar'; // ejes viejos -> Entretener / Informar / Inspirar
+  document.getElementById('cf-tipo').value = ({ Informativo: 'Comunicacional', Promocional: 'De venta', Sorteo: 'Interactivo', Viral: 'Viral', Evento: 'Comunicacional', 'Celebración': 'Comunicacional', Tutorial: 'Comunicacional' })[c.tipo] || c.tipo || 'Comunicacional'; // tipos viejos -> Comunicacional / Interactivo / De venta / Viral
+  document.getElementById('cf-objetivo').value = ({ Engagement: 'Interacción', Alcance: 'Notoriedad', 'Conversión': 'Acción', 'Tráfico': 'Acción' })[c.objetivo] || c.objetivo || 'Notoriedad'; // objetivos viejos -> los 3 vigentes
   document.getElementById('cf-copy').value = c.copy || '';
   document.getElementById('cf-texto-pantalla').value = c.textoPantalla || '';
   document.getElementById('cf-prompt-ia').value = c.promptIA || '';
@@ -3685,21 +3820,26 @@ window.openContenidoModal = function(defaults = {}) {
   updatePlatFilters();
 
   // Ubicacion & Formato — set after filters rendered
-  const ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion : (c.ubicacion ? [c.ubicacion] : defaults.ubicacion || []);
-  const fmtArr = Array.isArray(c.formato) ? c.formato : (c.formato ? [c.formato] : []);
+  let ubicArr = Array.isArray(c.ubicacion) ? c.ubicacion.slice() : (c.ubicacion ? [c.ubicacion] : (defaults.ubicacion || []).slice());
+  let fmtArr = Array.isArray(c.formato) ? c.formato.slice() : (c.formato ? [c.formato] : []);
+  // Datos viejos: "Reel" y "Story" figuraban como formato, y "Carrusel" como ubicación -> se acomodan.
+  if (fmtArr.includes('Reel')) { fmtArr = fmtArr.filter(x => x !== 'Reel'); if (!fmtArr.includes('Video')) fmtArr.push('Video'); if (!ubicArr.includes('Reel')) ubicArr.push('Reel'); }
+  if (fmtArr.includes('Story')) { fmtArr = fmtArr.filter(x => x !== 'Story'); if (!ubicArr.includes('Story')) ubicArr.push('Story'); }
+  if (ubicArr.includes('Carrusel')) { ubicArr = ubicArr.filter(x => x !== 'Carrusel'); if (!fmtArr.includes('Carrusel')) fmtArr.push('Carrusel'); }
   setTimeout(() => {
     document.querySelectorAll('.ubic-check').forEach(cb => cb.checked = ubicArr.includes(cb.value));
     document.querySelectorAll('.fmt-check').forEach(cb => cb.checked = fmtArr.includes(cb.value));
+    syncVideoPorReel();
   }, 30);
 
   // Dimensiones
   const dimArr = Array.isArray(c.dimensiones) ? c.dimensiones : [];
   document.querySelectorAll('.dim-check').forEach(cb => cb.checked = dimArr.includes(cb.value));
+  actualizarDimResumen();
 
   // Pauta
   const pautaVal = c.pauta || 'organico';
-  const pautaRadio = document.querySelector(`input[name="cf-pauta"][value="${pautaVal}"]`);
-  if (pautaRadio) pautaRadio.checked = true;
+  document.getElementById('cf-pauta').value = ['organico', 'dark', 'dark-organico'].includes(pautaVal) ? pautaVal : 'organico';
   document.getElementById('pauta-hint').style.display = pautaVal !== 'organico' ? '' : 'none';
 
   // Multiple links
@@ -3735,6 +3875,9 @@ window.openContenidoModal = function(defaults = {}) {
   _copyLinkContBtn.classList.toggle('hidden', !editingContenido);
   _copyLinkContBtn.onclick = () => copiarLinkItem('contenido', c.id);
   document.getElementById('contenidoModal').classList.remove('hidden');
+  aplicarModoClase();
+  marcarCamposLargos();
+  { const mb = document.querySelector('#contenidoModal .modal-body'); if (mb) mb.scrollTop = 0; document.getElementById('contenidoModal').scrollTop = 0; } // siempre abre ARRIBA (no donde se dejó)
 };
 
 window.openContenidoModalById = function(id) { openContenidoModal({ id }); };
@@ -3748,18 +3891,15 @@ document.getElementById('plat-checks').addEventListener('change', () => { update
 
 function updateDuracionVisibility() {
   setTimeout(() => {
-    const videoFormats = ['Reel','Video','TikTok','Story','YouTube','Short'];
-    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => videoFormats.some(v => cb.value.includes(v)));
+    const hasVideo = Array.from(document.querySelectorAll('.fmt-check:checked')).some(cb => cb.value === 'Video') || Array.from(document.querySelectorAll('.ubic-check:checked')).some(cb => ['Reel', 'Shorts'].includes(cb.value));
     const g = document.getElementById('cf-duracion-group');
     if (g) g.style.display = hasVideo ? '' : 'none';
   }, 60);
 }
 
 // Pauta radios → show/hide hint
-document.querySelectorAll('input[name="cf-pauta"]').forEach(r => {
-  r.addEventListener('change', () => {
-    document.getElementById('pauta-hint').style.display = r.value !== 'organico' ? '' : 'none';
-  });
+document.getElementById('cf-pauta').addEventListener('change', e => {
+  document.getElementById('pauta-hint').style.display = e.target.value !== 'organico' ? '' : 'none';
 });
 
 // Image paste & file pick — upload via button onclick in HTML, paste via Ctrl+V listener below
@@ -3802,24 +3942,25 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
   const titulo = document.getElementById('cf-titulo').value.trim();
   if (!titulo) { alert('El título es obligatorio.'); document.getElementById('cf-titulo').focus(); return; }
   const claseSel = document.getElementById('cf-clase');
+  const _esRemix = claseSel.value === 'Remix'; // en Contenidos propios no hay Remix; un Remix solo lleva título, objetivo, copy, texto en pantalla, asignado y notas
   if (!claseSel.value) { claseSel.classList.add('campo-error'); alert('Elegí si es Remix o Contenido original antes de guardar.'); claseSel.focus(); return; }
   if (_imgList.some(i => i.subiendo)) { alert('Esperá a que termine de subir el archivo.'); return; }
 
   const cuentaSel = document.getElementById('cf-cuenta');
   const cuentaCustom = document.getElementById('cf-cuenta-custom');
   const cuenta = cuentaSel.value === '__custom__' ? cuentaCustom.value.trim() : cuentaSel.value;
-  if (!cuenta) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
+  if (!cuenta && !_esRemix) { alert('Seleccioná o ingresá una cuenta.'); cuentaSel.focus(); return; }
 
   const plats = Array.from(document.querySelectorAll('.plat-check:checked')).map(cb => cb.value);
-  if (!plats.length) { alert('Seleccioná al menos una plataforma.'); return; }
+  if (!plats.length && !_esRemix) { alert('Seleccioná al menos una plataforma.'); return; }
 
   const formatos = Array.from(document.querySelectorAll('.fmt-check:checked')).map(cb => cb.value);
-  if (!formatos.length) { alert('Seleccioná al menos un formato.'); return; }
+  if (!formatos.length && !_esRemix) { alert('Seleccioná al menos un formato.'); return; }
   btn.disabled = true; btn.textContent = 'Guardando…';
 
   const ubicacion = Array.from(document.querySelectorAll('.ubic-check:checked')).map(cb => cb.value);
   const dimensiones = Array.from(document.querySelectorAll('.dim-check:checked')).map(cb => cb.value);
-  const pauta = document.querySelector('input[name="cf-pauta"]:checked')?.value || 'organico';
+  const pauta = document.getElementById('cf-pauta').value || 'organico';
   const contAsignadoEl = document.getElementById('cont-asignado');
   const contAsignadoEmail = contAsignadoEl ? contAsignadoEl.value : '';
   const contAsignadoNombre = contAsignadoEl ? (contAsignadoEl.selectedOptions[0]?.dataset.nombre || '') : '';
@@ -3866,6 +4007,7 @@ document.getElementById('saveContenidoBtn').addEventListener('click', async (e) 
       : { email: contAsignadoEmail, nombre: contAsignadoNombre, asignadoPor: { email: user.email, nombre: user.name || user.email } }) : null,
   };
 
+  obj.estado = estadoValidoPara(obj, obj.estado); // el estado tiene que corresponder al tipo de pieza (video vs imagen)
   if (!obj.remixes.length && !(editingContenido && Array.isArray(editingContenido.remixes))) delete obj.remixes; // no ensuciar contenidos que nunca tuvieron remix
 
   try {
@@ -3978,19 +4120,19 @@ function normGuionTitulo(s) { return normImportTexto(s); }
 //  - contenido pasa a 'Guión grabado' / 'Sin grabar' -> su guion vinculado queda igual.
 //  - guion cambia de estado -> el contenido vinculado toma el mismo estado, SOLO si todavía está en una
 //    etapa temprana (Idea / Sin grabar / Guión grabado); nunca pisa Aprobado, Programado, Publicado, etc.
-const ESTADOS_PRE_PRODUCCION = ['Idea', 'Sin grabar', 'Guión grabado'];
+const ESTADOS_PRE_PRODUCCION = ['Sin empezar', 'Guión en revisión', 'Guión aprobado', 'Grabado'];
 async function estadoContenidoAGuion(c) {
-  if (!c || (c.estado !== 'Guión grabado' && c.estado !== 'Sin grabar')) return;
+  if (!c || (c.estado !== 'Grabado' && c.estado !== 'Sin empezar') || tipoDe(c) === 'imagen') return;
   const g = STATE.guiones.find(x => x.contenidoId === c.id);
-  const grabado = c.estado === 'Guión grabado';
+  const grabado = c.estado === 'Grabado';
   if (!g || !!g.grabado === grabado) return;
   const saved = await saveGuion(clientId, { ...g, grabado }, STATE.guiones);
   STATE.guiones[STATE.guiones.findIndex(x => x.id === saved.id)] = saved;
 }
 async function estadoGuionAContenido(g) {
   const c = g.contenidoId && STATE.contenidos.find(x => x.id === g.contenidoId);
-  if (!c || !ESTADOS_PRE_PRODUCCION.includes(c.estado)) return;
-  const nuevo = g.grabado ? 'Guión grabado' : 'Sin grabar';
+  if (!c || !ESTADOS_PRE_PRODUCCION.includes(c.estado) || tipoDe(c) === 'imagen') return;
+  const nuevo = g.grabado ? 'Grabado' : 'Sin empezar';
   if (c.estado === nuevo) return;
   c.estado = nuevo;
   const savedC = await saveContenido(clientId, c, STATE.contenidos);
@@ -4234,7 +4376,7 @@ window.traerGuionDeContenido = async function(contenidoId) {
   const c = STATE.contenidos.find(x => x.id === contenidoId);
   if (!c) return;
   const existente = STATE.guiones.find(g => g.contenidoId === contenidoId);
-  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', grabado: existente ? !!existente.grabado : c.estado === 'Guión grabado', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
+  const obj = { ...(existente || {}), titulo: c.titulo, texto: c.guion || '', grabado: existente ? !!existente.grabado : c.estado === 'Grabado', contenidoId, fecha: existente?.fecha || new Date().toISOString().split('T')[0] };
   const saved = await saveGuion(clientId, obj, STATE.guiones);
   if (existente) STATE.guiones[STATE.guiones.findIndex(g => g.id === saved.id)] = saved;
   else STATE.guiones.push(saved);
@@ -4245,8 +4387,10 @@ window.traerGuionDeContenido = async function(contenidoId) {
 // ──────────────────────────────────────────────────────
 // IMPORTAR CONTENIDOS DESDE EXCEL
 // ──────────────────────────────────────────────────────
-const IMPORT_ESTADOS = ['Idea', 'Sin grabar', 'Guión grabado', 'En proceso', 'En revisión', 'Aprobado', 'Programado', 'Publicado'];
+const IMPORT_ESTADOS = ESTADOS_CONT;
 const IMPORT_PAUTA_MAP = {
+  pauta: 'dark', // desplegable nuevo: Orgánico / Pauta / Ambos
+  ambos: 'dark-organico',
   'solo organico': 'organico',
   'si dark post': 'dark',
   'si dark + organico': 'dark-organico',
@@ -4255,7 +4399,7 @@ const IMPORT_PAUTA_MAP = {
   dark: 'dark',
   'dark-organico': 'dark-organico',
 };
-const EXPORT_PAUTA_LABEL = { organico: 'Solo orgánico', dark: 'Sí – Dark post', 'dark-organico': 'Sí – Dark + orgánico' };
+const EXPORT_PAUTA_LABEL = { organico: 'Orgánico', dark: 'Pauta', 'dark-organico': 'Ambos' };
 // header normalizado (sin acentos, minúscula) -> campo del contenido
 const IMPORT_HEADER_MAP = {
   'titulo del contenido': 'titulo',
@@ -4301,6 +4445,25 @@ const IMPORT_HEADER_MAP = {
   responsable: 'asignado',
   'responsable sugerido': 'asignado',
 };
+
+// Columnas de los remix del Excel: "Remix 1 · Fecha / Link / Estado / Copy" (hasta 3 remix por fila).
+[1, 2, 3].forEach(n => { ['fecha', 'link', 'estado', 'copy'].forEach(c => { IMPORT_HEADER_MAP[`remix ${n} ${c}`] = `rx${n}_${c}`; }); });
+// Valores viejos de Objetivo / Eje / Tipo -> los vigentes (mismo criterio que el formulario de contenido).
+const _IMP_OBJ = { Engagement: 'Interacción', Alcance: 'Notoriedad', 'Conversión': 'Acción', 'Tráfico': 'Acción', Interaccion: 'Interacción', Accion: 'Acción' };
+const _IMP_EJE = { Institucional: 'Informar', Entretenimiento: 'Entretener', Comercial: 'Informar', 'Interacción': 'Entretener', Educativo: 'Informar', Inspiracional: 'Inspirar' };
+const _IMP_TIPO = { Informativo: 'Comunicacional', Promocional: 'De venta', Sorteo: 'Interactivo', Evento: 'Comunicacional', 'Celebración': 'Comunicacional', Tutorial: 'Comunicacional', Venta: 'De venta' };
+const _impMap = (m, v) => { const t = String(v || '').trim(); return m[t] || t; };
+// Remix de la fila: [{ id, fecha, link, estado: Idea|En proceso|Publicado, copy }]
+function importParseRemixes(obj) {
+  const out = [];
+  [1, 2, 3].forEach(n => {
+    const fecha = importParseFecha(obj[`rx${n}_fecha`]), link = String(obj[`rx${n}_link`] || '').trim(), copy = String(obj[`rx${n}_copy`] || '').trim();
+    const e = String(obj[`rx${n}_estado`] || '').trim().toLowerCase();
+    if (!fecha && !link && !copy && !e) return;
+    out.push({ id: 'rx' + Date.now().toString(36) + n + Math.random().toString(36).slice(2, 4), fecha: fecha || '', link, copy, estado: e.startsWith('public') ? 'Publicado' : (e.includes('proceso') ? 'En proceso' : 'Idea') });
+  });
+  return out;
+}
 
 const ACCENT_MAP = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n', ü: 'u' };
 
@@ -4598,7 +4761,7 @@ window.confirmarImportTareas = async function() {
     aProcesar.forEach((f, i) => {
       if (f.tipo === 'contenido') {
         if (f.duplicadoId && f.accionDuplicado === 'actualizar') contActualizar.push(f);
-        else contNuevos.push({ titulo: f.titulo, estado: 'Idea', fechaPub: f.vencimiento || null, notas: f.notas, creadoPor: user.email });
+        else contNuevos.push({ titulo: f.titulo, estado: 'Sin empezar', fechaPub: f.vencimiento || null, notas: f.notas, creadoPor: user.email });
         return;
       }
       if (f.duplicadoId && f.accionDuplicado === 'actualizar') {
@@ -4620,7 +4783,7 @@ window.confirmarImportTareas = async function() {
       const c = STATE.contenidos.find(x => x.id === f.duplicadoId);
       if (c) { await saveContenido(clientId, { ...c, fechaPub: f.vencimiento || c.fechaPub, notas: f.notas || c.notas }); nCont++; }
     }
-    if (nCont) STATE.contenidos = await getContenidos(clientId);
+    if (nCont) STATE.contenidos = normContenidos(await getContenidos(clientId));
     closeImportTareasModal();
     updateBadges();
     renderSection(currentSection);
@@ -4642,9 +4805,10 @@ function closeImportModal() {
 // para hacer modificaciones masivas afuera y volver a subirlo. Mismas
 // columnas y mismo orden que la plantilla de importación, para que el
 // archivo exportado se pueda volver a importar sin tocar encabezados.
-const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Remix o contenido original', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Eje de comunicación', 'Tipo de contenido', 'Objetivo', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignado a', 'Detalle de los remix (solo lectura)'];
+const EXPORT_CONTENIDOS_HEADERS = ['Título del contenido', 'Remix o contenido original', 'Fecha de publicación', 'Estado', 'Cuenta', 'Plataformas', 'Ubicación', 'Formato', 'Dimensiones', 'Objetivo', 'Eje de comunicación', 'Tipo de contenido', 'Copy', 'Texto en pantalla', 'Prompt sugerido para IA', 'Sugerencia de pieza creativa', 'Guion', 'Pauta', 'Link pieza terminada', 'Link material de referencia', 'Notas internas', 'Asignar a', 'Remix 1 · Fecha', 'Remix 1 · Link', 'Remix 1 · Estado', 'Remix 1 · Copy', 'Remix 2 · Fecha', 'Remix 2 · Link', 'Remix 2 · Estado', 'Remix 2 · Copy', 'Remix 3 · Fecha', 'Remix 3 · Link', 'Remix 3 · Estado', 'Remix 3 · Copy'];
 
 function contenidoAFilaExport(c) {
+  const rx = [0, 1, 2].flatMap(i => { const r = (c.remixes || [])[i]; return r ? [r.fecha || '', r.link || '', remixEstadoDe(r), r.copy || ''] : ['', '', '', '']; });
   return [
     c.titulo || '',
     c.clase || '',
@@ -4655,9 +4819,9 @@ function contenidoAFilaExport(c) {
     (c.ubicacion || []).join(', '),
     (c.formato || []).join(', '),
     (c.dimensiones || []).join(', '),
+    c.objetivo || '',
     c.eje || '',
     c.tipo || '',
-    c.objetivo || '',
     c.copy || '',
     c.textoPantalla || '',
     c.promptIA || '',
@@ -4668,7 +4832,7 @@ function contenidoAFilaExport(c) {
     (c.linkDriveRef || []).join(', '),
     c.notas || '',
     c.asignado ? (c.asignado.nombre || c.asignado.email) : '',
-    (c.remixes || []).map((r, i) => `Remix ${i + 1}: ${r.fecha || 'sin fecha'} · ${remixEstadoDe(r)}${r.link ? ' · ' + r.link : ''}`).join('\n'),
+    ...rx,
   ];
 }
 
@@ -4748,7 +4912,7 @@ async function exportarContenidosExcel() {
   await loadXLSXLib();
   const aoa = [EXPORT_CONTENIDOS_HEADERS, ...STATE.contenidos.map(contenidoAFilaExport)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 22, 14, 12, 14, 16, 14, 12, 12, 18, 16, 12, 40, 40, 40, 40, 40, 18, 28, 28, 30, 20, 40][i] || 16 }));
+  ws['!cols'] = EXPORT_CONTENIDOS_HEADERS.map((h, i) => ({ wch: [30, 22, 14, 18, 14, 16, 14, 12, 12, 14, 16, 16, 40, 40, 40, 40, 40, 12, 28, 28, 30, 20][i] || 18 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contenidos');
   const nombreCliente = (STATE.client?.nombre || STATE.client?.name || clientId || 'cliente').replace(/[^a-z0-9]+/gi, '_');
@@ -4883,7 +5047,7 @@ document.getElementById('confirmQuickUpdateBtn').addEventListener('click', async
       for (const match of r.matches) {
         const idx = STATE.contenidos.findIndex(c => c.id === match.id);
         const contenido = idx > -1 ? STATE.contenidos[idx] : match;
-        if (r.estado) contenido.estado = r.estado;
+        if (r.estado) contenido.estado = estadoValidoPara(contenido, normEstado({ ...contenido, estado: r.estado }));
         if (r.notas) contenido.notas = r.notas;
         if (r.linkDrive.length) contenido.linkDrive = r.linkDrive;
         if (r.comentario) {
@@ -4957,27 +5121,30 @@ document.getElementById('import-file-input').addEventListener('change', async (e
       const plataformas = importSplitMulti(obj.plataformas);
       const formato = importSplitMulti(obj.formato);
 
-      if (!titulo || !cuenta || !plataformas.length || !formato.length) {
-        errores.push(`Fila ${r + 1}: faltan datos obligatorios (título, cuenta, plataformas o formato).`);
+      const _esRemixFila = importParseClase(obj.clase) === 'Remix'; // un Remix solo necesita título (como en el formulario)
+      if (!titulo || (!_esRemixFila && (!cuenta || !plataformas.length || !formato.length))) {
+        errores.push(`Fila ${r + 1}: faltan datos obligatorios (título; y para contenidos originales: cuenta, plataformas y formato).`);
         continue;
       }
 
       const estadoRaw = String(obj.estado || '').trim();
-      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : 'Idea';
+      const estado = IMPORT_ESTADOS.includes(estadoRaw) ? estadoRaw : (normEstado({ estado: estadoRaw }) !== 'Sin empezar' && IMPORT_ESTADOS.includes(normEstado({ estado: estadoRaw })) ? normEstado({ estado: estadoRaw }) : 'Sin empezar'); // acepta los nombres viejos (Idea, Sin grabar, Guión grabado)
 
+      const _uf = acomodarUbicFormato(importSplitMulti(obj.ubicacion), formato);
+      const _estV = estadoValidoPara({ formato: _uf.formato, ubicacion: _uf.ubicacion }, estado);
       valid.push({
         titulo,
         clase: importParseClase(obj.clase),
         fechaPub: importParseFecha(obj.fechaPub),
-        estado,
+        estado: _estV,
         cuenta,
         plataformas,
-        ubicacion: importSplitMulti(obj.ubicacion),
-        formato,
+        ubicacion: _uf.ubicacion,
+        formato: _uf.formato,
         dimensiones: importSplitMulti(obj.dimensiones),
-        eje: String(obj.eje || '').trim(),
-        tipo: String(obj.tipo || '').trim(),
-        objetivo: String(obj.objetivo || '').trim(),
+        eje: _impMap(_IMP_EJE, obj.eje),
+        tipo: _impMap(_IMP_TIPO, obj.tipo),
+        objetivo: _impMap(_IMP_OBJ, obj.objetivo),
         copy: String(obj.copy || '').trim(),
         textoPantalla: String(obj.textoPantalla || '').trim(),
         promptIA: String(obj.promptIA || '').trim(),
@@ -4987,6 +5154,7 @@ document.getElementById('import-file-input').addEventListener('change', async (e
         linkDrive: importSplitMulti(obj.linkDrive),
         linkDriveRef: importSplitMulti(obj.linkDriveRef),
         notas: String(obj.notas || '').trim(),
+        ...(importParseRemixes(obj).length ? { remixes: importParseRemixes(obj) } : {}),
         comentarios: [],
         asignado: importResolverAsignado(obj.asignado),
         asignadoOriginal: obj.asignado ? String(obj.asignado).trim() : '',
@@ -5141,6 +5309,7 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
     const actualizacionesPrevias = aActualizar.map(r => {
       const prev = { id: r.match.id };
       IMPORT_DIFF_FIELDS.forEach(f => { prev[f.key] = r.match[f.key]; });
+      prev.remixes = r.match.remixes;
       return prev;
     });
     let nuevosIds = [];
@@ -5157,6 +5326,7 @@ document.getElementById('confirmImportBtn').addEventListener('click', async () =
       const actualizaciones = aActualizar.map(r => {
         const u = { id: r.match.id };
         IMPORT_DIFF_FIELDS.forEach(f => { u[f.key] = (f.key === 'clase' && !r.row.clase) ? r.match.clase : r.row[f.key]; });
+        if (r.row.remixes) u.remixes = r.row.remixes; // los remix del Excel solo se pisan si la fila trae alguno
         return u;
       });
       const actualizados = await updateContenidosBulk(clientId, actualizaciones);
@@ -5625,13 +5795,9 @@ document.getElementById('tarea-img-thumbs')?.addEventListener('click', (e) => {
 
 // Lightbox simple: pedido de Vaneh -- "necesito tocar la imagen y que se
 // amplie asi se entiende si se cargo o no".
-window.ampliarImagen = function(src) {
+window.ampliarImagen = function(src, nombre) {
   if (!src) return;
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;';
-  overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);">`;
-  overlay.onclick = () => overlay.remove();
-  document.body.appendChild(overlay);
+  mostrarVisorArchivo({ url: src, nombre: nombre || 'imagen.jpg', mime: /^data:(image\/[a-z+.-]+)/i.exec(src)?.[1] || 'image/jpeg' }); // con botón de descarga
 };
 
 // ── Teleprompter (guion de Contenidos, pedido de Vaneh para grabar) ──
@@ -6041,7 +6207,7 @@ document.getElementById('tarea-archivo-input')?.addEventListener('change', async
     await saveHomeData(clientId, STATE.home);
     _tareaArchivosPendientes.push(obj.id);
     renderTareaArchivosChips();
-    if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+    if (currentSection === 'links' || currentSection === 'archivos') renderArchivos(document.getElementById('archivos-col-body'));
   } catch (err) {
     alert('Error al subir el archivo: ' + err.message);
   }
@@ -6089,7 +6255,7 @@ document.getElementById('tarea-archivo-folder-input')?.addEventListener('change'
   _tareaArchivosPendientes.push(...nuevosIds);
   if (statusEl) statusEl.textContent = '';
   renderTareaArchivosChips();
-  if (currentSection === 'links') renderArchivos(document.getElementById('archivos-col-body'));
+  if (currentSection === 'links' || currentSection === 'archivos') renderArchivos(document.getElementById('archivos-col-body'));
   if (saltados) alert(`Se subieron ${ok} archivo${ok !== 1 ? 's' : ''}. ${saltados} se saltearon (pesan más de 50 MB o falló la subida).`);
 });
 
@@ -6514,7 +6680,7 @@ function pautaTabsHtml(activa) {
   const plats = ['Todas', 'Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'];
   return `<div class="tabs" id="pauta-tabs" style="margin-bottom:16px;">
     ${plats.map(p => { const k = p === 'Todas' ? 'todas' : p; return `<button class="tab-btn ${activa === k ? 'active' : ''}" data-tab="${k}">${p}</button>`; }).join('')}
-    <button class="tab-btn ${activa === 'planes' ? 'active' : ''}" data-tab="planes">📋 Planes de campaña</button>
+    <button class="tab-btn tab-btn-planes ${activa === 'planes' ? 'active' : ''}" data-tab="planes">📋 Planes de campaña</button>
   </div>`;
 }
 function bindPautaTabs() {
@@ -6746,6 +6912,7 @@ window.setLinkCatFilter = function(cat) {
 };
 
 function renderLinks(container) {
+  if (!container) return;
   const links = STATE.links || [];
   const cats = ['Todas', ...new Set(links.map(l => l.categoria).filter(Boolean))];
   if (!window._linkCatFilter) window._linkCatFilter = 'Todas';
@@ -6978,7 +7145,7 @@ async function espacioConfirmado() {
   const m = document.getElementById('almc-msg');
   if (m) { m.style.color = '#16a34a'; m.textContent = '¡Listo! Ya tenés 5 GB más para tus archivos.'; }
   await cargarAlmacenamiento();
-  if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+  if (currentSection === 'links' || currentSection === 'archivos') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
   setTimeout(cerrarModalEspacio, 2200);
 }
 
@@ -7010,7 +7177,7 @@ window.cancelarEspacioExtra = async function() {
   try {
     _almacenamiento = await cancelarEspacioCliente();
     await cargarAlmacenamiento();
-    if (currentSection === 'links') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
+    if (currentSection === 'links' || currentSection === 'archivos') { renderLinks(document.getElementById('links-col-body')); renderArchivos(document.getElementById('archivos-col-body')); }
   } catch (e) { alert('No se pudo cancelar: ' + e.message); }
 };
 
@@ -7057,6 +7224,7 @@ function archivoCardHtml(a) {
 }
 
 function renderArchivos(container) {
+  if (!container) return;
   const todos = STATE.home.archivos || [];
 
   if (_archivoBusqueda) {
@@ -7606,7 +7774,7 @@ function renderInstrucciones(container) {
         { icon:'pen-line', title:'Contenidos', color:'#3b82f6', items:[
           '<strong>Banco de contenidos:</strong> Tabla con todos los posts. Podés editar desde acá. Se puede filtrar por plataforma y por rango de fechas (Desde/Hasta), además del filtro Orgánico/Pauta.',
           '<strong>Calendario:</strong> Vista mensual. Tocá el "+" de un día para agregar contenido.',
-          '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre Idea → En proceso → Aprobado → Publicado.',
+          '<strong>Estados (Kanban):</strong> Arrastrá los contenidos entre los estados (Sin empezar → … → Aprobado → Programado → Publicado). Los reels y videos tienen sus propios pasos (guion, grabado, editado) y las imágenes y carruseles los suyos (copy, textos).',
           '<strong>Feed IG:</strong> "Publicado" muestra el feed real; "Borrador (pendiente de aprobación)" es una grilla de 12 casilleros en formato 4:5 donde podés arrastrar imágenes, vincular un contenido ya cargado, o armar una portada de texto con su propio color mientras no haya material -- más la pestaña "Ver como Reel" para lo que marques como tal.',
           '<strong>Muro FB / Stories:</strong> Vista previa del perfil con filtros por estado. Tocá ✏️ para editar.',
           '<strong>Banco de ideas:</strong> Guardá ideas y convertílas en contenido con un clic.',
@@ -8168,14 +8336,10 @@ function fmtNum(n) {
 }
 
 function statusBadge(estado) {
-  const map = { 'Idea':'s-idea','Sin grabar':'s-singrabar','Guión grabado':'s-grabado','En proceso':'s-proceso','En revisión':'s-revision','Aprobado':'s-aprobado','Programado':'s-programado','Publicado':'s-publicado' };
-  return `<span class="status-badge ${map[estado]||'s-idea'}">${estado||'—'}</span>`;
+  return `<span class="status-badge ${estadoClase(estado)}">${estado||'—'}</span>`;
 }
 
-function statusColor(estado) {
-  const map = { 'Idea':'#94a3b8','Sin grabar':'#ef4444','Guión grabado':'#8b5cf6','En proceso':'#f59e0b','En revisión':'#ec4899','Aprobado':'#10b981','Programado':'#3b82f6','Publicado':'#22c55e' };
-  return map[estado] || '#94a3b8';
-}
+function statusColor(estado) { return estadoColor(estado); }
 
 function statusDot(estado) {
   return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(estado)};border:1.5px solid white;"></span>`;
@@ -8428,7 +8592,7 @@ window.rechazarContenido = async function(id) {
   if (!c) return;
   const motivo = prompt('Motivo del rechazo (opcional):');
   if (motivo === null) return;
-  c.estado = 'En proceso';
+  c.estado = tipoDe(c) === 'video' ? 'Editado' : 'En proceso';
   if (motivo) c.notas = `[Rechazado: ${motivo}]${c.notas ? ' — ' + c.notas : ''}`;
   await saveContenido(clientId, c);
   STATE.contenidos[STATE.contenidos.findIndex(x => x.id === id)] = c;
@@ -8913,7 +9077,7 @@ function showMustChangePasswordModal() {
     const nueva = document.getElementById('mcp-nueva').value;
     const confirmar = document.getElementById('mcp-confirmar').value;
     if (!actual || !nueva) { err.textContent = 'Completá los dos campos.'; err.style.display = ''; return; }
-    if (nueva.length < 6) { err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; err.style.display = ''; return; }
+    if (nueva.length < 8) { err.textContent = 'La contraseña nueva debe tener al menos 8 caracteres.'; err.style.display = ''; return; }
     if (nueva !== confirmar) { err.textContent = 'Las contraseñas nuevas no coinciden.'; err.style.display = ''; return; }
     btn.disabled = true; btn.textContent = 'Guardando…';
     try {

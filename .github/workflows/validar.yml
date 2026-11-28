@@ -1,0 +1,31 @@
+name: Validar sintaxis
+
+# Red de seguridad mínima del front (auditoría 24/11/2026): el Hub no tenía ningún chequeo automático.
+# Falla si algún JS o el <script type="module"> de admin/index.html tiene un error de sintaxis.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sintaxis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: node --check de js/*.js y sw.js
+        run: |
+          for f in js/*.js sw.js; do node --check "$f" || exit 1; done
+      - name: node --check del script inline de admin/index.html
+        run: |
+          node -e "
+            const fs=require('fs');
+            const html=fs.readFileSync('admin/index.html','utf8');
+            const m=[...html.matchAll(/<script type=\"module\">([\s\S]*?)<\/script>/g)];
+            if(!m.length){console.error('No se encontró el script module');process.exit(1);}
+            m.forEach((x,i)=>fs.writeFileSync('/tmp/admin-'+i+'.mjs',x[1]));
+            console.log('scripts module:',m.length);
+          "
+          for f in /tmp/admin-*.mjs; do node --check "$f" || exit 1; done

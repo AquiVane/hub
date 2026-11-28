@@ -44,7 +44,7 @@ export async function loginUser(email, password) {
 
   const userData = {
     email: data.email, role: data.role, clientId: data.clientId, clientIds: data.clientIds || null, name: data.name, mustChangePassword: data.mustChangePassword || false,
-    agencyId: data.agencyId || 'cosmart', agenciaNombre: data.agenciaNombre || null, agenciaLogoUrl: data.agenciaLogoUrl || null,
+    agencyId: data.agencyId || 'cosmart', agenciaNombre: data.agenciaNombre || null, agenciaLogoUrl: data.agenciaLogoUrl || null, agenciaPerfil: data.agenciaPerfil || 'agencia',
   };
   saveSession(data.token, userData);
   return userData;
@@ -94,6 +94,8 @@ export function requireAuth(requiredRole) {
   const user = getCurrentUser();
   if (!user) {
     if (window.location.pathname !== '/login.html') {
+      // Se recuerda a dónde iba (ej. un link directo al plan de marketing) para volver ahí después de iniciar sesión.
+      try { sessionStorage.setItem('mh_next', window.location.pathname + window.location.search); } catch (e) {}
       window.location.href = '/login.html';
     }
     return null;
