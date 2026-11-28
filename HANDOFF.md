@@ -1,5 +1,7 @@
 # HANDOFF — hub (frontend, Marketing Hub de COSMART)
 
+> 📎 **Contexto de clientes y proyectos de sesiones anteriores (abr–ago 2026):** ver `HANDOFF-SESIONES-ANTERIORES.md` (28/11). Es material viejo: si contradice a este HANDOFF, prevalece este.
+
 ## 27/11 (2) — Transcriptor de reels en el admin (pedido de Vaneh, estilo SocialBoost)
 - Nueva sección **Transcriptor** (solo admin de COSMART, menú lateral): pegás uno o varios links de Instagram (uno por línea) → **Transcribir** → texto; botones **Copiar transcripción**, **Traducir** (al español), **Volver a transcribir**, **Limpiar resultados**. `admin/index.html` (`sec-transcribir`), `transcribirReel`/`traducirTexto` en `js/data.js`.
 - Backend (`cosmart-workers/marketing-hub`): `POST /admin/transcribir` y `/admin/traducir`. **Requiere deploy manual con OK de Vaneh + configurar el proveedor que baja el reel** (Instagram no entrega el video a IPs de servidor; probado). Ver HANDOFF del worker.
