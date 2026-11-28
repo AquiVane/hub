@@ -1116,6 +1116,8 @@ Misma lógica para contenido original y Remix. Columnas: Título · Remix o orig
 
 - 28/11: "Link de lectura" del Plan de ejecución (botón en la sección Plan + `plan.html` pública con iframe sandbox). Usa `/plan-link/:clientId` y `/publico/plan/:token` de marketing-hub (requiere ese deploy). data.js v38, app.js v114.
 
+- 28/11: Banco de contenidos: al cambiar un estado NO se mueve a otro mes. Se recuerda qué meses/años están abiertos (localStorage `mh_banco_ab_<clientId>`, también al reentrar) y se conserva la posición de scroll. También en Calendario.
+
 ## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
 - **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
 - **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).

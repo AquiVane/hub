@@ -2403,9 +2403,28 @@ function bancoRowHtml(c) {
   `;
 }
 
+// Meses/años del banco: se recuerda cuáles abrió o cerró la persona (también al volver a entrar) y la posición de la pantalla,
+// para que al cambiar un estado/fecha NO se mueva a otro mes (28/11, pedido de Vaneh: "tiene que quedarse donde estoy").
+let _bkMap = (() => { try { return JSON.parse(localStorage.getItem('mh_banco_ab_' + clientId) || '{}'); } catch (e) { return {}; } })();
+const _bkAbierto = (k, porDefecto) => (k in _bkMap) ? !!_bkMap[k] : porDefecto;
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (d && d.dataset && d.dataset.bk) { _bkMap[d.dataset.bk] = d.open; try { localStorage.setItem('mh_banco_ab_' + clientId, JSON.stringify(_bkMap)); } catch (err) {} }
+}, true);
+function _scrollGuardar() {
+  const out = [{ el: window, y: window.scrollY }];
+  let n = document.getElementById('cont-tab-body');
+  while (n && n !== document.body) { if (n.scrollHeight > n.clientHeight) out.push({ el: n, y: n.scrollTop }); n = n.parentElement; }
+  return out;
+}
+function _scrollRestaurar(pos) {
+  const ir = () => pos.forEach(p => { if (p.el === window) window.scrollTo(0, p.y); else p.el.scrollTop = p.y; });
+  ir(); requestAnimationFrame(ir); setTimeout(ir, 80);
+}
+
 function bancoMesGroupHtml(label, items, abierto) {
   return `
-    <details class="banco-mes-group" ${abierto ? 'open' : ''}>
+    <details class="banco-mes-group" data-bk="m:${String(label).replace(/"/g, '')}" ${_bkAbierto('m:' + String(label).replace(/"/g, ''), abierto) ? 'open' : ''}>
       <summary class="banco-mes-header">${label} <span class="banco-mes-count">${items.length}</span></summary>
       <div class="banco-cards-mobile">${items.map(bancoCardHtml).join('')}</div>
       <div class="banco-table-desktop">
@@ -2463,7 +2482,7 @@ function renderBancoContenidos(container) {
     const totalAnio = clavesDelAnio.reduce((n, c) => n + grupos.get(c).length, 0);
     const abiertoAnio = anio === anioActual;
     return `
-      <details class="banco-anio-group" ${abiertoAnio ? 'open' : ''}>
+      <details class="banco-anio-group" data-bk="a:${anio}" ${_bkAbierto('a:' + anio, abiertoAnio) ? 'open' : ''}>
         <summary class="banco-anio-header">${anio} <span class="banco-mes-count">${totalAnio}</span></summary>
         <div class="banco-anio-body">
           ${clavesDelAnio.map(clave => bancoMesGroupHtml(mesAnioLabel(clave), grupos.get(clave), clave === claveActual)).join('')}
@@ -2560,7 +2579,9 @@ window.bancoUpdateEstado = async function(id, estado) {
   const i = STATE.contenidos.findIndex(x => x.id === id);
   STATE.contenidos[i] = saved;
   await estadoContenidoAGuion(saved);
+  const _pos = _scrollGuardar();
   renderContTab(activeContTab);
+  _scrollRestaurar(_pos);
   if (currentSection === 'home') renderSection('home');
 };
 
