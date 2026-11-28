@@ -3343,6 +3343,25 @@
   ];
   GRUPOS.forEach(g => { g.tabs = g.tabs.filter(t => t.si !== false); });
   const grupoDe = id => GRUPOS.find(g => g.id === id);
+  // Cuenta de emprendedor (Vaneh, 27/11): sin Clientes, Proyectos ni Informes de clientes; "Mis tareas" y "Gestión interna"
+  // son una sola "Tareas"; Métricas + Reportes + Actividad juntos en "Reportes y métricas" (Métricas = el Dashboard del panel
+  // de cliente, Inicio, Reportes y Actividad). Los productos van en el Inventario propio (a mano, Excel o con IA).
+  if (esPerfilEmp) {
+    const gCli = grupoDe('clientes');
+    gCli.tabs = gCli.tabs.filter(t => t.id !== 'clientes');
+    document.querySelector('.nav-item[data-grupo="clientes"] span')?.replaceChildren('Equipo');
+    grupoDe('tareas').tabs = [{ id: 'internas', label: 'Tareas', sec: 'internas' }];
+    const gCon = grupoDe('contenidos');
+    gCon.tabs = gCon.tabs.filter(t => t.id !== 'dashboard');
+    grupoDe('metricas').tabs = [
+      { id: 'dashboard', label: 'Métricas', sec: 'contenidospropios', embed: 'dashboard' },
+      { id: 'home', label: 'Inicio', sec: 'contenidospropios', embed: 'home' },
+      { id: 'reportes', label: 'Reportes', sec: 'contenidospropios', embed: 'reportes' },
+      { id: 'actividad', label: 'Actividad', sec: 'actividad' } ];
+    document.querySelector('.nav-item[data-grupo="metricas"] span:not(.badge)')?.replaceChildren('Reportes y métricas');
+    document.getElementById('internasVerticalFiltro')?.style.setProperty('display', 'none'); // las verticales son de COSMART
+    { const l = document.getElementById('secGestionInternaLabel'); if (l) l.textContent = 'Tareas'; }
+  }
   // Nombre del ítem "Contenidos" según el tipo de cuenta
   { const l = document.getElementById('navContenidosLabel'); if (l) l.textContent = 'Contenidos'; }
   document.querySelectorAll('.nav-item[data-grupo]').forEach(b => { if (!grupoDe(b.dataset.grupo)?.tabs.length) b.remove(); });
@@ -8769,6 +8788,18 @@
     steps.push({ selector: N('metricas'), titulo: 'Métricas', texto: 'Todo junto en solapas: actividad por persona, informes de clientes (se generan solos el día 1 de cada mes y no se envían hasta que los apruebes), estadísticas de mails' + (esCosmart && user.role === 'admin' ? ', panel de ventas y visitas.' : '.') });
     steps.push({ selector: N('recursos'), titulo: 'Recursos útiles', texto: 'Tres solapas: Links, Archivos y Recursos (plantillas y archivos de referencia para todo el equipo).' });
     steps.push({ selector: N('config'), titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' });
+    // Cuenta de emprendedor: recorrido propio (sin clientes, proyectos ni informes, que no existen en su menú).
+    if (esPerfilEmp) {
+      return [
+        { selector: '.sidebar-logo', titulo: '¡Bienvenido/a al Marketing Hub!', texto: 'Este es el panel de tu emprendimiento: tareas, contenidos, productos y resultados en un solo lugar.' },
+        { selector: '.notif-bell-wrap', titulo: 'Notificaciones', texto: 'La campanita avisa de asignaciones, menciones y vencimientos.' },
+        { selector: N('tareas'), titulo: 'Tareas', texto: 'Todo lo que tenés que hacer, en tablero, lista o calendario.' },
+        { selector: N('contenidos'), titulo: 'Contenidos', texto: 'Planificá tus publicaciones: banco de contenidos y guiones.' },
+        { selector: N('inventario'), titulo: 'Inventario', texto: 'Tus productos: los cargás uno a uno, con Excel o pidiéndole a la IA que los arme a partir de lo que contás de tu negocio.' },
+        { selector: N('metricas'), titulo: 'Reportes y métricas', texto: 'El dashboard de tus contenidos, el inicio, tus reportes y la actividad, en solapas.' },
+        { selector: N('config'), titulo: 'Configuración', texto: 'Ajustes generales del Hub -- y desde acá podés volver a ver este recorrido cuando quieras.' },
+      ];
+    }
     return steps;
   }
   const TOUR_STORAGE_KEY = 'hub_tour_admin_v1';

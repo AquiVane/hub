@@ -1117,3 +1117,12 @@ Misma lógica para contenido original y Remix. Columnas: Título · Remix o orig
 - 28/11: "Link de lectura" del Plan de ejecución (botón en la sección Plan + `plan.html` pública con iframe sandbox). Usa `/plan-link/:clientId` y `/publico/plan/:token` de marketing-hub (requiere ese deploy). data.js v38, app.js v114.
 
 - 28/11: Banco de contenidos: al cambiar un estado NO se mueve a otro mes. Se recuerda qué meses/años están abiertos (localStorage `mh_banco_ab_<clientId>`, también al reentrar) y se conserva la posición de scroll. También en Calendario.
+
+## 27/11 — Modo emprendedor: menú propio (pedido de Vaneh) — adaptado al menú por grupos del 28/11
+- **Solo `agenciaPerfil === 'emprendedor'`** (agencias y COSMART no cambian). Se aplica sobre `GRUPOS` en `admin/index.html` (bloque `if (esPerfilEmp)` justo después de `grupoDe`).
+- **Clientes no va** (el grupo pasa a llamarse **Equipo**: Colaboradores · Procesos). **Proyectos y Informes de clientes no van.** **"Mis tareas" y "Tareas internas" = una sola "Tareas"** (`internas`, sin el filtro de verticales de COSMART).
+- **"Métricas" → "Reportes y métricas"**, con 4 pestañas: **Métricas** (el Dashboard del panel de cliente, principal) · **Inicio** · **Reportes** · **Actividad** (la sección de siempre). Las tres primeras son pestañas `embed` (`dashboard`, `home`, `reportes`) del mismo módulo de Contenidos propios (`window.__hubEmbedTab` → `renderSection`). En el grupo Contenidos el emprendedor ve solo Contenidos y Guiones (el Dashboard pasó a Métricas).
+- **Productos**: el emprendedor usa el **Inventario propio** (sec `productos`; uno a uno, Excel o "Cargar con IA") — es lo que pidió como "mapa de productos propio". No hay un módulo aparte (se había armado `js/mapa-productos.js` sobre la misma clave `/data/_cosmart/productos` y se sacó al unificar con el inventario nativo, para no tener dos pantallas sobre los mismos datos).
+- Recorrido de bienvenida propio (sin clientes ni "Cliente Demo"). En el Dashboard de Contenidos propios se sacó el "Cliente: _cosmart".
+- Probado en simulación local (servidor falso), desktop y mobile 390 px, sin scroll horizontal. **Falta probarlo con una cuenta emprendedor real** (la demo de `emprendedores.html` sirve).
+- Pendiente (no pedido): el "Inicio" del emprendedor muestra contadores de contenidos; si querés prioridades/links propios hay que definirlo. "Pauta publicitaria" sigue en su menú.

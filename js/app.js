@@ -1638,7 +1638,7 @@ function renderDashboard(container) {
     <div class="dash-header">
       <div>
         <div class="dash-title">Dashboard Calendario Editorial</div>
-        <div class="dash-meta">Cliente: <strong>${escapeHtml(STATE.client.nombre || STATE.client.name || clientId)}</strong></div>
+        ${esPropioAgencia ? '' : `<div class="dash-meta">Cliente: <strong>${escapeHtml(STATE.client.nombre || STATE.client.name || clientId)}</strong></div>`}
       </div>
       <div class="dash-header-right">
       <span id="dash-play-slot"></span>
